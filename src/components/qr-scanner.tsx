@@ -78,7 +78,7 @@ export function UsbScannerField({
         disabled={disabled}
         value={value}
         onChange={(event) => setValue(event.target.value)}
-        className="w-full rounded-2xl border border-slate-200 px-4 py-4 text-base outline-none focus:border-teal-700 focus:ring-4 focus:ring-teal-700/15"
+        className="w-full rounded-xl border border-border px-4 py-4 text-base outline-none focus:border-primary focus:ring-4 focus:ring-primary/15"
         placeholder="Le curseur reste ici pour le scanner clavier"
         autoComplete="off"
         inputMode="none"
