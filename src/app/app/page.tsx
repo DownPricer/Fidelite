@@ -8,6 +8,7 @@ export default async function MerchantHomePage() {
   if (!user) redirect("/app/connexion");
   const membership = firstActiveStaffMembership(user.merchantMemberships);
   if (!membership || !canOpenCaisse(membership.role)) redirect("/app/connexion");
+  if (membership.role === "EMPLOYEE") redirect("/app/caisse");
 
   return (
     <MerchantHome

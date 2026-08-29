@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Alert, Button, Card, Field, Input } from "@/components/ui";
+import { Alert, Button, Field, Input } from "@/components/ui";
 
 export function SettingsForm({
   initial,
@@ -49,8 +49,7 @@ export function SettingsForm({
       
       <div className="grid gap-8 lg:grid-cols-3">
         <div className="lg:col-span-2">
-          <Card>
-            <form className="space-y-8" onSubmit={(event) => void onSubmit(event)}>
+          <form className="space-y-8" onSubmit={(event) => void onSubmit(event)}>
               <div className="space-y-6">
                 <p className="text-[10px] font-bold uppercase tracking-widest text-muted/40">Identité visuelle</p>
                 <div className="grid gap-6 sm:grid-cols-2">
@@ -90,14 +89,13 @@ export function SettingsForm({
                 </Button>
               </div>
             </form>
-          </Card>
         </div>
 
         <div className="lg:col-span-1">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-muted/40 mb-4 px-2">Aperçu direct</p>
+          <p className="mb-4 px-2 text-[10px] font-bold uppercase tracking-widest text-muted/40">Aperçu direct</p>
           <div className="sticky top-28 space-y-6">
-            <Card className="p-0 overflow-hidden group">
-              <div className="h-20 bg-primary/10 flex items-center justify-center border-b border-border/50">
+            <div className="overflow-hidden rounded-2xl border border-border">
+              <div className="flex h-20 items-center justify-center border-b border-border/50 bg-primary/10">
                  {initial.logoUrl ? (
                    // eslint-disable-next-line @next/next/no-img-element
                    <img src={initial.logoUrl} alt="" className="h-10 w-10 rounded-lg object-cover shadow-sm bg-white" />
@@ -116,7 +114,7 @@ export function SettingsForm({
                   <div className="h-full bg-primary w-1/3" />
                 </div>
               </div>
-            </Card>
+            </div>
             
             <div className="rounded-2xl bg-amber-50 p-6 border border-amber-100 text-amber-900 shadow-sm">
               <div className="flex gap-3">

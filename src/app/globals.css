@@ -19,6 +19,10 @@
   --primary: #14b8a6; /* teal-500 */
   --primary-foreground: #ffffff;
   --surface: #f8fafc; /* slate-50 */
+  --app-shell: #e4eaf2; /* gris bleuté — espaces commerçant */
+  --sidebar: #0c1a2e; /* bleu nuit */
+  --sidebar-foreground: #f1f5f9;
+  --sidebar-muted: #94a3b8;
   --ink: #0f172a; /* slate-900 */
   --muted: #64748b; /* slate-500 */
   --border: #e2e8f0; /* slate-200 */

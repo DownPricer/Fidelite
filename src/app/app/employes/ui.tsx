@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Alert, Button, Card, Field, Input, cn } from "@/components/ui";
+import { Alert, Button, Field, Input, cn } from "@/components/ui";
 
 type Employee = {
   id: string;
@@ -65,82 +65,88 @@ export function EmployeesPanel() {
   }
 
   return (
-    <div className="grid gap-12 lg:grid-cols-3">
-      <div className="lg:col-span-1">
-        <Card className="sticky top-28">
-          <h3 className="text-xl font-bold tracking-tight mb-2">Nouvel employé</h3>
-          <p className="text-xs font-bold text-muted uppercase tracking-widest mb-6">Limite : {employees.filter(e => e.isActive).length}/{max}</p>
-          
-          <form className="space-y-6" onSubmit={(event) => void create(event)}>
-            {error ? <Alert>{error}</Alert> : null}
-            <div className="grid grid-cols-2 gap-4">
-              <Field label="Prénom">
-                <Input name="firstName" required placeholder="Jean" />
-              </Field>
-              <Field label="Nom">
-                <Input name="lastName" placeholder="Dupont" />
-              </Field>
-            </div>
-            <Field label="E-mail">
-              <Input name="email" type="email" required placeholder="jean@exemple.fr" />
-            </Field>
-            <Field label="Mot de passe" hint="Temporaire, 8 car. min.">
-              <Input name="password" type="password" required minLength={8} />
-            </Field>
-            <Button className="w-full">Ajouter à l'équipe</Button>
-          </form>
-        </Card>
-      </div>
+    <div className="grid gap-10 lg:grid-cols-3">
+      <section className="rounded-2xl border border-border p-6 lg:sticky lg:top-28 lg:self-start">
+        <h3 className="mb-2 text-xl font-bold tracking-tight">Nouvel employé</h3>
+        <p className="mb-6 text-xs font-bold uppercase tracking-widest text-muted">
+          Limite : {employees.filter((e) => e.isActive).length}/{max}
+        </p>
 
-      <div className="lg:col-span-2 space-y-4">
-        {temp ? (
-          <div className="mb-6 animate-in fade-in slide-in-from-top-4">
-            <Alert tone="ok">
-              <div className="flex flex-col gap-1">
-                <span className="text-[10px] font-black uppercase tracking-widest opacity-60">Mot de passe temporaire généré</span>
-                <span className="text-lg font-black tracking-tight">{temp}</span>
-              </div>
-            </Alert>
+        <form className="space-y-6" onSubmit={(event) => void create(event)}>
+          {error ? <Alert>{error}</Alert> : null}
+          <div className="grid grid-cols-2 gap-4">
+            <Field label="Prénom">
+              <Input name="firstName" required placeholder="Jean" />
+            </Field>
+            <Field label="Nom">
+              <Input name="lastName" placeholder="Dupont" />
+            </Field>
           </div>
+          <Field label="E-mail">
+            <Input name="email" type="email" required placeholder="jean@exemple.fr" />
+          </Field>
+          <Field label="Mot de passe" hint="Temporaire, 8 car. min.">
+            <Input name="password" type="password" required minLength={8} />
+          </Field>
+          <Button className="w-full">Ajouter à l&apos;équipe</Button>
+        </form>
+      </section>
+
+      <div className="space-y-4 lg:col-span-2">
+        {temp ? (
+          <Alert tone="ok">
+            <div className="flex flex-col gap-1">
+              <span className="text-[10px] font-black uppercase tracking-widest opacity-60">Mot de passe temporaire généré</span>
+              <span className="text-lg font-black tracking-tight">{temp}</span>
+            </div>
+          </Alert>
         ) : null}
 
-        <div className="space-y-4">
+        <div className="divide-y divide-border rounded-2xl border border-border">
           {employees.map((employee) => (
-            <Card key={employee.id} className="group overflow-hidden">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
-                <div className="flex items-center gap-4">
-                  <div className={cn(
+            <div key={employee.id} className="flex flex-col justify-between gap-6 p-6 sm:flex-row sm:items-center">
+              <div className="flex items-center gap-4">
+                <div
+                  className={cn(
                     "grid h-12 w-12 shrink-0 place-items-center rounded-xl text-lg font-black",
-                    employee.isActive ? "bg-primary/10 text-primary" : "bg-slate-100 text-slate-400"
-                  )}>
-                    {employee.firstName.slice(0, 1)}
-                  </div>
-                  <div>
-                    <h4 className="font-black tracking-tight text-lg leading-none">
-                      {employee.firstName} {employee.lastName}
-                    </h4>
-                    <p className="text-xs font-bold text-muted uppercase tracking-widest mt-1">{employee.email}</p>
-                    <div className={cn(
-                      "mt-3 inline-flex items-center gap-2 rounded-full px-2.5 py-0.5 text-[10px] font-black uppercase tracking-widest",
-                      employee.isActive ? "bg-emerald-50 text-emerald-600 border border-emerald-100" : "bg-rose-50 text-rose-600 border border-rose-100"
-                    )}>
-                      {employee.isActive ? "Actif" : "Désactivé"}
-                    </div>
-                  </div>
+                    employee.isActive ? "bg-primary/10 text-primary" : "bg-slate-100 text-slate-400",
+                  )}
+                >
+                  {employee.firstName.slice(0, 1)}
                 </div>
-                
-                <div className="flex items-center gap-2 sm:self-center">
-                  <Button variant="ghost" className="h-10 px-4 text-xs font-bold" onClick={() => void resetPassword(employee.id)}>
-                    Réinitialiser
-                  </Button>
-                  {employee.isActive ? (
-                    <Button variant="danger" className="h-10 px-4 text-xs font-bold bg-rose-50 text-rose-600 border-none shadow-none hover:bg-rose-100" onClick={() => void disable(employee.id)}>
-                      Désactiver
-                    </Button>
-                  ) : null}
+                <div>
+                  <h4 className="text-lg font-black leading-none tracking-tight">
+                    {employee.firstName} {employee.lastName}
+                  </h4>
+                  <p className="mt-1 text-xs font-bold uppercase tracking-widest text-muted">{employee.email}</p>
+                  <div
+                    className={cn(
+                      "mt-3 inline-flex items-center gap-2 rounded-full px-2.5 py-0.5 text-[10px] font-black uppercase tracking-widest",
+                      employee.isActive
+                        ? "border border-emerald-100 bg-emerald-50 text-emerald-600"
+                        : "border border-rose-100 bg-rose-50 text-rose-600",
+                    )}
+                  >
+                    {employee.isActive ? "Actif" : "Désactivé"}
+                  </div>
                 </div>
               </div>
-            </Card>
+
+              <div className="flex items-center gap-2">
+                <Button variant="ghost" className="h-10 px-4 text-xs font-bold" onClick={() => void resetPassword(employee.id)}>
+                  Réinitialiser
+                </Button>
+                {employee.isActive ? (
+                  <Button
+                    variant="danger"
+                    className="h-10 border-none bg-rose-50 px-4 text-xs font-bold text-rose-600 shadow-none hover:bg-rose-100"
+                    onClick={() => void disable(employee.id)}
+                  >
+                    Désactiver
+                  </Button>
+                ) : null}
+              </div>
+            </div>
           ))}
         </div>
       </div>

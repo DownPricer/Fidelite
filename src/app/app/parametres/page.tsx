@@ -1,5 +1,4 @@
 import { redirect } from "next/navigation";
-import { AppNav } from "@/components/app-nav";
 import { prisma } from "@/lib/prisma";
 import { canManageMerchantSettings, firstActiveStaffMembership } from "@/lib/rbac";
 import { getSessionUser } from "@/lib/session";

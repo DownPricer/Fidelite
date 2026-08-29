@@ -88,8 +88,8 @@ export function CaisseScreen({
             <p className="text-[10px] font-bold tracking-[0.2em] text-white/40 uppercase leading-none">{merchantName} — {firstName}</p>
           </div>
         </div>
-        <Link 
-          href="/app" 
+        <Link
+          href={role === "MERCHANT_ADMIN" ? "/app" : "/app/caisse"}
           className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-xs font-bold uppercase tracking-widest text-white/60 hover:bg-white/10 hover:text-white transition-all"
         >
           Quitter
@@ -98,27 +98,26 @@ export function CaisseScreen({
 
       <div className="mx-auto max-w-2xl px-6 py-12">
         {!result && !scanning && (
-          <div className="flex flex-col items-center justify-center gap-12 text-center">
-            <div className="relative">
-              <div className="absolute inset-0 animate-ping rounded-full bg-primary/20" />
+          <div className="flex flex-col items-center justify-center gap-10 text-center">
+            <div className="w-full max-w-lg space-y-4">
               <button
-                className="relative grid h-48 w-48 place-items-center rounded-full bg-primary text-white shadow-2xl shadow-primary/40 transition-transform active:scale-95"
+                type="button"
+                className="flex w-full items-center justify-center gap-4 rounded-2xl bg-primary px-8 py-8 text-2xl font-black uppercase tracking-tight text-white shadow-2xl shadow-primary/40 transition-transform hover:scale-[1.01] active:scale-[0.98] disabled:opacity-50"
                 onClick={() => setScanning(true)}
                 disabled={busy}
               >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-20 w-20">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-10 w-10 shrink-0">
                   <path d="M3 7V5a2 2 0 012-2h2m10 0h2a2 2 0 012 2v2m0 10v2a2 2 0 01-2 2h-2M7 21H5a2 2 0 01-2-2v-2" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
+                Scanner une carte
               </button>
+              <p className="text-sm font-medium text-white/50">
+                Appuyez pour activer la caméra et lire le QR du client.
+              </p>
             </div>
-            <div>
-              <h2 className="text-3xl font-black tracking-tight">En attente de scan</h2>
-              <p className="mt-2 font-bold text-white/40 uppercase tracking-widest text-sm italic">Scanner le QR code du client pour commencer</p>
-            </div>
-            
-            <div className="w-full max-w-sm overflow-hidden rounded-2xl bg-white/5 p-4 border border-white/10">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-white/20 mb-2">Scanner USB/Bluetooth</p>
-              <UsbScannerField onSubmit={(value) => void submitToken(value)} disabled={busy} />
+
+            <div className="w-full max-w-lg rounded-2xl border border-white/15 bg-white/5 p-6 text-left">
+              <UsbScannerField variant="dark" onSubmit={(value) => void submitToken(value)} disabled={busy} />
             </div>
           </div>
         )}
@@ -126,7 +125,10 @@ export function CaisseScreen({
         {scanning && (
           <div className="flex flex-col items-center gap-8">
             <div className="w-full overflow-hidden rounded-[2rem] border-4 border-primary bg-black shadow-2xl shadow-primary/20">
-              <QrScanner active={scanning} onResult={(text) => void submitToken(text)} />
+              <QrScanner variant="dark" active={scanning} onResult={(text) => void submitToken(text)} />
+            </div>
+            <div className="w-full max-w-lg rounded-2xl border border-white/15 bg-white/5 p-6">
+              <UsbScannerField variant="dark" onSubmit={(value) => void submitToken(value)} disabled={busy} />
             </div>
             <Button className="w-full bg-white/10 text-white border-white/10 hover:bg-white/20" onClick={() => setScanning(false)}>
               Annuler le scan

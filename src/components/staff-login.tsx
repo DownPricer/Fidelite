@@ -26,11 +26,15 @@ export function StaffLogin({ title, nextPath }: { title: string; nextPath: strin
       setError(data.error ?? "Connexion impossible.");
       return;
     }
-    window.location.href = nextPath;
+
+    const meRes = await fetch("/api/auth/me");
+    const meData = await meRes.json();
+    const staffRole = meData.user?.memberships?.[0]?.role;
+    window.location.href = staffRole === "EMPLOYEE" ? "/app/caisse" : nextPath;
   }
 
   return (
-    <main className="min-h-dvh bg-surface flex flex-col items-center justify-center px-6 py-12 lg:py-24">
+    <main className="min-h-dvh bg-[var(--app-shell)] flex flex-col items-center justify-center px-6 py-12 lg:py-24">
       <div className="w-full max-w-[440px]">
         <div className="flex flex-col items-center text-center mb-10">
           <BrandMark className="mb-8 scale-110" />
@@ -54,7 +58,7 @@ export function StaffLogin({ title, nextPath }: { title: string; nextPath: strin
         </Card>
         
         <p className="mt-10 text-center text-xs font-bold uppercase tracking-[0.2em] text-muted/40">
-          FifeLite &bull; SaaS Premium
+          FifeLite
         </p>
       </div>
     </main>

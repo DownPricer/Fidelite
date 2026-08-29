@@ -25,6 +25,7 @@ export function LoyaltyCardScreen({ firstName, slug, merchant }: Props) {
   const [walletEnabled, setWalletEnabled] = useState(false);
   const [walletBusy, setWalletBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showQr, setShowQr] = useState(true);
 
   const refreshCard = useCallback(async () => {
     const card = await fetch(`/api/customer/card?slug=${encodeURIComponent(slug)}`);
@@ -156,31 +157,48 @@ export function LoyaltyCardScreen({ firstName, slug, merchant }: Props) {
           </div>
         )}
 
-        {/* Section QR Code – bloc blanc dédié pour un QR fixe */}
-        <section className="mt-8 rounded-2xl bg-white p-8 text-center shadow-premium border border-border/50">
-          <div className="relative mx-auto h-64 w-64 rounded-xl bg-white p-4 border border-border/40">
-            {qr ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={qr} alt="QR de votre carte" className="h-full w-full" />
-            ) : (
-              <div className="h-full w-full flex flex-col items-center justify-center gap-3">
-                <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-                <p className="text-xs font-bold text-muted uppercase tracking-wider">Génération...</p>
+        {/* Section QR Code */}
+        <section className="mt-8 rounded-2xl border border-border/50 bg-white p-8 text-center shadow-premium">
+          {showQr ? (
+            <>
+              <div className="relative mx-auto h-64 w-64 rounded-xl border border-border/40 bg-white p-4">
+                {qr ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={qr} alt="QR de votre carte" className="h-full w-full" />
+                ) : (
+                  <div className="flex h-full w-full flex-col items-center justify-center gap-3">
+                    <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                    <p className="text-xs font-bold uppercase tracking-wider text-muted">Génération...</p>
+                  </div>
+                )}
               </div>
-            )}
-          </div>
-          <div className="mt-6 space-y-1">
-            <div className="flex items-center justify-center gap-2">
-              <div className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-              <p className="text-xs font-bold uppercase tracking-widest text-ink">QR de votre carte</p>
+              <div className="mt-6 space-y-1">
+                <div className="flex items-center justify-center gap-2">
+                  <div className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                  <p className="text-xs font-bold uppercase tracking-widest text-ink">QR de votre carte</p>
+                </div>
+                <p className="text-xs font-medium text-muted">
+                  Présentez ce code en caisse — il ne change pas.
+                </p>
+                <p className="text-xs text-muted">
+                  Dernière mise à jour : <span className="font-semibold text-ink">{updatedAt || "–"}</span>
+                </p>
+              </div>
+              <Button className="mt-6 w-full py-3" variant="secondary" onClick={() => setShowQr(false)}>
+                Masquer mon QR
+              </Button>
+            </>
+          ) : (
+            <div className="py-8">
+              <p className="text-sm font-medium text-muted">Votre QR est masqué pour plus de discrétion.</p>
+              <Button className="mt-6 w-full py-4" onClick={() => setShowQr(true)}>
+                Afficher mon QR
+              </Button>
             </div>
-            <p className="text-xs text-muted font-medium">
-              Dernière mise à jour : <span className="text-ink font-semibold">{updatedAt || "–"}</span>
-            </p>
-          </div>
-          {error ? <p className="mt-4 text-xs font-bold text-rose-500 uppercase tracking-wider">{error}</p> : null}
-          <Button className="mt-8 w-full py-4" variant="secondary" onClick={() => void refreshCard()}>
-            Recharger ma carte
+          )}
+          {error ? <p className="mt-4 text-xs font-bold uppercase tracking-wider text-rose-500">{error}</p> : null}
+          <Button className="mt-4 w-full py-3" variant="secondary" onClick={() => void refreshCard()}>
+            Actualiser mes points
           </Button>
         </section>
 

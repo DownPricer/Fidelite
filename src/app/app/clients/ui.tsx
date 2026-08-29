@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Alert, Button, Card, Field, Input } from "@/components/ui";
+import { Alert, Button, Field, Input } from "@/components/ui";
 
 type Customer = {
   id: string;
@@ -59,10 +59,9 @@ export function CustomersPanel() {
           <p className="text-sm">Les clients apparaîtront ici après leur premier scan.</p>
         </div>
       ) : (
-        <div className="grid gap-4">
+        <div className="divide-y divide-border rounded-2xl border border-border">
           {customers.map((customer) => (
-            <Card key={customer.id} className="group overflow-hidden">
-              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+            <div key={customer.id} className="flex flex-col justify-between gap-6 p-6 lg:flex-row lg:items-center">
                 <div className="flex items-center gap-4">
                   <div className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-slate-100 text-slate-500 font-bold uppercase">
                     {customer.firstName.slice(0, 1)}
@@ -77,8 +76,8 @@ export function CustomersPanel() {
                   </div>
                 </div>
                 
-                <form 
-                  className="flex flex-wrap items-end gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-100" 
+                <form
+                  className="mt-4 flex flex-wrap items-end gap-3 rounded-xl bg-slate-50 p-4 lg:mt-0"
                   onSubmit={(event) => void adjust(event, customer.id)}
                 >
                   <div className="w-24">
@@ -95,8 +94,7 @@ export function CustomersPanel() {
                     Appliquer
                   </Button>
                 </form>
-              </div>
-            </Card>
+            </div>
           ))}
         </div>
       )}
