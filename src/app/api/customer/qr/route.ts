@@ -1,7 +1,6 @@
 import { randomUUID } from "crypto";
 import QRCode from "qrcode";
 import { requireMutatingRequest, requireUser } from "@/lib/api-guard";
-import { env } from "@/lib/env";
 import { clientIp, jsonError, jsonOk, readJson } from "@/lib/http";
 import { prisma } from "@/lib/prisma";
 import { signQrToken } from "@/lib/qr";
@@ -32,22 +31,28 @@ export async function POST(req: Request) {
   });
   if (!membership) return jsonError("Carte introuvable.", 404);
 
-  const jti = randomUUID();
-  const expiresAt = new Date(Date.now() + env.qrTtlSeconds * 1000);
-  await prisma.qrToken.create({
-    data: {
-      jti,
+  // QR fixe : on réutilise toujours le même identifiant opaque (jti) pour cette carte.
+  let qr = await prisma.qrToken.findFirst({
+    where: {
       customerMembershipId: membership.id,
       merchantId: membership.merchantId,
-      expiresAt,
     },
+    orderBy: { createdAt: "asc" },
   });
 
-  const token = await signQrToken({
-    membershipId: membership.id,
-    merchantId: membership.merchantId,
-    jti,
-  });
+  if (!qr) {
+    qr = await prisma.qrToken.create({
+      data: {
+        jti: randomUUID(),
+        customerMembershipId: membership.id,
+        merchantId: membership.merchantId,
+        // Conservé uniquement pour compatibilité : non utilisé côté validation.
+        expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+      },
+    });
+  }
+
+  const token = await signQrToken({ jti: qr.jti });
   const dataUrl = await QRCode.toDataURL(token, {
     errorCorrectionLevel: "M",
     margin: 1,
@@ -57,8 +62,6 @@ export async function POST(req: Request) {
 
   return jsonOk({
     image: dataUrl,
-    expiresAt: expiresAt.toISOString(),
-    ttlSeconds: env.qrTtlSeconds,
     generatedAt: new Date().toISOString(),
     ipHint: clientIp(req) === "unknown" ? undefined : true,
   });

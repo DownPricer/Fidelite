@@ -3,7 +3,7 @@ import { writeAudit } from "@/lib/audit";
 import { clientIp, jsonError, jsonOk, readJson, userAgent } from "@/lib/http";
 import { computeLoyalty } from "@/lib/loyalty";
 import { prisma } from "@/lib/prisma";
-import { assertQrUsable, publicQrErrorMessage, verifyQrToken } from "@/lib/qr";
+import { QrError, publicQrErrorMessage, verifyQrToken } from "@/lib/qr";
 import { LIMITS, rateLimit } from "@/lib/rate-limit";
 import { scanSchema, zodErrorMessage } from "@/lib/validation";
 
@@ -25,14 +25,14 @@ export async function POST(req: Request) {
     if (!stored) {
       return jsonError("QR invalide.", 400);
     }
-    assertQrUsable({
-      payload,
-      merchantId: staff.membership.merchantId,
-      usedAt: stored.usedAt,
-    });
+
+    // Vérifie que le QR appartient bien au commerce actuel.
+    if (stored.merchantId !== staff.membership.merchantId) {
+      throw new QrError("Ce QR n'appartient pas à ce commerce.");
+    }
 
     const membership = await prisma.customerMembership.findFirst({
-      where: { id: payload.mid, merchantId: staff.membership.merchantId },
+      where: { id: stored.customerMembershipId, merchantId: staff.membership.merchantId },
       include: {
         user: true,
         merchant: { include: { program: true } },
@@ -43,6 +43,7 @@ export async function POST(req: Request) {
     }
 
     const now = new Date();
+    // On conserve la trace d'utilisation sans bloquer les scans ultérieurs.
     await prisma.qrToken.update({
       where: { id: stored.id },
       data: { usedAt: now },

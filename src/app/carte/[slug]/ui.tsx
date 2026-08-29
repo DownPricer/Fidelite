@@ -25,7 +25,6 @@ export function LoyaltyCardScreen({ firstName, slug, merchant }: Props) {
   const [walletEnabled, setWalletEnabled] = useState(false);
   const [walletBusy, setWalletBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [timeLeft, setTimeLeft] = useState(50);
 
   const refreshCard = useCallback(async () => {
     const card = await fetch(`/api/customer/card?slug=${encodeURIComponent(slug)}`);
@@ -44,7 +43,6 @@ export function LoyaltyCardScreen({ firstName, slug, merchant }: Props) {
       setQr(data.image);
       setUpdatedAt(new Date(data.generatedAt).toLocaleString("fr-FR"));
       setError(null);
-      setTimeLeft(50);
     } else {
       const data = await qrRes.json();
       setError(data.error ?? "QR indisponible.");
@@ -52,13 +50,8 @@ export function LoyaltyCardScreen({ firstName, slug, merchant }: Props) {
   }, [slug]);
 
   useEffect(() => {
+    // QR fixe : chargement unique à l’ouverture de la carte.
     void refreshCard();
-    const timer = window.setInterval(() => void refreshCard(), 50_000);
-    const counter = window.setInterval(() => setTimeLeft((t) => Math.max(0, t - 1)), 1000);
-    return () => {
-      window.clearInterval(timer);
-      window.clearInterval(counter);
-    };
   }, [refreshCard]);
 
   async function addWallet() {
@@ -163,9 +156,9 @@ export function LoyaltyCardScreen({ firstName, slug, merchant }: Props) {
           </div>
         )}
 
-        {/* Section QR Code */}
-        <section className="mt-8 rounded-3xl bg-white p-8 text-center shadow-premium border border-border/50">
-          <div className="relative mx-auto h-64 w-64 rounded-2xl bg-slate-50 p-4 border border-border/30">
+        {/* Section QR Code – bloc blanc dédié pour un QR fixe */}
+        <section className="mt-8 rounded-2xl bg-white p-8 text-center shadow-premium border border-border/50">
+          <div className="relative mx-auto h-64 w-64 rounded-xl bg-white p-4 border border-border/40">
             {qr ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={qr} alt="QR de votre carte" className="h-full w-full" />
@@ -176,16 +169,18 @@ export function LoyaltyCardScreen({ firstName, slug, merchant }: Props) {
               </div>
             )}
           </div>
-          <div className="mt-6 space-y-2">
+          <div className="mt-6 space-y-1">
             <div className="flex items-center justify-center gap-2">
-              <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
-              <p className="text-xs font-bold uppercase tracking-widest text-ink">QR Code Actif</p>
+              <div className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+              <p className="text-xs font-bold uppercase tracking-widest text-ink">QR de votre carte</p>
             </div>
-            <p className="text-xs text-muted font-medium">Actualisé dans <span className="text-ink font-bold">{timeLeft}s</span></p>
+            <p className="text-xs text-muted font-medium">
+              Dernière mise à jour : <span className="text-ink font-semibold">{updatedAt || "–"}</span>
+            </p>
           </div>
           {error ? <p className="mt-4 text-xs font-bold text-rose-500 uppercase tracking-wider">{error}</p> : null}
           <Button className="mt-8 w-full py-4" variant="secondary" onClick={() => void refreshCard()}>
-            Actualiser manuellement
+            Recharger ma carte
           </Button>
         </section>
 

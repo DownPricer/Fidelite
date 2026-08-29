@@ -1,53 +1,52 @@
 import { describe, expect, it } from "vitest";
-import { QrError, assertQrUsable, type QrPayload } from "../src/lib/qr";
+import { QrError, assertQrUsable, signQrToken, verifyQrToken } from "../src/lib/qr";
 
-function payload(overrides: Partial<QrPayload> = {}): QrPayload {
-  return {
-    mid: "card_1",
-    merch: "merchant_1",
-    jti: "jti_1",
-    exp: Math.floor(Date.now() / 1000) + 60,
-    iat: Math.floor(Date.now() / 1000),
-    ...overrides,
-  };
-}
+describe("QR fixe et opaque", () => {
+  it("le même client récupère exactement le même QR fixe", async () => {
+    const token1 = await signQrToken({ jti: "card_123" });
+    const token2 = await signQrToken({ jti: "card_123" });
 
-describe("validation du QR", () => {
-  it("accepte un QR encore valide et non utilisé", () => {
+    // QR fixe : même identifiant -> même jeton signé
+    expect(token1).toBe(token2);
+
+    const payload = await verifyQrToken(token1);
+    expect(payload.jti).toBe("card_123");
+  });
+
+  it("le même QR peut être scanné plusieurs fois pour le bon commerce", () => {
+    const payload = { jti: "card_123" };
+
     expect(() =>
       assertQrUsable({
-        payload: payload(),
+        payload,
         merchantId: "merchant_1",
+        storedMerchantId: "merchant_1",
+      }),
+    ).not.toThrow();
+
+    // Second scan, toujours pour le même commerce : toujours accepté
+    expect(() =>
+      assertQrUsable({
+        payload,
+        merchantId: "merchant_1",
+        storedMerchantId: "merchant_1",
       }),
     ).not.toThrow();
   });
 
-  it("refuse un QR expiré", () => {
+  it("un QR d'un autre commerce est refusé", () => {
+    const payload = { jti: "card_123" };
+
     expect(() =>
       assertQrUsable({
-        payload: payload({ exp: Math.floor(Date.now() / 1000) - 5 }),
-        merchantId: "merchant_1",
-        now: new Date(),
+        payload,
+        merchantId: "merchant_2",
+        storedMerchantId: "merchant_1",
       }),
     ).toThrow(QrError);
   });
 
-  it("refuse un QR déjà utilisé", () => {
-    expect(() =>
-      assertQrUsable({
-        payload: payload(),
-        merchantId: "merchant_1",
-        usedAt: new Date(),
-      }),
-    ).toThrow(/déjà été utilisé/);
-  });
-
-  it("refuse un QR d'un autre commerce", () => {
-    expect(() =>
-      assertQrUsable({
-        payload: payload(),
-        merchantId: "autre_commerce",
-      }),
-    ).toThrow(/n'appartient pas/);
+  it("rejette un jeton invalide", async () => {
+    await expect(verifyQrToken("not-a-valid-token")).rejects.toBeInstanceOf(QrError);
   });
 });

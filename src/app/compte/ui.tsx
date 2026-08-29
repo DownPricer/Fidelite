@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { Alert, Button, Card, Field } from "@/components/ui";
+import { Alert, BrandMark, Button, Card, Field } from "@/components/ui";
 
 export function AccountPanel({ firstName, email }: { firstName: string; email: string }) {
   const [done, setDone] = useState(false);
@@ -30,40 +30,77 @@ export function AccountPanel({ firstName, email }: { firstName: string; email: s
   }
 
   return (
-    <main className="mx-auto max-w-md px-6 py-10">
-      <Link href="/carte" className="text-sm underline">
-        Retour à la carte
-      </Link>
-      <h1 className="mt-6 text-3xl font-semibold">Mon compte</h1>
-      <Card className="mt-6 space-y-2">
-        <p className="font-medium">{firstName}</p>
-        <p className="text-sm text-slate-600">{email}</p>
-        <Button variant="secondary" onClick={() => void logout()}>
-          Se déconnecter
-        </Button>
-      </Card>
-      <Card className="mt-4">
-        <h2 className="text-lg font-semibold">Demander la suppression</h2>
-        <p className="mt-2 text-sm text-slate-600">
-          Votre demande est enregistrée. FifeLite traitera la suppression de vos données.
-        </p>
-        {done ? (
-          <Alert tone="ok">Demande enregistrée.</Alert>
-        ) : (
-          <form className="mt-4 space-y-3" onSubmit={(event) => void requestDeletion(event)}>
-            {error ? <Alert>{error}</Alert> : null}
-            <Field label="Message (optionnel)">
-              <textarea
-                name="message"
-                className="min-h-24 w-full rounded-2xl border border-slate-200 px-4 py-3"
-              />
-            </Field>
-            <Button variant="danger" className="w-full">
-              Demander la suppression
-            </Button>
-          </form>
-        )}
-      </Card>
+    <main className="min-h-dvh bg-surface text-ink">
+      <div className="mx-auto max-w-3xl px-6 py-10">
+        <header className="flex items-center justify-between gap-6 border-b border-border/60 pb-6">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted/70">Mon compte</p>
+            <h1 className="mt-1 text-2xl font-black tracking-tight">{firstName}</h1>
+            <p className="text-sm text-muted">{email}</p>
+          </div>
+          <div className="hidden sm:block">
+            <BrandMark />
+          </div>
+        </header>
+
+        <section className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,2fr)_minmax(0,1.5fr)]">
+          {/* Profil & actions */}
+          <Card>
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted/70">Profil</p>
+                <p className="mt-2 text-lg font-semibold">{firstName}</p>
+                <p className="text-sm text-muted">{email}</p>
+              </div>
+              <Link href="/carte" className="text-xs font-semibold text-primary underline underline-offset-4">
+                Voir ma carte
+              </Link>
+            </div>
+
+            <div className="mt-6 grid gap-3 sm:grid-cols-2">
+              <Button
+                variant="secondary"
+                onClick={() => void logout()}
+                className="w-full"
+              >
+                Se déconnecter
+              </Button>
+              <Link
+                href="/mot-de-passe"
+                className="inline-flex items-center justify-center rounded-xl border border-border bg-white px-4 py-3 text-sm font-semibold text-ink hover:bg-slate-50"
+              >
+                Changer mon mot de passe
+              </Link>
+            </div>
+          </Card>
+
+          {/* Zone suppression – discrète et séparée */}
+          <Card className="bg-surface border-dashed border-border/80">
+            <h2 className="text-sm font-semibold uppercase tracking-[0.18em] text-muted">Suppression du compte</h2>
+            <p className="mt-2 text-sm text-muted">
+              Votre demande sera transmise à FifeLite. Nous traiterons la suppression de vos données dans les meilleurs délais.
+            </p>
+            {done ? (
+              <div className="mt-4">
+                <Alert tone="ok">Demande enregistrée.</Alert>
+              </div>
+            ) : (
+              <form className="mt-4 space-y-3" onSubmit={(event) => void requestDeletion(event)}>
+                {error ? <Alert>{error}</Alert> : null}
+                <Field label="Message (optionnel)">
+                  <textarea
+                    name="message"
+                    className="min-h-24 w-full rounded-xl border border-border px-4 py-3 text-sm text-ink outline-none focus:border-primary focus:ring-4 focus:ring-primary/10"
+                  />
+                </Field>
+                <Button variant="danger" className="w-full">
+                  Demander la suppression
+                </Button>
+              </form>
+            )}
+          </Card>
+        </section>
+      </div>
     </main>
   );
 }

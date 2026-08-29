@@ -1,19 +1,17 @@
-import { SignJWT, jwtVerify, errors } from "jose";
+import { SignJWT, jwtVerify } from "jose";
 import { env } from "./env";
 
+/**
+ * Charge minimale véhiculée dans le QR côté client.
+ * - jti est un identifiant opaque stocké côté serveur
+ * - aucune information brute sur le client n’est exposée
+ */
 export type QrPayload = {
-  mid: string;
-  merch: string;
   jti: string;
-  exp: number;
-  iat: number;
 };
 
 export class QrError extends Error {
-  constructor(
-    message: string,
-    public code: "expired" | "invalid" | "reused" | "merchant" | "missing",
-  ) {
+  constructor(message: string) {
     super(message);
     this.name = "QrError";
   }
@@ -23,21 +21,14 @@ function secretKey() {
   return new TextEncoder().encode(env.qrSecret);
 }
 
-export async function signQrToken(input: {
-  membershipId: string;
-  merchantId: string;
-  jti: string;
-  ttlSeconds?: number;
-}) {
-  const ttl = input.ttlSeconds ?? env.qrTtlSeconds;
-  return new SignJWT({
-    mid: input.membershipId,
-    merch: input.merchantId,
-  })
+/**
+ * Génère un jeton signé à partir d’un identifiant opaque (jti).
+ * Pas d’expiration ni de données client brutes : c’est la base d’un QR fixe.
+ */
+export async function signQrToken(input: { jti: string }) {
+  return new SignJWT({})
     .setProtectedHeader({ alg: "HS256", typ: "JWT" })
     .setJti(input.jti)
-    .setIssuedAt()
-    .setExpirationTime(`${ttl}s`)
     .sign(secretKey());
 }
 
@@ -46,40 +37,31 @@ export async function verifyQrToken(token: string): Promise<QrPayload> {
     const { payload } = await jwtVerify(token, secretKey(), {
       algorithms: ["HS256"],
     });
-    if (typeof payload.mid !== "string" || typeof payload.merch !== "string" || typeof payload.jti !== "string") {
-      throw new QrError("QR invalide.", "invalid");
+    if (typeof payload.jti !== "string") {
+      throw new QrError("QR invalide.");
     }
     return {
-      mid: payload.mid,
-      merch: payload.merch,
       jti: payload.jti,
-      exp: Number(payload.exp ?? 0),
-      iat: Number(payload.iat ?? 0),
     };
   } catch (error) {
     if (error instanceof QrError) throw error;
-    if (error instanceof errors.JWTExpired) {
-      throw new QrError("Ce QR a expiré. Demandez au client de l'actualiser.", "expired");
-    }
-    throw new QrError("QR invalide.", "invalid");
+    throw new QrError("QR invalide.");
   }
 }
 
-export function assertQrUsable(input: {
+/**
+ * L’ancienne logique d’expiration / réutilisation est supprimée.
+ * Cette fonction est conservée pour centraliser le contrôle de cohérence métier.
+ */
+export function assertQrUsable(_input: {
   payload: QrPayload;
   merchantId: string;
+  storedMerchantId: string;
   usedAt?: Date | null;
   now?: Date;
 }) {
-  const now = input.now ?? new Date();
-  if (input.payload.exp * 1000 <= now.getTime()) {
-    throw new QrError("Ce QR a expiré. Demandez au client de l'actualiser.", "expired");
-  }
-  if (input.payload.merch !== input.merchantId) {
-    throw new QrError("Ce QR n'appartient pas à ce commerce.", "merchant");
-  }
-  if (input.usedAt) {
-    throw new QrError("Ce QR a déjà été utilisé.", "reused");
+  if (_input.storedMerchantId !== _input.merchantId) {
+    throw new QrError("Ce QR n'appartient pas à ce commerce.");
   }
 }
 
