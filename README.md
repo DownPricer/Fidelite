@@ -63,6 +63,15 @@ Chemins et noms :
 
 ### Déploiement initial
 
+Générez d’abord vos secrets (en local ou sur le VPS) :
+
+```bash
+openssl rand -hex 24   # POSTGRES_PASSWORD
+openssl rand -hex 32   # QR_SECRET
+```
+
+Copiez la **même** valeur générée pour `POSTGRES_PASSWORD` dans le mot de passe de `DATABASE_URL`.
+
 ```bash
 ssh ubuntu@51.210.179.212
 sudo mkdir -p /opt/fifelite/app/site
@@ -70,7 +79,7 @@ sudo chown -R ubuntu:ubuntu /opt/fifelite
 cd /opt/fifelite/app/site
 git clone https://github.com/DownPricer/Fidelite.git .
 cp deploy/.env.production.example .env
-nano .env
+nano .env   # remplacer CHANGE_ME par les secrets générés ci-dessus
 cd deploy
 docker compose up -d --build
 ```
@@ -174,7 +183,7 @@ GOOGLE_WALLET_ORIGINS=https://fidelite.sitereadyshd.fr
 
 ## Checklist de déploiement
 
-- [ ] `.env` renseigné, `POSTGRES_PASSWORD` et `QR_SECRET` uniques
+- [ ] `.env` renseigné : `POSTGRES_PASSWORD` = mot de passe dans `DATABASE_URL`, `QR_SECRET` ≥ 32 caractères aléatoires
 - [ ] DNS des trois sous-domaines FifeLite uniquement
 - [ ] `docker compose up -d --build` depuis `/opt/fifelite/app/site/deploy`
 - [ ] Seed une seule fois si besoin

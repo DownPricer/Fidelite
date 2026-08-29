@@ -2,13 +2,21 @@ FROM node:22-alpine AS deps
 WORKDIR /app
 RUN apk add --no-cache libc6-compat openssl
 COPY package.json package-lock.json ./
+# prisma/ requis avant npm ci (postinstall -> prisma generate)
+COPY prisma ./prisma
 RUN npm ci
 
 FROM node:22-alpine AS builder
 WORKDIR /app
 RUN apk add --no-cache libc6-compat openssl
 COPY --from=deps /app/node_modules ./node_modules
-COPY . .
+COPY --from=deps /app/prisma ./prisma
+COPY package.json package-lock.json ./
+COPY prisma ./prisma
+COPY public ./public
+COPY scripts ./scripts
+COPY src ./src
+COPY next.config.ts tsconfig.json next-env.d.ts postcss.config.mjs ./
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
 RUN npx prisma generate \
