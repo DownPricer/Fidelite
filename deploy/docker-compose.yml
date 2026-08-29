@@ -1,0 +1,65 @@
+# FifeLite — stack production VPS
+# Usage : depuis /opt/fifelite/app/site/deploy
+#   docker compose up -d --build
+#
+# Le fichier ../.env (racine du dépôt) fournit POSTGRES_* et DATABASE_URL.
+# Conteneurs : fifelite-web, fifelite-postgres
+# Réseau interne : fifelite-internal
+# Accès Nginx : downpricer_downpricer-network
+#
+# Ne pas joindre fifelite-postgres au réseau du reverse proxy.
+# Ne pas modifier les autres stacks du VPS.
+
+name: fifelite
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: fifelite-postgres
+    restart: unless-stopped
+    env_file:
+      - ../.env
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-fifelite}
+      POSTGRES_DB: ${POSTGRES_DB:-fifelite}
+    volumes:
+      - fifelite-postgres-data:/var/lib/postgresql/data
+    networks:
+      - fifelite-internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER:-fifelite}\" -d \"$${POSTGRES_DB:-fifelite}\""]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+  web:
+    container_name: fifelite-web
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    restart: unless-stopped
+    env_file:
+      - ../.env
+    environment:
+      NODE_ENV: production
+      HOSTNAME: 0.0.0.0
+      PORT: "3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - fifelite-internal
+      - proxy_net
+
+volumes:
+  fifelite-postgres-data:
+    name: fifelite-postgres-data
+
+networks:
+  fifelite-internal:
+    name: fifelite-internal
+    driver: bridge
+  proxy_net:
+    external: true
+    name: ${EXTERNAL_PROXY_NETWORK:-downpricer_downpricer-network}

@@ -1,0 +1,37 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #f4f1ea;
+  --ink: #12202a;
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  background:
+    radial-gradient(1200px 500px at 10% -10%, #d9efe8, transparent 55%),
+    radial-gradient(900px 400px at 100% 0%, #f3e2c8, transparent 45%),
+    var(--bg);
+  color: var(--ink);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0f1720;
+    --ink: #e8eef3;
+  }
+
+  body {
+    background:
+      radial-gradient(1000px 400px at 0% 0%, #134e4a, transparent 50%),
+      var(--bg);
+  }
+}
+
+.card-shine {
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--merchant) 88%, white), color-mix(in srgb, var(--merchant) 55%, #0f172a));
+}

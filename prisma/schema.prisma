@@ -1,0 +1,197 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum PlatformRole {
+  SUPER_ADMIN
+  CUSTOMER
+}
+
+enum MerchantRole {
+  MERCHANT_ADMIN
+  EMPLOYEE
+}
+
+enum LoyaltyTxType {
+  EARN_VISIT
+  REDEEM_REWARD
+  ADJUSTMENT
+}
+
+enum AccountDeletionStatus {
+  PENDING
+  PROCESSED
+}
+
+model User {
+  id                 String       @id @default(cuid())
+  email              String       @unique
+  passwordHash       String
+  firstName          String
+  lastName           String?
+  platformRole       PlatformRole @default(CUSTOMER)
+  isActive           Boolean      @default(true)
+  mustChangePassword Boolean      @default(false)
+  privacyConsentAt   DateTime?
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+
+  sessions              Session[]
+  merchantMemberships   MerchantMembership[]
+  customerMemberships   CustomerMembership[]
+  performedTransactions LoyaltyTransaction[]     @relation("PerformedBy")
+  auditLogs             AuditLog[]
+  deletionRequests      AccountDeletionRequest[]
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  userAgent String?
+  ip        String?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model Merchant {
+  id           String   @id @default(cuid())
+  name         String
+  slug         String   @unique
+  logoUrl      String?
+  primaryColor String   @default("#0F766E")
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  program             LoyaltyProgram?
+  memberships         MerchantMembership[]
+  customerMemberships CustomerMembership[]
+  transactions        LoyaltyTransaction[]
+  auditLogs           AuditLog[]
+  qrTokens            QrToken[]
+  caisseGrants        CaisseGrant[]
+}
+
+model MerchantMembership {
+  id         String       @id @default(cuid())
+  userId     String
+  merchantId String
+  role       MerchantRole
+  isActive   Boolean      @default(true)
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+  user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  merchant   Merchant     @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, merchantId])
+  @@index([merchantId, role, isActive])
+}
+
+model LoyaltyProgram {
+  id             String   @id @default(cuid())
+  merchantId     String   @unique
+  visitsRequired Int      @default(10)
+  rewardLabel    String
+  merchant       Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  updatedAt      DateTime @updatedAt
+}
+
+model CustomerMembership {
+  id                   String   @id @default(cuid())
+  userId               String
+  merchantId           String
+  points               Int      @default(0)
+  googleWalletObjectId String?
+  googleWalletClassId  String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  merchant             Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  transactions         LoyaltyTransaction[]
+  qrTokens             QrToken[]
+  caisseGrants         CaisseGrant[]
+
+  @@unique([userId, merchantId])
+  @@index([merchantId])
+}
+
+model LoyaltyTransaction {
+  id                   String        @id @default(cuid())
+  customerMembershipId String
+  merchantId           String
+  type                 LoyaltyTxType
+  pointsDelta          Int
+  reason               String?
+  performedByUserId    String
+  createdAt            DateTime      @default(now())
+  membership           CustomerMembership @relation(fields: [customerMembershipId], references: [id], onDelete: Cascade)
+  merchant             Merchant      @relation(fields: [merchantId], references: [id], onDelete: Restrict)
+  performedBy          User          @relation("PerformedBy", fields: [performedByUserId], references: [id], onDelete: Restrict)
+
+  @@index([customerMembershipId, createdAt])
+  @@index([merchantId, createdAt])
+}
+
+model QrToken {
+  id                   String    @id @default(cuid())
+  jti                  String    @unique
+  customerMembershipId String
+  merchantId           String
+  expiresAt            DateTime
+  usedAt               DateTime?
+  createdAt            DateTime  @default(now())
+  membership           CustomerMembership @relation(fields: [customerMembershipId], references: [id], onDelete: Cascade)
+  merchant             Merchant  @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+
+  @@index([expiresAt])
+}
+
+model CaisseGrant {
+  id                   String    @id @default(cuid())
+  qrTokenId            String    @unique
+  customerMembershipId String
+  merchantId           String
+  actorUserId          String
+  expiresAt            DateTime
+  consumedAt           DateTime?
+  createdAt            DateTime  @default(now())
+  membership           CustomerMembership @relation(fields: [customerMembershipId], references: [id], onDelete: Cascade)
+  merchant             Merchant  @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+
+  @@index([actorUserId, expiresAt])
+}
+
+model AuditLog {
+  id         String    @id @default(cuid())
+  actorId    String?
+  merchantId String?
+  action     String
+  metadata   Json?
+  ip         String?
+  userAgent  String?
+  createdAt  DateTime  @default(now())
+  actor      User?     @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  merchant   Merchant? @relation(fields: [merchantId], references: [id], onDelete: SetNull)
+
+  @@index([merchantId, createdAt])
+  @@index([actorId, createdAt])
+}
+
+model AccountDeletionRequest {
+  id        String                 @id @default(cuid())
+  userId    String
+  status    AccountDeletionStatus  @default(PENDING)
+  message   String?
+  createdAt DateTime               @default(now())
+  user      User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
