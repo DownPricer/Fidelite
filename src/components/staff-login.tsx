@@ -34,15 +34,15 @@ export function StaffLogin({ title, nextPath }: { title: string; nextPath: strin
   }
 
   return (
-    <main className="min-h-dvh bg-[var(--app-shell)] flex flex-col items-center justify-center px-6 py-12 lg:py-24">
+    <main className="flex min-h-dvh flex-col items-center justify-center bg-[var(--navy)] px-6 py-12 text-[var(--navy-text)] lg:py-24">
       <div className="w-full max-w-[440px]">
-        <div className="flex flex-col items-center text-center mb-10">
-          <BrandMark className="mb-8 scale-110" />
-          <h1 className="text-3xl font-black tracking-tight">{title}</h1>
-          <p className="mt-2 text-muted font-medium italic">Accédez à votre espace de gestion.</p>
+        <div className="mb-10 flex flex-col items-center text-center">
+          <BrandMark className="mb-8 scale-110 [&_span]:text-[var(--navy-text)]" />
+          <h1 className="text-3xl font-black tracking-tight text-[var(--navy-text)]">{title}</h1>
+          <p className="mt-2 font-medium italic text-[var(--navy-text)]/80">Accédez à votre espace de gestion.</p>
         </div>
-        
-        <Card className="p-10 shadow-premium border border-border/50">
+
+        <Card className="border border-[var(--border)] p-10 shadow-premium">
           <form className="space-y-6" onSubmit={onSubmit}>
             {error ? <Alert>{error}</Alert> : null}
             <Field label="Adresse e-mail">
@@ -57,7 +57,7 @@ export function StaffLogin({ title, nextPath }: { title: string; nextPath: strin
           </form>
         </Card>
         
-        <p className="mt-10 text-center text-xs font-bold uppercase tracking-[0.2em] text-muted/40">
+        <p className="mt-10 text-center text-xs font-bold uppercase tracking-[0.2em] text-[var(--navy-text)]/50">
           FifeLite
         </p>
       </div>

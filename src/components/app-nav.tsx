@@ -65,7 +65,7 @@ export function AppNav({ admin }: { admin: boolean }) {
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col bg-[var(--sidebar)] lg:flex">
         <div className="flex h-16 items-center border-b border-white/10 px-6">
           <Link href={admin ? "/app" : "/app/caisse"} className="flex items-center gap-3 font-bold tracking-tighter text-[var(--sidebar-foreground)]">
-            <span className="grid h-8 w-8 place-items-center rounded-lg bg-primary text-primary-foreground shadow-lg shadow-primary/40">
+            <span className="grid h-8 w-8 place-items-center rounded-lg bg-[var(--teal)] text-white shadow-lg shadow-[var(--teal)]/40">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="h-5 w-5">
                 <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
@@ -85,8 +85,8 @@ export function AppNav({ admin }: { admin: boolean }) {
                   "flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-bold transition-all",
                   isCaisseLink
                     ? active
-                      ? "bg-primary text-white shadow-lg shadow-primary/30"
-                      : "bg-primary/20 text-primary ring-1 ring-primary/40 hover:bg-primary/30"
+                      ? "bg-[var(--teal)] text-white shadow-lg shadow-[var(--teal)]/30"
+                      : "bg-[var(--teal)]/20 text-[var(--teal)] ring-1 ring-[var(--teal)]/40 hover:bg-[var(--teal)]/30"
                     : active
                       ? "bg-white/10 text-white"
                       : "text-[var(--sidebar-muted)] hover:bg-white/5 hover:text-[var(--sidebar-foreground)]",
@@ -100,7 +100,7 @@ export function AppNav({ admin }: { admin: boolean }) {
         </nav>
       </aside>
 
-      <nav className="fixed bottom-0 left-0 right-0 z-50 flex items-center justify-around border-t border-border bg-[var(--sidebar)] px-2 py-2 lg:hidden">
+      <nav className="fixed bottom-0 left-0 right-0 z-50 flex items-center justify-around border-t border-white/10 bg-[var(--sidebar)] px-2 py-2 lg:hidden">
         {links.map((link) => {
           const active = pathname === link.href;
           const isCaisseLink = link.href === "/app/caisse";
@@ -112,8 +112,8 @@ export function AppNav({ admin }: { admin: boolean }) {
                 "flex flex-col items-center gap-1 rounded-xl px-3 py-2 text-[10px] font-bold uppercase tracking-widest transition-all",
                 isCaisseLink
                   ? active
-                    ? "bg-primary text-white"
-                    : "bg-primary/25 text-primary ring-1 ring-primary/50"
+                    ? "bg-[var(--teal)] text-white"
+                    : "bg-[var(--teal)]/25 text-[var(--teal)] ring-1 ring-[var(--teal)]/50"
                   : active
                     ? "text-white"
                     : "text-[var(--sidebar-muted)]",

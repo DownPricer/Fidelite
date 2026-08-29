@@ -30,13 +30,13 @@ export function AccountPanel({ firstName, email }: { firstName: string; email: s
   }
 
   return (
-    <main className="min-h-dvh bg-surface text-ink">
+    <main className="min-h-dvh bg-[var(--page-bg)] text-[var(--body-text)]">
       <div className="mx-auto max-w-3xl px-6 py-10">
         <header className="flex items-center justify-between gap-6 border-b border-border/60 pb-6">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted/70">Mon compte</p>
-            <h1 className="mt-1 text-2xl font-black tracking-tight">{firstName}</h1>
-            <p className="text-sm text-muted">{email}</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--muted-text)]">Mon compte</p>
+            <h1 className="mt-1 text-2xl font-black tracking-tight text-[var(--panel-text)]">{firstName}</h1>
+            <p className="text-sm text-[var(--muted-text)]">{email}</p>
           </div>
           <div className="hidden sm:block">
             <BrandMark />
@@ -48,11 +48,11 @@ export function AccountPanel({ firstName, email }: { firstName: string; email: s
           <Card>
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted/70">Profil</p>
-                <p className="mt-2 text-lg font-semibold">{firstName}</p>
-                <p className="text-sm text-muted">{email}</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--muted-text)]">Profil</p>
+                <p className="mt-2 text-lg font-semibold text-[var(--panel-text)]">{firstName}</p>
+                <p className="text-sm text-[var(--muted-text)]">{email}</p>
               </div>
-              <Link href="/carte" className="text-xs font-semibold text-primary underline underline-offset-4">
+              <Link href="/carte" className="text-xs font-semibold text-[var(--teal)] underline underline-offset-4">
                 Voir ma carte
               </Link>
             </div>
@@ -67,7 +67,7 @@ export function AccountPanel({ firstName, email }: { firstName: string; email: s
               </Button>
               <Link
                 href="/mot-de-passe"
-                className="inline-flex items-center justify-center rounded-xl border border-border bg-white px-4 py-3 text-sm font-semibold text-ink hover:bg-slate-50"
+                className="inline-flex items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--panel-bg)] px-4 py-3 text-sm font-semibold text-[var(--panel-text)] hover:bg-[var(--page-bg)]"
               >
                 Changer mon mot de passe
               </Link>
@@ -75,9 +75,9 @@ export function AccountPanel({ firstName, email }: { firstName: string; email: s
           </Card>
 
           {/* Zone suppression – discrète et séparée */}
-          <Card className="bg-surface border-dashed border-border/80">
-            <h2 className="text-sm font-semibold uppercase tracking-[0.18em] text-muted">Suppression du compte</h2>
-            <p className="mt-2 text-sm text-muted">
+          <Card className="border-dashed">
+            <h2 className="text-sm font-semibold uppercase tracking-[0.18em] text-[var(--muted-text)]">Suppression du compte</h2>
+            <p className="mt-2 text-sm text-[var(--muted-text)]">
               Votre demande sera transmise à FifeLite. Nous traiterons la suppression de vos données dans les meilleurs délais.
             </p>
             {done ? (
@@ -90,7 +90,7 @@ export function AccountPanel({ firstName, email }: { firstName: string; email: s
                 <Field label="Message (optionnel)">
                   <textarea
                     name="message"
-                    className="min-h-24 w-full rounded-xl border border-border px-4 py-3 text-sm text-ink outline-none focus:border-primary focus:ring-4 focus:ring-primary/10"
+                    className="min-h-24 w-full rounded-xl border border-[var(--border)] px-4 py-3 text-sm text-[var(--panel-text)] outline-none focus:border-[var(--teal)] focus:ring-4 focus:ring-[var(--teal)]/10"
                   />
                 </Field>
                 <Button variant="danger" className="w-full">

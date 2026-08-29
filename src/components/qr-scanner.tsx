@@ -1,8 +1,25 @@
 "use client";
 
-import { Html5Qrcode } from "html5-qrcode";
-import { useEffect, useRef, useState } from "react";
+import { Html5Qrcode, Html5QrcodeScannerState } from "html5-qrcode";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { Button } from "./ui";
+
+async function safeStopScanner(scanner: Html5Qrcode | null, isScanningRef: { current: boolean }) {
+  if (!scanner || !isScanningRef.current) return;
+  try {
+    const state = scanner.getState();
+    if (
+      state === Html5QrcodeScannerState.SCANNING ||
+      state === Html5QrcodeScannerState.PAUSED
+    ) {
+      await scanner.stop();
+    }
+  } catch {
+    // Scanner déjà arrêté ou jamais démarré — ignorer silencieusement.
+  } finally {
+    isScanningRef.current = false;
+  }
+}
 
 export function QrScanner({
   onResult,
@@ -13,42 +30,75 @@ export function QrScanner({
   active: boolean;
   variant?: "light" | "dark";
 }) {
-  const ref = useRef<Html5Qrcode | null>(null);
+  const scannerId = useId().replace(/:/g, "");
+  const scannerRef = useRef<Html5Qrcode | null>(null);
+  const isScanningRef = useRef(false);
+  const onResultRef = useRef(onResult);
   const [error, setError] = useState<string | null>(null);
+
+  onResultRef.current = onResult;
+
+  const stopScanner = useCallback(async () => {
+    await safeStopScanner(scannerRef.current, isScanningRef);
+  }, []);
 
   useEffect(() => {
     if (!active) {
-      void ref.current?.stop().catch(() => undefined);
+      void stopScanner();
       return;
     }
 
-    const scanner = new Html5Qrcode("fifelite-scanner");
-    ref.current = scanner;
-    scanner
+    setError(null);
+    isScanningRef.current = false;
+
+    let cancelled = false;
+    const scanner = new Html5Qrcode(scannerId);
+    scannerRef.current = scanner;
+
+    void scanner
       .start(
         { facingMode: "environment" },
         { fps: 10, qrbox: { width: 240, height: 240 } },
         (text) => {
-          onResult(text);
-          void scanner.stop().catch(() => undefined);
+          onResultRef.current(text);
+          void safeStopScanner(scanner, isScanningRef);
         },
         () => undefined,
       )
+      .then(() => {
+        if (!cancelled) {
+          isScanningRef.current = true;
+        }
+      })
       .catch(() => {
-        setError("Caméra indisponible. Autorisez l'accès ou utilisez le scanner USB.");
+        if (!cancelled) {
+          isScanningRef.current = false;
+          setError(
+            "Caméra indisponible. Autorisez l'accès ou utilisez le scanner USB / Bluetooth ci-dessous.",
+          );
+        }
       });
 
     return () => {
-      void scanner.stop().catch(() => undefined);
+      cancelled = true;
+      void safeStopScanner(scanner, isScanningRef);
+      scannerRef.current = null;
     };
-  }, [active, onResult]);
+  }, [active, scannerId, stopScanner]);
 
   return (
     <div className="space-y-3">
-      <div id="fifelite-scanner" className="overflow-hidden rounded-3xl bg-black" />
+      <div id={scannerId} className="overflow-hidden rounded-3xl bg-black" />
       {error ? (
-        <p className={variant === "dark" ? "text-sm font-bold text-rose-300" : "text-sm text-rose-700"}>
-          Caméra indisponible. Autorisez l&apos;accès à la caméra dans les paramètres du navigateur, ou utilisez le scanner USB / Bluetooth ci-dessous.
+        <p
+          role="alert"
+          className={
+            variant === "dark"
+              ? "text-sm font-bold text-rose-300"
+              : "text-sm font-medium text-[var(--danger)]"
+          }
+        >
+          {error}
         </p>
       ) : null}
     </div>
@@ -78,7 +128,11 @@ export function UsbScannerField({
       }}
     >
       <label
-        className={variant === "dark" ? "block text-sm font-bold text-white/80" : "block text-sm font-medium text-slate-700"}
+        className={
+          variant === "dark"
+            ? "block text-sm font-bold text-[var(--navy-text)]/80"
+            : "block text-sm font-medium text-[var(--panel-text)]"
+        }
         htmlFor="usb-scan"
       >
         Scanner USB / Bluetooth
@@ -91,8 +145,8 @@ export function UsbScannerField({
         onChange={(event) => setValue(event.target.value)}
         className={
           variant === "dark"
-            ? "w-full rounded-xl border border-white/20 bg-white/10 px-4 py-4 text-base text-white outline-none placeholder:text-white/40 focus:border-primary focus:ring-4 focus:ring-primary/20"
-            : "w-full rounded-xl border border-border px-4 py-4 text-base outline-none focus:border-primary focus:ring-4 focus:ring-primary/15"
+            ? "w-full rounded-xl border border-white/20 bg-white/10 px-4 py-4 text-base text-[var(--navy-text)] outline-none placeholder:text-[var(--navy-text)]/40 focus:border-[var(--teal)] focus:ring-4 focus:ring-[var(--teal)]/20"
+            : "w-full rounded-xl border border-[var(--border)] bg-[var(--panel-bg)] px-4 py-4 text-base text-[var(--panel-text)] outline-none placeholder:text-[var(--muted-text)] focus:border-[var(--teal)] focus:ring-4 focus:ring-[var(--teal)]/15"
         }
         placeholder="Le curseur reste ici — le scanner envoie le code puis Entrée"
         autoComplete="off"
@@ -101,7 +155,7 @@ export function UsbScannerField({
       <Button
         type="submit"
         variant="secondary"
-        className={variant === "dark" ? "w-full border-white/20 bg-white/10 text-white hover:bg-white/20" : "w-full"}
+        className={variant === "dark" ? "w-full border-white/20 bg-white/10 text-[var(--navy-text)] hover:bg-white/20" : "w-full"}
         disabled={disabled}
       >
         Valider le code

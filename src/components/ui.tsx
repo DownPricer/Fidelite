@@ -13,11 +13,14 @@ export function Button({
   variant?: "primary" | "secondary" | "ghost" | "danger" | "success";
 }) {
   const styles = {
-    primary: "bg-primary text-primary-foreground hover:opacity-90 shadow-sm shadow-primary/20",
-    secondary: "bg-white text-ink border border-border hover:bg-slate-50 shadow-sm",
-    ghost: "bg-transparent text-muted hover:bg-slate-100 hover:text-ink",
-    danger: "bg-rose-500 text-white hover:bg-rose-600 shadow-sm shadow-rose-200",
-    success: "bg-emerald-500 text-white hover:bg-emerald-600 shadow-sm shadow-emerald-200",
+    primary:
+      "bg-[var(--teal)] text-white hover:bg-[var(--teal-hover)] shadow-sm shadow-[var(--teal)]/20",
+    secondary:
+      "bg-[var(--panel-bg)] text-[var(--panel-text)] border border-[var(--border)] hover:bg-[var(--page-bg)] shadow-sm",
+    ghost:
+      "bg-transparent text-[var(--muted-text)] hover:bg-[var(--page-bg)] hover:text-[var(--panel-text)]",
+    danger: "bg-[var(--danger)] text-white hover:opacity-90 shadow-sm",
+    success: "bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm",
   }[variant];
   return (
     <button
@@ -37,7 +40,7 @@ export function Input({ className, ...props }: InputHTMLAttributes<HTMLInputElem
   return (
     <input
       className={cn(
-        "w-full rounded-xl border border-border bg-white px-4 py-3 text-base text-ink outline-none transition-all placeholder:text-muted focus:border-primary focus:ring-4 focus:ring-primary/10",
+        "w-full rounded-xl border border-[var(--border)] bg-[var(--panel-bg)] px-4 py-3 text-base text-[var(--panel-text)] outline-none transition-all placeholder:text-[var(--muted-text)] focus:border-[var(--teal)] focus:ring-4 focus:ring-[var(--teal)]/10",
         className,
       )}
       {...props}
@@ -56,16 +59,21 @@ export function Field({
 }) {
   return (
     <label className="block space-y-2">
-      <span className="text-[13px] font-bold uppercase tracking-wider text-muted/80">{label}</span>
+      <span className="text-[13px] font-bold uppercase tracking-wider text-[var(--muted-text)]">{label}</span>
       {children}
-      {hint ? <span className="block text-xs text-muted italic">{hint}</span> : null}
+      {hint ? <span className="block text-xs text-[var(--muted-text)] italic">{hint}</span> : null}
     </label>
   );
 }
 
 export function Card({ children, className }: { children: ReactNode; className?: string }) {
   return (
-    <section className={cn("rounded-2xl bg-white p-8 shadow-premium border border-border/50", className)}>
+    <section
+      className={cn(
+        "rounded-2xl border border-[var(--border)] bg-[var(--panel-bg)] p-8 text-[var(--panel-text)] shadow-premium",
+        className,
+      )}
+    >
       {children}
     </section>
   );
@@ -76,11 +84,18 @@ export function Alert({ children, tone = "error" }: { children: ReactNode; tone?
     <p
       role="alert"
       className={cn(
-        "rounded-xl px-4 py-3.5 text-sm font-medium flex items-center gap-3",
-        tone === "error" ? "bg-rose-50 text-rose-700 border border-rose-100" : "bg-emerald-50 text-emerald-700 border border-emerald-100",
+        "flex items-center gap-3 rounded-xl px-4 py-3.5 text-sm font-medium",
+        tone === "error"
+          ? "border border-rose-200 bg-rose-50 text-[var(--danger)]"
+          : "border border-emerald-200 bg-emerald-50 text-emerald-800",
       )}
     >
-      <span className={cn("h-1.5 w-1.5 rounded-full", tone === "error" ? "bg-rose-500" : "bg-emerald-500")} />
+      <span
+        className={cn(
+          "h-1.5 w-1.5 rounded-full",
+          tone === "error" ? "bg-[var(--danger)]" : "bg-emerald-600",
+        )}
+      />
       {children}
     </p>
   );
@@ -88,9 +103,9 @@ export function Alert({ children, tone = "error" }: { children: ReactNode; tone?
 
 export function BrandMark({ className }: { className?: string }) {
   return (
-    <div className={cn("flex items-center gap-3 font-bold tracking-tighter text-ink", className)}>
-      <span className="grid h-10 w-10 place-items-center rounded-xl bg-primary text-primary-foreground shadow-lg shadow-primary/30">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="w-6 h-6">
+    <div className={cn("flex items-center gap-3 font-bold tracking-tighter text-[var(--panel-text)]", className)}>
+      <span className="grid h-10 w-10 place-items-center rounded-xl bg-[var(--teal)] text-white shadow-lg shadow-[var(--teal)]/30">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="h-6 w-6">
           <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </span>

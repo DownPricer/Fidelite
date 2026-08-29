@@ -40,16 +40,16 @@ export function MerchantHome({
     <main className="px-6 py-8 lg:px-12 lg:py-12">
       <header className="mb-10 flex flex-col items-start justify-between gap-6 sm:flex-row sm:items-center">
         <div>
-          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted/60">{merchantName}</p>
-          <h1 className="mt-1 text-3xl font-black tracking-tight lg:text-4xl">Bonjour, {firstName}</h1>
-          <p className="text-sm font-medium text-muted">Administrateur</p>
+          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--muted-text)]">{merchantName}</p>
+          <h1 className="mt-1 text-3xl font-black tracking-tight text-[var(--panel-text)] lg:text-4xl">Bonjour, {firstName}</h1>
+          <p className="text-sm font-medium text-[var(--muted-text)]">Administrateur</p>
         </div>
         <Button variant="secondary" onClick={() => void logout()} className="h-10 px-4">
           Déconnexion
         </Button>
       </header>
 
-      <section className="mb-10 overflow-hidden rounded-2xl bg-primary p-8 text-white shadow-xl shadow-primary/25 lg:p-10">
+      <section className="mb-10 overflow-hidden rounded-2xl bg-[var(--teal)] p-8 text-white shadow-xl shadow-[var(--teal)]/25 lg:p-10">
         <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/70">Action principale</p>
         <h2 className="mt-2 text-3xl font-black tracking-tight lg:text-4xl">Prêt à enregistrer une visite ?</h2>
         <p className="mt-3 max-w-xl text-base font-medium text-white/85">
@@ -58,7 +58,7 @@ export function MerchantHome({
         <div className="mt-8 flex flex-col gap-4 sm:flex-row sm:items-center">
           <Link
             href="/app/caisse"
-            className="inline-flex items-center justify-center gap-3 rounded-2xl bg-white px-8 py-5 text-lg font-black text-primary shadow-lg transition-transform hover:scale-[1.01] active:scale-[0.99]"
+            className="inline-flex items-center justify-center gap-3 rounded-2xl bg-[var(--panel-bg)] px-8 py-5 text-lg font-black text-[var(--teal)] shadow-lg transition-transform hover:scale-[1.01] active:scale-[0.99]"
           >
             {scanIcon}
             Scanner une carte
@@ -73,23 +73,23 @@ export function MerchantHome({
       </section>
 
       {stats ? (
-        <section className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-border bg-border lg:grid-cols-4">
+        <section className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--border)] lg:grid-cols-4">
           {[
             { label: "Clients", value: stats.customers },
             { label: "Passages (24h)", value: stats.visitsToday },
             { label: "Récompenses", value: stats.rewards },
             { label: "Employés", value: stats.employees },
           ].map((stat) => (
-            <div key={stat.label} className="bg-white px-6 py-6">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-muted/60">{stat.label}</p>
-              <p className="mt-2 text-3xl font-black tracking-tight">{stat.value}</p>
+            <div key={stat.label} className="bg-[var(--panel-bg)] px-6 py-6 text-[var(--panel-text)]">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted-text)]">{stat.label}</p>
+              <p className="mt-2 text-3xl font-black tracking-tight text-[var(--panel-text)]">{stat.value}</p>
             </div>
           ))}
         </section>
       ) : (
-        <div className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-border bg-border lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--border)] lg:grid-cols-4">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-24 animate-pulse bg-white" />
+            <div key={i} className="h-24 animate-pulse bg-[var(--panel-bg)]" />
           ))}
         </div>
       )}

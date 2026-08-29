@@ -19,8 +19,8 @@ export default async function SettingsPage() {
   return (
     <main className="px-6 py-8 lg:px-12 lg:py-12 max-w-7xl mx-auto">
       <header className="mb-8">
-        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted/60">Configuration</p>
-        <h1 className="mt-1 text-3xl font-black tracking-tight lg:text-4xl">Paramètres</h1>
+        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--muted-text)]">Configuration</p>
+        <h1 className="mt-1 text-3xl font-black tracking-tight text-[var(--panel-text)] lg:text-4xl">Paramètres</h1>
       </header>
       <SettingsForm
         initial={{

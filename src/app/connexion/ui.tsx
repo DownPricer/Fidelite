@@ -31,15 +31,15 @@ export function CustomerLoginForm() {
   }
 
   return (
-    <main className="min-h-dvh bg-surface flex flex-col items-center justify-center px-6 py-12 lg:py-24">
+    <main className="flex min-h-dvh flex-col items-center justify-center bg-[var(--navy)] px-6 py-12 text-[var(--navy-text)] lg:py-24">
       <div className="w-full max-w-[440px]">
-        <div className="flex flex-col items-center text-center mb-10">
-          <BrandMark className="mb-8 scale-110" />
-          <h1 className="text-3xl font-black tracking-tight">Espace Client</h1>
-          <p className="mt-2 text-muted font-medium italic">Consultez vos points et récompenses.</p>
+        <div className="mb-10 flex flex-col items-center text-center">
+          <BrandMark className="mb-8 scale-110 [&_span]:text-[var(--navy-text)]" />
+          <h1 className="text-3xl font-black tracking-tight text-[var(--navy-text)]">Espace Client</h1>
+          <p className="mt-2 font-medium italic text-[var(--navy-text)]/80">Consultez vos points et récompenses.</p>
         </div>
 
-        <Card className="p-10 shadow-premium border border-border/50">
+        <Card className="border border-[var(--border)] p-10 shadow-premium">
           <form className="space-y-6" onSubmit={onSubmit}>
             {error ? <Alert>{error}</Alert> : null}
             <Field label="Adresse e-mail">
@@ -54,10 +54,10 @@ export function CustomerLoginForm() {
           </form>
         </Card>
         
-        <div className="mt-8 text-center bg-white/50 backdrop-blur-sm rounded-2xl p-6 border border-border/50">
-          <p className="text-sm font-bold text-muted leading-relaxed italic">
+        <div className="mt-8 rounded-2xl border border-[var(--navy-text)]/20 bg-[var(--navy-text)]/10 p-6 text-center backdrop-blur-sm">
+          <p className="text-sm font-bold leading-relaxed italic text-[var(--navy-text)]/85">
             Pas encore de carte ? Scannez le QR code en magasin ou testez notre{" "}
-            <Link href="/c/cafe-demo" className="text-primary hover:underline font-black not-italic">
+            <Link href="/c/cafe-demo" className="font-black not-italic text-[var(--teal)] hover:underline">
               Café Démo
             </Link>
             .

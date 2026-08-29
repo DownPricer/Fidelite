@@ -3,41 +3,55 @@
 @theme {
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
+  --color-page-bg: var(--page-bg);
+  --color-panel-bg: var(--panel-bg);
+  --color-panel-text: var(--panel-text);
+  --color-body-text: var(--body-text);
+  --color-muted-text: var(--muted-text);
+  --color-navy: var(--navy);
+  --color-navy-text: var(--navy-text);
+  --color-teal: var(--teal);
+  --color-teal-hover: var(--teal-hover);
+  --color-danger: var(--danger);
   --color-surface: var(--surface);
   --color-ink: var(--ink);
   --color-muted: var(--muted);
   --color-border: var(--border);
-  
+
   --radius-xl: 1rem;
   --radius-2xl: 1.5rem;
   --radius-3xl: 2rem;
-  
+
   --shadow-premium: 0 10px 30px -10px rgba(0, 0, 0, 0.08);
 }
 
 :root {
-  --primary: #14b8a6; /* teal-500 */
+  --page-bg: #e7eef5;
+  --panel-bg: #ffffff;
+  --panel-text: #102a43;
+  --body-text: #1c334d;
+  --muted-text: #52657a;
+  --border: #b9c8d8;
+  --navy: #0b2239;
+  --navy-text: #f4f8fc;
+  --teal: #087f72;
+  --teal-hover: #06675d;
+  --danger: #b93845;
+
+  --primary: var(--teal);
   --primary-foreground: #ffffff;
-  --surface: #f8fafc; /* slate-50 */
-  --app-shell: #e4eaf2; /* gris bleuté — espaces commerçant */
-  --sidebar: #0c1a2e; /* bleu nuit */
-  --sidebar-foreground: #f1f5f9;
+  --surface: var(--page-bg);
+  --app-shell: var(--page-bg);
+  --sidebar: var(--navy);
+  --sidebar-foreground: var(--navy-text);
   --sidebar-muted: #94a3b8;
-  --ink: #0f172a; /* slate-900 */
-  --muted: #64748b; /* slate-500 */
-  --border: #e2e8f0; /* slate-200 */
-  
-  --bg: var(--surface);
+  --ink: var(--panel-text);
+  --muted: var(--muted-text);
+  --bg: var(--page-bg);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --surface: #0f172a;
-    --ink: #f8fafc;
-    --muted: #94a3b8;
-    --border: #1e293b;
-    --primary: #2dd4bf; /* teal-400 */
-  }
+html {
+  color-scheme: light;
 }
 
 html,
@@ -46,8 +60,8 @@ body {
 }
 
 body {
-  background-color: var(--surface);
-  color: var(--ink);
+  background-color: var(--page-bg);
+  color: var(--body-text);
   font-family:
     system-ui,
     -apple-system,

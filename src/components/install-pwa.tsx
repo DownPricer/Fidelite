@@ -33,10 +33,10 @@ export function InstallPwa({ compact = false }: { compact?: boolean }) {
 
   if (ios) {
     return (
-      <div className="rounded-2xl bg-white border border-border p-5 shadow-sm text-center">
-        <p className="text-xs font-bold uppercase tracking-widest text-muted mb-2">Installation iPhone</p>
-        <p className="text-sm font-medium text-slate-700 leading-relaxed italic">
-          Ouvrez le menu de partage <span className="inline-block px-1 bg-slate-100 rounded">⎙</span> puis <strong>Sur l’écran d’accueil</strong>.
+      <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel-bg)] p-5 text-center text-[var(--panel-text)] shadow-sm">
+        <p className="mb-2 text-xs font-bold uppercase tracking-widest text-[var(--muted-text)]">Installation iPhone</p>
+        <p className="text-sm font-medium italic leading-relaxed text-[var(--panel-text)]">
+          Ouvrez le menu de partage <span className="inline-block rounded bg-[var(--page-bg)] px-1">⎙</span> puis <strong>Sur l’écran d’accueil</strong>.
         </p>
       </div>
     );

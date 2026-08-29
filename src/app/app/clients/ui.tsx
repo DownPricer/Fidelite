@@ -54,7 +54,7 @@ export function CustomersPanel() {
       {ok ? <Alert tone="ok">{ok}</Alert> : null}
       
       {customers.length === 0 ? (
-        <div className="py-20 text-center rounded-3xl border-2 border-dashed border-border text-muted">
+        <div className="rounded-3xl border-2 border-dashed border-[var(--border)] py-20 text-center text-[var(--muted-text)]">
           <p className="font-bold tracking-tight">Aucun client pour le moment</p>
           <p className="text-sm">Les clients apparaîtront ici après leur premier scan.</p>
         </div>

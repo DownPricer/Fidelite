@@ -51,7 +51,7 @@ export function SettingsForm({
         <div className="lg:col-span-2">
           <form className="space-y-8" onSubmit={(event) => void onSubmit(event)}>
               <div className="space-y-6">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-muted/40">Identité visuelle</p>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted-text)]">Identité visuelle</p>
                 <div className="grid gap-6 sm:grid-cols-2">
                   <Field label="Nom du commerce">
                     <Input name="name" defaultValue={initial.name} required placeholder="Ex: Café de Paris" />
@@ -72,7 +72,7 @@ export function SettingsForm({
               </div>
 
               <div className="space-y-6 pt-8 border-t border-border/50">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-muted/40">Programme de fidélité</p>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted-text)]">Programme de fidélité</p>
                 <div className="grid gap-6 sm:grid-cols-2">
                   <Field label="Passages requis">
                     <Input name="visitsRequired" type="number" min={2} max={100} defaultValue={initial.visitsRequired} required />
@@ -92,7 +92,7 @@ export function SettingsForm({
         </div>
 
         <div className="lg:col-span-1">
-          <p className="mb-4 px-2 text-[10px] font-bold uppercase tracking-widest text-muted/40">Aperçu direct</p>
+          <p className="mb-4 px-2 text-[10px] font-bold uppercase tracking-widest text-[var(--muted-text)]">Aperçu direct</p>
           <div className="sticky top-28 space-y-6">
             <div className="overflow-hidden rounded-2xl border border-border">
               <div className="flex h-20 items-center justify-center border-b border-border/50 bg-primary/10">

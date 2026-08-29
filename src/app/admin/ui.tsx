@@ -77,17 +77,17 @@ export function AdminHome({ firstName }: { firstName: string }) {
   };
 
   return (
-    <div className="min-h-dvh bg-surface">
+    <div className="min-h-dvh bg-[var(--page-bg)] text-[var(--body-text)]">
       {/* Sidebar Super-admin */}
-      <aside className="fixed inset-y-0 left-0 hidden w-64 flex-col border-r border-border bg-slate-900 text-white lg:flex">
+      <aside className="fixed inset-y-0 left-0 hidden w-64 flex-col border-r border-white/10 bg-[var(--navy)] text-[var(--navy-text)] lg:flex">
         <div className="flex h-16 items-center px-6 border-b border-white/5">
           <div className="flex items-center gap-3 font-bold tracking-tighter">
-            <span className="grid h-8 w-8 place-items-center rounded-lg bg-primary text-primary-foreground shadow-lg shadow-primary/30">
+            <span className="grid h-8 w-8 place-items-center rounded-lg bg-[var(--teal)] text-white shadow-lg shadow-[var(--teal)]/30">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="w-5 h-5">
                 <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </span>
-            <span className="text-lg">FifeLite <span className="text-[10px] uppercase tracking-widest text-primary font-black ml-1">Admin</span></span>
+            <span className="text-lg">FifeLite <span className="ml-1 text-[10px] font-black uppercase tracking-widest text-[var(--teal)]">Admin</span></span>
           </div>
         </div>
         <nav className="flex-1 space-y-1 px-4 py-8">
@@ -106,13 +106,13 @@ export function AdminHome({ firstName }: { firstName: string }) {
       </aside>
 
       <main className="lg:pl-64">
-        <header className="sticky top-0 z-10 border-b border-border bg-white/80 px-6 py-4 backdrop-blur-md lg:px-12">
+        <header className="sticky top-0 z-10 border-b border-[var(--border)] bg-[var(--panel-bg)]/80 px-6 py-4 backdrop-blur-md lg:px-12">
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-black tracking-tight uppercase italic">Gestion Globale</h2>
+            <h2 className="text-xl font-black uppercase italic tracking-tight text-[var(--panel-text)]">Gestion Globale</h2>
             <div className="flex items-center gap-3">
-              <div className="text-right hidden sm:block">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-muted/60 leading-none">Connecté en tant que</p>
-                <p className="text-sm font-bold">{firstName}</p>
+              <div className="hidden text-right sm:block">
+                <p className="text-[10px] font-bold uppercase leading-none tracking-widest text-[var(--muted-text)]">Connecté en tant que</p>
+                <p className="text-sm font-bold text-[var(--panel-text)]">{firstName}</p>
               </div>
               <div className="h-8 w-8 rounded-full bg-slate-100 flex items-center justify-center font-bold text-slate-500 text-xs">
                 {firstName.slice(0, 1)}
@@ -137,9 +137,9 @@ export function AdminHome({ firstName }: { firstName: string }) {
                     </svg>
                   </div>
                   <div>
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted/60">{stat.label}</p>
-                    <p className="text-2xl font-black tracking-tight">{stat.value}</p>
-                    <p className="text-xs font-medium text-muted">{stat.sub}</p>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted-text)]">{stat.label}</p>
+                    <p className="text-2xl font-black tracking-tight text-[var(--panel-text)]">{stat.value}</p>
+                    <p className="text-xs font-medium text-[var(--muted-text)]">{stat.sub}</p>
                   </div>
                 </div>
               </Card>
@@ -157,7 +157,7 @@ export function AdminHome({ firstName }: { firstName: string }) {
                 {error ? <div className="mb-6"><Alert>{error}</Alert></div> : null}
                 <form className="space-y-6" onSubmit={(event) => void create(event)}>
                   <div className="space-y-4">
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted/40">Configuration Enseigne</p>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted-text)]">Configuration Enseigne</p>
                     <Field label="Nom public">
                       <Input name="name" placeholder="Ex: Café de Paris" required />
                     </Field>
@@ -178,7 +178,7 @@ export function AdminHome({ firstName }: { firstName: string }) {
                   </div>
 
                   <div className="space-y-4 pt-6 border-t border-border/50">
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted/40">Compte Administrateur</p>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted-text)]">Compte Administrateur</p>
                     <Field label="Prénom admin">
                       <Input name="adminFirstName" required />
                     </Field>
@@ -199,12 +199,12 @@ export function AdminHome({ firstName }: { firstName: string }) {
             <div className="lg:col-span-2">
               <div className="mb-6 flex items-center justify-between px-2">
                 <h3 className="text-xl font-bold tracking-tight">Commerces enregistrés</h3>
-                <span className="text-xs font-bold text-muted uppercase tracking-widest">{merchants.length} au total</span>
+                <span className="text-xs font-bold uppercase tracking-widest text-[var(--muted-text)]">{merchants.length} au total</span>
               </div>
               
               <div className="space-y-4">
                 {merchants.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-20 text-center rounded-3xl border-2 border-dashed border-border text-muted">
+                  <div className="flex flex-col items-center justify-center rounded-3xl border-2 border-dashed border-[var(--border)] py-20 text-center text-[var(--muted-text)]">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-12 h-12 mb-4 opacity-20">
                       <path d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                     </svg>
@@ -223,10 +223,10 @@ export function AdminHome({ firstName }: { firstName: string }) {
                             {merchant.name.slice(0, 1)}
                           </div>
                           <div>
-                            <h4 className="text-lg font-black tracking-tight group-hover:text-primary transition-colors">{merchant.name}</h4>
-                            <p className="text-xs font-bold text-muted uppercase tracking-widest italic">/{merchant.slug} • {merchant.customers} clients</p>
-                            <p className="mt-1 text-sm font-medium text-slate-500">
-                              <span className="font-bold text-ink">{merchant.visitsRequired}</span> passages = <span className="text-primary font-bold">{merchant.rewardLabel}</span>
+                            <h4 className="text-lg font-black tracking-tight text-[var(--panel-text)] transition-colors group-hover:text-[var(--teal)]">{merchant.name}</h4>
+                            <p className="text-xs font-bold uppercase italic tracking-widest text-[var(--muted-text)]">/{merchant.slug} • {merchant.customers} clients</p>
+                            <p className="mt-1 text-sm font-medium text-[var(--muted-text)]">
+                              <span className="font-bold text-[var(--panel-text)]">{merchant.visitsRequired}</span> passages = <span className="font-bold text-[var(--teal)]">{merchant.rewardLabel}</span>
                             </p>
                           </div>
                         </div>

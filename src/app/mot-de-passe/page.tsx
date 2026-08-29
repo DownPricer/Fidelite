@@ -27,8 +27,9 @@ export default function ChangePasswordPage() {
   }
 
   return (
-    <main className="mx-auto max-w-md px-6 py-10">
-      <h1 className="text-3xl font-semibold">Nouveau mot de passe</h1>
+    <main className="min-h-dvh bg-[var(--page-bg)] text-[var(--body-text)]">
+      <div className="mx-auto max-w-md px-6 py-10">
+      <h1 className="text-3xl font-semibold text-[var(--panel-text)]">Nouveau mot de passe</h1>
       <Card className="mt-6">
         <form className="space-y-4" onSubmit={(event) => void onSubmit(event)}>
           {error ? <Alert>{error}</Alert> : null}
@@ -42,6 +43,7 @@ export default function ChangePasswordPage() {
           <Button className="w-full">Enregistrer</Button>
         </form>
       </Card>
+      </div>
     </main>
   );
 }

@@ -74,11 +74,11 @@ export function CaisseScreen({
   }
 
   return (
-    <main className="min-h-dvh bg-ink text-white selection:bg-primary selection:text-white">
+    <div className="min-h-dvh bg-[var(--navy)] text-[var(--navy-text)]">
       {/* Header POS */}
       <header className="flex items-center justify-between border-b border-white/10 px-6 py-4 bg-black/20 backdrop-blur-sm">
         <div className="flex items-center gap-4">
-          <div className="grid h-10 w-10 place-items-center rounded-xl bg-primary text-white shadow-lg shadow-primary/20">
+          <div className="grid h-10 w-10 place-items-center rounded-xl bg-[var(--teal)] text-white shadow-lg shadow-[var(--teal)]/20">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="w-5 h-5">
               <path d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
@@ -102,7 +102,7 @@ export function CaisseScreen({
             <div className="w-full max-w-lg space-y-4">
               <button
                 type="button"
-                className="flex w-full items-center justify-center gap-4 rounded-2xl bg-primary px-8 py-8 text-2xl font-black uppercase tracking-tight text-white shadow-2xl shadow-primary/40 transition-transform hover:scale-[1.01] active:scale-[0.98] disabled:opacity-50"
+                className="flex w-full items-center justify-center gap-4 rounded-2xl bg-[var(--teal)] px-8 py-8 text-2xl font-black uppercase tracking-tight text-white shadow-2xl shadow-[var(--teal)]/40 transition-transform hover:scale-[1.01] active:scale-[0.98] disabled:opacity-50"
                 onClick={() => setScanning(true)}
                 disabled={busy}
               >
@@ -124,7 +124,7 @@ export function CaisseScreen({
 
         {scanning && (
           <div className="flex flex-col items-center gap-8">
-            <div className="w-full overflow-hidden rounded-[2rem] border-4 border-primary bg-black shadow-2xl shadow-primary/20">
+            <div className="w-full overflow-hidden rounded-[2rem] border-4 border-[var(--teal)] bg-black shadow-2xl shadow-[var(--teal)]/20">
               <QrScanner variant="dark" active={scanning} onResult={(text) => void submitToken(text)} />
             </div>
             <div className="w-full max-w-lg rounded-2xl border border-white/15 bg-white/5 p-6">
@@ -172,13 +172,13 @@ export function CaisseScreen({
                 </div>
                 <div className="text-right">
                   <p className="text-[10px] font-bold uppercase tracking-widest text-white/40">Statut actuel</p>
-                  <p className="text-2xl font-black text-primary">{result.progressLabel}</p>
+                  <p className="text-2xl font-black text-[var(--teal)]">{result.progressLabel}</p>
                 </div>
               </div>
 
               <div className="mt-8 grid gap-4">
                 <button
-                  className="flex w-full items-center justify-center gap-4 rounded-2xl bg-primary py-8 text-3xl font-black uppercase italic tracking-tighter text-white shadow-xl shadow-primary/30 transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
+                  className="flex w-full items-center justify-center gap-4 rounded-2xl bg-[var(--teal)] py-8 text-3xl font-black uppercase italic tracking-tighter text-white shadow-xl shadow-[var(--teal)]/30 transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
                   disabled={busy}
                   onClick={() => void act("/api/caisse/earn")}
                 >
@@ -216,6 +216,6 @@ export function CaisseScreen({
           </div>
         )}
       </div>
-    </main>
+    </div>
   );
 }

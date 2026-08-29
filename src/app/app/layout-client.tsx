@@ -16,7 +16,7 @@ export default function DashboardLayout({ children, admin }: { children: React.R
       <div className={cn(showShell && "lg:pl-64")}>
         {showShell ? (
           <div className="mx-auto max-w-7xl px-4 py-4 pb-24 lg:px-8 lg:py-8 lg:pb-8">
-            <div className="min-h-[calc(100dvh-2rem)] rounded-2xl border border-border bg-white shadow-sm">
+            <div className="min-h-[calc(100dvh-2rem)] rounded-2xl border border-[var(--border)] bg-[var(--panel-bg)] text-[var(--panel-text)] shadow-sm">
               {children}
             </div>
           </div>

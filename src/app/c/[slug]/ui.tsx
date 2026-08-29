@@ -54,7 +54,7 @@ export function MerchantPublic({
   }
 
   return (
-    <main className="min-h-dvh bg-surface text-ink">
+    <main className="min-h-dvh bg-[var(--page-bg)] text-[var(--body-text)]">
       <div className="mx-auto max-w-6xl px-6 py-12 lg:py-24">
         <div className="grid gap-16 lg:grid-cols-2 lg:items-center">
           {/* Section Information */}
@@ -69,19 +69,19 @@ export function MerchantPublic({
                 </div>
               )}
               <h1 className="text-4xl font-black tracking-tighter lg:text-6xl">{merchant.name}</h1>
-              <p className="mt-4 text-xl text-muted font-medium">Votre fidélité enfin récompensée.</p>
+              <p className="mt-4 text-xl font-medium text-[var(--muted-text)]">Votre fidélité enfin récompensée.</p>
             </header>
 
             <div className="space-y-6">
-              <div className="flex items-center gap-4 rounded-2xl bg-white p-6 shadow-premium border border-border/50">
+              <div className="flex items-center gap-4 rounded-2xl border border-[var(--border)] bg-[var(--panel-bg)] p-6 text-[var(--panel-text)] shadow-premium">
                 <div className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-emerald-50 text-emerald-600">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-6 w-6">
                     <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                 </div>
                 <div className="text-left">
-                  <p className="text-sm font-bold uppercase tracking-wider text-muted/60">L'offre</p>
-                  <p className="text-lg font-bold text-ink">{merchant.visitsRequired} passages = {merchant.rewardLabel}</p>
+                  <p className="text-sm font-bold uppercase tracking-wider text-[var(--muted-text)]">L'offre</p>
+                  <p className="text-lg font-bold text-[var(--panel-text)]">{merchant.visitsRequired} passages = {merchant.rewardLabel}</p>
                 </div>
               </div>
 
@@ -92,12 +92,12 @@ export function MerchantPublic({
                   { step: "3", label: "Je gagne mes points", icon: "M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" },
                 ].map((item) => (
                   <div key={item.step} className="flex flex-col items-center gap-2 text-center">
-                    <div className="grid h-10 w-10 place-items-center rounded-xl bg-slate-100 text-muted">
+                    <div className="grid h-10 w-10 place-items-center rounded-xl bg-[var(--page-bg)] text-[var(--muted-text)]">
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-5 w-5">
                         <path d={item.icon} strokeLinecap="round" strokeLinejoin="round" />
                       </svg>
                     </div>
-                    <span className="text-xs font-bold text-muted uppercase">{item.label}</span>
+                    <span className="text-xs font-bold uppercase text-[var(--muted-text)]">{item.label}</span>
                   </div>
                 ))}
               </div>
@@ -114,10 +114,10 @@ export function MerchantPublic({
                   </svg>
                 </div>
                 <h2 className="text-2xl font-bold">Heureux de vous revoir !</h2>
-                <p className="mt-2 text-muted">Bonjour {firstName}, votre carte est prête à être utilisée.</p>
+                <p className="mt-2 text-[var(--muted-text)]">Bonjour {firstName}, votre carte est prête à être utilisée.</p>
                 <Link
                   href={`/carte/${merchant.slug}`}
-                  className="mt-8 block w-full rounded-xl bg-primary py-4 text-center font-bold text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:opacity-90 active:scale-[0.98]"
+                  className="mt-8 block w-full rounded-xl bg-[var(--teal)] py-4 text-center font-bold text-white shadow-lg shadow-[var(--teal)]/20 transition-all hover:bg-[var(--teal-hover)] active:scale-[0.98]"
                 >
                   Accéder à ma carte
                 </Link>
@@ -125,7 +125,7 @@ export function MerchantPublic({
             ) : signedIn ? (
               <Card className="text-center">
                 <h2 className="text-2xl font-bold">Rejoignez-nous</h2>
-                <p className="mt-2 text-muted">Bonjour {firstName}, rejoignez {merchant.name} en un clic.</p>
+                <p className="mt-2 text-[var(--muted-text)]">Bonjour {firstName}, rejoignez {merchant.name} en un clic.</p>
                 <Button
                   className="mt-8 w-full py-4"
                   onClick={async () => {
@@ -143,7 +143,7 @@ export function MerchantPublic({
             ) : (
               <Card>
                 <h2 className="text-2xl font-bold tracking-tight">Créer ma carte</h2>
-                <p className="mt-1 text-muted text-sm italic">Gratuit et prêt en quelques secondes.</p>
+                <p className="mt-1 text-sm italic text-[var(--muted-text)]">Gratuit et prêt en quelques secondes.</p>
                 <form className="mt-8 space-y-6" onSubmit={onSubmit}>
                   {error ? <Alert>{error}</Alert> : null}
                   <Field label="Prénom">
@@ -155,11 +155,11 @@ export function MerchantPublic({
                   <Field label="Mot de passe" hint="Sécurisé, 8 caractères minimum.">
                     <Input name="password" type="password" autoComplete="new-password" required minLength={8} />
                   </Field>
-                  <label className="flex items-start gap-3 text-sm text-muted cursor-pointer group">
-                    <input name="privacyConsent" type="checkbox" required className="mt-1 h-4 w-4 rounded border-border text-primary focus:ring-primary/20" />
-                    <span className="group-hover:text-ink transition-colors">
+                  <label className="group flex cursor-pointer items-start gap-3 text-sm text-[var(--muted-text)]">
+                    <input name="privacyConsent" type="checkbox" required className="mt-1 h-4 w-4 rounded border-[var(--border)] text-[var(--teal)] focus:ring-[var(--teal)]/20" />
+                    <span className="transition-colors group-hover:text-[var(--panel-text)]">
                       J’accepte la{" "}
-                      <Link href="/confidentialite" className="text-primary font-bold hover:underline">
+                      <Link href="/confidentialite" className="font-bold text-[var(--teal)] hover:underline">
                         politique de confidentialité
                       </Link>
                       .
@@ -169,9 +169,9 @@ export function MerchantPublic({
                     {pending ? "Création en cours..." : "Obtenir ma carte maintenant"}
                   </Button>
                 </form>
-                <p className="mt-6 text-center text-sm font-medium text-muted">
+                <p className="mt-6 text-center text-sm font-medium text-[var(--muted-text)]">
                   Déjà membre ?{" "}
-                  <Link href="/connexion" className="text-ink font-bold hover:underline">
+                  <Link href="/connexion" className="font-bold text-[var(--panel-text)] hover:underline">
                     Se connecter
                   </Link>
                 </p>
