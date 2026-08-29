@@ -101,7 +101,9 @@ export function MerchantHome({
           canAdmin && (
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
               {[1, 2, 3, 4].map((i) => (
-                <Card key={i} className="h-32 animate-pulse bg-white/50" />
+                <Card key={i} className="h-32 animate-pulse bg-white/50">
+                  <div />
+                </Card>
               ))}
             </div>
           )

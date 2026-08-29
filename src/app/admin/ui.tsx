@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Alert, Button, Card, Field, Input } from "@/components/ui";
+import { Alert, Button, Card, Field, Input, cn } from "@/components/ui";
 
 type Merchant = {
   id: string;
   name: string;
   slug: string;
+  primaryColor: string;
   isActive: boolean;
   customers: number;
   visitsRequired?: number;
