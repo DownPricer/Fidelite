@@ -30,23 +30,33 @@ export function StaffLogin({ title, nextPath }: { title: string; nextPath: strin
   }
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center px-6 py-10">
-      <BrandMark />
-      <h1 className="mt-8 text-3xl font-semibold">{title}</h1>
-      <Card className="mt-6">
-        <form className="space-y-4" onSubmit={onSubmit}>
-          {error ? <Alert>{error}</Alert> : null}
-          <Field label="E-mail">
-            <Input name="email" type="email" autoComplete="username" required />
-          </Field>
-          <Field label="Mot de passe">
-            <Input name="password" type="password" autoComplete="current-password" required />
-          </Field>
-          <Button className="w-full" disabled={pending}>
-            {pending ? "Connexion…" : "Se connecter"}
-          </Button>
-        </form>
-      </Card>
+    <main className="min-h-dvh bg-surface flex flex-col items-center justify-center px-6 py-12 lg:py-24">
+      <div className="w-full max-w-[440px]">
+        <div className="flex flex-col items-center text-center mb-10">
+          <BrandMark className="mb-8 scale-110" />
+          <h1 className="text-3xl font-black tracking-tight">{title}</h1>
+          <p className="mt-2 text-muted font-medium italic">Accédez à votre espace de gestion.</p>
+        </div>
+        
+        <Card className="p-10 shadow-premium border border-border/50">
+          <form className="space-y-6" onSubmit={onSubmit}>
+            {error ? <Alert>{error}</Alert> : null}
+            <Field label="Adresse e-mail">
+              <Input name="email" type="email" autoComplete="username" required placeholder="nom@exemple.fr" />
+            </Field>
+            <Field label="Mot de passe">
+              <Input name="password" type="password" autoComplete="current-password" required placeholder="••••••••" />
+            </Field>
+            <Button className="w-full py-4 text-base" disabled={pending}>
+              {pending ? "Connexion en cours..." : "Accéder à mon compte"}
+            </Button>
+          </form>
+        </Card>
+        
+        <p className="mt-10 text-center text-xs font-bold uppercase tracking-[0.2em] text-muted/40">
+          FifeLite &bull; SaaS Premium
+        </p>
+      </div>
     </main>
   );
 }

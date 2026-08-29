@@ -11,9 +11,11 @@ export default async function EmployeesPage() {
   if (!membership || !canManageEmployees(membership.role)) redirect("/app");
 
   return (
-    <main className="mx-auto max-w-3xl px-6 py-8">
-      <h1 className="text-3xl font-semibold">Employés</h1>
-      <AppNav admin />
+    <main className="px-6 py-8 lg:px-12 lg:py-12 max-w-7xl mx-auto">
+      <header className="mb-8">
+        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted/60">Gestion</p>
+        <h1 className="mt-1 text-3xl font-black tracking-tight lg:text-4xl">Équipe</h1>
+      </header>
       <EmployeesPanel />
     </main>
   );
