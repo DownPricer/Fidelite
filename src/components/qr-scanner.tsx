@@ -4,6 +4,42 @@ import { Html5Qrcode, Html5QrcodeScannerState } from "html5-qrcode";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { Button } from "./ui";
 
+function formatCameraError(err: unknown): string {
+  const labels: Record<string, string> = {
+    NotAllowedError: "Permission refusée",
+    NotFoundError: "Aucune caméra détectée",
+    NotReadableError: "Caméra déjà utilisée",
+    OverconstrainedError: "Caméra incompatible",
+    SecurityError: "Accès caméra bloqué",
+    AbortError: "Accès caméra interrompu",
+  };
+
+  const knownNames = Object.keys(labels);
+
+  if (err instanceof DOMException) {
+    const label = labels[err.name] ?? "Erreur caméra";
+    return `${label} (${err.name})`;
+  }
+
+  if (err instanceof Error) {
+    const fromMessage = err.message.match(
+      new RegExp(`\\b(${knownNames.join("|")})\\b`),
+    )?.[1];
+    const name = err.name !== "Error" ? err.name : fromMessage ?? "UnknownError";
+    const label = labels[name] ?? "Erreur caméra";
+    return `${label} (${name})`;
+  }
+
+  if (typeof err === "string") {
+    const fromMessage = err.match(new RegExp(`\\b(${knownNames.join("|")})\\b`))?.[1];
+    if (fromMessage) {
+      return `${labels[fromMessage]} (${fromMessage})`;
+    }
+  }
+
+  return "Erreur caméra (UnknownError)";
+}
+
 async function safeStopScanner(scanner: Html5Qrcode | null, isScanningRef: { current: boolean }) {
   if (!scanner || !isScanningRef.current) return;
   try {
@@ -70,12 +106,10 @@ export function QrScanner({
           isScanningRef.current = true;
         }
       })
-      .catch(() => {
+      .catch((err: unknown) => {
         if (!cancelled) {
           isScanningRef.current = false;
-          setError(
-            "Caméra indisponible. Autorisez l'accès ou utilisez le scanner USB / Bluetooth ci-dessous.",
-          );
+          setError(formatCameraError(err));
         }
       });
 
@@ -108,58 +142,67 @@ export function QrScanner({
 export function UsbScannerField({
   onSubmit,
   disabled,
-  variant = "light",
 }: {
   onSubmit: (value: string) => void;
   disabled?: boolean;
-  variant?: "light" | "dark";
 }) {
+  const inputId = useId();
+  const inputRef = useRef<HTMLInputElement>(null);
   const [value, setValue] = useState("");
 
+  function submitValue() {
+    const token = value.trim();
+    if (!token) return;
+    onSubmit(token);
+    setValue("");
+  }
+
   return (
-    <form
-      className="space-y-2"
-      onSubmit={(event) => {
-        event.preventDefault();
-        const token = value.trim();
-        if (!token) return;
-        onSubmit(token);
-        setValue("");
-      }}
-    >
-      <label
-        className={
-          variant === "dark"
-            ? "block text-sm font-bold text-[var(--navy-text)]/80"
-            : "block text-sm font-medium text-[var(--panel-text)]"
-        }
-        htmlFor="usb-scan"
+    <section className="w-full rounded-2xl border-2 border-white/40 bg-white p-6 shadow-xl">
+      <h2 className="text-base font-black text-[var(--navy)]">
+        Scanner avec un lecteur USB ou Bluetooth
+      </h2>
+      <p className="mt-1 text-sm text-[var(--navy)]/70">
+        Branchez le lecteur : il saisira automatiquement le code ici.
+      </p>
+      <form
+        className="mt-4 space-y-3"
+        onSubmit={(event) => {
+          event.preventDefault();
+          submitValue();
+        }}
       >
-        Scanner USB / Bluetooth
-      </label>
-      <input
-        id="usb-scan"
-        autoFocus
-        disabled={disabled}
-        value={value}
-        onChange={(event) => setValue(event.target.value)}
-        className={
-          variant === "dark"
-            ? "w-full rounded-xl border border-white/20 bg-white/10 px-4 py-4 text-base text-[var(--navy-text)] outline-none placeholder:text-[var(--navy-text)]/40 focus:border-[var(--teal)] focus:ring-4 focus:ring-[var(--teal)]/20"
-            : "w-full rounded-xl border border-[var(--border)] bg-[var(--panel-bg)] px-4 py-4 text-base text-[var(--panel-text)] outline-none placeholder:text-[var(--muted-text)] focus:border-[var(--teal)] focus:ring-4 focus:ring-[var(--teal)]/15"
-        }
-        placeholder="Le curseur reste ici — le scanner envoie le code puis Entrée"
-        autoComplete="off"
-        inputMode="none"
-      />
-      <Button
-        type="submit"
-        variant="secondary"
-        className={variant === "dark" ? "w-full border-white/20 bg-white/10 text-[var(--navy-text)] hover:bg-white/20" : "w-full"}
-        disabled={disabled}
-      >
-        Valider le code
-      </Button>
-    </form>
+        <input
+          ref={inputRef}
+          id={inputId}
+          disabled={disabled}
+          value={value}
+          onChange={(event) => setValue(event.target.value)}
+          className="w-full rounded-xl border-2 border-[var(--navy)]/25 bg-white px-4 py-4 text-base font-medium text-[var(--navy)] outline-none placeholder:text-[var(--navy)]/45 focus:border-[var(--teal)] focus:ring-4 focus:ring-[var(--teal)]/20"
+          placeholder="Scannez ou collez le code de la carte"
+          autoComplete="off"
+          inputMode="text"
+        />
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Button
+            type="button"
+            variant="secondary"
+            className="w-full border-[var(--navy)]/20 bg-[var(--navy)]/5 text-[var(--navy)] hover:bg-[var(--navy)]/10 sm:flex-1"
+            disabled={disabled}
+            onClick={() => inputRef.current?.focus()}
+          >
+            Placer le curseur ici
+          </Button>
+          <Button
+            type="submit"
+            variant="primary"
+            className="w-full sm:flex-1"
+            disabled={disabled}
+          >
+            Valider le code
+          </Button>
+        </div>
+      </form>
+    </section>
   );
 }

@@ -6,7 +6,7 @@ import { cn } from "@/components/ui";
 
 export default function DashboardLayout({ children, admin }: { children: React.ReactNode; admin: boolean }) {
   const pathname = usePathname();
-  const isCaisse = pathname === "/app/caisse";
+  const isCaisse = pathname.startsWith("/app/caisse");
   const isLogin = pathname === "/app/connexion";
   const showShell = !isCaisse && !isLogin;
 

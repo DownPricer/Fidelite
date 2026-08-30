@@ -25,6 +25,7 @@ export function CaisseScreen({
   role: string;
 }) {
   const [scanning, setScanning] = useState(false);
+  const [cameraSession, setCameraSession] = useState(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -97,13 +98,16 @@ export function CaisseScreen({
       </header>
 
       <div className="mx-auto max-w-2xl px-6 py-12">
-        {!result && !scanning && (
-          <div className="flex flex-col items-center justify-center gap-10 text-center">
-            <div className="w-full max-w-lg space-y-4">
+        {!result && (
+          <div className="flex flex-col items-center gap-8">
+            <div className="w-full max-w-lg space-y-4 text-center">
               <button
                 type="button"
                 className="flex w-full items-center justify-center gap-4 rounded-2xl bg-[var(--teal)] px-8 py-8 text-2xl font-black uppercase tracking-tight text-white shadow-2xl shadow-[var(--teal)]/40 transition-transform hover:scale-[1.01] active:scale-[0.98] disabled:opacity-50"
-                onClick={() => setScanning(true)}
+                onClick={() => {
+                  setScanning(true);
+                  setCameraSession((session) => session + 1);
+                }}
                 disabled={busy}
               >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-10 w-10 shrink-0">
@@ -116,27 +120,37 @@ export function CaisseScreen({
               </p>
             </div>
 
-            <div className="w-full max-w-lg rounded-2xl border border-white/15 bg-white/5 p-6 text-left">
-              <UsbScannerField variant="dark" onSubmit={(value) => void submitToken(value)} disabled={busy} />
+            <div className="w-full max-w-lg overflow-visible rounded-[2rem] border-4 border-[var(--teal)] bg-black shadow-2xl shadow-[var(--teal)]/20">
+              {scanning ? (
+                <QrScanner
+                  key={cameraSession}
+                  variant="dark"
+                  active={scanning}
+                  onResult={(text) => void submitToken(text)}
+                />
+              ) : (
+                <div className="flex min-h-48 items-center justify-center px-6 py-12 text-center text-sm font-medium text-white/50">
+                  Zone caméra — appuyez sur « Scanner une carte » pour activer la caméra.
+                </div>
+              )}
             </div>
+
+            <div className="w-full max-w-lg">
+              <UsbScannerField onSubmit={(value) => void submitToken(value)} disabled={busy} />
+            </div>
+
+            {scanning && (
+              <Button
+                className="w-full max-w-lg bg-white/10 text-white border-white/10 hover:bg-white/20"
+                onClick={() => setScanning(false)}
+              >
+                Annuler le scan
+              </Button>
+            )}
           </div>
         )}
 
-        {scanning && (
-          <div className="flex flex-col items-center gap-8">
-            <div className="w-full overflow-hidden rounded-[2rem] border-4 border-[var(--teal)] bg-black shadow-2xl shadow-[var(--teal)]/20">
-              <QrScanner variant="dark" active={scanning} onResult={(text) => void submitToken(text)} />
-            </div>
-            <div className="w-full max-w-lg rounded-2xl border border-white/15 bg-white/5 p-6">
-              <UsbScannerField variant="dark" onSubmit={(value) => void submitToken(value)} disabled={busy} />
-            </div>
-            <Button className="w-full bg-white/10 text-white border-white/10 hover:bg-white/20" onClick={() => setScanning(false)}>
-              Annuler le scan
-            </Button>
-          </div>
-        )}
-
-        {(error || success) && !result && !scanning && (
+        {(error || success) && !result && (
           <div className="mt-8 animate-in fade-in zoom-in duration-300">
             {error && (
               <div className="flex items-center gap-4 rounded-2xl bg-rose-500/20 p-6 border border-rose-500/30 text-rose-200 shadow-lg shadow-rose-950/50">
