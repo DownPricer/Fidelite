@@ -1,9 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { QrScanner, UsbScannerField } from "@/components/qr-scanner";
-import { Alert, Button, Card } from "@/components/ui";
+import { Button } from "@/components/ui";
+import {
+  postCaisseScan,
+  rememberToken,
+  shouldIgnoreInstantDuplicate,
+  type TokenMemory,
+} from "@/lib/scan-session";
 
 type ScanResult = {
   grantId: string;
@@ -16,11 +22,9 @@ type ScanResult = {
 };
 
 export function CaisseScreen({
-  firstName,
   merchantName,
   role,
 }: {
-  firstName: string;
   merchantName: string;
   role: string;
 }) {
@@ -30,25 +34,37 @@ export function CaisseScreen({
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [result, setResult] = useState<ScanResult | null>(null);
+  const lastCameraTokenRef = useRef<TokenMemory | null>(null);
 
-  const submitToken = useCallback(async (token: string) => {
-    setBusy(true);
+  const startScan = useCallback(() => {
+    lastCameraTokenRef.current = null;
     setError(null);
     setSuccess(null);
-    setScanning(false);
-    const response = await fetch("/api/caisse/scan", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token }),
-    });
-    const data = await response.json();
-    setBusy(false);
-    if (!response.ok) {
-      setResult(null);
-      setError(data.error ?? "Scan refusé.");
+    setResult(null);
+    setScanning(true);
+    setCameraSession((session) => session + 1);
+  }, []);
+
+  const submitToken = useCallback(async (token: string, source: "camera" | "manual") => {
+    if (source === "camera" && shouldIgnoreInstantDuplicate(lastCameraTokenRef.current, token)) {
       return;
     }
-    setResult(data);
+    if (source === "camera") {
+      lastCameraTokenRef.current = rememberToken(token);
+    }
+
+    setBusy(true);
+    setError(null);
+    setScanning(false);
+    const { ok, data } = await postCaisseScan(token);
+    setBusy(false);
+    if (!ok) {
+      setResult(null);
+      setError(typeof data.error === "string" ? data.error : "Scan refusé.");
+      return;
+    }
+    setResult(data as ScanResult);
+    setSuccess(null);
   }, []);
 
   async function act(path: "/api/caisse/earn" | "/api/caisse/redeem") {
@@ -68,164 +84,116 @@ export function CaisseScreen({
     }
     setSuccess(
       path.endsWith("earn")
-        ? `+1 passage pour ${data.firstName}. Total : ${data.snapshot.progressLabel}`
+        ? `+1 passage pour ${data.firstName}. ${data.snapshot.progressLabel}`
         : `Récompense utilisée pour ${data.firstName}.`,
     );
     setResult(null);
+    setScanning(false);
+  }
+
+  function resetToIdle() {
+    lastCameraTokenRef.current = null;
+    setResult(null);
+    setError(null);
+    setSuccess(null);
+    setScanning(false);
   }
 
   return (
-    <div className="min-h-dvh bg-[var(--navy)] text-[var(--navy-text)]">
-      {/* Header POS */}
-      <header className="flex items-center justify-between border-b border-white/10 px-6 py-4 bg-black/20 backdrop-blur-sm">
-        <div className="flex items-center gap-4">
-          <div className="grid h-10 w-10 place-items-center rounded-xl bg-[var(--teal)] text-white shadow-lg shadow-[var(--teal)]/20">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="w-5 h-5">
-              <path d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </div>
-          <div>
-            <h1 className="text-lg font-black tracking-tight uppercase">Mode Caisse</h1>
-            <p className="text-[10px] font-bold tracking-[0.2em] text-white/40 uppercase leading-none">{merchantName} — {firstName}</p>
-          </div>
+    <div className="flex h-dvh flex-col bg-[var(--page-bg)] text-[var(--body-text)]">
+      <header className="flex shrink-0 items-center justify-between border-b border-[var(--border)] bg-[var(--panel-bg)] px-4 py-3">
+        <div className="min-w-0">
+          <h1 className="text-lg font-black uppercase tracking-tight text-[var(--panel-text)]">Caisse</h1>
+          <p className="truncate text-xs font-medium text-[var(--muted-text)]">{merchantName}</p>
         </div>
-        <Link
-          href={role === "MERCHANT_ADMIN" ? "/app" : "/app/caisse"}
-          className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-xs font-bold uppercase tracking-widest text-white/60 hover:bg-white/10 hover:text-white transition-all"
-        >
-          Quitter
-        </Link>
+        <div className="flex items-center gap-2">
+          {scanning && !result ? (
+            <button
+              type="button"
+              className="rounded-lg border border-[var(--border)] bg-[var(--panel-bg)] px-3 py-2 text-xs font-bold uppercase tracking-wide text-[var(--panel-text)]"
+              onClick={() => setScanning(false)}
+            >
+              Annuler le scan
+            </button>
+          ) : null}
+          <Link
+            href={role === "MERCHANT_ADMIN" ? "/app" : "/app/caisse"}
+            className="rounded-lg border border-[var(--border)] bg-[var(--panel-bg)] px-3 py-2 text-xs font-bold uppercase tracking-wide text-[var(--muted-text)]"
+          >
+            Quitter
+          </Link>
+        </div>
       </header>
 
-      <div className="mx-auto max-w-2xl px-6 py-12">
-        {!result && (
-          <div className="flex flex-col items-center gap-8">
-            <div className="w-full max-w-lg space-y-4 text-center">
+      <div className="mx-auto flex min-h-0 w-full max-w-2xl flex-1 flex-col gap-4 px-4 py-4">
+        {success && !result ? (
+          <p className="shrink-0 text-center text-sm font-bold text-emerald-800">{success}</p>
+        ) : null}
+
+        {!result ? (
+          <>
+            {!scanning ? (
               <button
                 type="button"
-                className="flex w-full items-center justify-center gap-4 rounded-2xl bg-[var(--teal)] px-8 py-8 text-2xl font-black uppercase tracking-tight text-white shadow-2xl shadow-[var(--teal)]/40 transition-transform hover:scale-[1.01] active:scale-[0.98] disabled:opacity-50"
-                onClick={() => {
-                  setScanning(true);
-                  setCameraSession((session) => session + 1);
-                }}
+                className="flex shrink-0 items-center justify-center gap-3 rounded-2xl bg-[var(--teal)] px-6 py-[clamp(1.75rem,6vh,2.75rem)] text-[clamp(1.25rem,3.4vw,1.75rem)] font-black uppercase tracking-tight text-white shadow-sm"
+                onClick={startScan}
                 disabled={busy}
               >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-10 w-10 shrink-0">
-                  <path d="M3 7V5a2 2 0 012-2h2m10 0h2a2 2 0 012 2v2m0 10v2a2 2 0 01-2 2h-2M7 21H5a2 2 0 01-2-2v-2" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
                 Scanner une carte
               </button>
-              <p className="text-sm font-medium text-white/50">
-                Appuyez pour activer la caméra et lire le QR du client.
-              </p>
-            </div>
-
-            <div className="w-full max-w-lg overflow-visible rounded-[2rem] border-4 border-[var(--teal)] bg-black shadow-2xl shadow-[var(--teal)]/20">
-              {scanning ? (
+            ) : (
+              <div className="flex min-h-0 flex-1 flex-col">
                 <QrScanner
                   key={cameraSession}
-                  variant="dark"
+                  sessionKey={cameraSession}
                   active={scanning}
-                  onResult={(text) => void submitToken(text)}
+                  onResult={(text) => void submitToken(text, "camera")}
                 />
-              ) : (
-                <div className="flex min-h-48 items-center justify-center px-6 py-12 text-center text-sm font-medium text-white/50">
-                  Zone caméra — appuyez sur « Scanner une carte » pour activer la caméra.
-                </div>
-              )}
-            </div>
-
-            <div className="w-full max-w-lg">
-              <UsbScannerField onSubmit={(value) => void submitToken(value)} disabled={busy} />
-            </div>
-
-            {scanning && (
-              <Button
-                className="w-full max-w-lg bg-white/10 text-white border-white/10 hover:bg-white/20"
-                onClick={() => setScanning(false)}
-              >
-                Annuler le scan
-              </Button>
-            )}
-          </div>
-        )}
-
-        {(error || success) && !result && (
-          <div className="mt-8 animate-in fade-in zoom-in duration-300">
-            {error && (
-              <div className="flex items-center gap-4 rounded-2xl bg-rose-500/20 p-6 border border-rose-500/30 text-rose-200 shadow-lg shadow-rose-950/50">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="h-8 w-8 shrink-0 text-rose-500">
-                  <path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-                <p className="text-lg font-bold italic leading-tight">{error}</p>
               </div>
             )}
-            {success && (
-              <div className="flex items-center gap-4 rounded-2xl bg-emerald-500/20 p-8 border border-emerald-500/30 text-emerald-100 shadow-lg shadow-emerald-950/50">
-                <div className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-emerald-500 text-white shadow-lg shadow-emerald-500/50">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="h-8 w-8">
-                    <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                </div>
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-500/60 mb-1">Opération réussie</p>
-                  <p className="text-2xl font-black italic tracking-tight">{success}</p>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
 
-        {result && (
-          <div className="flex flex-col gap-6 animate-in slide-in-from-bottom-8 duration-500">
-            <div className="rounded-3xl bg-white/5 p-8 border border-white/10">
-              <div className="flex items-center justify-between border-b border-white/10 pb-6">
+            <UsbScannerField onSubmit={(value) => void submitToken(value, "manual")} disabled={busy} />
+
+            {error ? (
+              <p role="alert" className="shrink-0 text-center text-sm font-bold text-[var(--danger)]">
+                {error}
+              </p>
+            ) : null}
+          </>
+        ) : (
+          <div className="flex min-h-0 flex-1 flex-col gap-3">
+            <div className="shrink-0 rounded-2xl border border-[var(--border)] bg-[var(--panel-bg)] p-4 text-[var(--panel-text)]">
+              <div className="flex items-center justify-between gap-4">
                 <div>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-white/40">Client identifié</p>
-                  <h3 className="text-4xl font-black tracking-tight">{result.firstName}</h3>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted-text)]">Client</p>
+                  <h3 className="text-3xl font-black tracking-tight text-[var(--panel-text)]">{result.firstName}</h3>
                 </div>
                 <div className="text-right">
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-white/40">Statut actuel</p>
-                  <p className="text-2xl font-black text-[var(--teal)]">{result.progressLabel}</p>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted-text)]">Statut</p>
+                  <p className="text-xl font-black text-[var(--teal)]">{result.progressLabel}</p>
                 </div>
               </div>
-
-              <div className="mt-8 grid gap-4">
-                <button
-                  className="flex w-full items-center justify-center gap-4 rounded-2xl bg-[var(--teal)] py-8 text-3xl font-black uppercase italic tracking-tighter text-white shadow-xl shadow-[var(--teal)]/30 transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
-                  disabled={busy}
-                  onClick={() => void act("/api/caisse/earn")}
-                >
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" className="h-10 w-10">
-                    <path d="M12 4v16m8-8H4" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                  +1 Passage
-                </button>
-
-                {result.rewardAvailable ? (
-                  <button
-                    className="flex w-full items-center justify-center gap-3 rounded-2xl bg-emerald-600 py-6 text-xl font-black uppercase tracking-tight text-white shadow-xl shadow-emerald-900/20 transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
-                    disabled={busy}
-                    onClick={() => void act("/api/caisse/redeem")}
-                  >
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="h-6 w-6">
-                      <path d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V6a2 2 0 10-2 2h2zm0 0h4l-1.5 5h-5l-1.5-5h4z" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                    Utiliser : {result.rewardLabel}
-                  </button>
-                ) : (
-                  <div className="flex items-center justify-center gap-2 py-4 text-white/20 italic font-bold">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="w-5 h-5">
-                      <path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                    <span>Récompense non disponible</span>
-                  </div>
-                )}
-              </div>
             </div>
-            
-            <Button className="bg-transparent border-white/10 text-white/40 hover:text-white" onClick={() => setResult(null)}>
-              Annuler et fermer
+
+            <button
+              className="flex w-full items-center justify-center rounded-2xl bg-[var(--teal)] py-5 text-2xl font-black uppercase text-white disabled:opacity-50"
+              disabled={busy}
+              onClick={() => void act("/api/caisse/earn")}
+            >
+              +1 Passage
+            </button>
+            {result.rewardAvailable ? (
+              <button
+                className="flex w-full items-center justify-center rounded-2xl bg-emerald-700 py-4 text-lg font-black uppercase text-white disabled:opacity-50"
+                disabled={busy}
+                onClick={() => void act("/api/caisse/redeem")}
+              >
+                Utiliser : {result.rewardLabel}
+              </button>
+            ) : null}
+
+            <Button variant="ghost" className="mt-auto shrink-0" onClick={resetToIdle}>
+              Annuler et scanner un autre client
             </Button>
           </div>
         )}

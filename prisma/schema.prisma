@@ -142,6 +142,7 @@ model LoyaltyTransaction {
   @@index([merchantId, createdAt])
 }
 
+/// QR fixe du client. `usedAt` horodate le dernier scan ; il n'empêche jamais un nouveau passage.
 model QrToken {
   id                   String    @id @default(cuid())
   jti                  String    @unique
@@ -156,9 +157,10 @@ model QrToken {
   @@index([expiresAt])
 }
 
+/// Un grant par scan volontaire. Plusieurs grants peuvent partager le même `qrTokenId`.
 model CaisseGrant {
   id                   String    @id @default(cuid())
-  qrTokenId            String    @unique
+  qrTokenId            String
   customerMembershipId String
   merchantId           String
   actorUserId          String
@@ -168,6 +170,7 @@ model CaisseGrant {
   membership           CustomerMembership @relation(fields: [customerMembershipId], references: [id], onDelete: Cascade)
   merchant             Merchant  @relation(fields: [merchantId], references: [id], onDelete: Cascade)
 
+  @@index([qrTokenId])
   @@index([actorUserId, expiresAt])
 }
 

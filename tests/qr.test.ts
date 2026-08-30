@@ -15,21 +15,23 @@ describe("QR fixe et opaque", () => {
 
   it("le même QR peut être scanné plusieurs fois pour le bon commerce", () => {
     const payload = { jti: "card_123" };
+    const usedAt = new Date("2026-08-30T12:00:00.000Z");
 
     expect(() =>
       assertQrUsable({
         payload,
         merchantId: "merchant_1",
         storedMerchantId: "merchant_1",
+        usedAt,
       }),
     ).not.toThrow();
 
-    // Second scan, toujours pour le même commerce : toujours accepté
     expect(() =>
       assertQrUsable({
         payload,
         merchantId: "merchant_1",
         storedMerchantId: "merchant_1",
+        usedAt,
       }),
     ).not.toThrow();
   });

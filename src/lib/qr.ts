@@ -50,17 +50,20 @@ export async function verifyQrToken(token: string): Promise<QrPayload> {
 }
 
 /**
- * L’ancienne logique d’expiration / réutilisation est supprimée.
- * Cette fonction est conservée pour centraliser le contrôle de cohérence métier.
+ * Contrôle métier d’un QR fixe : le commerce doit correspondre.
+ * `usedAt` n’est jamais un motif de refus — le même QR peut être scanné à chaque visite.
  */
-export function assertQrUsable(_input: {
+export function assertQrUsable(input: {
   payload: QrPayload;
   merchantId: string;
   storedMerchantId: string;
   usedAt?: Date | null;
   now?: Date;
 }) {
-  if (_input.storedMerchantId !== _input.merchantId) {
+  void input.payload;
+  void input.usedAt;
+  void input.now;
+  if (input.storedMerchantId !== input.merchantId) {
     throw new QrError("Ce QR n'appartient pas à ce commerce.");
   }
 }

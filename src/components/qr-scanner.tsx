@@ -1,8 +1,16 @@
 "use client";
 
-import { Html5Qrcode, Html5QrcodeScannerState } from "html5-qrcode";
-import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { Html5Qrcode } from "html5-qrcode";
+import { useEffect, useId, useRef, useState } from "react";
 import { Button } from "./ui";
+import {
+  finalizeCameraStart,
+  rememberToken,
+  safeStopScanner,
+  shouldIgnoreInstantDuplicate,
+  withTimeout,
+  type TokenMemory,
+} from "@/lib/scan-session";
 
 function formatCameraError(err: unknown): string {
   const labels: Record<string, string> = {
@@ -12,6 +20,7 @@ function formatCameraError(err: unknown): string {
     OverconstrainedError: "Caméra incompatible",
     SecurityError: "Accès caméra bloqué",
     AbortError: "Accès caméra interrompu",
+    TimeoutError: "Caméra trop longue à démarrer",
   };
 
   const knownNames = Object.keys(labels);
@@ -22,9 +31,7 @@ function formatCameraError(err: unknown): string {
   }
 
   if (err instanceof Error) {
-    const fromMessage = err.message.match(
-      new RegExp(`\\b(${knownNames.join("|")})\\b`),
-    )?.[1];
+    const fromMessage = err.message.match(new RegExp(`\\b(${knownNames.join("|")})\\b`))?.[1];
     const name = err.name !== "Error" ? err.name : fromMessage ?? "UnknownError";
     const label = labels[name] ?? "Erreur caméra";
     return `${label} (${name})`;
@@ -40,98 +47,104 @@ function formatCameraError(err: unknown): string {
   return "Erreur caméra (UnknownError)";
 }
 
-async function safeStopScanner(scanner: Html5Qrcode | null, isScanningRef: { current: boolean }) {
-  if (!scanner || !isScanningRef.current) return;
-  try {
-    const state = scanner.getState();
-    if (
-      state === Html5QrcodeScannerState.SCANNING ||
-      state === Html5QrcodeScannerState.PAUSED
-    ) {
-      await scanner.stop();
-    }
-  } catch {
-    // Scanner déjà arrêté ou jamais démarré — ignorer silencieusement.
-  } finally {
-    isScanningRef.current = false;
-  }
-}
-
 export function QrScanner({
   onResult,
   active,
-  variant = "light",
+  sessionKey = 0,
 }: {
   onResult: (text: string) => void;
   active: boolean;
-  variant?: "light" | "dark";
+  sessionKey?: number;
 }) {
-  const scannerId = useId().replace(/:/g, "");
+  const reactId = useId().replace(/:/g, "");
+  const instanceIdRef = useRef(`qr-${reactId}-${sessionKey}-${Math.random().toString(36).slice(2, 8)}`);
+  const scannerId = instanceIdRef.current;
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const isScanningRef = useRef(false);
+  const hasScannedRef = useRef(false);
+  const lastTokenRef = useRef<TokenMemory | null>(null);
   const onResultRef = useRef(onResult);
   const [error, setError] = useState<string | null>(null);
 
   onResultRef.current = onResult;
 
-  const stopScanner = useCallback(async () => {
-    await safeStopScanner(scannerRef.current, isScanningRef);
-  }, []);
-
   useEffect(() => {
-    if (!active) {
-      void stopScanner();
-      return;
-    }
-
-    setError(null);
-    isScanningRef.current = false;
+    if (!active) return;
 
     let cancelled = false;
-    const scanner = new Html5Qrcode(scannerId);
-    scannerRef.current = scanner;
+    let scanner: Html5Qrcode | null = null;
+    let startPromise: Promise<unknown> | null = null;
 
-    void scanner
-      .start(
+    isScanningRef.current = false;
+    hasScannedRef.current = false;
+    lastTokenRef.current = null;
+    setError(null);
+
+    function onDecode(text: string) {
+      if (cancelled || hasScannedRef.current) return;
+      if (shouldIgnoreInstantDuplicate(lastTokenRef.current, text)) return;
+      lastTokenRef.current = rememberToken(text);
+      hasScannedRef.current = true;
+      onResultRef.current(text);
+      void safeStopScanner(scanner);
+      isScanningRef.current = false;
+    }
+
+    try {
+      scanner = new Html5Qrcode(scannerId);
+      scannerRef.current = scanner;
+      startPromise = scanner.start(
         { facingMode: "environment" },
-        { fps: 10, qrbox: { width: 240, height: 240 } },
-        (text) => {
-          onResultRef.current(text);
-          void safeStopScanner(scanner, isScanningRef);
-        },
+        { fps: 8, qrbox: { width: 220, height: 220 } },
+        onDecode,
         () => undefined,
-      )
-      .then(() => {
-        if (!cancelled) {
-          isScanningRef.current = true;
-        }
-      })
-      .catch((err: unknown) => {
-        if (!cancelled) {
-          isScanningRef.current = false;
-          setError(formatCameraError(err));
-        }
-      });
+      );
+    } catch (err: unknown) {
+      setError(formatCameraError(err));
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    void finalizeCameraStart({
+      startPromise,
+      scanner,
+      cancelled: () => cancelled,
+    }).then((result) => {
+      if (result.error) {
+        setError(formatCameraError(result.error));
+        isScanningRef.current = false;
+        return;
+      }
+      isScanningRef.current = result.started;
+    });
 
     return () => {
       cancelled = true;
-      void safeStopScanner(scanner, isScanningRef);
-      scannerRef.current = null;
+      isScanningRef.current = false;
+      const instance = scanner;
+      void (async () => {
+        if (startPromise) {
+          try {
+            await withTimeout(startPromise, 3_000, "TimeoutError");
+          } catch {
+            // Démarrage refusé, occupé, ou encore en cours — on tente un stop sûr.
+          }
+        }
+        await safeStopScanner(instance);
+        if (scannerRef.current === instance) scannerRef.current = null;
+      })();
     };
-  }, [active, scannerId, stopScanner]);
+  }, [active, scannerId]);
 
   return (
-    <div className="space-y-3">
-      <div id={scannerId} className="overflow-hidden rounded-3xl bg-black" />
+    <div className="flex h-full min-h-0 flex-col gap-2">
+      <div
+        id={scannerId}
+        className="min-h-[12rem] flex-1 rounded-2xl bg-black [&>video]:h-full [&>video]:w-full [&>video]:object-cover"
+      />
       {error ? (
-        <p
-          role="alert"
-          className={
-            variant === "dark"
-              ? "text-sm font-bold text-rose-300"
-              : "text-sm font-medium text-[var(--danger)]"
-          }
-        >
+        <p role="alert" className="shrink-0 text-sm font-medium text-[var(--danger)]">
           {error}
         </p>
       ) : null}
@@ -147,7 +160,6 @@ export function UsbScannerField({
   disabled?: boolean;
 }) {
   const inputId = useId();
-  const inputRef = useRef<HTMLInputElement>(null);
   const [value, setValue] = useState("");
 
   function submitValue() {
@@ -158,51 +170,28 @@ export function UsbScannerField({
   }
 
   return (
-    <section className="w-full rounded-2xl border-2 border-white/40 bg-white p-6 shadow-xl">
-      <h2 className="text-base font-black text-[var(--navy)]">
-        Scanner avec un lecteur USB ou Bluetooth
-      </h2>
-      <p className="mt-1 text-sm text-[var(--navy)]/70">
-        Branchez le lecteur : il saisira automatiquement le code ici.
-      </p>
-      <form
-        className="mt-4 space-y-3"
-        onSubmit={(event) => {
-          event.preventDefault();
-          submitValue();
-        }}
-      >
-        <input
-          ref={inputRef}
-          id={inputId}
-          disabled={disabled}
-          value={value}
-          onChange={(event) => setValue(event.target.value)}
-          className="w-full rounded-xl border-2 border-[var(--navy)]/25 bg-white px-4 py-4 text-base font-medium text-[var(--navy)] outline-none placeholder:text-[var(--navy)]/45 focus:border-[var(--teal)] focus:ring-4 focus:ring-[var(--teal)]/20"
-          placeholder="Scannez ou collez le code de la carte"
-          autoComplete="off"
-          inputMode="text"
-        />
-        <div className="flex flex-col gap-2 sm:flex-row">
-          <Button
-            type="button"
-            variant="secondary"
-            className="w-full border-[var(--navy)]/20 bg-[var(--navy)]/5 text-[var(--navy)] hover:bg-[var(--navy)]/10 sm:flex-1"
-            disabled={disabled}
-            onClick={() => inputRef.current?.focus()}
-          >
-            Placer le curseur ici
-          </Button>
-          <Button
-            type="submit"
-            variant="primary"
-            className="w-full sm:flex-1"
-            disabled={disabled}
-          >
-            Valider le code
-          </Button>
-        </div>
-      </form>
-    </section>
+    <form
+      data-testid="caisse-manual-form"
+      className="flex w-full gap-2"
+      onSubmit={(event) => {
+        event.preventDefault();
+        submitValue();
+      }}
+    >
+      <input
+        id={inputId}
+        disabled={disabled}
+        value={value}
+        onChange={(event) => setValue(event.target.value)}
+        className="min-w-0 flex-1 rounded-xl border border-[var(--border)] bg-[var(--panel-bg)] px-4 py-3 text-base text-[var(--panel-text)] outline-none placeholder:text-[var(--muted-text)] focus:border-[var(--teal)]"
+        placeholder="Coller le code de la carte"
+        autoComplete="off"
+        inputMode="text"
+        enterKeyHint="done"
+      />
+      <Button type="submit" variant="primary" className="shrink-0 px-5" disabled={disabled}>
+        Valider le code
+      </Button>
+    </form>
   );
 }
