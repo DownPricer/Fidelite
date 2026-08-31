@@ -13,15 +13,13 @@ describe("QR fixe et opaque", () => {
     expect(payload.jti).toBe("card_123");
   });
 
-  it("le même QR peut être scanné plusieurs fois pour le bon commerce", () => {
+  it("le même QR peut être scanné plusieurs fois sans blocage métier", () => {
     const payload = { jti: "card_123" };
     const usedAt = new Date("2026-08-30T12:00:00.000Z");
 
     expect(() =>
       assertQrUsable({
         payload,
-        merchantId: "merchant_1",
-        storedMerchantId: "merchant_1",
         usedAt,
       }),
     ).not.toThrow();
@@ -29,23 +27,9 @@ describe("QR fixe et opaque", () => {
     expect(() =>
       assertQrUsable({
         payload,
-        merchantId: "merchant_1",
-        storedMerchantId: "merchant_1",
         usedAt,
       }),
     ).not.toThrow();
-  });
-
-  it("un QR d'un autre commerce est refusé", () => {
-    const payload = { jti: "card_123" };
-
-    expect(() =>
-      assertQrUsable({
-        payload,
-        merchantId: "merchant_2",
-        storedMerchantId: "merchant_1",
-      }),
-    ).toThrow(QrError);
   });
 
   it("rejette un jeton invalide", async () => {

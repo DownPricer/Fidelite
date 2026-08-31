@@ -2,13 +2,13 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "FifeLite",
-    short_name: "FifeLite",
-    description: "Votre carte de fidélité, toujours dans le téléphone.",
+    name: "Fife Life",
+    short_name: "Fife Life",
+    description: "Fife Life — portefeuille universel de fidélité.",
     start_url: "/",
     display: "standalone",
-    background_color: "#F4F1EA",
-    theme_color: "#0F766E",
+    background_color: "#06060B",
+    theme_color: "#090911",
     lang: "fr",
     icons: [
       { src: "/icon.svg", sizes: "any", type: "image/svg+xml", purpose: "any" },

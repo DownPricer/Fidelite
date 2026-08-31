@@ -23,31 +23,37 @@ export async function POST(req: Request) {
   const limited = rateLimit(`qr:${auth.user.id}`, LIMITS.qr.limit, LIMITS.qr.windowMs);
   if (!limited.ok) return jsonError("Trop de demandes. Réessayez dans un instant.", 429);
 
-  const membership = await prisma.customerMembership.findFirst({
+  // S'assure qu'une carte existe bien pour ce commerce, sans en déduire le QR.
+  const merchant = await prisma.merchant.findUnique({
+    where: { slug: parsed.data.slug },
+  });
+  if (!merchant || !merchant.isActive) return jsonError("Commerce introuvable.", 404);
+
+  await prisma.customerMembership.upsert({
     where: {
+      userId_merchantId: {
+        userId: auth.user.id,
+        merchantId: merchant.id,
+      },
+    },
+    update: {},
+    create: {
       userId: auth.user.id,
-      merchant: { slug: parsed.data.slug, isActive: true },
+      merchantId: merchant.id,
     },
   });
-  if (!membership) return jsonError("Carte introuvable.", 404);
 
-  // QR fixe : on réutilise toujours le même identifiant opaque (jti) pour cette carte.
-  let qr = await prisma.qrToken.findFirst({
-    where: {
-      customerMembershipId: membership.id,
-      merchantId: membership.merchantId,
-    },
-    orderBy: { createdAt: "asc" },
+  // QR fixe et universel : un seul identifiant opaque (jti) par utilisateur.
+  let qr = await prisma.fifeLifeQrToken.findUnique({
+    where: { userId: auth.user.id },
   });
 
   if (!qr) {
-    qr = await prisma.qrToken.create({
+    qr = await prisma.fifeLifeQrToken.create({
       data: {
+        id: randomUUID(),
+        userId: auth.user.id,
         jti: randomUUID(),
-        customerMembershipId: membership.id,
-        merchantId: membership.merchantId,
-        // Conservé uniquement pour compatibilité : non utilisé côté validation.
-        expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
       },
     });
   }

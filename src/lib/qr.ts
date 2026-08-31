@@ -50,22 +50,23 @@ export async function verifyQrToken(token: string): Promise<QrPayload> {
 }
 
 /**
- * Contrôle métier d’un QR fixe : le commerce doit correspondre.
- * `usedAt` n’est jamais un motif de refus — le même QR peut être scanné à chaque visite.
+ * Contrôle métier d’un QR fixe.
+ *
+ * Dans le nouveau modèle Fife Life, le QR n’encode plus le commerce :
+ * - il identifie uniquement un client de manière opaque côté serveur
+ * - le commerce est toujours déterminé à partir de la session employé en caisse
+ *
+ * `usedAt` reste un simple horodatage du dernier scan. Il ne bloque jamais
+ * un nouveau passage : le même QR peut être scanné autant de fois que nécessaire.
  */
 export function assertQrUsable(input: {
   payload: QrPayload;
-  merchantId: string;
-  storedMerchantId: string;
   usedAt?: Date | null;
   now?: Date;
 }) {
   void input.payload;
   void input.usedAt;
   void input.now;
-  if (input.storedMerchantId !== input.merchantId) {
-    throw new QrError("Ce QR n'appartient pas à ce commerce.");
-  }
 }
 
 export function publicQrErrorMessage(error: unknown) {

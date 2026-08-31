@@ -183,7 +183,7 @@ export function UsbScannerField({
         disabled={disabled}
         value={value}
         onChange={(event) => setValue(event.target.value)}
-        className="min-w-0 flex-1 rounded-xl border border-[var(--border)] bg-[var(--panel-bg)] px-4 py-3 text-base text-[var(--panel-text)] outline-none placeholder:text-[var(--muted-text)] focus:border-[var(--teal)]"
+        className="min-w-0 flex-1 rounded-xl border border-[var(--border)] bg-[var(--panel-bg)] px-4 py-3 text-base text-[var(--panel-text)] outline-none placeholder:text-[var(--muted-text)] focus:border-[var(--violet)]"
         placeholder="Coller le code de la carte"
         autoComplete="off"
         inputMode="text"

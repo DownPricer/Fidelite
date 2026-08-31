@@ -1,85 +1,84 @@
 import Link from "next/link";
-import { BrandMark, Card } from "@/components/ui";
+import { BrandMark } from "@/components/ui";
 
 export default function HomePage() {
   return (
-    <main className="min-h-dvh bg-[var(--page-bg)] text-[var(--body-text)]">
-      <div className="mx-auto flex max-w-6xl flex-col gap-16 px-6 py-16 lg:flex-row lg:items-center lg:justify-between">
+    <main className="obsidian-scene relative min-h-dvh overflow-hidden text-[var(--ink-soft)]">
+      <div className="relative mx-auto flex max-w-6xl flex-col gap-12 px-6 py-14 lg:min-h-dvh lg:flex-row lg:items-center lg:justify-between lg:gap-16 lg:py-16">
         <section className="max-w-xl">
-          <BrandMark className="mb-10" />
-          <h1 className="text-4xl font-black tracking-tight sm:text-5xl">
-            La fidélité claire, sans application à installer.
+          <BrandMark className="mb-8" />
+          <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-[var(--violet-bright)]">
+            Portefeuille universel
+          </p>
+          <h1 className="mt-3 text-4xl font-black tracking-tight text-[var(--ink)] sm:text-5xl">
+            Votre collection de cartes, en version premium.
           </h1>
-          <p className="mt-4 text-lg leading-relaxed text-[var(--muted-text)]">
-            Vos clients scannent un QR simple au comptoir, présentent leur carte digitale à chaque visite
-            et gagnent automatiquement des points vers leur récompense.
+          <p className="mt-4 text-lg leading-relaxed text-[var(--muted-strong)]">
+            Fife Life rassemble votre identité, votre QR universel et vos cartes commerçants dans une expérience
+            lumineuse, profonde et désirable.
           </p>
           <div className="mt-10 flex flex-wrap gap-3">
-            <Link
-              href="/c/cafe-demo"
-              className="inline-flex items-center justify-center rounded-xl bg-[var(--teal)] px-6 py-3.5 text-sm font-bold tracking-tight text-white shadow-sm shadow-[var(--teal)]/20 hover:bg-[var(--teal-hover)] active:scale-[0.98]"
-            >
-              Voir l’exemple Café Demo
+            <Link href="/carte" className="glass-cta inline-flex min-w-[220px] justify-center px-6 py-3.5 text-sm">
+              Ouvrir mon wallet Fife Life
             </Link>
             <Link
               href="/connexion"
-              className="inline-flex items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--panel-bg)] px-6 py-3.5 text-sm font-bold tracking-tight text-[var(--panel-text)] shadow-sm hover:bg-[var(--page-bg)] active:scale-[0.98]"
+              className="inline-flex items-center justify-center rounded-full border border-white/12 bg-white/5 px-6 py-3.5 text-sm font-semibold text-[var(--ink)] hover:bg-white/8"
             >
-              Accéder à mon espace client
+              Se connecter
             </Link>
           </div>
-          <p className="mt-8 text-sm font-medium text-[var(--muted-text)]">
-            Commerçants :{" "}
-            <Link href="/app/connexion" className="text-[var(--teal)] underline underline-offset-4">
-              app-fidelite.sitereadyshd.fr
-            </Link>
-            {" · "}
-            Super-admin :{" "}
-            <Link href="/admin/connexion" className="text-[var(--teal)] underline underline-offset-4">
-              admin-fidelite.sitereadyshd.fr
-            </Link>
+          <p className="mt-8 max-w-md text-sm text-[var(--muted)]">
+            Un seul QR en caisse. Des points globaux Bronze, Silver, Gold et Diamond. Des cartes qui donnent envie
+            d&apos;être collectionnées.
           </p>
         </section>
 
-        <section className="flex-1 max-w-md">
-          <Card className="border border-[var(--border)] shadow-premium">
-            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--muted-text)]">
-              Exemple temps réel
-            </p>
-            <h2 className="mt-3 text-xl font-black tracking-tight text-[var(--panel-text)]">Une visite = 1 point</h2>
-            <p className="mt-2 text-sm text-[var(--muted-text)]">
-              10 points = une boisson offerte. Aucune carte papier à tamponner, aucune app à installer.
-            </p>
-            <div className="mt-6 grid gap-3 text-sm">
-              <div className="flex items-center gap-3">
-                <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-[var(--teal)] text-xs font-bold text-white">
-                  1
-                </span>
-                <div>
-                  <p className="font-semibold text-[var(--panel-text)]">Votre client scanne ou touche le badge au comptoir.</p>
-                  <p className="mt-0.5 text-xs text-[var(--muted-text)]">Il crée sa carte en quelques secondes.</p>
-                </div>
+        <section className="landing-deck flex flex-1 items-center justify-center">
+          <div className="deck-halo absolute left-1/2 top-1/2 h-80 w-80 -translate-x-1/2 -translate-y-1/2" />
+          <div
+            className="landing-card"
+            style={{
+              left: "8%",
+              top: "18%",
+              transform: "rotate(-10deg)",
+              opacity: 0.55,
+              background:
+                "linear-gradient(145deg, rgba(112,133,255,0.55) 0%, rgba(40,30,80,0.95) 100%)",
+            }}
+          />
+          <div
+            className="landing-card"
+            style={{
+              left: "16%",
+              top: "10%",
+              transform: "rotate(7deg)",
+              opacity: 0.7,
+              background:
+                "linear-gradient(145deg, rgba(231,116,255,0.45) 0%, rgba(50,25,90,0.95) 100%)",
+            }}
+          />
+          <div
+            className="landing-card prism-card z-10"
+            style={{
+              left: "50%",
+              top: "22%",
+              transform: "translateX(-50%) rotate(-3deg)",
+              ["--prism-from" as never]: "#11131b",
+              ["--prism-to" as never]: "#aeb5cd",
+              ["--prism-halo" as never]: "rgba(166,139,255,0.6)",
+            }}
+          >
+            <div className="flex h-full flex-col justify-between p-6">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-white/70">Fife Life</p>
+                <p className="mt-1 text-2xl font-black text-white">Silver</p>
               </div>
-              <div className="flex items-center gap-3">
-                <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-[var(--teal)] text-xs font-bold text-white">
-                  2
-                </span>
-                <div>
-                  <p className="font-semibold text-[var(--panel-text)]">À chaque visite, vous scannez son QR ou sa carte.</p>
-                  <p className="mt-0.5 text-xs text-[var(--muted-text)]">Le passage est ajouté instantanément en caisse.</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-[var(--teal)] text-xs font-bold text-white">
-                  3
-                </span>
-                <div>
-                  <p className="font-semibold text-[var(--panel-text)]">Dès que la récompense est prête, le client l'utilise.</p>
-                  <p className="mt-0.5 text-xs text-[var(--muted-text)]">Tout est tracé dans votre espace commerçant.</p>
-                </div>
-              </div>
+              <p className="text-3xl font-black tabular-nums text-white">
+                180 <span className="text-sm font-semibold text-white/70">pts</span>
+              </p>
             </div>
-          </Card>
+          </div>
         </section>
       </div>
     </main>

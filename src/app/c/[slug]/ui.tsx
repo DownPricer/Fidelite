@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { Alert, Button, Card, Field, Input } from "@/components/ui";
+import { Alert, Button, Field, Input } from "@/components/ui";
 
 type Merchant = {
   name: string;
@@ -54,78 +54,85 @@ export function MerchantPublic({
   }
 
   return (
-    <main className="min-h-dvh bg-[var(--page-bg)] text-[var(--body-text)]">
+    <main className="min-h-dvh bg-[var(--void)] text-[var(--ink-soft)]">
       <div className="mx-auto max-w-6xl px-6 py-12 lg:py-24">
         <div className="grid gap-16 lg:grid-cols-2 lg:items-center">
-          {/* Section Information */}
           <div className="flex flex-col items-center text-center lg:items-start lg:text-left">
             <header className="mb-8">
               {merchant.logoUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={merchant.logoUrl} alt="" className="mx-auto mb-6 h-20 w-20 rounded-2xl border border-border bg-white object-cover shadow-sm lg:mx-0" />
+                <img
+                  src={merchant.logoUrl}
+                  alt=""
+                  className="mx-auto mb-6 h-20 w-20 rounded-2xl border border-white/10 object-cover lg:mx-0"
+                />
               ) : (
-                <div className="mx-auto mb-6 grid h-20 w-20 place-items-center rounded-2xl bg-primary/10 text-3xl font-bold text-primary lg:mx-0">
+                <div
+                  className="mx-auto mb-6 grid h-20 w-20 place-items-center rounded-2xl text-3xl font-bold text-[var(--ink)] lg:mx-0"
+                  style={{ backgroundColor: merchant.primaryColor }}
+                >
                   {merchant.name.slice(0, 1)}
                 </div>
               )}
-              <h1 className="text-4xl font-black tracking-tighter lg:text-6xl">{merchant.name}</h1>
-              <p className="mt-4 text-xl font-medium text-[var(--muted-text)]">Votre fidélité enfin récompensée.</p>
+              <h1 className="text-4xl font-black tracking-tighter text-[var(--ink)] lg:text-6xl">{merchant.name}</h1>
+              <p className="mt-4 text-xl font-medium text-[var(--muted-strong)]">Rejoignez ce commerce avec Fife Life.</p>
             </header>
 
-            <div className="space-y-6">
-              <div className="flex items-center gap-4 rounded-2xl border border-[var(--border)] bg-[var(--panel-bg)] p-6 text-[var(--panel-text)] shadow-premium">
-                <div className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-emerald-50 text-emerald-600">
+            <div className="w-full space-y-6">
+              <div className="flex items-center gap-4 rounded-2xl border border-white/10 bg-[var(--surface)] p-6">
+                <div className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-[var(--violet)]/20 text-[var(--violet-bright)]">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-6 w-6">
                     <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                 </div>
                 <div className="text-left">
-                  <p className="text-sm font-bold uppercase tracking-wider text-[var(--muted-text)]">L'offre</p>
-                  <p className="text-lg font-bold text-[var(--panel-text)]">{merchant.visitsRequired} passages = {merchant.rewardLabel}</p>
+                  <p className="text-sm font-bold uppercase tracking-wider text-[var(--muted)]">L&apos;offre</p>
+                  <p className="text-lg font-bold text-[var(--ink)]">
+                    {merchant.visitsRequired} passages = {merchant.rewardLabel}
+                  </p>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                 {[
-                  { step: "1", label: "Je m’inscris", icon: "M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" },
-                  { step: "2", label: "Je montre mon QR", icon: "M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" },
-                  { step: "3", label: "Je gagne mes points", icon: "M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" },
+                  { step: "1", label: "Je m’inscris" },
+                  { step: "2", label: "Je montre mon QR" },
+                  { step: "3", label: "Je gagne mes points" },
                 ].map((item) => (
                   <div key={item.step} className="flex flex-col items-center gap-2 text-center">
-                    <div className="grid h-10 w-10 place-items-center rounded-xl bg-[var(--page-bg)] text-[var(--muted-text)]">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-5 w-5">
-                        <path d={item.icon} strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
+                    <div className="grid h-10 w-10 place-items-center rounded-xl bg-[var(--surface)] text-[var(--violet-bright)]">
+                      {item.step}
                     </div>
-                    <span className="text-xs font-bold uppercase text-[var(--muted-text)]">{item.label}</span>
+                    <span className="text-xs font-bold uppercase text-[var(--muted)]">{item.label}</span>
                   </div>
                 ))}
               </div>
             </div>
           </div>
 
-          {/* Section Formulaire */}
-          <div className="relative">
+          <div>
             {alreadyMember ? (
-              <Card className="text-center">
-                <div className="mx-auto mb-6 grid h-16 w-16 place-items-center rounded-full bg-emerald-50 text-emerald-600">
+              <section className="rounded-[28px] border border-white/10 bg-[var(--surface)] p-8 text-center">
+                <div className="mx-auto mb-6 grid h-16 w-16 place-items-center rounded-full bg-[var(--violet)]/20 text-[var(--violet-bright)]">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-8 w-8">
                     <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                 </div>
-                <h2 className="text-2xl font-bold">Heureux de vous revoir !</h2>
-                <p className="mt-2 text-[var(--muted-text)]">Bonjour {firstName}, votre carte est prête à être utilisée.</p>
+                <h2 className="text-2xl font-bold text-[var(--ink)]">Heureux de vous revoir</h2>
+                <p className="mt-2 text-[var(--muted-strong)]">Bonjour {firstName}, votre carte est prête.</p>
                 <Link
                   href={`/carte/${merchant.slug}`}
-                  className="mt-8 block w-full rounded-xl bg-[var(--teal)] py-4 text-center font-bold text-white shadow-lg shadow-[var(--teal)]/20 transition-all hover:bg-[var(--teal-hover)] active:scale-[0.98]"
+                  className="mt-8 block w-full rounded-xl bg-[var(--violet)] py-4 text-center font-bold text-[var(--ink)]"
                 >
                   Accéder à ma carte
                 </Link>
-              </Card>
+              </section>
             ) : signedIn ? (
-              <Card className="text-center">
-                <h2 className="text-2xl font-bold">Rejoignez-nous</h2>
-                <p className="mt-2 text-[var(--muted-text)]">Bonjour {firstName}, rejoignez {merchant.name} en un clic.</p>
+              <section className="rounded-[28px] border border-white/10 bg-[var(--surface)] p-8 text-center">
+                <h2 className="text-2xl font-bold text-[var(--ink)]">Rejoignez-nous</h2>
+                <p className="mt-2 text-[var(--muted-strong)]">
+                  Bonjour {firstName}, ajoutez {merchant.name} à votre portefeuille.
+                </p>
                 <Button
                   className="mt-8 w-full py-4"
                   onClick={async () => {
@@ -139,11 +146,11 @@ export function MerchantPublic({
                 >
                   Ajouter ma carte fidélité
                 </Button>
-              </Card>
+              </section>
             ) : (
-              <Card>
-                <h2 className="text-2xl font-bold tracking-tight">Créer ma carte</h2>
-                <p className="mt-1 text-sm italic text-[var(--muted-text)]">Gratuit et prêt en quelques secondes.</p>
+              <section className="rounded-[28px] border border-white/10 bg-[var(--surface)] p-8">
+                <h2 className="text-2xl font-bold tracking-tight text-[var(--ink)]">Créer ma carte</h2>
+                <p className="mt-1 text-sm text-[var(--muted)]">Gratuit, prêt en quelques secondes.</p>
                 <form className="mt-8 space-y-6" onSubmit={onSubmit}>
                   {error ? <Alert>{error}</Alert> : null}
                   <Field label="Prénom">
@@ -155,11 +162,16 @@ export function MerchantPublic({
                   <Field label="Mot de passe" hint="Sécurisé, 8 caractères minimum.">
                     <Input name="password" type="password" autoComplete="new-password" required minLength={8} />
                   </Field>
-                  <label className="group flex cursor-pointer items-start gap-3 text-sm text-[var(--muted-text)]">
-                    <input name="privacyConsent" type="checkbox" required className="mt-1 h-4 w-4 rounded border-[var(--border)] text-[var(--teal)] focus:ring-[var(--teal)]/20" />
-                    <span className="transition-colors group-hover:text-[var(--panel-text)]">
+                  <label className="group flex cursor-pointer items-start gap-3 text-sm text-[var(--muted)]">
+                    <input
+                      name="privacyConsent"
+                      type="checkbox"
+                      required
+                      className="mt-1 h-4 w-4 rounded border-[var(--stroke)] bg-[var(--surface-raised)] text-[var(--violet)] focus:ring-[var(--violet)]/20"
+                    />
+                    <span className="transition-colors group-hover:text-[var(--ink)]">
                       J’accepte la{" "}
-                      <Link href="/confidentialite" className="font-bold text-[var(--teal)] hover:underline">
+                      <Link href="/confidentialite" className="font-bold text-[var(--violet-bright)] hover:underline">
                         politique de confidentialité
                       </Link>
                       .
@@ -169,13 +181,13 @@ export function MerchantPublic({
                     {pending ? "Création en cours..." : "Obtenir ma carte maintenant"}
                   </Button>
                 </form>
-                <p className="mt-6 text-center text-sm font-medium text-[var(--muted-text)]">
+                <p className="mt-6 text-center text-sm font-medium text-[var(--muted)]">
                   Déjà membre ?{" "}
-                  <Link href="/connexion" className="font-bold text-[var(--panel-text)] hover:underline">
+                  <Link href="/connexion" className="font-bold text-[var(--ink)] hover:underline">
                     Se connecter
                   </Link>
                 </p>
-              </Card>
+              </section>
             )}
           </div>
         </div>

@@ -7,105 +7,103 @@ import { Button } from "@/components/ui";
 export function MerchantHome({
   firstName,
   merchantName,
+  demoStats,
 }: {
   firstName: string;
   role: string;
   merchantName: string;
   canAdmin: boolean;
+  demoStats?: {
+    customers: number;
+    visitsToday: number;
+    rewards: number;
+    employees: number;
+  };
 }) {
   const [stats, setStats] = useState<{
     customers: number;
     visitsToday: number;
     rewards: number;
     employees: number;
-  } | null>(null);
-  const [walletStatus, setWalletStatus] = useState<string>("");
+  } | null>(demoStats ?? null);
 
   useEffect(() => {
+    if (demoStats) return;
     void fetch("/api/merchant/dashboard")
       .then((res) => res.json())
-      .then((data) => {
-        setStats(data.stats);
-        setWalletStatus(data.walletStatus === "ready" ? "Google Wallet actif" : "Google Wallet : bientôt disponible");
-      })
+      .then((data) => setStats(data.stats))
       .catch(() => undefined);
-  }, []);
+  }, [demoStats]);
 
   async function logout() {
     await fetch("/api/auth/logout", { method: "POST" });
     window.location.href = "/app/connexion";
   }
 
+  const metrics = stats
+    ? [
+        { label: "Clients actifs", value: stats.customers },
+        { label: "Passages (24h)", value: stats.visitsToday },
+        { label: "Récompenses", value: stats.rewards },
+        { label: "Employés", value: stats.employees },
+      ]
+    : null;
+
   return (
-    <main className="px-6 py-8 lg:px-12 lg:py-12">
-      <header className="mb-10 flex flex-col items-start justify-between gap-6 sm:flex-row sm:items-center">
+    <main className="obsidian-scene min-h-dvh px-6 py-8 lg:px-12 lg:py-12">
+      <header className="mb-8 flex flex-col items-start justify-between gap-6 sm:flex-row sm:items-center">
         <div>
-          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--muted-text)]">{merchantName}</p>
-          <h1 className="mt-1 text-3xl font-black tracking-tight text-[var(--panel-text)] lg:text-4xl">Bonjour, {firstName}</h1>
-          <p className="text-sm font-medium text-[var(--muted-text)]">Administrateur</p>
+          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--muted)]">{merchantName}</p>
+          <h1 className="mt-1 text-3xl font-black tracking-tight text-[var(--ink)] lg:text-4xl">Bonjour, {firstName}</h1>
+          <p className="text-sm font-medium text-[var(--muted)]">Vue d&apos;ensemble fidélité</p>
         </div>
-        <Button variant="secondary" onClick={() => void logout()} className="h-10 px-4">
-          Déconnexion
-        </Button>
+        <div className="flex gap-3">
+          <Link href="/app/caisse" className="glass-cta px-5 py-2.5 text-sm">
+            Ouvrir la caisse
+          </Link>
+          <Button variant="secondary" onClick={() => void logout()} className="h-10 px-4">
+            Déconnexion
+          </Button>
+        </div>
       </header>
 
-      <section className="mb-10 overflow-hidden rounded-2xl bg-[var(--teal)] p-8 text-white shadow-xl shadow-[var(--teal)]/25 lg:p-10">
-        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/70">Action principale</p>
-        <h2 className="mt-2 text-3xl font-black tracking-tight lg:text-4xl">Prêt à enregistrer une visite ?</h2>
-        <p className="mt-3 max-w-xl text-base font-medium text-white/85">
-          Scannez le QR de la carte client pour créditer un passage ou valider une récompense.
-        </p>
-        <div className="mt-8 flex flex-col gap-4 sm:flex-row sm:items-center">
-          <Link
-            href="/app/caisse"
-            className="inline-flex items-center justify-center gap-3 rounded-2xl bg-[var(--panel-bg)] px-8 py-5 text-lg font-black text-[var(--teal)] shadow-lg transition-transform hover:scale-[1.01] active:scale-[0.99]"
-          >
-            {scanIcon}
-            Scanner une carte
-          </Link>
-          <Link
-            href="/app/caisse"
-            className="text-sm font-bold text-white/80 underline-offset-4 hover:text-white hover:underline"
-          >
-            Ouvrir la caisse →
-          </Link>
-        </div>
-      </section>
-
-      {stats ? (
-        <section className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--border)] lg:grid-cols-4">
-          {[
-            { label: "Clients", value: stats.customers },
-            { label: "Passages (24h)", value: stats.visitsToday },
-            { label: "Récompenses", value: stats.rewards },
-            { label: "Employés", value: stats.employees },
-          ].map((stat) => (
-            <div key={stat.label} className="bg-[var(--panel-bg)] px-6 py-6 text-[var(--panel-text)]">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted-text)]">{stat.label}</p>
-              <p className="mt-2 text-3xl font-black tracking-tight text-[var(--panel-text)]">{stat.value}</p>
+      {metrics ? (
+        <section className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+          {metrics.map((stat) => (
+            <div key={stat.label} className="metric-card px-5 py-5">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted)]">{stat.label}</p>
+              <p className="mt-2 text-3xl font-black tracking-tight text-[var(--ink)]">{stat.value}</p>
             </div>
           ))}
         </section>
       ) : (
-        <div className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--border)] lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-24 animate-pulse bg-[var(--panel-bg)]" />
+            <div key={i} className="metric-card h-24 animate-pulse" />
           ))}
         </div>
       )}
 
-      {walletStatus ? (
-        <div className="mt-8 flex items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-emerald-800">
-          <div className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
-          <p className="text-xs font-bold uppercase tracking-widest">{walletStatus}</p>
+      <section className="glass-panel mt-8 p-6 lg:p-8">
+        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--violet-bright)]">Activité récente</p>
+        <h2 className="mt-2 text-xl font-black text-[var(--ink)]">Derniers passages et récompenses</h2>
+        <p className="mt-2 max-w-2xl text-sm text-[var(--muted-strong)]">
+          Consultez vos clients, ajustez les points et suivez l&apos;usage des récompenses depuis les sections Clients,
+          Équipe et Réglages.
+        </p>
+        <div className="mt-6 grid gap-3 lg:grid-cols-3">
+          {[
+            ["Clients", "/app/clients", "Liste et ajustements"],
+            ["Équipe", "/app/employes", "Accès caisse et rôles"],
+            ["Réglages", "/app/parametres", "Programme et identité"],
+          ].map(([label, href, hint]) => (
+            <Link key={href} href={href} className="metric-card block p-4 transition-transform hover:-translate-y-0.5">
+              <p className="font-bold text-[var(--ink)]">{label}</p>
+              <p className="mt-1 text-xs text-[var(--muted)]">{hint}</p>
+            </Link>
+          ))}
         </div>
-      ) : null}
+      </section>
     </main>
   );
 }
-
-const scanIcon = (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-6 w-6">
-    <path d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" strokeLinecap="round" strokeLinejoin="round" />
-  </svg>
-);

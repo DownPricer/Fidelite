@@ -4,7 +4,7 @@ function read(name: string, fallback = "") {
 
 export const env = {
   nodeEnv: read("NODE_ENV", "development"),
-  appName: read("APP_NAME", "FifeLite"),
+  appName: read("APP_NAME", "Fife Life"),
   appUrl: read("APP_URL", "http://localhost:3000"),
   customerOrigin: read("CUSTOMER_ORIGIN", "https://fidelite.sitereadyshd.fr"),
   appOrigin: read("APP_ORIGIN", "https://app-fidelite.sitereadyshd.fr"),
@@ -17,6 +17,8 @@ export const env = {
   qrTtlSeconds: Number(read("QR_TTL_SECONDS", "60")),
   sessionDays: Number(read("SESSION_DAYS", "30")),
   sessionCookie: read("SESSION_COOKIE_NAME", "fifelite_session"),
+  // Nombre de points Fife Life attribués lorsqu'une récompense commerçant est validée.
+  fifeLifePointsPerReward: Number(read("FIFE_LIFE_POINTS_PER_REWARD", "12")),
   googleWalletIssuerId: read("GOOGLE_WALLET_ISSUER_ID"),
   googleServiceAccountEmail: read("GOOGLE_SERVICE_ACCOUNT_EMAIL"),
   googleServiceAccountPrivateKey: read("GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY"),

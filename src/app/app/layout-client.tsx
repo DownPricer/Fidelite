@@ -11,18 +11,10 @@ export default function DashboardLayout({ children, admin }: { children: React.R
   const showShell = !isCaisse && !isLogin;
 
   return (
-    <div className="min-h-dvh bg-[var(--app-shell)]">
+    <div className="obsidian-scene min-h-dvh text-[var(--ink-soft)]">
       {showShell && <AppNav admin={admin} />}
       <div className={cn(showShell && "lg:pl-64")}>
-        {showShell ? (
-          <div className="mx-auto max-w-7xl px-4 py-4 pb-24 lg:px-8 lg:py-8 lg:pb-8">
-            <div className="min-h-[calc(100dvh-2rem)] rounded-2xl border border-[var(--border)] bg-[var(--panel-bg)] text-[var(--panel-text)] shadow-sm">
-              {children}
-            </div>
-          </div>
-        ) : (
-          children
-        )}
+        {showShell ? <div className="min-h-dvh pb-24 lg:pb-0">{children}</div> : children}
       </div>
     </div>
   );

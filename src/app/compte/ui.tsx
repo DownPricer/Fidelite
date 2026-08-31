@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { Alert, BrandMark, Button, Card, Field } from "@/components/ui";
+import { Alert, BrandMark, Button, Field } from "@/components/ui";
 
 export function AccountPanel({ firstName, email }: { firstName: string; email: string }) {
   const [done, setDone] = useState(false);
@@ -30,55 +30,51 @@ export function AccountPanel({ firstName, email }: { firstName: string; email: s
   }
 
   return (
-    <main className="min-h-dvh bg-[var(--page-bg)] text-[var(--body-text)]">
+    <main className="min-h-dvh bg-[var(--void)] text-[var(--ink-soft)]">
       <div className="mx-auto max-w-3xl px-6 py-10">
-        <header className="flex items-center justify-between gap-6 border-b border-border/60 pb-6">
+        <header className="flex items-center justify-between gap-6 border-b border-white/10 pb-6">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--muted-text)]">Mon compte</p>
-            <h1 className="mt-1 text-2xl font-black tracking-tight text-[var(--panel-text)]">{firstName}</h1>
-            <p className="text-sm text-[var(--muted-text)]">{email}</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--muted)]">Paramètres</p>
+            <h1 className="mt-1 text-2xl font-black tracking-tight text-[var(--ink)]">{firstName}</h1>
+            <p className="text-sm text-[var(--muted)]">{email}</p>
           </div>
           <div className="hidden sm:block">
             <BrandMark />
           </div>
         </header>
 
-        <section className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,2fr)_minmax(0,1.5fr)]">
-          {/* Profil & actions */}
-          <Card>
+        <section className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1.5fr)]">
+          <section className="rounded-[24px] border border-white/10 bg-[var(--surface)] p-8">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--muted-text)]">Profil</p>
-                <p className="mt-2 text-lg font-semibold text-[var(--panel-text)]">{firstName}</p>
-                <p className="text-sm text-[var(--muted-text)]">{email}</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--muted)]">Profil</p>
+                <p className="mt-2 text-lg font-semibold text-[var(--ink)]">{firstName}</p>
+                <p className="text-sm text-[var(--muted)]">{email}</p>
               </div>
-              <Link href="/carte" className="text-xs font-semibold text-[var(--teal)] underline underline-offset-4">
-                Voir ma carte
+              <Link href="/carte" className="text-xs font-semibold text-[var(--violet-bright)] underline underline-offset-4">
+                Voir mon portefeuille
               </Link>
             </div>
 
             <div className="mt-6 grid gap-3 sm:grid-cols-2">
-              <Button
-                variant="secondary"
-                onClick={() => void logout()}
-                className="w-full"
-              >
+              <Button variant="secondary" onClick={() => void logout()} className="w-full">
                 Se déconnecter
               </Button>
               <Link
                 href="/mot-de-passe"
-                className="inline-flex items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--panel-bg)] px-4 py-3 text-sm font-semibold text-[var(--panel-text)] hover:bg-[var(--page-bg)]"
+                className="inline-flex items-center justify-center rounded-xl border border-[var(--stroke)] bg-[var(--surface-raised)] px-4 py-3 text-sm font-semibold text-[var(--ink)] hover:bg-[var(--surface-strong)]"
               >
                 Changer mon mot de passe
               </Link>
             </div>
-          </Card>
+          </section>
 
-          {/* Zone suppression – discrète et séparée */}
-          <Card className="border-dashed">
-            <h2 className="text-sm font-semibold uppercase tracking-[0.18em] text-[var(--muted-text)]">Suppression du compte</h2>
-            <p className="mt-2 text-sm text-[var(--muted-text)]">
-              Votre demande sera transmise à FifeLite. Nous traiterons la suppression de vos données dans les meilleurs délais.
+          <section className="rounded-[24px] border border-white/10 bg-[var(--surface)] p-8">
+            <h2 className="text-sm font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">
+              Suppression du compte
+            </h2>
+            <p className="mt-2 text-sm text-[var(--muted-strong)]">
+              Votre demande sera transmise à Fife Life. Nous traiterons la suppression de vos données dans les meilleurs délais.
             </p>
             {done ? (
               <div className="mt-4">
@@ -90,7 +86,7 @@ export function AccountPanel({ firstName, email }: { firstName: string; email: s
                 <Field label="Message (optionnel)">
                   <textarea
                     name="message"
-                    className="min-h-24 w-full rounded-xl border border-[var(--border)] px-4 py-3 text-sm text-[var(--panel-text)] outline-none focus:border-[var(--teal)] focus:ring-4 focus:ring-[var(--teal)]/10"
+                    className="min-h-24 w-full rounded-xl border border-[var(--stroke)] bg-[var(--surface-raised)] px-4 py-3 text-sm text-[var(--ink)] outline-none focus:border-[var(--violet)] focus:ring-4 focus:ring-[var(--violet)]/20"
                   />
                 </Field>
                 <Button variant="danger" className="w-full">
@@ -98,7 +94,7 @@ export function AccountPanel({ firstName, email }: { firstName: string; email: s
                 </Button>
               </form>
             )}
-          </Card>
+          </section>
         </section>
       </div>
     </main>

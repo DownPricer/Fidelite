@@ -34,15 +34,15 @@ export function StaffLogin({ title, nextPath }: { title: string; nextPath: strin
   }
 
   return (
-    <main className="flex min-h-dvh flex-col items-center justify-center bg-[var(--navy)] px-6 py-12 text-[var(--navy-text)] lg:py-24">
+    <main className="obsidian-scene flex min-h-dvh flex-col items-center justify-center px-6 py-12 text-[var(--ink)] lg:py-24">
       <div className="w-full max-w-[440px]">
         <div className="mb-10 flex flex-col items-center text-center">
-          <BrandMark className="mb-8 scale-110 [&_span]:text-[var(--navy-text)]" />
-          <h1 className="text-3xl font-black tracking-tight text-[var(--navy-text)]">{title}</h1>
-          <p className="mt-2 font-medium italic text-[var(--navy-text)]/80">Accédez à votre espace de gestion.</p>
+          <BrandMark className="mb-8 scale-110" />
+          <h1 className="text-3xl font-black tracking-tight text-[var(--ink)]">{title}</h1>
+          <p className="mt-2 font-medium italic text-[var(--muted-strong)]">Accédez à votre espace de gestion.</p>
         </div>
 
-        <Card className="border border-[var(--border)] p-10 shadow-premium">
+        <Card className="glass-panel border-0 p-10 shadow-none">
           <form className="space-y-6" onSubmit={onSubmit}>
             {error ? <Alert>{error}</Alert> : null}
             <Field label="Adresse e-mail">
@@ -51,14 +51,14 @@ export function StaffLogin({ title, nextPath }: { title: string; nextPath: strin
             <Field label="Mot de passe">
               <Input name="password" type="password" autoComplete="current-password" required placeholder="••••••••" />
             </Field>
-            <Button className="w-full py-4 text-base" disabled={pending}>
+            <Button type="submit" className="w-full py-4 text-base" disabled={pending}>
               {pending ? "Connexion en cours..." : "Accéder à mon compte"}
             </Button>
           </form>
         </Card>
         
-        <p className="mt-10 text-center text-xs font-bold uppercase tracking-[0.2em] text-[var(--navy-text)]/50">
-          FifeLite
+        <p className="mt-10 text-center text-xs font-bold uppercase tracking-[0.2em] text-[var(--muted)]">
+          Fife Life
         </p>
       </div>
     </main>

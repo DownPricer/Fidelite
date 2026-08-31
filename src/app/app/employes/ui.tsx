@@ -11,8 +11,15 @@ type Employee = {
   isActive: boolean;
 };
 
-export function EmployeesPanel() {
-  const [employees, setEmployees] = useState<Employee[]>([]);
+export function EmployeesPanel({ demo = false }: { demo?: boolean }) {
+  const [employees, setEmployees] = useState<Employee[]>(
+    demo
+      ? [
+          { id: "e1", firstName: "Sam", lastName: "Durand", email: "employe@cafe-demo.local", isActive: true },
+          { id: "e2", firstName: "Noa", lastName: "Petit", email: "noa@cafe-demo.local", isActive: true },
+        ]
+      : [],
+  );
   const [max, setMax] = useState(10);
   const [error, setError] = useState<string | null>(null);
   const [temp, setTemp] = useState<string | null>(null);
@@ -27,8 +34,9 @@ export function EmployeesPanel() {
   }
 
   useEffect(() => {
+    if (demo) return;
     void load();
-  }, []);
+  }, [demo]);
 
   async function create(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -66,9 +74,9 @@ export function EmployeesPanel() {
 
   return (
     <div className="grid gap-10 lg:grid-cols-3">
-      <section className="rounded-2xl border border-border p-6 lg:sticky lg:top-28 lg:self-start">
-        <h3 className="mb-2 text-xl font-bold tracking-tight">Nouvel employé</h3>
-        <p className="mb-6 text-xs font-bold uppercase tracking-widest text-muted">
+      <section className="rounded-2xl border border-white/10 bg-[var(--surface)] p-6 lg:sticky lg:top-8 lg:self-start">
+        <h3 className="mb-2 text-xl font-bold tracking-tight text-[var(--ink)]">Nouvel employé</h3>
+        <p className="mb-6 text-xs font-bold uppercase tracking-widest text-[var(--muted)]">
           Limite : {employees.filter((e) => e.isActive).length}/{max}
         </p>
 
@@ -102,29 +110,31 @@ export function EmployeesPanel() {
           </Alert>
         ) : null}
 
-        <div className="divide-y divide-border rounded-2xl border border-border">
+        <div className="divide-y divide-white/10 rounded-2xl border border-white/10 bg-[var(--surface)]">
           {employees.map((employee) => (
             <div key={employee.id} className="flex flex-col justify-between gap-6 p-6 sm:flex-row sm:items-center">
               <div className="flex items-center gap-4">
                 <div
                   className={cn(
                     "grid h-12 w-12 shrink-0 place-items-center rounded-xl text-lg font-black",
-                    employee.isActive ? "bg-primary/10 text-primary" : "bg-slate-100 text-slate-400",
+                    employee.isActive
+                      ? "bg-[var(--violet)]/20 text-[var(--violet-bright)]"
+                      : "bg-[var(--surface-strong)] text-[var(--muted)]",
                   )}
                 >
                   {employee.firstName.slice(0, 1)}
                 </div>
                 <div>
-                  <h4 className="text-lg font-black leading-none tracking-tight">
+                  <h4 className="text-lg font-black leading-none tracking-tight text-[var(--ink)]">
                     {employee.firstName} {employee.lastName}
                   </h4>
-                  <p className="mt-1 text-xs font-bold uppercase tracking-widest text-muted">{employee.email}</p>
+                  <p className="mt-1 text-xs font-bold uppercase tracking-widest text-[var(--muted)]">{employee.email}</p>
                   <div
                     className={cn(
                       "mt-3 inline-flex items-center gap-2 rounded-full px-2.5 py-0.5 text-[10px] font-black uppercase tracking-widest",
                       employee.isActive
-                        ? "border border-emerald-100 bg-emerald-50 text-emerald-600"
-                        : "border border-rose-100 bg-rose-50 text-rose-600",
+                        ? "border border-[var(--positive)]/30 bg-[var(--positive)]/10 text-[var(--positive)]"
+                        : "border border-[var(--danger)]/30 bg-[var(--danger)]/10 text-[var(--danger)]",
                     )}
                   >
                     {employee.isActive ? "Actif" : "Désactivé"}
@@ -137,11 +147,7 @@ export function EmployeesPanel() {
                   Réinitialiser
                 </Button>
                 {employee.isActive ? (
-                  <Button
-                    variant="danger"
-                    className="h-10 border-none bg-rose-50 px-4 text-xs font-bold text-rose-600 shadow-none hover:bg-rose-100"
-                    onClick={() => void disable(employee.id)}
-                  >
+                  <Button variant="danger" className="h-10 px-4 text-xs font-bold" onClick={() => void disable(employee.id)}>
                     Désactiver
                   </Button>
                 ) : null}
