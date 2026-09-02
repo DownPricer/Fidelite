@@ -241,6 +241,76 @@ body {
   box-shadow: 0 0 14px rgba(133, 87, 255, 0.55);
 }
 
+/* Styles glassy/transparent - gris fin */
+.avatar-orb-glassy {
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 
+    0 2px 8px rgba(0, 0, 0, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.brand-pill-glassy {
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 
+    0 2px 6px rgba(0, 0, 0, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.settings-btn-glassy {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 
+    0 2px 6px rgba(0, 0, 0, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.6);
+  transition: all 0.2s ease;
+}
+
+.settings-btn-glassy:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.15);
+  transform: scale(1.05);
+}
+
+.wallet-chevron-btn {
+  color: rgba(255, 255, 255, 0.3);
+  transition: all 0.3s ease;
+  cursor: grab;
+}
+
+.wallet-chevron-btn:active {
+  cursor: grabbing;
+}
+
+.wallet-chevron-btn:hover {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.wallet-chevron {
+  animation: chevron-bounce 2s ease-in-out infinite;
+}
+
+.wallet-chevron.rotate-180 {
+  animation: none;
+}
+
+@keyframes chevron-bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(5px);
+  }
+}
+
 .avatar-orb {
   border-radius: 999px;
   background: linear-gradient(145deg, #f0c878 0%, #8a4a18 100%);

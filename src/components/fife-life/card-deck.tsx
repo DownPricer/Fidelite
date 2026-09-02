@@ -200,19 +200,6 @@ export function CardDeck({
           );
         })}
       </motion.div>
-      <div className="absolute inset-x-0 bottom-2 flex justify-center gap-1.5">
-        {deck.map((item, i) => (
-          <button
-            key={item.kind === "global" ? "dot-global" : item.card.id}
-            type="button"
-            aria-label={item.kind === "global" ? "Carte Fife Life" : item.card.name}
-            className={`deck-dot h-1.5 rounded-full transition-all ${
-              i === index ? "w-5 is-active" : "w-1.5 bg-white/20"
-            }`}
-            onClick={() => snapTo(i)}
-          />
-        ))}
-      </div>
     </div>
   );
 }

@@ -218,10 +218,10 @@ export function WalletHome({
   return (
     <main className="wallet-shell obsidian-scene mx-auto flex max-w-md flex-col px-5 pb-8 pt-3">
       <header className="flex shrink-0 items-center justify-between">
-        <div className="avatar-orb grid h-10 w-10 place-items-center text-sm font-bold text-[#1a0f08]">
+        <div className="avatar-orb-glassy grid h-10 w-10 place-items-center text-sm font-bold">
           {firstName.slice(0, 1).toUpperCase()}
         </div>
-        <div className="flex flex-col items-center gap-1">
+        <div className="brand-pill-glassy flex flex-col items-center gap-1 px-3 py-2">
           <span className="h-3 w-3 rounded-full bg-[radial-gradient(circle_at_30%_20%,#c4b5ff,#8557ff)] shadow-[0_0_14px_rgba(166,139,255,0.75)]" />
           <div className="text-center leading-tight">
             <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[var(--ink-soft)]">Fife Life</p>
@@ -231,7 +231,7 @@ export function WalletHome({
         <button
           type="button"
           aria-label="Options du wallet"
-          className="grid h-9 w-9 place-items-center rounded-full border border-[var(--violet)]/70 bg-transparent text-[var(--violet-bright)] shadow-[0_0_12px_rgba(133,87,255,0.6)]"
+          className="settings-btn-glassy grid h-9 w-9 place-items-center rounded-full"
         >
           <span className="h-1.5 w-1.5 rounded-full bg-[var(--violet-bright)]" />
         </button>
@@ -276,13 +276,58 @@ export function WalletHome({
           ))}
         </ul>
 
-        <button type="button" onClick={() => setSheetOpen(true)} className="glass-cta mt-5 w-full">
-          <span>Mes cartes et mes avantages</span>
-          <span className="glass-cta-icon" aria-hidden />
-        </button>
       </div>
 
-      <div className="wallet-bottom-pad" aria-hidden />
+      <div className="mt-auto flex flex-col items-center gap-3 pb-6">
+        <p className="text-xs font-medium text-[var(--ink-soft)]">Mes cartes et mes avantages</p>
+        <button 
+          type="button" 
+          onClick={() => setSheetOpen(true)} 
+          onMouseDown={(e) => {
+            const startY = e.clientY;
+            const handleMouseMove = (moveEvent: MouseEvent) => {
+              const currentY = moveEvent.clientY;
+              const diff = startY - currentY;
+              if (diff > 40) {
+                setSheetOpen(true);
+                document.removeEventListener('mousemove', handleMouseMove);
+              }
+            };
+            document.addEventListener('mousemove', handleMouseMove);
+            document.addEventListener('mouseup', () => {
+              document.removeEventListener('mousemove', handleMouseMove);
+            }, { once: true });
+          }}
+          onTouchStart={(e) => {
+            const startY = e.touches[0].clientY;
+            const handleTouchMove = (moveEvent: TouchEvent) => {
+              const currentY = moveEvent.touches[0].clientY;
+              const diff = startY - currentY;
+              if (diff > 40) {
+                setSheetOpen(true);
+                document.removeEventListener('touchmove', handleTouchMove);
+              }
+            };
+            document.addEventListener('touchmove', handleTouchMove);
+            document.addEventListener('touchend', () => {
+              document.removeEventListener('touchmove', handleTouchMove);
+            }, { once: true });
+          }}
+          className="wallet-chevron-btn flex items-center justify-center"
+          aria-label="Tirer vers le haut pour ouvrir"
+        >
+          <svg 
+            className={`wallet-chevron h-8 w-8 transition-transform duration-300 ${sheetOpen ? 'rotate-180' : ''}`}
+            viewBox="0 0 24 24" 
+            fill="none" 
+            stroke="currentColor" 
+            strokeWidth="2" 
+            strokeLinecap="round"
+          >
+            <path d="M5 12l7 7 7-7" />
+          </svg>
+        </button>
+      </div>
 
 
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { AnimatePresence, motion, useMotionValue, useReducedMotion, useTransform } from "motion/react";
 import { useMemo, useState } from "react";
 import { LinearGauge } from "./linear-gauge";
 import { MerchantFace } from "./merchant-face";
@@ -21,6 +21,20 @@ export function CardsSheet({
 }) {
   const reduced = useReducedMotion();
   const [filter, setFilter] = useState<Filter>("all");
+  const dragY = useMotionValue(0);
+  
+  // Transform dragY en forme de chevron
+  // Valeur négative (tire vers le haut) = chevron vers le haut
+  // Valeur positive (tire vers le bas) = chevron vers le bas
+  const chevronPath = useTransform(
+    dragY,
+    [-50, 0, 50],
+    [
+      "M 8 18 L 28 12 L 48 18", // Chevron vers le haut (Λ)
+      "M 8 18 L 28 18 L 48 18", // Ligne droite
+      "M 8 18 L 28 24 L 48 18", // Chevron vers le bas (V)
+    ]
+  );
 
   const filtered = useMemo(() => {
     if (filter === "available") {
@@ -35,21 +49,28 @@ export function CardsSheet({
     <AnimatePresence>
       {open ? (
         <>
-          <motion.button
-            type="button"
-            aria-label="Fermer"
-            className="sheet-backdrop fixed inset-0 z-40"
+          <motion.div
+            aria-label="Backdrop"
+            className="sheet-backdrop fixed inset-0 z-40 cursor-grab active:cursor-grabbing"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={reduced ? { duration: 0 } : { duration: 0.22 }}
-            onClick={onClose}
+            drag="y"
+            dragConstraints={{ top: 0, bottom: 0 }}
+            dragElastic={{ top: 0.5, bottom: 0 }}
+            onDragEnd={(_, info) => {
+              if (info.offset.y > 50 || info.velocity.y > 500) onClose();
+            }}
+            onClick={(e) => {
+              if (e.target === e.currentTarget) onClose();
+            }}
           />
           <motion.section
             role="dialog"
             aria-modal="true"
             aria-label="Mes cartes et mes avantages"
-            className="obsidian-sheet fixed inset-x-0 bottom-0 z-50 flex h-[min(88dvh,640px)] flex-col overflow-hidden rounded-t-[32px]"
+            className="obsidian-sheet fixed inset-x-0 bottom-0 z-50 flex h-[min(88dvh,640px)] flex-col overflow-hidden rounded-t-[32px] cursor-grab active:cursor-grabbing"
             initial={{ y: "100%" }}
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
@@ -57,13 +78,25 @@ export function CardsSheet({
             drag={reduced ? false : "y"}
             dragConstraints={{ top: 0, bottom: 0 }}
             dragElastic={{ top: 0, bottom: 0.45 }}
+            onDrag={(_, info) => {
+              dragY.set(info.offset.y);
+            }}
             onDragEnd={(_, info) => {
+              dragY.set(0);
               if (info.offset.y > 90 || info.velocity.y > 700) onClose();
             }}
           >
             <div className="sheet-halo" aria-hidden />
             <div className="flex justify-center pt-3">
-              <span className="h-1 w-14 rounded-full bg-white/20" />
+              <svg width="56" height="36" viewBox="0 0 56 36" className="overflow-visible">
+                <motion.path
+                  d={chevronPath}
+                  stroke="rgba(255, 255, 255, 0.2)"
+                  strokeWidth="4"
+                  strokeLinecap="round"
+                  fill="none"
+                />
+              </svg>
             </div>
             <header className="relative z-10 px-5 pb-3 pt-4">
               <h2 className="text-base font-bold tracking-tight text-[var(--ink)]">Mes cartes et mes avantages</h2>
