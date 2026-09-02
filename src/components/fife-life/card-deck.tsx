@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { motion, useReducedMotion } from "motion/react";
+import { motion, useMotionValue, useReducedMotion } from "motion/react";
 import { useEffect, useMemo, useState } from "react";
 import { GlobalCard } from "./global-card";
 import { MerchantFace } from "./merchant-face";
@@ -10,7 +10,8 @@ import type { MerchantCardData } from "./types";
 
 const CARD_W = 320;
 const SPREAD = 32;
-const RADIUS = 180;
+const SWIPE_THRESHOLD = 50;
+const VELOCITY_THRESHOLD = 500;
 const VISIBLE_RANGE = 2;
 
 type DeckItem =
@@ -29,6 +30,7 @@ export function CardDeck({
 }) {
   const prefersReduced = useReducedMotion();
   const [index, setIndex] = useState(0);
+  const dragY = useMotionValue(0);
 
   const deck = useMemo<DeckItem[]>(() => [{ kind: "global" }, ...cards.map((card) => ({ kind: "merchant" as const, card }))], [cards]);
 
@@ -37,8 +39,39 @@ export function CardDeck({
   }, [deck.length, index]);
 
   function snapTo(next: number) {
-    const clamped = Math.max(0, Math.min(deck.length - 1, next));
-    setIndex(clamped);
+    // Boucler entre première et dernière carte
+    const wrapped = ((next % deck.length) + deck.length) % deck.length;
+    setIndex(wrapped);
+    dragY.set(0);
+  }
+
+  function handleDragEnd(_: unknown, info: { offset: { y: number }; velocity: { y: number } }) {
+    const swipe = info.offset.y;
+    const velocity = info.velocity.y;
+
+    // Swipe haut (suivant) ou bas (précédent)
+    if (Math.abs(swipe) > SWIPE_THRESHOLD || Math.abs(velocity) > VELOCITY_THRESHOLD) {
+      if (swipe < 0) {
+        // Swipe haut = carte suivante
+        snapTo(index + 1);
+      } else {
+        // Swipe bas = carte précédente
+        snapTo(index - 1);
+      }
+    } else {
+      // Retour au centre
+      dragY.set(0);
+    }
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent) {
+    if (e.key === "ArrowUp") {
+      e.preventDefault();
+      snapTo(index + 1);
+    } else if (e.key === "ArrowDown") {
+      e.preventDefault();
+      snapTo(index - 1);
+    }
   }
 
   if (deck.length === 1 && cards.length === 0) {
@@ -52,25 +85,37 @@ export function CardDeck({
   }
 
   return (
-    <div className="deck-scene relative mx-auto h-[300px] w-full max-w-[360px] select-none overflow-visible" style={{ perspective: "1400px" }}>
+    <div 
+      className="deck-scene relative mx-auto h-[300px] w-full max-w-[360px] select-none overflow-visible" 
+      style={{ perspective: "1400px" }}
+      onKeyDown={handleKeyDown}
+      tabIndex={0}
+      role="region"
+      aria-label="Carousel de cartes"
+    >
+      {/* Boutons accessibles */}
+      <button
+        onClick={() => snapTo(index - 1)}
+        className="absolute left-1/2 top-2 z-50 -translate-x-1/2 rounded-full bg-black/20 p-2 text-white/60 opacity-0 focus:opacity-100"
+        aria-label="Carte précédente"
+      >
+        ↑
+      </button>
+      <button
+        onClick={() => snapTo(index + 1)}
+        className="absolute left-1/2 bottom-2 z-50 -translate-x-1/2 rounded-full bg-black/20 p-2 text-white/60 opacity-0 focus:opacity-100"
+        aria-label="Carte suivante"
+      >
+        ↓
+      </button>
+
       <motion.div
         className="relative h-full w-full touch-pan-y cursor-grab active:cursor-grabbing"
-        style={{ transformStyle: "preserve-3d", willChange: "transform" }}
+        style={{ y: dragY, transformStyle: "preserve-3d" }}
         drag={prefersReduced ? false : "y"}
         dragConstraints={{ top: 0, bottom: 0 }}
-        dragElastic={0.3}
-        dragMomentum={true}
-        onDragEnd={(_, info) => {
-          // Le carousel "roule" : on change l'index en fonction du mouvement
-          const movement = info.offset.y;
-          const steps = Math.round(movement / SPREAD);
-          
-          if (steps !== 0) {
-            // Gérer le wrap infini
-            const nextIndex = ((index - steps) % deck.length + deck.length) % deck.length;
-            snapTo(nextIndex);
-          }
-        }}
+        dragElastic={0.2}
+        onDragEnd={handleDragEnd}
       >
         {deck.map((item, i) => {
           let rel = i - index;
@@ -86,21 +131,16 @@ export function CardDeck({
           
           const active = rel === 0;
           const behind = rel > 0;
-          const ahead = rel < 0;
           
-          // Rotation légère pour effet de roue qui tourne
-          const rotateX = active ? -3 : rel * 4;
+          // Cartes empilées verticalement avec profondeur
+          const translateY = rel * SPREAD; // Décalage vertical
+          const translateZ = active ? 0 : -Math.abs(rel) * 35; // Profondeur
+          const rotateX = active ? -3 : rel * 4; // Rotation légère
           
-          // Position : carousel qui roule - les cartes sont visibles avec décalage vertical
-          const translateY = rel * SPREAD;
-          // Les cartes reculent légèrement en profondeur
-          const translateZ = active ? 0 : -Math.abs(rel) * 35;
-          
-          // Les cartes restent bien visibles
+          // Taille et opacité
           const scale = active ? 1.0 : Math.max(0.88, 1 - dist * 0.08);
           const opacity = active ? 1 : Math.max(0.55, 1 - dist * 0.22);
-          // Z-index : cartes du dessus (ahead) doivent être devant les cartes du dessous (behind)
-          const zIndex = active ? 50 : ahead ? 45 - dist * 5 : 40 - dist * 5;
+          const zIndex = active ? 50 : behind ? 40 - dist * 5 : 45 - dist * 5;
           const brightness = active ? 1 : Math.max(0.7, 1 - dist * 0.18);
 
           const key = item.kind === "global" ? "global" : item.card.id;
@@ -126,7 +166,7 @@ export function CardDeck({
           return (
             <motion.div
               key={key}
-              className="absolute left-1/2 top-1/2 z-[var(--z)] pointer-events-none"
+              className="absolute left-1/2 top-1/2 pointer-events-none"
               style={{
                 width: CARD_W,
                 marginLeft: -CARD_W / 2,
@@ -148,11 +188,12 @@ export function CardDeck({
                       opacity,
                     }
               }
-              transition={
-                active
-                  ? { type: "spring", stiffness: 340, damping: 28, mass: 0.7 }
-                  : { type: "spring", stiffness: 280, damping: 32, mass: 0.9 }
-              }
+              transition={{
+                type: "spring",
+                stiffness: 340,
+                damping: 28,
+                mass: 0.7,
+              }}
             >
               {content}
             </motion.div>
