@@ -78,6 +78,8 @@ body {
     radial-gradient(ellipse 90% 55% at 50% -5%, rgba(133, 87, 255, 0.22), transparent 58%),
     radial-gradient(ellipse 60% 40% at 85% 15%, rgba(112, 133, 255, 0.12), transparent 50%),
     radial-gradient(ellipse 50% 35% at 10% 25%, rgba(231, 116, 255, 0.08), transparent 45%),
+    radial-gradient(ellipse 120% 80% at 50% 120%, rgba(64, 92, 255, 0.32), transparent 70%),
+    radial-gradient(ellipse 80% 60% at 10% 110%, rgba(145, 111, 255, 0.24), transparent 65%),
     linear-gradient(180deg, #0b0714 0%, #05050a 100%);
 }
 
@@ -86,6 +88,14 @@ body {
   max-height: 100dvh;
   overflow: hidden;
   color: var(--ink-soft);
+  touch-action: pan-y pinch-zoom;
+}
+
+body:has(.wallet-shell) {
+  overflow: hidden;
+  position: fixed;
+  width: 100%;
+  height: 100dvh;
 }
 
 /* Espace entre deck et bas de page : ni collé au deck, ni poussé tout en bas */
@@ -99,6 +109,31 @@ body {
   flex: 1 1 0;
   min-height: 3.5rem;
   max-height: 6rem;
+}
+
+/* Ajustements responsives pour écrans mobiles plus courts */
+@media (max-width: 480px) {
+  .wallet-lower-spacer {
+    min-height: 2rem;
+    max-height: 4rem;
+  }
+
+  .wallet-bottom-pad {
+    min-height: 1.5rem;
+    max-height: 3rem;
+  }
+}
+
+@media (max-height: 750px) {
+  .wallet-lower-spacer {
+    min-height: 1.5rem;
+    max-height: 3rem;
+  }
+
+  .wallet-bottom-pad {
+    min-height: 1rem;
+    max-height: 2rem;
+  }
 }
 
 .deck-scene {
