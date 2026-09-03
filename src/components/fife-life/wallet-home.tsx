@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
 import { CardDeck } from "./card-deck";
-
+import { CardEnlargedView } from "./card-enlarged-view";
 import { CardsSheet } from "./cards-sheet";
 
 import { NewCardToast } from "./new-card-toast";
@@ -68,6 +68,7 @@ export function WalletHome({
   const [sheetOpen, setSheetOpen] = useState(initialSheetOpen);
 
   const [newCardName, setNewCardName] = useState<string | null>(initialNewCard ?? null);
+  const [enlargedCard, setEnlargedCard] = useState<MerchantCardData | null>(null);
 
   const tier = resolveTier(points);
 
@@ -254,28 +255,30 @@ export function WalletHome({
       </section>
 
       <div className="mt-4 shrink-0">
-        <CardDeck points={points} cards={cards} onOpenMerchant={openCard} />
+        <CardDeck points={points} cards={cards} onOpenMerchant={openCard} onEnlargeCard={setEnlargedCard} />
       </div>
 
       <div className="wallet-lower-spacer" aria-hidden />
 
-      <div className="wallet-lower shrink-0">
-        <section className="px-1">
-          <p className="text-xs font-medium text-[#f0e8d8]">Prochaine récompense · Nuit offerte chez Prism Hôtel</p>
+      <div className="wallet-lower shrink-0 -mt-4">
+        <section className="glass-panel p-4">
+          <h3 className="section-title mb-3">Activité récente</h3>
+          <p className="text-xs font-medium text-[var(--ink-soft)] mb-3">
+            Prochaine récompense · Nuit offerte chez Prism Hôtel
+          </p>
+
+          <ul className="space-y-2">
+            {ACTIVITY.map((row) => (
+              <li key={row.label} className="flex items-center justify-between gap-3 text-[11px]">
+                <span className="flex min-w-0 items-center gap-2 text-[var(--ink-soft)]">
+                  <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--violet-bright)]" />
+                  <span className="truncate">{row.label}</span>
+                </span>
+                <span className="shrink-0 font-semibold text-[#9fd88a]">{row.delta}</span>
+              </li>
+            ))}
+          </ul>
         </section>
-
-        <ul className="mt-2 space-y-2 px-1">
-          {ACTIVITY.map((row) => (
-            <li key={row.label} className="flex items-center justify-between gap-3 text-[11px]">
-              <span className="flex min-w-0 items-center gap-2 text-[var(--ink-soft)]">
-                <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--violet-bright)]" />
-                <span className="truncate">{row.label}</span>
-              </span>
-              <span className="shrink-0 font-semibold text-[#9fd88a]">{row.delta}</span>
-            </li>
-          ))}
-        </ul>
-
       </div>
 
       <div className="mt-auto flex flex-col items-center gap-3 pb-6">
@@ -313,15 +316,15 @@ export function WalletHome({
               document.removeEventListener('touchmove', handleTouchMove);
             }, { once: true });
           }}
-          className="wallet-chevron-btn flex items-center justify-center"
+          className="wallet-chevron-btn wallet-chevron-glassy flex items-center justify-center"
           aria-label="Tirer vers le haut pour ouvrir"
         >
           <svg 
-            className={`wallet-chevron h-8 w-8 transition-transform duration-300 ${sheetOpen ? 'rotate-180' : ''}`}
+            className={`wallet-chevron h-6 w-6 transition-transform duration-300 ${sheetOpen ? 'rotate-180' : ''}`}
             viewBox="0 0 24 24" 
             fill="none" 
             stroke="currentColor" 
-            strokeWidth="2" 
+            strokeWidth="2.5" 
             strokeLinecap="round"
           >
             <path d="M5 12l7 7 7-7" />
@@ -334,6 +337,16 @@ export function WalletHome({
       <CardsSheet open={sheetOpen} cards={cards} onClose={() => setSheetOpen(false)} onOpenCard={openCard} />
 
       <NewCardToast name={newCardName} onDone={() => setNewCardName(null)} />
+
+      {enlargedCard && (
+        <CardEnlargedView
+          open={true}
+          card={enlargedCard}
+          slug={enlargedCard.slug}
+          preview={preview}
+          onClose={() => setEnlargedCard(null)}
+        />
+      )}
 
     </main>
 

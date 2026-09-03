@@ -3,7 +3,7 @@ import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 
 const OUT = join(process.cwd(), "artifacts", "merchant-search-v1");
-const BASE_URL = process.env.BASE_URL || "http://localhost:3001";
+const BASE_URL = process.env.BASE_URL || "http://localhost:3000";
 
 await mkdir(OUT, { recursive: true });
 

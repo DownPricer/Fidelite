@@ -22,11 +22,13 @@ export function CardDeck({
   points,
   cards,
   onOpenMerchant,
+  onEnlargeCard,
 }: {
   points: number;
   fifeLifePoints?: number;
   cards: MerchantCardData[];
   onOpenMerchant: (card: MerchantCardData) => void;
+  onEnlargeCard?: (card: MerchantCardData) => void;
 }) {
   const prefersReduced = useReducedMotion();
   const [index, setIndex] = useState(0);
@@ -85,14 +87,25 @@ export function CardDeck({
   }
 
   return (
-    <div 
-      className="deck-scene relative mx-auto h-[300px] w-full max-w-[360px] select-none overflow-visible" 
-      style={{ perspective: "1400px" }}
-      onKeyDown={handleKeyDown}
-      tabIndex={0}
-      role="region"
-      aria-label="Carousel de cartes"
-    >
+    <div className="relative">
+      {/* Icône rotation à gauche */}
+      <div className="absolute left-0 top-1/2 -translate-y-1/2 z-10 -ml-12">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img 
+          src="/rotate-phone-icon.png" 
+          alt="Tourner pour agrandir"
+          className="h-8 w-8 opacity-40"
+        />
+      </div>
+
+      <div 
+        className="deck-scene relative mx-auto h-[300px] w-full max-w-[360px] select-none overflow-visible" 
+        style={{ perspective: "1400px" }}
+        onKeyDown={handleKeyDown}
+        tabIndex={0}
+        role="region"
+        aria-label="Carousel de cartes"
+      >
       {/* Boutons accessibles */}
       <button
         onClick={() => snapTo(index - 1)}
@@ -145,19 +158,43 @@ export function CardDeck({
 
           const key = item.kind === "global" ? "global" : item.card.id;
 
-          // FONCTIONNALITÉ EN PAUSE : Les clics sur les cartes sont désactivés
-          // Ne pas rediriger vers des pages pour l'instant
           const content =
             item.kind === "global" ? (
-              <div className="block h-full pointer-events-none">
+              <button 
+                className="block h-full cursor-pointer w-full"
+                onClick={() => {
+                  if (active && onEnlargeCard) {
+                    // Pour la carte globale, on créée un objet card factice
+                    const globalCard: MerchantCardData = {
+                      id: "fife-life-global",
+                      merchantId: "fife-life",
+                      slug: "fife-life",
+                      name: "Fife Life",
+                      logoUrl: null,
+                      primaryColor: "#8557ff",
+                      points: points,
+                      visitsRequired: 100,
+                      rewardLabel: "Avantage Fife Life"
+                    };
+                    onEnlargeCard(globalCard);
+                  }
+                }}
+              >
                 <GlobalCard points={points} large mode="wallet" />
-              </div>
+              </button>
             ) : (
               <PrismCard
-                as="div"
+                as="button"
                 material="merchant"
                 hue={item.card.primaryColor}
-                className="h-full w-full p-4 text-left pointer-events-none"
+                className="h-full w-full p-4 text-left cursor-pointer"
+                onClick={() => {
+                  if (active && onEnlargeCard) {
+                    onEnlargeCard(item.card);
+                  } else if (!active) {
+                    setIndex(i);
+                  }
+                }}
               >
                 <MerchantFace card={item.card} />
               </PrismCard>
@@ -166,7 +203,7 @@ export function CardDeck({
           return (
             <motion.div
               key={key}
-              className="absolute left-1/2 top-1/2 pointer-events-none"
+              className="absolute left-1/2 top-1/2"
               style={{
                 width: CARD_W,
                 marginLeft: -CARD_W / 2,
@@ -200,6 +237,7 @@ export function CardDeck({
           );
         })}
       </motion.div>
+      </div>
     </div>
   );
 }

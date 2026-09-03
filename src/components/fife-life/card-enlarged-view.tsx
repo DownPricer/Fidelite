@@ -66,17 +66,18 @@ export function CardEnlargedView({ open, card, slug, preview = false, onClose }:
           </button>
 
           <motion.div
-            className="mx-auto px-4 w-full max-w-sm"
-            initial={{ scale: 0.9, y: 50 }}
-            animate={{ scale: 1, y: 0 }}
-            exit={{ scale: 0.9, y: 50 }}
+            className="mx-auto px-4 w-full max-w-lg"
+            initial={{ scale: 0.9, rotate: -5 }}
+            animate={{ scale: 1, rotate: 0 }}
+            exit={{ scale: 0.9, rotate: 5 }}
             transition={spring}
           >
             <PrismCard
               as="div"
               material="merchant"
               hue={card.primaryColor}
-              className="w-full aspect-[1.586/1] p-6"
+              className="w-full aspect-[1.586/1] p-6 rotate-90 origin-center"
+              style={{ height: "60vw", maxHeight: "400px" }}
             >
               <div className="flex h-full flex-col justify-between">
                 <div className="flex items-center gap-3">
@@ -116,9 +117,19 @@ export function CardEnlargedView({ open, card, slug, preview = false, onClose }:
               </div>
             </PrismCard>
 
-            <p className="mt-4 text-center text-xs text-[var(--muted)]">
-              Touchez à nouveau pour fermer
-            </p>
+            <div className="mt-4 flex flex-col items-center gap-2">
+              <div className="flex items-center gap-2 text-xs text-[var(--muted)]">
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <path d="M7 2h10l2 2v16l-2 2H7l-2-2V4l2-2z" />
+                  <path d="M9 6h6" />
+                  <path d="M9 10h6" />
+                </svg>
+                <span>Tournez le téléphone</span>
+              </div>
+              <p className="text-center text-xs text-[var(--muted)]">
+                Appuyez pour fermer
+              </p>
+            </div>
           </motion.div>
         </motion.div>
       ) : null}
