@@ -25,9 +25,11 @@ type ScanResult = {
 export function CaisseScreen({
   merchantName,
   role,
+  demo = false,
 }: {
   merchantName: string;
   role: string;
+  demo?: boolean;
 }) {
   const [scanning, setScanning] = useState(false);
   const [cameraSession, setCameraSession] = useState(0);
@@ -57,6 +59,21 @@ export function CaisseScreen({
     setBusy(true);
     setError(null);
     setScanning(false);
+
+    if (demo) {
+      setBusy(false);
+      setResult({
+        grantId: "demo-grant",
+        firstName: "Marie",
+        points: 7,
+        visitsRequired: 10,
+        rewardLabel: "1 boisson offerte",
+        rewardAvailable: false,
+        progressLabel: "7 / 10 passages",
+      });
+      return;
+    }
+
     const { ok, data } = await postCaisseScan(token);
     setBusy(false);
     if (!ok) {
@@ -66,10 +83,20 @@ export function CaisseScreen({
     }
     setResult(data as ScanResult);
     setSuccess(null);
-  }, []);
+  }, [demo]);
 
   async function act(path: "/api/caisse/earn" | "/api/caisse/redeem") {
     if (!result || busy) return;
+    if (demo) {
+      setSuccess(
+        path.endsWith("earn")
+          ? "+1 passage pour Marie. 8 / 10 passages"
+          : "Récompense utilisée pour Marie (démo).",
+      );
+      setResult(null);
+      setScanning(false);
+      return;
+    }
     setBusy(true);
     setError(null);
     const response = await fetch(path, {

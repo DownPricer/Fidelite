@@ -78,7 +78,7 @@ export function CardDeck({
 
   if (deck.length === 1 && cards.length === 0) {
     return (
-      <div className="deck-scene relative mx-auto h-[220px] w-full max-w-[340px]">
+      <div className="deck-scene fife-deck-scene relative mx-auto h-[220px] w-full max-w-[340px]">
         <Link href="/carte/identite" className="absolute inset-x-0 top-6 z-20 block">
           <GlobalCard points={points} large />
         </Link>
@@ -87,7 +87,7 @@ export function CardDeck({
   }
 
   return (
-    <div className="relative">
+    <div className="fife-deck-wrap relative">
       {/* Icône rotation à gauche */}
       <div className="absolute left-0 top-1/2 -translate-y-1/2 z-10 -ml-12">
         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -99,7 +99,7 @@ export function CardDeck({
       </div>
 
       <div 
-        className="deck-scene relative mx-auto h-[300px] w-full max-w-[360px] select-none overflow-visible" 
+        className="deck-scene fife-deck-scene relative mx-auto h-[300px] w-full max-w-[360px] select-none overflow-visible" 
         style={{ perspective: "1400px" }}
         onKeyDown={handleKeyDown}
         tabIndex={0}

@@ -50,6 +50,64 @@ export const deletionRequestSchema = z.object({
   message: z.string().trim().max(500).optional(),
 });
 
+export const deletionConfirmSchema = z.object({
+  password: z.string().min(1, "Mot de passe requis."),
+  confirmationPhrase: z.literal("SUPPRIMER", {
+    errorMap: () => ({ message: "Saisissez SUPPRIMER pour confirmer." }),
+  }),
+});
+
+export const lastNameSchema = z.string().trim().max(80).optional().or(z.literal(""));
+
+export const displayNameSchema = z.string().trim().max(120).optional().or(z.literal(""));
+
+export const phoneSchema = z
+  .string()
+  .trim()
+  .regex(/^[\d\s().+-]{6,20}$/, "Numéro de téléphone invalide.")
+  .optional()
+  .or(z.literal(""));
+
+export const profileUpdateSchema = z.object({
+  firstName: firstNameSchema.optional(),
+  lastName: lastNameSchema,
+  displayName: displayNameSchema,
+  phone: phoneSchema,
+  phoneCountryCode: z.string().trim().max(6).optional(),
+  addressLine1: z.string().trim().max(200).optional().or(z.literal("")),
+  addressLine2: z.string().trim().max(200).optional().or(z.literal("")),
+  postalCode: z.string().trim().max(20).optional().or(z.literal("")),
+  city: z.string().trim().max(100).optional().or(z.literal("")),
+  country: z.string().trim().max(2).optional().or(z.literal("")),
+});
+
+export const emailChangeSchema = z.object({
+  newEmail: emailSchema,
+  password: z.string().min(1, "Mot de passe requis."),
+});
+
+export const avatarUploadSchema = z.object({
+  dataUrl: z.string().min(30).max(700_000),
+});
+
+export const preferencesUpdateSchema = z.object({
+  notifyPointsMovements: z.boolean().optional(),
+  notifyNewBenefit: z.boolean().optional(),
+  notifyBenefitExpiring: z.boolean().optional(),
+  notifyNewCard: z.boolean().optional(),
+  notifyMerchantOffers: z.boolean().optional(),
+  notifyFifeLifeNews: z.boolean().optional(),
+  notifyChannelPush: z.boolean().optional(),
+  notifyChannelEmail: z.boolean().optional(),
+  notifyChannelSms: z.boolean().optional(),
+  consentPersonalizedOffers: z.boolean().optional(),
+  consentMarketing: z.boolean().optional(),
+  consentAnalytics: z.boolean().optional(),
+  language: z.enum(["fr", "en"]).optional(),
+});
+
+export const historyFilterSchema = z.enum(["all", "earned", "used", "expired", "correction"]);
+
 export const scanSchema = z.object({
   token: z.string().min(10, "QR invalide.").max(4000),
 });
@@ -62,19 +120,62 @@ export const createEmployeeSchema = z.object({
   firstName: firstNameSchema,
   lastName: z.string().trim().max(80).optional(),
   email: emailSchema,
-  password: passwordSchema,
+  phone: phoneSchema,
+  password: passwordSchema.optional(),
+  staffPreset: z.enum(["MANAGER", "CASHIER", "CUSTOM"]).default("CASHIER"),
+  permissions: z.record(z.boolean()).optional(),
+  inviteMessage: z.string().trim().max(500).optional(),
 });
 
-export const resetEmployeePasswordSchema = z.object({
-  employeeId: z.string().min(1),
+export const updateEmployeeSchema = z.object({
+  firstName: firstNameSchema.optional(),
+  lastName: z.string().trim().max(80).optional().or(z.literal("")),
+  email: emailSchema.optional(),
+  phone: phoneSchema,
+  staffPreset: z.enum(["MANAGER", "CASHIER", "CUSTOM"]).optional(),
+  permissions: z.record(z.boolean()).optional(),
+  isActive: z.boolean().optional(),
+  invitationStatus: z.enum(["NONE", "PENDING", "ACCEPTED", "CANCELLED"]).optional(),
+  inviteMessage: z.string().trim().max(500).optional(),
 });
 
 export const merchantSettingsSchema = z.object({
-  name: z.string().trim().min(2).max(80),
-  logoUrl: z.string().trim().url().max(500).optional().or(z.literal("")),
-  primaryColor: colorSchema,
-  visitsRequired: z.number().int().min(2).max(100),
-  rewardLabel: z.string().trim().min(2).max(80),
+  notifyLowStock: z.boolean().optional(),
+});
+
+export const loyaltyDraftSchema = z.object({
+  mode: z.enum(["VISITS", "POINTS_BY_AMOUNT", "FIXED_POINTS", "AMOUNT_TIERS"]),
+  rules: z.record(z.unknown()),
+  rewards: z.array(
+    z.object({
+      id: z.string().optional(),
+      name: z.string().trim().min(2).max(80),
+      description: z.string().trim().max(300).optional().nullable(),
+      rewardType: z.string().default("CUSTOM"),
+      threshold: z.number().int().min(1).max(1_000_000),
+      thresholdUnit: z.enum(["visits", "points"]),
+      value: z.number().optional().nullable(),
+      minPurchase: z.number().optional().nullable(),
+      maxDiscount: z.number().optional().nullable(),
+      isActive: z.boolean().default(true),
+      sortOrder: z.number().int().default(0),
+      validFrom: z.string().optional().nullable(),
+      validUntil: z.string().optional().nullable(),
+      maxUsesPerCustomer: z.number().int().optional().nullable(),
+      reuseDelayDays: z.number().int().optional().nullable(),
+      globalLimit: z.number().int().optional().nullable(),
+    }),
+  ),
+  confirmImpact: z.boolean().optional(),
+  scheduledAt: z.string().optional().nullable(),
+});
+
+export const programSimulateSchema = z.object({
+  purchaseAmount: z.number().min(0).optional(),
+  currentBalance: z.number().int().min(0),
+  mode: z.enum(["VISITS", "POINTS_BY_AMOUNT", "FIXED_POINTS", "AMOUNT_TIERS"]).optional(),
+  rules: z.record(z.unknown()).optional(),
+  rewards: z.array(z.object({ threshold: z.number(), thresholdUnit: z.string(), name: z.string(), isActive: z.boolean() })).optional(),
 });
 
 export const createMerchantSchema = z.object({

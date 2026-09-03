@@ -23,28 +23,36 @@ export async function POST(req: Request) {
     return jsonError("Trop de tentatives. Réessayez plus tard.", 429);
   }
 
-  const user = await prisma.user.findUnique({ where: { email: parsed.data.email } });
-  const valid = user ? await verifyPassword(parsed.data.password, user.passwordHash) : false;
-  if (!user || !user.isActive || !valid) {
-    return jsonError("Identifiants incorrects.", 401);
+  try {
+    const user = await prisma.user.findUnique({ where: { email: parsed.data.email } });
+    const valid = user ? await verifyPassword(parsed.data.password, user.passwordHash) : false;
+    if (!user || !user.isActive || !valid) {
+      return jsonError("Identifiants incorrects.", 401);
+    }
+
+    await createSession(user.id, { ip, userAgent: userAgent(req) });
+    await writeAudit({
+      actorId: user.id,
+      action: "LOGIN",
+      ip,
+      userAgent: userAgent(req),
+    });
+
+    return jsonOk({
+      ok: true,
+      user: {
+        id: user.id,
+        firstName: user.firstName,
+        email: user.email,
+        platformRole: user.platformRole,
+        mustChangePassword: user.mustChangePassword,
+      },
+    });
+  } catch (error) {
+    console.error("[login] DB error:", error);
+    return jsonError(
+      "Service temporairement indisponible. Vérifiez que la base de données est démarrée, ou utilisez le mode démo en développement.",
+      503,
+    );
   }
-
-  await createSession(user.id, { ip, userAgent: userAgent(req) });
-  await writeAudit({
-    actorId: user.id,
-    action: "LOGIN",
-    ip,
-    userAgent: userAgent(req),
-  });
-
-  return jsonOk({
-    ok: true,
-    user: {
-      id: user.id,
-      firstName: user.firstName,
-      email: user.email,
-      platformRole: user.platformRole,
-      mustChangePassword: user.mustChangePassword,
-    },
-  });
 }

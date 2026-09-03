@@ -25,22 +25,22 @@ export function UniversalDetail({
   const tier = resolveTier(fifeLifePoints);
 
   return (
-    <main className="obsidian-scene min-h-dvh text-[var(--ink-soft)]">
-      <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col px-5 pb-8 pt-3">
-        <header className="flex shrink-0 items-center justify-between">
+    <main className="obsidian-scene fife-universal-page min-h-dvh text-[var(--ink-soft)]">
+      <div className="fife-universal-layout fife-page-shell mx-auto flex min-h-dvh w-full max-w-md flex-col px-5 pb-8 pt-3">
+        <header className="fife-universal-header flex shrink-0 items-center justify-between">
           <Link href="/carte" className="glass-chip px-3 py-1.5 text-xs font-semibold text-[var(--ink-soft)]">
             ← Portefeuille
           </Link>
           <Link href="/compte" className="text-xs font-semibold text-[var(--muted)]">
-            Compte
+            Profil
           </Link>
         </header>
 
-        <div className="mt-5">
+        <div className="fife-universal-main mt-5">
           <GlobalCard points={fifeLifePoints} large />
         </div>
 
-        <section className="mt-5 space-y-2 px-1">
+        <section className="fife-universal-main mt-5 space-y-2 px-1">
           <p className="text-xs font-semibold text-[var(--ink-soft)]">Niveau global · {tier.name}</p>
           <p className="text-[11px] text-[var(--muted-strong)]">
             {tier.nextName == null
@@ -50,14 +50,14 @@ export function UniversalDetail({
           <p className="text-xs text-[#f0e8d8]">Prochaine récompense · Accès lounge partenaire</p>
         </section>
 
-        <section className="qr-escutcheon mt-6 rounded-[28px] p-5">
+        <section className="fife-universal-main qr-escutcheon mt-6 rounded-[28px] p-5">
           <QrBlock slug="fife-life" preview={preview} />
           <p className="mt-3 text-center text-[11px] text-[var(--muted-strong)]">
             Présentez ce QR chez un commerce partenaire.
           </p>
         </section>
 
-        <section className="mt-5 rounded-[24px] border border-white/10 bg-white/[0.03] p-5">
+        <section className="fife-universal-history mt-5 rounded-[24px] border border-white/10 bg-white/[0.03] p-5">
           <h2 className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--muted)]">Historique récent</h2>
           {history.length === 0 ? (
             <p className="mt-3 text-sm text-[var(--muted)]">Aucun mouvement pour le moment.</p>

@@ -182,9 +182,9 @@ Le commerçant se réserve le droit de modifier ou d'annuler le programme de fid
   return (
     <>
       <main className="merchant-detail-scene min-h-dvh">
-        <div className="merchant-detail-container mx-auto w-full max-w-md px-5 pb-16 pt-3">
+        <div className="merchant-detail-container fife-page-shell fife-merchant-layout mx-auto w-full max-w-md px-5 pb-16 pt-3">
           {/* Header */}
-          <header className="flex shrink-0 items-center justify-between">
+          <header className="merchant-detail-header flex shrink-0 items-center justify-between">
             <Link
               href="/carte"
               className="back-btn-glassy grid h-10 w-10 place-items-center rounded-full text-[var(--ink)]"
@@ -203,7 +203,8 @@ Le commerçant se réserve le droit de modifier ou d'annuler le programme de fid
           </header>
 
           {/* Card with QR */}
-          <section className="mt-16">
+          <div className="merchant-primary-column">
+          <section className="merchant-card-block mt-16">
             <button
               type="button"
               onClick={() => setCardEnlarged(true)}
@@ -264,7 +265,7 @@ Le commerçant se réserve le droit de modifier ou d'annuler le programme de fid
           </section>
 
           {/* Actions: Add to Wallet & Share */}
-          <section className="mt-5 flex gap-3">
+          <section className="merchant-actions-block mt-5 flex gap-3">
             <button
               type="button"
               onClick={() => void addWallet()}
@@ -311,7 +312,9 @@ Le commerçant se réserve le droit de modifier ou d'annuler le programme de fid
           {error ? (
             <p className="mt-3 text-center text-xs font-semibold text-[var(--danger)]">{error}</p>
           ) : null}
+          </div>
 
+          <div className="merchant-side-panel">
           {/* Advantages section */}
           <section className="glass-panel mt-6 p-5">
             <h2 className="section-title">Avantages</h2>
@@ -486,6 +489,7 @@ Le commerçant se réserve le droit de modifier ou d'annuler le programme de fid
               </div>
             )}
           </section>
+          </div>
         </div>
       </main>
 

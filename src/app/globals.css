@@ -102,6 +102,10 @@ body:has(.wallet-shell) {
   height: 100dvh;
 }
 
+.wallet-cards-rail {
+  display: none;
+}
+
 /* Espace entre deck et bas de page : ni collé au deck, ni poussé tout en bas */
 .wallet-lower-spacer {
   flex: 1 1 0;
@@ -949,4 +953,825 @@ body:has(.wallet-shell) {
   .prism-card::after {
     animation: none !important;
   }
+}
+
+/* ── Profile page ── */
+.profile-scene {
+  position: relative;
+}
+
+.profile-halo-top {
+  pointer-events: none;
+  position: fixed;
+  inset: 0 0 auto 0;
+  height: 42vh;
+  background:
+    radial-gradient(ellipse 90% 70% at 50% -10%, rgba(133, 87, 255, 0.35), transparent 65%),
+    radial-gradient(ellipse 60% 50% at 80% 5%, rgba(231, 116, 255, 0.2), transparent 60%);
+  z-index: 0;
+}
+
+.profile-halo-mid {
+  pointer-events: none;
+  position: fixed;
+  inset: 30% 0 0 0;
+  background: radial-gradient(ellipse 80% 60% at 20% 40%, rgba(96, 140, 255, 0.08), transparent 70%);
+  z-index: 0;
+}
+
+.profile-panel {
+  background: rgba(255, 255, 255, 0.05) !important;
+  backdrop-filter: blur(24px) saturate(1.5) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 0 40px rgba(133, 87, 255, 0.1) !important;
+}
+
+.profile-avatar-btn {
+  display: block;
+  border-radius: 999px;
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 0 40px rgba(133, 87, 255, 0.35);
+  transition: transform 0.2s ease;
+}
+
+.profile-avatar-btn:active {
+  transform: scale(0.96);
+}
+
+.profile-avatar-img,
+.profile-avatar-fallback {
+  display: grid;
+  place-items: center;
+  height: 5.5rem;
+  width: 5.5rem;
+  border-radius: 999px;
+  object-fit: cover;
+}
+
+.profile-avatar-fallback {
+  background:
+    radial-gradient(circle at 30% 20%, rgba(196, 181, 255, 0.5), rgba(133, 87, 255, 0.3)),
+    rgba(255, 255, 255, 0.06);
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.profile-edit-icon {
+  display: grid;
+  place-items: center;
+  height: 1.75rem;
+  width: 1.75rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 0.75rem;
+  color: var(--muted-strong);
+}
+
+.profile-history-row,
+.profile-benefit-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.65rem 0.5rem;
+  border-radius: 1rem;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.profile-settings-row {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 0.5rem;
+  border-radius: 0.875rem;
+  transition: background 0.15s ease;
+}
+
+.profile-settings-row:active {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.profile-settings-icon {
+  display: grid;
+  place-items: center;
+  height: 2rem;
+  width: 2rem;
+  border-radius: 0.625rem;
+  background: rgba(255, 255, 255, 0.04);
+  font-size: 0.875rem;
+}
+
+.profile-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.5rem 0;
+}
+
+.profile-toggle {
+  height: 1.25rem;
+  width: 2.25rem;
+  accent-color: var(--violet-bright);
+}
+
+.profile-input,
+.profile-select {
+  display: block;
+  width: 100%;
+  margin-top: 0.375rem;
+  border-radius: 0.875rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  color: var(--ink);
+  outline: none;
+}
+
+.profile-input:focus,
+.profile-select:focus {
+  border-color: rgba(166, 139, 255, 0.5);
+}
+
+.profile-field {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.profile-btn-primary {
+  border-radius: 0.875rem;
+  background: linear-gradient(135deg, rgba(133, 87, 255, 0.85), rgba(166, 139, 255, 0.65));
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: white;
+  padding: 0.75rem 1rem;
+  font-weight: 600;
+}
+
+.profile-btn-secondary {
+  border-radius: 0.875rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--ink-soft);
+  padding: 0.75rem 1rem;
+  font-weight: 600;
+}
+
+.profile-link-btn {
+  border-radius: 0.875rem;
+  padding: 0.625rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--violet-bright);
+  background: rgba(133, 87, 255, 0.08);
+  border: 1px solid rgba(133, 87, 255, 0.2);
+}
+
+.profile-inline-link {
+  color: var(--violet-bright);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.profile-logout-btn {
+  border-radius: 1rem;
+  padding: 0.875rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.profile-danger-zone {
+  background: rgba(0, 0, 0, 0.55) !important;
+  backdrop-filter: blur(12px) !important;
+}
+
+.profile-sheet-action {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  margin-bottom: 0.5rem;
+}
+
+.profile-sheet-action:active {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.profile-toast {
+  animation: profile-toast-in 0.3s ease;
+}
+
+@keyframes profile-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .profile-toast {
+    animation: none;
+  }
+}
+
+/* ── Desktop responsive (≥1024px) — mobile styles untouched above ── */
+@media (min-width: 1024px) {
+  html,
+  body {
+    background-color: #05050a;
+    background-image: linear-gradient(180deg, #0f0a1d 0%, #05050a 100%);
+    background-attachment: fixed;
+  }
+
+  body:has(.wallet-shell) {
+    overflow: auto;
+    position: static;
+    width: auto;
+    height: auto;
+  }
+
+  /* Fond obsidienne plein écran derrière les pages client */
+  .obsidian-scene::before,
+  .merchant-detail-scene::before,
+  .profile-scene.obsidian-scene::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background:
+      radial-gradient(ellipse 110% 70% at 50% -8%, rgba(231, 116, 255, 0.48), transparent 64%),
+      radial-gradient(ellipse 85% 55% at 85% 12%, rgba(133, 87, 255, 0.38), transparent 56%),
+      radial-gradient(ellipse 75% 50% at 10% 22%, rgba(231, 116, 255, 0.28), transparent 51%),
+      radial-gradient(ellipse 110% 80% at 50% 35%, rgba(166, 139, 255, 0.32), transparent 69%),
+      radial-gradient(ellipse 100% 65% at 30% 60%, rgba(231, 116, 255, 0.18), transparent 67%),
+      radial-gradient(ellipse 105% 70% at 70% 75%, rgba(112, 133, 255, 0.22), transparent 68%),
+      radial-gradient(ellipse 140% 95% at 50% 118%, rgba(231, 116, 255, 0.52), transparent 76%),
+      linear-gradient(180deg, #0f0a1d 0%, #05050a 100%);
+  }
+
+  .merchant-detail-scene::before {
+    background:
+      radial-gradient(ellipse 110% 70% at 50% -15%, rgba(231, 116, 255, 0.45), transparent 62%),
+      radial-gradient(ellipse 90% 60% at 25% 0%, rgba(133, 87, 255, 0.38), transparent 58%),
+      radial-gradient(ellipse 80% 55% at 75% 5%, rgba(112, 133, 255, 0.32), transparent 52%),
+      radial-gradient(ellipse 100% 50% at 50% 30%, rgba(166, 139, 255, 0.25), transparent 60%),
+      linear-gradient(180deg, #0d0919 0%, #09071a 40%, #06050e 70%, #05050a 100%);
+  }
+
+  .fife-page-shell.max-w-md {
+    max-width: 72rem;
+  }
+
+  .wallet-shell.fife-page-shell.max-w-md {
+    max-width: none;
+  }
+
+  /* Wallet — plein écran, 3 colonnes */
+  .wallet-shell.fife-page-shell {
+    height: auto;
+    min-height: 100dvh;
+    max-height: none;
+    overflow: visible;
+    width: 100%;
+    padding: clamp(1rem, 2vw, 1.75rem) clamp(1.25rem, 3.5vw, 3.5rem) clamp(1.5rem, 2.5vw, 2.5rem);
+  }
+
+  .wallet-page-body {
+    display: grid;
+    grid-template-columns: minmax(240px, 20vw) minmax(0, 1fr) minmax(280px, 22vw);
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      "header header header"
+      "points deck cards"
+      "activity deck cards";
+    gap: clamp(1rem, 2vw, 2rem) clamp(1.25rem, 3vw, 3rem);
+    align-items: stretch;
+    flex: 1;
+    min-height: calc(100dvh - clamp(2.5rem, 4vw, 4.5rem));
+  }
+
+  .wallet-page-header {
+    grid-area: header;
+    padding-inline: 0.25rem;
+  }
+
+  .wallet-page-header .brand-pill-glassy {
+    padding: 0.65rem 1.25rem;
+  }
+
+  .wallet-points-block {
+    grid-area: points;
+    align-self: start;
+    margin-top: 0 !important;
+    padding: 0;
+  }
+
+  .wallet-points-value {
+    font-size: clamp(2.5rem, 3.2vw, 3.75rem) !important;
+  }
+
+  .wallet-deck-block {
+    grid-area: deck;
+    grid-row: 2 / 4;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 0 !important;
+    min-height: 0;
+    padding-block: clamp(0.5rem, 2vh, 2rem);
+  }
+
+  .wallet-activity-block {
+    grid-area: activity;
+    align-self: end;
+    position: static;
+    margin-top: 0 !important;
+    padding-bottom: 0.5rem;
+  }
+
+  .wallet-cards-rail {
+    grid-area: cards;
+    grid-row: 2 / 4;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    padding: 1.25rem 1.35rem 1.35rem;
+    align-self: stretch;
+  }
+
+  .wallet-sheet-trigger {
+    display: none;
+  }
+
+  .wallet-lower-spacer {
+    display: none;
+  }
+
+  .fife-deck-wrap {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+  }
+
+  .fife-deck-wrap > .absolute.left-0 {
+    display: none;
+  }
+
+  .fife-deck-scene {
+    max-width: min(460px, 36vw) !important;
+    width: 100% !important;
+    height: min(520px, 62vh) !important;
+  }
+
+  .wallet-deck-block .deck-scene.fife-deck-scene:has(.absolute.inset-x-0) {
+    max-width: min(480px, 38vw) !important;
+    height: min(340px, 42vh) !important;
+  }
+
+  /* Fiche commerçant — 2 colonnes */
+  .fife-merchant-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 1.5rem 2rem;
+    align-items: start;
+  }
+
+  .merchant-detail-header {
+    grid-column: 1 / -1;
+  }
+
+  .merchant-primary-column {
+    grid-column: 1;
+  }
+
+  .merchant-card-block {
+    margin-top: 2rem !important;
+  }
+
+  .merchant-side-panel {
+    grid-column: 2;
+    grid-row: 2;
+    position: sticky;
+    top: 1.5rem;
+    align-self: start;
+  }
+
+  .merchant-side-panel > .glass-panel:first-child,
+  .merchant-side-panel > .delete-zone {
+    margin-top: 0 !important;
+  }
+
+  /* Identité Fife Life */
+  .fife-universal-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 1.5rem 2rem;
+    align-items: start;
+  }
+
+  .fife-universal-header {
+    grid-column: 1 / -1;
+  }
+
+  .fife-universal-main {
+    grid-column: 1;
+  }
+
+  .fife-universal-history {
+    grid-column: 2;
+    grid-row: 2 / span 4;
+    position: sticky;
+    top: 1.5rem;
+    align-self: start;
+    margin-top: 0 !important;
+  }
+
+  /* Profil */
+  .fife-profile-layout {
+    max-width: min(72rem, 100%);
+    width: 100%;
+  }
+
+  .fife-profile-panels {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+  }
+
+  .fife-profile-panels .profile-panel {
+    margin-top: 0 !important;
+  }
+
+  .profile-halo-top {
+    max-width: min(72rem, 100%);
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    width: 100%;
+  }
+
+  /* Paramètres */
+  .fife-settings-stack {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+    align-items: start;
+  }
+
+  .fife-settings-stack > .glass-panel,
+  .fife-settings-stack > .profile-logout-btn,
+  .fife-settings-stack > .profile-danger-zone {
+    margin-top: 0 !important;
+  }
+
+  .fife-settings-stack > .glass-panel:first-child,
+  .fife-settings-stack > .glass-panel:nth-child(2) {
+    grid-column: 1 / -1;
+  }
+
+  .fife-settings-stack > .profile-logout-btn,
+  .fife-settings-stack > .profile-danger-zone {
+    grid-column: 1 / -1;
+  }
+
+  /* Bottom sheets → panneau centré sans casser l'animation */
+  .fife-desktop-sheet {
+    position: fixed !important;
+    inset: 0 !important;
+    margin: auto !important;
+    width: min(calc(100vw - 4rem), 32rem) !important;
+    height: fit-content !important;
+    max-height: min(85vh, 640px) !important;
+    border-radius: 1.625rem !important;
+    transform: none !important;
+    cursor: default;
+  }
+
+  .sheet-backdrop {
+    backdrop-filter: blur(12px);
+    background: rgba(5, 5, 10, 0.72);
+  }
+
+  /* Carte agrandie — sans rotation téléphone */
+  .card-enlarged-card {
+    rotate: 0deg !important;
+    transform: none !important;
+    max-height: min(70vh, 480px) !important;
+    height: auto !important;
+  }
+
+  .card-enlarged-modal {
+    max-width: 42rem !important;
+  }
+
+  .card-enlarged-hint-mobile {
+    display: none;
+  }
+
+  .merchant-card-block .scale-75 {
+    transform: scale(1);
+  }
+}
+
+/* --- Espace administrateur commerçant --- */
+.merchant-sidebar {
+  position: fixed;
+  inset: 0 auto 0 0;
+  z-index: 40;
+  width: 16rem;
+  flex-direction: column;
+  border-right: 1px solid rgba(190, 164, 255, 0.12);
+  background:
+    radial-gradient(ellipse 80% 50% at 0% 0%, rgba(133, 87, 255, 0.14), transparent 55%),
+    rgba(8, 6, 16, 0.92);
+  backdrop-filter: blur(20px) saturate(1.3);
+}
+
+.merchant-brand-mark {
+  display: grid;
+  height: 2rem;
+  width: 2rem;
+  place-items: center;
+  border-radius: 0.65rem;
+  background: radial-gradient(circle at 0% 0%, #b86cff, #4c228c);
+  font-size: 0.65rem;
+  font-weight: 900;
+  color: var(--ink);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55);
+  box-shadow: 0 0 0 1px var(--stroke-strong);
+}
+
+.merchant-sidebar-link {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  border-radius: 0.85rem;
+  padding: 0.75rem 0.85rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--muted);
+  transition: background 0.15s, color 0.15s;
+}
+
+.merchant-sidebar-link:hover {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--ink-soft);
+}
+
+.merchant-sidebar-link-active {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--ink);
+  box-shadow: inset 0 0 0 1px rgba(190, 164, 255, 0.12);
+}
+
+.merchant-sidebar-link-caisse {
+  background: rgba(133, 87, 255, 0.12);
+  color: var(--violet-bright);
+}
+
+.merchant-bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  display: flex;
+  align-items: stretch;
+  justify-content: space-around;
+  gap: 0.15rem;
+  padding: 0.35rem 0.5rem calc(0.45rem + env(safe-area-inset-bottom));
+  border-top: 1px solid rgba(190, 164, 255, 0.14);
+  background: rgba(10, 8, 18, 0.88);
+  backdrop-filter: blur(22px) saturate(1.4);
+  box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.45);
+}
+
+.merchant-bottom-nav-item {
+  display: flex;
+  min-width: 3.4rem;
+  min-height: 3.25rem;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2rem;
+  border-radius: 0.85rem;
+  padding: 0.35rem 0.25rem;
+  font-size: 0.625rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+  transition: background 0.15s, color 0.15s;
+}
+
+.merchant-bottom-nav-active {
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.merchant-bottom-nav-caisse {
+  color: var(--violet-bright);
+}
+
+.merchant-bottom-nav-caisse.merchant-bottom-nav-active {
+  background: rgba(133, 87, 255, 0.18);
+  box-shadow: inset 0 0 0 1px rgba(190, 164, 255, 0.2);
+}
+
+.merchant-back-btn {
+  display: grid;
+  height: 2.5rem;
+  width: 2.5rem;
+  shrink: 0;
+  place-items: center;
+  border-radius: 0.85rem;
+  border: 1px solid rgba(190, 164, 255, 0.18);
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(12px);
+  color: var(--ink);
+}
+
+.compact-list-shell {
+  overflow: hidden;
+  border-radius: 1.25rem;
+  border: 1px solid rgba(190, 164, 255, 0.14);
+  background: rgba(12, 10, 22, 0.72);
+  backdrop-filter: blur(16px);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.35);
+}
+
+.compact-list-row {
+  display: flex;
+  min-height: 4rem;
+  align-items: center;
+  gap: 0.75rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 0.65rem 0.85rem;
+  transition: background 0.12s;
+}
+
+.compact-list-row:last-child {
+  border-bottom: none;
+}
+
+.compact-list-row:active,
+.compact-list-row:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.initials-avatar {
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  font-weight: 800;
+  text-transform: uppercase;
+  background: rgba(133, 87, 255, 0.18);
+  color: var(--violet-bright);
+  box-shadow: inset 0 0 0 1px rgba(190, 164, 255, 0.2);
+}
+
+.initials-avatar-sm {
+  height: 2rem;
+  width: 2rem;
+  font-size: 0.65rem;
+}
+
+.initials-avatar-md {
+  height: 2.5rem;
+  width: 2.5rem;
+  font-size: 0.75rem;
+}
+
+.merchant-search-input {
+  width: 100%;
+  border-radius: 0.85rem;
+  border: 1px solid rgba(190, 164, 255, 0.14);
+  background: rgba(255, 255, 255, 0.05);
+  padding: 0.65rem 0.85rem 0.65rem 2.35rem;
+  font-size: 0.875rem;
+  color: var(--ink);
+  outline: none;
+}
+
+.merchant-search-input:focus {
+  border-color: rgba(133, 87, 255, 0.45);
+  box-shadow: 0 0 0 3px rgba(133, 87, 255, 0.15);
+}
+
+.merchant-filter-chip {
+  border-radius: 999px;
+  border: 1px solid rgba(190, 164, 255, 0.14);
+  background: rgba(255, 255, 255, 0.04);
+  padding: 0.35rem 0.75rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--muted-strong);
+}
+
+.merchant-filter-chip-active {
+  border-color: rgba(133, 87, 255, 0.35);
+  background: rgba(133, 87, 255, 0.16);
+  color: var(--ink);
+}
+
+.merchant-status-badge {
+  border-radius: 999px;
+  padding: 0.15rem 0.45rem;
+  font-size: 0.625rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.merchant-status-badge-ok {
+  background: rgba(159, 216, 138, 0.14);
+  color: var(--positive);
+}
+
+.merchant-status-badge-warn {
+  background: rgba(231, 185, 95, 0.14);
+  color: var(--warning);
+}
+
+.merchant-status-badge-muted {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--muted);
+}
+
+.merchant-status-badge-danger {
+  background: rgba(241, 93, 116, 0.14);
+  color: var(--danger);
+}
+
+.merchant-empty-state {
+  border-radius: 1.25rem;
+  border: 1px dashed rgba(190, 164, 255, 0.2);
+  padding: 2.5rem 1.5rem;
+  text-align: center;
+}
+
+.merchant-stat-pill {
+  border-radius: 0.85rem;
+  border: 1px solid rgba(190, 164, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+  padding: 0.65rem 0.75rem;
+  text-align: center;
+}
+
+.tx-label-earn { color: var(--positive); font-weight: 700; font-size: 0.75rem; }
+.tx-label-use { color: var(--danger); font-weight: 700; font-size: 0.75rem; }
+.tx-label-correct { color: var(--warning); font-weight: 700; font-size: 0.75rem; }
+.tx-label-cancel { color: var(--muted); font-weight: 700; font-size: 0.75rem; }
+
+.program-step-card {
+  border-radius: 1.25rem;
+  border: 1px solid rgba(190, 164, 255, 0.14);
+  background: rgba(12, 10, 22, 0.78);
+  backdrop-filter: blur(16px);
+  padding: 1.25rem;
+}
+
+.program-mode-option {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.25rem;
+  border-radius: 1rem;
+  border: 1px solid rgba(190, 164, 255, 0.14);
+  background: rgba(255, 255, 255, 0.03);
+  padding: 0.85rem 1rem;
+  text-align: left;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.program-mode-option-active {
+  border-color: rgba(133, 87, 255, 0.45);
+  background: rgba(133, 87, 255, 0.12);
+}
+
+.recent-activity-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.65rem 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.recent-activity-row:last-child {
+  border-bottom: none;
 }

@@ -1,20 +1,26 @@
-import type { MerchantRole, PlatformRole } from "@prisma/client";
+import type { MerchantRole, StaffPreset } from "@prisma/client";
+import { hasPermission, type PermissionKey } from "./staff-permissions";
 
 export const MAX_ACTIVE_EMPLOYEES = 10;
 
 export type StaffMembership = {
   merchantId: string;
   role: MerchantRole;
+  staffPreset?: StaffPreset;
+  permissions?: unknown;
   isActive: boolean;
   merchant: { isActive: boolean; name: string; slug: string };
 };
 
-export function isSuperAdmin(role: PlatformRole | null | undefined) {
+export function isSuperAdmin(role: import("@prisma/client").PlatformRole | null | undefined) {
   return role === "SUPER_ADMIN";
 }
 
-export function canOpenCaisse(role: MerchantRole | null | undefined) {
-  return role === "MERCHANT_ADMIN" || role === "EMPLOYEE";
+export function canOpenCaisse(membership: Pick<StaffMembership, "role" | "staffPreset" | "permissions">) {
+  return hasPermission(
+    { role: membership.role, staffPreset: membership.staffPreset ?? "CASHIER", permissions: membership.permissions },
+    "caisse",
+  );
 }
 
 export function canManageMerchantSettings(role: MerchantRole | null | undefined) {
@@ -25,12 +31,27 @@ export function canManageEmployees(role: MerchantRole | null | undefined) {
   return role === "MERCHANT_ADMIN";
 }
 
-export function canViewAllCustomers(role: MerchantRole | null | undefined) {
-  return role === "MERCHANT_ADMIN";
+export function canViewAllCustomers(membership: Pick<StaffMembership, "role" | "staffPreset" | "permissions">) {
+  if (membership.role === "MERCHANT_ADMIN") return true;
+  return hasPermission(
+    { role: membership.role, staffPreset: membership.staffPreset ?? "CASHIER", permissions: membership.permissions },
+    "viewCustomers",
+  );
 }
 
-export function canAdjustPoints(role: MerchantRole | null | undefined) {
-  return role === "MERCHANT_ADMIN";
+export function canAdjustPoints(membership: Pick<StaffMembership, "role" | "staffPreset" | "permissions">) {
+  if (membership.role === "MERCHANT_ADMIN") return true;
+  return hasPermission(
+    { role: membership.role, staffPreset: membership.staffPreset ?? "CASHIER", permissions: membership.permissions },
+    "correctTransaction",
+  );
+}
+
+export function staffHasPermission(membership: StaffMembership, key: PermissionKey) {
+  return hasPermission(
+    { role: membership.role, staffPreset: membership.staffPreset ?? "CASHIER", permissions: membership.permissions },
+    key,
+  );
 }
 
 export function canAddEmployee(activeEmployeeCount: number) {

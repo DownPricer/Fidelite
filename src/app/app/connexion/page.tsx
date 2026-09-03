@@ -5,6 +5,7 @@ export default function AppLoginPage() {
     <StaffLogin
       title="Espace commerçant"
       nextPath="/app"
+      demoHref={process.env.NODE_ENV === "development" ? "/app/enter-demo" : undefined}
     />
   );
 }

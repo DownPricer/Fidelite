@@ -1,4 +1,4 @@
-import { PREVIEW_CARDS, PREVIEW_HISTORY } from "@/components/fife-life/preview-data";
+import { PREVIEW_CARDS, PREVIEW_HISTORY, PREVIEW_PROFILE, PREVIEW_PREFERENCES } from "@/components/fife-life/preview-data";
 
 export const DEMO_FIRST_NAME = "Irène";
 export const DEMO_POINTS = 180;
@@ -33,6 +33,14 @@ export function demoUniversalDetailProps() {
     firstName: DEMO_FIRST_NAME,
     fifeLifePoints: DEMO_POINTS,
     history: PREVIEW_HISTORY,
+    preview: true,
+  };
+}
+
+export function demoProfileProps() {
+  return {
+    profile: PREVIEW_PROFILE,
+    preferences: PREVIEW_PREFERENCES,
     preview: true,
   };
 }

@@ -61,23 +61,28 @@ export function tokenFromRequest(req: Request | NextRequest) {
 }
 
 export async function userFromToken(token: string) {
-  const session = await prisma.session.findUnique({
-    where: { tokenHash: hashToken(token) },
-    include: {
-      user: {
-        include: {
-          merchantMemberships: {
-            where: { isActive: true },
-            include: { merchant: true },
+  try {
+    const session = await prisma.session.findUnique({
+      where: { tokenHash: hashToken(token) },
+      include: {
+        user: {
+          include: {
+            merchantMemberships: {
+              where: { isActive: true },
+              include: { merchant: true },
+            },
           },
         },
       },
-    },
-  });
-  if (!session || session.expiresAt < new Date() || !session.user.isActive) {
+    });
+    if (!session || session.expiresAt < new Date() || !session.user.isActive) {
+      return null;
+    }
+    return session.user;
+  } catch (error) {
+    console.error("[session] Impossible de lire la session:", error);
     return null;
   }
-  return session.user;
 }
 
 export async function getRequestUser(req: Request | NextRequest) {

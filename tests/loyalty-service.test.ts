@@ -26,6 +26,9 @@ vi.mock("../src/lib/prisma", () => {
     fifeLifePointsLedger: {
       create: (...args: unknown[]) => fifeLifeLedgerCreate(...args),
     },
+    merchantMembership: {
+      updateMany: vi.fn(async () => ({ count: 1 })),
+    },
   };
 
   return {
@@ -55,8 +58,12 @@ const baseMembership = {
     id: "merchant_1",
     name: "Café Demo",
     program: {
+      mode: "VISITS" as const,
       visitsRequired: 10,
       rewardLabel: "1 boisson offerte",
+      config: {},
+      version: 1,
+      rewards: [],
     },
   },
   user: {

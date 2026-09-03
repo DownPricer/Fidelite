@@ -1,60 +1,48 @@
 import { redirect } from "next/navigation";
 import { DEMO_MERCHANT } from "@/lib/demo-visual";
 import { prisma } from "@/lib/prisma";
+import { resolveMerchantDemo } from "@/lib/merchant-demo-server";
 import { canManageMerchantSettings, firstActiveStaffMembership } from "@/lib/rbac";
-import { getSessionUser } from "@/lib/session";
-import { SettingsForm } from "./ui";
+import { SettingsPanel } from "./ui";
+import { MerchantPageHeader } from "@/components/merchant/merchant-ui";
 
 export default async function SettingsPage() {
-  const user = await getSessionUser();
-  if (!user) {
-    if (process.env.NODE_ENV === "development") {
-      return (
-        <main className="obsidian-scene mx-auto max-w-7xl px-6 py-8 lg:px-12 lg:py-12">
-          <header className="mb-8">
-            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--muted-text)]">Configuration</p>
-            <h1 className="mt-1 text-3xl font-black tracking-tight text-[var(--panel-text)] lg:text-4xl">Paramètres</h1>
-            <p className="mt-1 text-sm text-[var(--muted)]">{DEMO_MERCHANT.merchantName}</p>
-          </header>
-          <SettingsForm
-            demo
-            initial={{
-              name: DEMO_MERCHANT.merchantName,
-              logoUrl: "",
-              primaryColor: "#8557ff",
-              visitsRequired: 10,
-              rewardLabel: "1 boisson offerte",
-            }}
-          />
-        </main>
-      );
-    }
-    redirect("/app/connexion");
+  const { user, demo } = await resolveMerchantDemo();
+
+  if (demo) {
+    return (
+      <main className="obsidian-scene mx-auto max-w-3xl px-5 py-6">
+        <MerchantPageHeader eyebrow="Configuration" title="Réglages" subtitle={DEMO_MERCHANT.merchantName} />
+        <SettingsPanel demo merchantName={DEMO_MERCHANT.merchantName} programSummary="10 passages = 1 boisson offerte" />
+      </main>
+    );
   }
+
+  if (!user) redirect("/app/connexion");
   const membership = firstActiveStaffMembership(user.merchantMemberships);
   if (!membership || !canManageMerchantSettings(membership.role)) redirect("/app");
 
-  const merchant = await prisma.merchant.findUnique({
-    where: { id: membership.merchantId },
-    include: { program: true },
-  });
-  if (!merchant || !merchant.program) redirect("/app");
+  let merchant;
+  try {
+    merchant = await prisma.merchant.findUnique({
+      where: { id: membership.merchantId },
+      include: { program: { include: { rewards: { where: { isActive: true }, orderBy: { sortOrder: "asc" }, take: 1 } } } },
+    });
+  } catch (error) {
+    console.error("[parametres] DB error:", error);
+    redirect("/app/enter-demo");
+  }
+  if (!merchant?.program) redirect("/app");
+
+  const firstReward = merchant.program.rewards[0];
+  const summary = firstReward
+    ? `${firstReward.threshold} ${firstReward.thresholdUnit === "points" ? "points" : "passages"} = ${firstReward.name}`
+    : `${merchant.program.visitsRequired} passages = ${merchant.program.rewardLabel}`;
 
   return (
-    <main className="obsidian-scene mx-auto max-w-7xl px-6 py-8 lg:px-12 lg:py-12">
-      <header className="mb-8">
-        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--muted-text)]">Configuration</p>
-        <h1 className="mt-1 text-3xl font-black tracking-tight text-[var(--panel-text)] lg:text-4xl">Paramètres</h1>
-      </header>
-      <SettingsForm
-        initial={{
-          name: merchant.name,
-          logoUrl: merchant.logoUrl ?? "",
-          primaryColor: merchant.primaryColor,
-          visitsRequired: merchant.program.visitsRequired,
-          rewardLabel: merchant.program.rewardLabel,
-        }}
-      />
+    <main className="obsidian-scene mx-auto max-w-3xl px-5 py-6">
+      <MerchantPageHeader eyebrow="Configuration" title="Réglages" subtitle={merchant.name} />
+      <SettingsPanel merchantName={merchant.name} programSummary={summary} />
     </main>
   );
 }

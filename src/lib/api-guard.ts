@@ -47,7 +47,7 @@ export async function requireCaisse(req: Request, merchantId?: string) {
   const auth = await requireUser(req);
   if (auth.error || !auth.user) return { error: auth.error ?? jsonError("Connexion requise.", 401) };
   const membership = staffContext(auth.user, merchantId);
-  if (!membership || !canOpenCaisse(membership.role)) {
+  if (!membership || !canOpenCaisse(membership)) {
     return { error: jsonError("Accès caisse refusé.", 403) };
   }
   return { error: null, user: auth.user, membership };
