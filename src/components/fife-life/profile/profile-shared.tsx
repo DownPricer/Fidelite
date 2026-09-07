@@ -38,7 +38,7 @@ export function ProfileShell({
       <div className="profile-halo-top" aria-hidden />
       <div className="profile-halo-mid" aria-hidden />
 
-      <div className="relative z-[1] mx-auto flex min-h-dvh w-full max-w-md flex-col px-5 pb-10 pt-[max(0.75rem,env(safe-area-inset-top))] fife-page-shell fife-profile-layout">
+      <div className="relative z-[1] mx-auto flex min-h-dvh w-full max-w-md flex-col px-5 pb-10 pt-[max(0.75rem,env(safe-area-inset-top))] fife-page-shell fife-profile-layout lg:max-w-none">
         <header className="flex shrink-0 items-center justify-between">
           <Link href={backHref} className="back-btn-glassy grid h-10 w-10 place-items-center rounded-full text-sm">
             ←

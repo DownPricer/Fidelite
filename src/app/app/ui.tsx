@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui";
-import { MerchantPageHeader } from "@/components/merchant/merchant-ui";
+import { MerchantPageShell } from "@/components/merchant/merchant-ui";
 
 export function MerchantHome({
   firstName,
@@ -66,14 +66,14 @@ export function MerchantHome({
   }
 
   return (
-    <main className="obsidian-scene mx-auto max-w-5xl px-5 py-6 lg:px-10 lg:py-10">
-      <header className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+    <MerchantPageShell>
+      <header className="merchant-page-header mb-6 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div>
           <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--muted)]">{merchantName}</p>
-          <h1 className="mt-1 text-2xl font-black tracking-tight text-[var(--ink)] sm:text-3xl">Bonjour, {firstName}</h1>
+          <h1 className="mt-1 font-black tracking-tight text-[var(--ink)]">Bonjour, {firstName}</h1>
           <p className="text-sm text-[var(--muted-strong)]">Vue d&apos;ensemble fidélité</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex shrink-0 gap-2">
           <Link href="/app/caisse" className="glass-cta px-4 py-2 text-sm">
             Caisse
           </Link>
@@ -83,59 +83,63 @@ export function MerchantHome({
         </div>
       </header>
 
-      {metrics ? (
-        <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          {metrics.map((stat) => (
-            <div key={stat.label} className="metric-card px-4 py-4">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted)]">{stat.label}</p>
-              <p className="mt-1 text-2xl font-black text-[var(--ink)]">{stat.value}</p>
+      <div className="merchant-dashboard-grid">
+        <div className="merchant-dashboard-aside">
+          {metrics ? (
+            <section className="grid grid-cols-2 gap-3 md:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+              {metrics.map((stat) => (
+                <div key={stat.label} className="metric-card px-4 py-4">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted)]">{stat.label}</p>
+                  <p className="mt-1 text-2xl font-black text-[var(--ink)] md:text-3xl">{stat.value}</p>
+                </div>
+              ))}
+            </section>
+          ) : (
+            <div className="grid grid-cols-2 gap-3">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="metric-card h-20 animate-pulse" />
+              ))}
             </div>
-          ))}
-        </section>
-      ) : (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="metric-card h-20 animate-pulse" />
-          ))}
-        </div>
-      )}
+          )}
 
-      <section className="glass-panel mt-6 p-5">
-        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--violet-bright)]">Activité récente</p>
-        <h2 className="mt-1 text-lg font-black text-[var(--ink)]">Derniers passages et récompenses</h2>
-        {recent.length === 0 ? (
-          <p className="mt-4 text-sm text-[var(--muted)]">Aucune activité récente.</p>
-        ) : (
-          <div className="mt-4">
-            {recent.map((item) => (
-              <div key={item.id} className="recent-activity-row">
-                <div className="grid h-9 w-9 place-items-center rounded-full bg-white/8 text-xs font-bold uppercase text-[var(--violet-bright)]">
-                  {item.firstName.slice(0, 1)}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold text-[var(--ink)]">{activityLabel(item)}</p>
-                  <p className="text-xs text-[var(--muted)]">
-                    {new Date(item.createdAt).toLocaleString("fr-FR")} · {item.actor}
-                  </p>
-                </div>
-              </div>
+          <section className="merchant-dashboard-shortcuts">
+            {[
+              ["Clients", "/app/clients", "Liste et recherche"],
+              ["Équipe", "/app/employes", "Rôles et accès"],
+              ["Programme", "/app/parametres/programme", "Fidélité et avantages"],
+            ].map(([label, href, hint]) => (
+              <Link key={href} href={href} className="metric-card block p-4 transition hover:-translate-y-0.5">
+                <p className="font-bold text-[var(--ink)]">{label}</p>
+                <p className="mt-0.5 text-xs text-[var(--muted)]">{hint}</p>
+              </Link>
             ))}
-          </div>
-        )}
-      </section>
+          </section>
+        </div>
 
-      <section className="mt-6 grid gap-3 sm:grid-cols-3">
-        {[
-          ["Clients", "/app/clients", "Liste compacte"],
-          ["Équipe", "/app/employes", "Rôles et accès"],
-          ["Programme", "/app/parametres/programme", "Fidélité et avantages"],
-        ].map(([label, href, hint]) => (
-          <Link key={href} href={href} className="metric-card block p-4 transition hover:-translate-y-0.5">
-            <p className="font-bold text-[var(--ink)]">{label}</p>
-            <p className="mt-0.5 text-xs text-[var(--muted)]">{hint}</p>
-          </Link>
-        ))}
-      </section>
-    </main>
+        <section className="glass-panel p-5 md:p-6">
+          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--violet-bright)]">Activité récente</p>
+          <h2 className="mt-1 text-lg font-black text-[var(--ink)] md:text-xl">Derniers passages et récompenses</h2>
+          {recent.length === 0 ? (
+            <p className="mt-4 text-sm text-[var(--muted)]">Aucune activité récente.</p>
+          ) : (
+            <div className="mt-4 md:mt-5">
+              {recent.map((item) => (
+                <div key={item.id} className="recent-activity-row">
+                  <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white/8 text-xs font-bold uppercase text-[var(--violet-bright)]">
+                    {item.firstName.slice(0, 1)}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold text-[var(--ink)] md:text-[15px]">{activityLabel(item)}</p>
+                    <p className="text-xs text-[var(--muted)]">
+                      {new Date(item.createdAt).toLocaleString("fr-FR")} · {item.actor}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      </div>
+    </MerchantPageShell>
   );
 }

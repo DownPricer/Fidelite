@@ -54,7 +54,7 @@ export function AppNav({ admin }: { admin: boolean }) {
 
   return (
     <>
-      <aside className="merchant-sidebar hidden lg:flex">
+      <aside className="merchant-sidebar hidden md:flex">
         <div className="flex h-16 items-center border-b border-white/10 px-6">
           <Link href={admin ? "/app" : "/app/caisse"} className="flex items-center gap-3 font-bold tracking-tighter text-[var(--ink)]">
             <span className="merchant-brand-mark">FL</span>
@@ -82,7 +82,7 @@ export function AppNav({ admin }: { admin: boolean }) {
         </nav>
       </aside>
 
-      <nav className="merchant-bottom-nav lg:hidden" aria-label="Navigation commerçant">
+      <nav className="merchant-bottom-nav md:hidden" aria-label="Navigation commerçant">
         {links.map((link) => {
           const active = isActive(pathname, link.href);
           return (

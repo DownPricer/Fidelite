@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { CustomerDetailPanel } from "../ui";
 import { resolveMerchantDemo } from "@/lib/merchant-demo-server";
 import { canViewAllCustomers, firstActiveStaffMembership } from "@/lib/rbac";
+import { MerchantPageHeader, MerchantPageShell } from "@/components/merchant/merchant-ui";
 
 export default async function CustomerDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -9,9 +10,10 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
 
   if (demo) {
     return (
-      <main className="obsidian-scene mx-auto max-w-3xl px-5 py-6">
+      <MerchantPageShell narrow>
+        <MerchantPageHeader backHref="/app/clients" eyebrow="Client" title="Fiche client" />
         <CustomerDetailPanel id={id} demo />
-      </main>
+      </MerchantPageShell>
     );
   }
 
@@ -20,8 +22,9 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
   if (!membership || !canViewAllCustomers(membership)) redirect("/app");
 
   return (
-    <main className="obsidian-scene mx-auto max-w-3xl px-5 py-6">
+    <MerchantPageShell narrow>
+      <MerchantPageHeader backHref="/app/clients" eyebrow="Client" title="Fiche client" />
       <CustomerDetailPanel id={id} />
-    </main>
+    </MerchantPageShell>
   );
 }

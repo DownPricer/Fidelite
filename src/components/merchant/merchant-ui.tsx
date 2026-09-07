@@ -21,6 +21,16 @@ export function MerchantBackButton({ href }: { href?: string }) {
   );
 }
 
+export function MerchantPageShell({
+  children,
+  narrow = false,
+}: {
+  children: ReactNode;
+  narrow?: boolean;
+}) {
+  return <main className={cn("merchant-page-shell obsidian-scene", narrow && "merchant-page-shell-narrow")}>{children}</main>;
+}
+
 export function MerchantPageHeader({
   eyebrow,
   title,
@@ -36,18 +46,46 @@ export function MerchantPageHeader({
 }) {
   return (
     <header className="merchant-page-header mb-6">
-      <div className="flex items-start gap-3">
-        {backHref !== undefined ? <MerchantBackButton href={backHref} /> : null}
-        <div className="min-w-0 flex-1">
-          {eyebrow ? (
-            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--muted)]">{eyebrow}</p>
-          ) : null}
-          <h1 className="mt-0.5 text-2xl font-black tracking-tight text-[var(--ink)] sm:text-3xl">{title}</h1>
-          {subtitle ? <p className="mt-1 text-sm text-[var(--muted-strong)]">{subtitle}</p> : null}
+      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+        <div className="flex min-w-0 items-start gap-3">
+          {backHref !== undefined ? <MerchantBackButton href={backHref} /> : null}
+          <div className="min-w-0 flex-1">
+            {eyebrow ? (
+              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--muted)]">{eyebrow}</p>
+            ) : null}
+            <h1 className="mt-0.5 text-2xl font-black tracking-tight text-[var(--ink)] sm:text-3xl">{title}</h1>
+            {subtitle ? <p className="mt-1 text-sm text-[var(--muted-strong)]">{subtitle}</p> : null}
+          </div>
         </div>
-        {action}
+        {action ? <div className="flex shrink-0 flex-wrap items-center gap-2">{action}</div> : null}
       </div>
     </header>
+  );
+}
+
+export function CompactListHeader({
+  columns,
+}: {
+  columns: string[];
+}) {
+  const isFourCol = columns.length >= 4;
+  return (
+    <div className={cn("compact-list-header", isFourCol && "compact-list-header-4col")} aria-hidden>
+      <span />
+      <span>{columns[0]}</span>
+      <span>{columns[1]}</span>
+      {isFourCol ? (
+        <>
+          <span>{columns[2]}</span>
+          <span className="compact-list-header-meta">{columns[3]}</span>
+        </>
+      ) : (
+        <>
+          <span className="compact-list-header-meta">{columns[2] ?? ""}</span>
+        </>
+      )}
+      <span />
+    </div>
   );
 }
 
@@ -58,7 +96,9 @@ export function CompactListRow({
   title,
   subtitle,
   meta,
+  desktopMeta,
   badge,
+  desktopBadge,
   chevron = true,
 }: {
   href?: string;
@@ -67,25 +107,37 @@ export function CompactListRow({
   title: string;
   subtitle?: string;
   meta?: string;
+  desktopMeta?: string;
   badge?: ReactNode;
+  desktopBadge?: ReactNode;
   chevron?: boolean;
 }) {
+  const desktopSecondary = desktopMeta ?? subtitle;
+  const isFourCol = Boolean(desktopBadge);
   const inner = (
     <>
       <div className="compact-row-avatar">{avatar}</div>
-      <div className="min-w-0 flex-1">
+      <div className="compact-row-main min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <p className="truncate text-[15px] font-bold text-[var(--ink)]">{title}</p>
-          {badge}
+          {badge ? <span className={cn("compact-row-badge-inline shrink-0", isFourCol && "md:hidden")}>{badge}</span> : null}
         </div>
-        {subtitle ? <p className="truncate text-xs text-[var(--muted)]">{subtitle}</p> : null}
+        {subtitle ? <p className="compact-row-sub-mobile truncate text-xs text-[var(--muted)]">{subtitle}</p> : null}
       </div>
-      {meta ? <p className="shrink-0 text-[11px] font-semibold text-[var(--muted-strong)]">{meta}</p> : null}
+      {subtitle ? <p className="compact-row-col compact-row-sub-desktop truncate text-sm text-[var(--muted-strong)]">{subtitle}</p> : <span className="compact-row-col" />}
+      {isFourCol && desktopBadge ? <div className="compact-row-col compact-row-badge-desktop">{desktopBadge}</div> : null}
+      {(meta || desktopSecondary) ? (
+        <p className="compact-row-col compact-row-meta truncate text-xs font-semibold text-[var(--muted-strong)]">{meta ?? desktopSecondary}</p>
+      ) : (
+        <span className="compact-row-col" />
+      )}
       {chevron ? (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4 shrink-0 text-[var(--muted)]">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="compact-row-chevron h-4 w-4 shrink-0 text-[var(--muted)]">
           <path d="M9 18l6-6-6-6" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
-      ) : null}
+      ) : (
+        <span className="compact-row-chevron" />
+      )}
     </>
   );
 
@@ -115,8 +167,16 @@ export function InitialsAvatar({ name, size = "md" }: { name: string; size?: "sm
   );
 }
 
-export function CompactListShell({ children, className }: { children: ReactNode; className?: string }) {
-  return <div className={cn("compact-list-shell", className)}>{children}</div>;
+export function CompactListShell({
+  children,
+  className,
+  columns = 3,
+}: {
+  children: ReactNode;
+  className?: string;
+  columns?: 3 | 4;
+}) {
+  return <div className={cn("compact-list-shell", columns === 4 && "compact-list-shell-4col", className)}>{children}</div>;
 }
 
 export function ListToolbar({
@@ -133,8 +193,8 @@ export function ListToolbar({
   sort?: ReactNode;
 }) {
   return (
-    <div className="merchant-toolbar mb-4 space-y-3">
-      <div className="relative">
+    <div className="merchant-toolbar mb-4">
+      <div className="merchant-search-wrap relative">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--muted)]">
           <circle cx="11" cy="11" r="7" />
           <path d="M20 20l-3-3" strokeLinecap="round" />
@@ -147,7 +207,7 @@ export function ListToolbar({
         />
       </div>
       {(filters || sort) && (
-        <div className="flex flex-wrap gap-2">
+        <div className="merchant-toolbar-filters">
           {filters}
           {sort}
         </div>

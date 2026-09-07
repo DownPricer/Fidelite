@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { getDemoTierCardImage } from "@/lib/demo-tier-card-images";
 import { getCachedQr, loadUniversalQr } from "./qr-cache";
 import { TIER_STYLE, resolveTier } from "./tier";
 import { PrismCard } from "./prism-card";
+import type { WalletTier } from "./types";
 
 type GlobalCardMode = "detail" | "wallet";
 
@@ -11,14 +13,21 @@ export function GlobalCard({
   points,
   large = false,
   mode = "detail",
+  demoVisual = false,
+  tierOverride,
 }: {
   points: number;
   large?: boolean;
   mode?: GlobalCardMode;
+  demoVisual?: boolean;
+  tierOverride?: WalletTier;
 }) {
   const tier = resolveTier(points);
-  const style = TIER_STYLE[tier.name];
-  const showQrOnCard = mode === "wallet" && large;
+  const tierName = tierOverride ?? tier.name;
+  const style = TIER_STYLE[tierName];
+  const showQrOnCard = mode === "wallet" && large && !demoVisual;
+  const demoImage = demoVisual ? getDemoTierCardImage(tierName) : null;
+  const [imgError, setImgError] = useState(false);
 
   const [qr, setQr] = useState<string | null>(() => (showQrOnCard ? getCachedQr() : null));
   const [qrError, setQrError] = useState<string | null>(null);
@@ -38,9 +47,24 @@ export function GlobalCard({
     };
   }, [showQrOnCard, qr]);
 
+  if (demoVisual && demoImage && !imgError) {
+    return (
+      <div className="demo-tier-card-frame deck-card-slot">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={demoImage}
+          alt={`Carte Fife Life ${tierName}`}
+          className="demo-tier-card-visual"
+          draggable={false}
+          onError={() => setImgError(true)}
+        />
+      </div>
+    );
+  }
+
   return (
     <PrismCard
-      material={tier.name.toLowerCase() as "bronze" | "silver" | "gold" | "diamond"}
+      material={tierName.toLowerCase() as "bronze" | "silver" | "gold" | "diamond"}
       className={large ? "min-h-[210px] px-6 py-5" : "px-5 py-4"}
       style={{
         ["--prism-from" as never]: style.from,
@@ -53,7 +77,7 @@ export function GlobalCard({
           <div>
             <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-white/70">Fife Life</p>
             <h2 className={`mt-1 font-black leading-none tracking-tight text-[var(--ink)] ${large ? "text-2xl" : "text-xl"}`}>
-              {tier.name}
+              {tierName}
             </h2>
           </div>
           <div
@@ -64,7 +88,7 @@ export function GlobalCard({
               boxShadow: `0 0 0 1px ${style.metal}55, 0 0 18px ${style.glow}`,
             }}
           >
-            {tier.name.slice(0, 2)}
+            {tierName.slice(0, 2)}
           </div>
         </div>
 

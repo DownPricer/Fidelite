@@ -3,17 +3,17 @@ import { DEMO_MERCHANT } from "@/lib/demo-visual";
 import { resolveMerchantDemo } from "@/lib/merchant-demo-server";
 import { canViewAllCustomers, firstActiveStaffMembership } from "@/lib/rbac";
 import { CustomersPanel } from "./ui";
-import { MerchantPageHeader } from "@/components/merchant/merchant-ui";
+import { MerchantPageHeader, MerchantPageShell } from "@/components/merchant/merchant-ui";
 
 export default async function ClientsPage() {
   const { user, demo } = await resolveMerchantDemo();
 
   if (demo) {
     return (
-      <main className="obsidian-scene mx-auto max-w-3xl px-5 py-6">
+      <MerchantPageShell>
         <MerchantPageHeader eyebrow="Gestion" title="Clients" subtitle={DEMO_MERCHANT.merchantName} />
         <CustomersPanel demo />
-      </main>
+      </MerchantPageShell>
     );
   }
 
@@ -22,9 +22,9 @@ export default async function ClientsPage() {
   if (!membership || !canViewAllCustomers(membership)) redirect("/app");
 
   return (
-    <main className="obsidian-scene mx-auto max-w-3xl px-5 py-6">
+    <MerchantPageShell>
       <MerchantPageHeader eyebrow="Gestion" title="Clients" />
       <CustomersPanel />
-    </main>
+    </MerchantPageShell>
   );
 }

@@ -93,6 +93,16 @@ body {
   overflow: hidden;
   color: var(--ink-soft);
   touch-action: pan-y pinch-zoom;
+  --wallet-card-width: 320px;
+  --wallet-card-height: calc(var(--wallet-card-width) / 1.586);
+  --wallet-spread: 32px;
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  .wallet-shell {
+    --wallet-card-width: clamp(320px, 52vw, 440px);
+    --wallet-spread: clamp(32px, 4vw, 40px);
+  }
 }
 
 body:has(.wallet-shell) {
@@ -146,6 +156,18 @@ body:has(.wallet-shell) {
 
 .deck-scene {
   perspective: 1300px;
+  height: 300px;
+  max-width: 360px;
+}
+
+.deck-scene-solo {
+  height: 220px;
+  max-width: 340px;
+}
+
+.fife-deck-scene {
+  --wallet-card-width: 320px;
+  --wallet-card-height: calc(var(--wallet-card-width) / 1.586);
 }
 
 .deck-halo {
@@ -154,8 +176,8 @@ body:has(.wallet-shell) {
   left: 50%;
   top: 44%;
   z-index: 0;
-  height: 270px;
-  width: 320px;
+  height: calc(var(--wallet-card-height) * 1.15);
+  width: calc(var(--wallet-card-width) * 1.05);
   transform: translate(-50%, -50%);
   border-radius: 999px;
   background:
@@ -168,13 +190,83 @@ body:has(.wallet-shell) {
 .deck-floor-shadow {
   pointer-events: none;
   position: absolute;
-  inset-inline: 14%;
-  bottom: 2%;
-  height: 42px;
+  inset-inline: 10%;
+  bottom: 4%;
+  height: calc(var(--wallet-card-width) * 0.14);
   border-radius: 999px;
   background: radial-gradient(ellipse at 50% 0%, rgba(0, 0, 0, 0.9), transparent 70%);
   opacity: 0.9;
   filter: blur(12px);
+}
+
+.deck-rotate-hint {
+  display: block;
+  margin-left: -3rem;
+}
+
+.deck-nav-btn {
+  display: none;
+}
+
+.deck-card-layer {
+  transform-origin: center center;
+}
+
+.deck-card-slot {
+  aspect-ratio: 1.586 / 1;
+}
+
+.demo-tier-card-frame {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+.demo-tier-card-visual {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center;
+  background: transparent;
+  border-radius: 26px;
+  filter: drop-shadow(0 28px 48px rgba(0, 0, 0, 0.55));
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.demo-tier-card-enlarged-wrap {
+  width: 100%;
+  max-width: min(72rem, 1150px);
+  margin-inline: auto;
+}
+
+.demo-tier-card-enlarged {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: min(70vh, 620px);
+  object-fit: contain;
+  object-position: center;
+  border-radius: 28px;
+  filter: drop-shadow(0 32px 64px rgba(0, 0, 0, 0.65));
+  user-select: none;
+}
+
+.wallet-reward-block {
+  display: none;
+}
+
+.card-enlarged-hint-desktop {
+  display: none;
+}
+
+.fife-profile-body {
+  display: block;
 }
 
 .deck-dot.is-active {
@@ -1239,28 +1331,33 @@ body:has(.wallet-shell) {
     max-width: none;
   }
 
-  /* Wallet — plein écran, 3 colonnes */
+  /* Wallet — composition desktop 2 colonnes */
   .wallet-shell.fife-page-shell {
     height: auto;
     min-height: 100dvh;
     max-height: none;
     overflow: visible;
     width: 100%;
-    padding: clamp(1rem, 2vw, 1.75rem) clamp(1.25rem, 3.5vw, 3.5rem) clamp(1.5rem, 2.5vw, 2.5rem);
+    max-width: none !important;
+    padding: clamp(1.25rem, 2.5vw, 3.5rem) clamp(1.25rem, 4vw, 3.5rem) clamp(1.5rem, 2.5vw, 2.5rem);
+    --wallet-card-width: clamp(480px, 36vw, 560px);
+    --wallet-spread: clamp(34px, 2.5vw, 42px);
   }
 
   .wallet-page-body {
     display: grid;
-    grid-template-columns: minmax(240px, 20vw) minmax(0, 1fr) minmax(280px, 22vw);
-    grid-template-rows: auto minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1.6fr) minmax(340px, 0.9fr);
+    grid-template-rows: auto minmax(0, 1fr);
     grid-template-areas:
-      "header header header"
-      "points deck cards"
-      "activity deck cards";
-    gap: clamp(1rem, 2vw, 2rem) clamp(1.25rem, 3vw, 3rem);
+      "header header"
+      "hero sidebar";
+    gap: clamp(1.25rem, 2vw, 2rem) clamp(1.5rem, 3vw, 3rem);
     align-items: stretch;
+    width: 100%;
+    max-width: min(1360px, calc(100vw - 4rem));
+    margin-inline: auto;
     flex: 1;
-    min-height: calc(100dvh - clamp(2.5rem, 4vw, 4.5rem));
+    min-height: calc(100dvh - clamp(2.5rem, 5vw, 5rem));
   }
 
   .wallet-page-header {
@@ -1272,73 +1369,148 @@ body:has(.wallet-shell) {
     padding: 0.65rem 1.25rem;
   }
 
+  .wallet-hero-column {
+    grid-area: hero;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-height: 0;
+    gap: clamp(1rem, 2vh, 2rem);
+  }
+
   .wallet-points-block {
-    grid-area: points;
-    align-self: start;
     margin-top: 0 !important;
     padding: 0;
+    align-self: start;
   }
 
   .wallet-points-value {
-    font-size: clamp(2.5rem, 3.2vw, 3.75rem) !important;
+    font-size: clamp(2.75rem, 3.5vw, 4.25rem) !important;
   }
 
   .wallet-deck-block {
-    grid-area: deck;
-    grid-row: 2 / 4;
+    margin-top: 0 !important;
+    flex: 1;
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-top: 0 !important;
     min-height: 0;
     padding-block: clamp(0.5rem, 2vh, 2rem);
   }
 
-  .wallet-activity-block {
-    grid-area: activity;
-    align-self: end;
-    position: static;
-    margin-top: 0 !important;
-    padding-bottom: 0.5rem;
-  }
-
-  .wallet-cards-rail {
-    grid-area: cards;
-    grid-row: 2 / 4;
+  .wallet-sidebar-column {
+    grid-area: sidebar;
     display: flex;
     flex-direction: column;
+    gap: 1rem;
     min-height: 0;
-    padding: 1.25rem 1.35rem 1.35rem;
-    align-self: stretch;
+    overflow: hidden;
   }
 
-  .wallet-sheet-trigger {
+  .wallet-reward-block {
+    display: block;
+    flex-shrink: 0;
+  }
+
+  .wallet-reward-inline {
     display: none;
   }
 
+  .wallet-activity-block {
+    position: static;
+    margin-top: 0 !important;
+    flex-shrink: 0;
+  }
+
+  .wallet-cards-rail {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    padding: 1.25rem 1.35rem 1.35rem;
+    overflow: hidden;
+  }
+
+  .wallet-cards-rail .wallet-cards-list {
+    min-height: 0;
+  }
+
+  .wallet-sheet-trigger,
   .wallet-lower-spacer {
     display: none;
   }
 
+  .deck-rotate-hint {
+    display: none !important;
+  }
+
   .fife-deck-wrap {
     width: 100%;
-    display: flex;
-    justify-content: center;
+    max-width: 700px;
+    margin-inline: auto;
+    position: relative;
+    padding-inline: 3rem;
   }
 
-  .fife-deck-wrap > .absolute.left-0 {
-    display: none;
-  }
-
-  .fife-deck-scene {
-    max-width: min(460px, 36vw) !important;
+  .fife-deck-scene,
+  .deck-scene.fife-deck-scene {
+    max-width: min(700px, 100%) !important;
     width: 100% !important;
-    height: min(520px, 62vh) !important;
+    height: min(500px, 52vh) !important;
+    --wallet-card-width: clamp(480px, 34vw, 560px);
   }
 
-  .wallet-deck-block .deck-scene.fife-deck-scene:has(.absolute.inset-x-0) {
-    max-width: min(480px, 38vw) !important;
-    height: min(340px, 42vh) !important;
+  .deck-scene-solo.fife-deck-scene {
+    height: min(380px, 44vh) !important;
+    max-width: min(620px, 100%) !important;
+  }
+
+  .deck-nav-btn {
+    display: grid;
+    place-items: center;
+    position: absolute;
+    left: 50%;
+    z-index: 60;
+    height: 2.75rem;
+    width: 2.75rem;
+    transform: translateX(-50%);
+    border-radius: 999px;
+    border: 1px solid rgba(190, 164, 255, 0.22);
+    background: rgba(12, 10, 22, 0.72);
+    backdrop-filter: blur(14px);
+    color: rgba(255, 255, 255, 0.75);
+    opacity: 0;
+    transition: opacity 0.2s ease, background 0.2s ease, transform 0.2s ease;
+  }
+
+  .deck-nav-prev {
+    top: 0.25rem;
+  }
+
+  .deck-nav-next {
+    bottom: 0.25rem;
+  }
+
+  .fife-deck-wrap:hover .deck-nav-btn,
+  .fife-deck-wrap:focus-within .deck-nav-btn {
+    opacity: 1;
+  }
+
+  .deck-nav-btn:hover {
+    background: rgba(133, 87, 255, 0.22);
+    color: var(--ink);
+  }
+
+  .deck-nav-btn:focus-visible {
+    opacity: 1;
+    outline: 2px solid var(--violet-bright);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .deck-nav-btn {
+      opacity: 1;
+    }
   }
 
   /* Fiche commerçant — 2 colonnes */
@@ -1400,21 +1572,6 @@ body:has(.wallet-shell) {
   }
 
   /* Profil */
-  .fife-profile-layout {
-    max-width: min(72rem, 100%);
-    width: 100%;
-  }
-
-  .fife-profile-panels {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 1rem;
-  }
-
-  .fife-profile-panels .profile-panel {
-    margin-top: 0 !important;
-  }
-
   .profile-halo-top {
     max-width: min(72rem, 100%);
     left: 50%;
@@ -1447,51 +1604,239 @@ body:has(.wallet-shell) {
     grid-column: 1 / -1;
   }
 
-  /* Bottom sheets → panneau centré sans casser l'animation */
+  /* Bottom sheets → panneau latéral desktop */
   .fife-desktop-sheet {
     position: fixed !important;
-    inset: 0 !important;
-    margin: auto !important;
-    width: min(calc(100vw - 4rem), 32rem) !important;
-    height: fit-content !important;
-    max-height: min(85vh, 640px) !important;
-    border-radius: 1.625rem !important;
+    inset: 0 0 0 auto !important;
+    margin: 0 !important;
+    width: min(480px, 34vw) !important;
+    min-width: 420px;
+    height: 100dvh !important;
+    max-height: none !important;
+    border-radius: 0 !important;
+    border-left: 1px solid rgba(190, 164, 255, 0.18) !important;
+    border-top: none !important;
     transform: none !important;
     cursor: default;
+    box-shadow: -24px 0 80px rgba(0, 0, 0, 0.55);
+  }
+
+  .fife-desktop-sheet .sheet-halo {
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 280px;
+    transform: none;
   }
 
   .sheet-backdrop {
     backdrop-filter: blur(12px);
-    background: rgba(5, 5, 10, 0.72);
+    background: rgba(5, 5, 10, 0.55);
   }
 
-  /* Carte agrandie — sans rotation téléphone */
+  /* Carte agrandie — paysage desktop */
   .card-enlarged-card {
     rotate: 0deg !important;
     transform: none !important;
-    max-height: min(70vh, 480px) !important;
     height: auto !important;
+    max-height: min(70vh, 520px) !important;
+  }
+
+  .card-enlarged-card-portrait {
+    rotate: 90deg !important;
+    transform-origin: center center;
+    height: 60vw !important;
+    max-height: 400px !important;
   }
 
   .card-enlarged-modal {
-    max-width: 42rem !important;
+    max-width: min(72rem, calc(100vw - 4rem)) !important;
+  }
+
+  .card-enlarged-qr-wrap {
+    transform: scale(1.15);
   }
 
   .card-enlarged-hint-mobile {
     display: none;
   }
 
+  .card-enlarged-hint-desktop {
+    display: block;
+  }
+
   .merchant-card-block .scale-75 {
     transform: scale(1);
+  }
+
+  /* Profil — 2 colonnes identité / historiques */
+  .fife-profile-layout {
+    max-width: min(75rem, calc(100vw - 4rem)) !important;
+    width: 100%;
+    padding-inline: clamp(1.25rem, 3vw, 3rem);
+  }
+
+  .profile-header.fife-profile-hero {
+    text-align: left;
+  }
+
+  .fife-profile-body {
+    display: grid;
+    grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+    gap: 1.5rem 2rem;
+    align-items: start;
+  }
+
+  .profile-header.fife-profile-hero {
+    grid-column: 1;
+    margin-top: 1.5rem !important;
+    text-align: left;
+  }
+
+  .profile-header.fife-profile-hero .profile-avatar-btn {
+    margin-inline: 0;
+  }
+
+  .profile-header.fife-profile-hero .mt-4.flex {
+    justify-content: flex-start;
+  }
+
+  .fife-profile-body > .fife-profile-panels {
+    grid-column: 2;
+    margin-top: 1.5rem !important;
+    max-height: calc(100dvh - 8rem);
+    overflow-y: auto;
+  }
+}
+
+@media (min-width: 1440px) {
+  .wallet-shell.fife-page-shell {
+    --wallet-card-width: clamp(500px, 34vw, 580px);
+  }
+
+  .fife-deck-scene,
+  .deck-scene.fife-deck-scene {
+    height: min(500px, 55vh) !important;
+    --wallet-card-width: clamp(500px, 32vw, 580px);
+  }
+
+  .wallet-page-body {
+    max-width: min(1360px, calc(100vw - 6rem));
+    gap: clamp(1.5rem, 2.5vw, 2.5rem) clamp(2rem, 3.5vw, 3.5rem);
+  }
+
+  .card-enlarged-modal {
+    max-width: min(72rem, 1150px) !important;
+  }
+}
+
+@media (min-width: 1920px) {
+  .wallet-page-body {
+    max-width: 1360px;
+  }
+
+  .obsidian-scene::before {
+    opacity: 1;
+  }
+}
+
+@media (min-width: 1024px) {
+  .card-enlarged-hint-desktop {
+    display: block;
   }
 }
 
 /* --- Espace administrateur commerçant --- */
+:root {
+  --merchant-sidebar-w: 15rem;
+}
+
+@media (min-width: 1024px) {
+  :root {
+    --merchant-sidebar-w: 16.5rem;
+  }
+}
+
+@media (min-width: 1280px) {
+  :root {
+    --merchant-sidebar-w: 17.5rem;
+  }
+}
+
+.merchant-page-shell {
+  width: 100%;
+  max-width: 100%;
+  margin: 0 auto;
+  padding: 1.25rem 1rem 2rem;
+  min-height: 100%;
+}
+
+@media (min-width: 768px) {
+  .merchant-page-shell {
+    padding: 1.75rem 2rem 2.5rem;
+    max-width: 72rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .merchant-page-shell {
+    padding: 2rem 2.5rem 3rem;
+    max-width: 80rem;
+  }
+}
+
+@media (min-width: 1280px) {
+  .merchant-page-shell {
+    max-width: 88rem;
+    padding: 2.25rem 3rem 3rem;
+  }
+}
+
+.merchant-page-shell-narrow {
+  max-width: 52rem;
+}
+
+.merchant-dashboard-grid {
+  display: grid;
+  gap: 1.25rem;
+}
+
+@media (min-width: 1024px) {
+  .merchant-dashboard-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+    gap: 1.5rem;
+    align-items: start;
+  }
+
+  .merchant-dashboard-aside {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+}
+
+.merchant-dashboard-shortcuts {
+  display: grid;
+  gap: 0.75rem;
+}
+
+@media (min-width: 640px) {
+  .merchant-dashboard-shortcuts {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .merchant-dashboard-shortcuts {
+    grid-template-columns: 1fr;
+  }
+}
+
 .merchant-sidebar {
   position: fixed;
   inset: 0 auto 0 0;
   z-index: 40;
-  width: 16rem;
+  width: var(--merchant-sidebar-w);
   flex-direction: column;
   border-right: 1px solid rgba(190, 164, 255, 0.12);
   background:
@@ -1614,6 +1959,10 @@ body:has(.wallet-shell) {
   box-shadow: 0 16px 48px rgba(0, 0, 0, 0.35);
 }
 
+.compact-list-header {
+  display: none;
+}
+
 .compact-list-row {
   display: flex;
   min-height: 4rem;
@@ -1622,6 +1971,99 @@ body:has(.wallet-shell) {
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   padding: 0.65rem 0.85rem;
   transition: background 0.12s;
+}
+
+.compact-row-sub-desktop,
+.compact-row-col {
+  display: none;
+}
+
+.compact-row-sub-mobile {
+  display: block;
+}
+
+.compact-row-badge-desktop {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .compact-list-header {
+    display: grid;
+    grid-template-columns: 2.75rem minmax(0, 1.4fr) minmax(5rem, 0.7fr) minmax(5.5rem, 0.75fr) 1.25rem;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.55rem 1rem;
+    border-bottom: 1px solid rgba(190, 164, 255, 0.12);
+    background: rgba(255, 255, 255, 0.03);
+    font-size: 0.625rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .compact-list-header-meta {
+    text-align: right;
+  }
+
+  .compact-list-row {
+    display: grid;
+    grid-template-columns: 2.75rem minmax(0, 1.4fr) minmax(5rem, 0.7fr) minmax(5.5rem, 0.75fr) 1.25rem;
+    align-items: center;
+    gap: 0.75rem;
+    min-height: 3.35rem;
+    padding: 0.55rem 1rem;
+  }
+
+  .compact-row-main {
+    min-width: 0;
+  }
+
+  .compact-row-sub-mobile {
+    display: none;
+  }
+
+  .compact-row-sub-desktop,
+  .compact-row-col {
+    display: block;
+  }
+
+  .compact-row-meta {
+    text-align: right;
+  }
+
+  .compact-row-chevron {
+    justify-self: end;
+  }
+
+  .compact-row-avatar {
+    justify-self: start;
+  }
+
+  .compact-list-shell-4col .compact-list-header,
+  .compact-list-shell-4col .compact-list-row {
+    grid-template-columns: 2.75rem minmax(0, 1.2fr) minmax(5.5rem, 0.75fr) minmax(6.5rem, 0.85fr) minmax(5.5rem, 0.7fr) 1.25rem;
+  }
+
+  .compact-list-shell-4col .compact-row-badge-inline {
+    display: none;
+  }
+
+  .compact-list-shell-4col .compact-row-badge-desktop {
+    display: block;
+  }
+}
+
+@media (min-width: 1024px) {
+  .compact-list-header,
+  .compact-list-row {
+    grid-template-columns: 2.75rem minmax(0, 1.6fr) minmax(6rem, 0.8fr) minmax(7rem, 0.85fr) 1.25rem;
+  }
+
+  .compact-list-shell-4col .compact-list-header,
+  .compact-list-shell-4col .compact-list-row {
+    grid-template-columns: 2.75rem minmax(0, 1.4fr) minmax(7rem, 0.85fr) minmax(8rem, 0.9fr) minmax(6.5rem, 0.75fr) 1.25rem;
+  }
 }
 
 .compact-list-row:last-child {
@@ -1665,6 +2107,35 @@ body:has(.wallet-shell) {
   font-size: 0.875rem;
   color: var(--ink);
   outline: none;
+}
+
+.merchant-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+@media (min-width: 768px) {
+  .merchant-toolbar {
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.75rem 1rem;
+  }
+
+  .merchant-search-wrap {
+    flex: 1 1 14rem;
+    min-width: 12rem;
+    max-width: 28rem;
+  }
+
+  .merchant-toolbar-filters {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    margin-left: auto;
+  }
 }
 
 .merchant-search-input:focus {
@@ -1743,6 +2214,65 @@ body:has(.wallet-shell) {
   background: rgba(12, 10, 22, 0.78);
   backdrop-filter: blur(16px);
   padding: 1.25rem;
+}
+
+@media (min-width: 1024px) {
+  .program-config-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+    gap: 1.5rem;
+    align-items: start;
+  }
+
+  .program-steps-nav {
+    position: sticky;
+    top: 1.5rem;
+  }
+
+  .program-mode-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+  }
+
+  .merchant-detail-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr);
+    gap: 1.5rem;
+    align-items: start;
+  }
+
+  .merchant-stats-row {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .merchant-settings-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+    align-items: start;
+  }
+
+  .merchant-settings-grid > :last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
+
+  .merchant-caisse-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 1.5rem;
+    align-items: start;
+  }
+}
+
+.merchant-stats-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.merchant-page-header h1 {
+  font-size: clamp(1.5rem, 2vw, 2rem);
 }
 
 .program-mode-option {

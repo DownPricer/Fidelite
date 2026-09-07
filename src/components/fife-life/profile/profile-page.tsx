@@ -168,6 +168,7 @@ export function ProfilePage({
       settingsHref={`/compte/parametres${demo}`}
       toast={editSuccess}
     >
+      <div className="fife-profile-body">
       <section className="profile-header fife-profile-hero mt-6 text-center">
         <button
           type="button"
@@ -306,6 +307,7 @@ export function ProfilePage({
             ) : null}
           </div>
         </section>
+      </div>
       </div>
 
       <Link href={`/compte/parametres${demo}`} className="profile-link-btn mt-6 block w-full text-center text-sm">

@@ -5,13 +5,13 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Alert, Button, Field, Input, cn } from "@/components/ui";
 import { GlassBottomSheet } from "@/components/fife-life/profile/glass-bottom-sheet";
 import {
+  CompactListHeader,
   CompactListRow,
   CompactListShell,
   EmptyState,
   FilterChip,
   InitialsAvatar,
   ListToolbar,
-  MerchantPageHeader,
   StatusBadge,
 } from "@/components/merchant/merchant-ui";
 import { PERMISSION_LABELS, type PermissionKey, type StaffPermissions } from "@/lib/staff-permissions";
@@ -209,7 +209,8 @@ export function EmployeesPanel({ demo = false }: { demo?: boolean }) {
       {list.length === 0 ? (
         <EmptyState title="Aucun employé" hint="Ajoutez votre première personne à l'équipe." />
       ) : (
-        <CompactListShell>
+        <CompactListShell columns={4}>
+          <CompactListHeader columns={["Employé", "Rôle", "Statut", "Activité"]} />
           {list.map((e) => (
             <CompactListRow
               key={e.id}
@@ -219,6 +220,7 @@ export function EmployeesPanel({ demo = false }: { demo?: boolean }) {
               subtitle={e.roleLabel}
               meta={formatActivity(e.lastActivityAt)}
               badge={<StatusBadge tone={statusTone(e.status)}>{e.status}</StatusBadge>}
+              desktopBadge={<StatusBadge tone={statusTone(e.status)}>{e.status}</StatusBadge>}
             />
           ))}
         </CompactListShell>
@@ -351,43 +353,39 @@ export function EmployeeDetailPanel({ id, demo = false }: { id: string; demo?: b
   }
 
   return (
-    <div className="space-y-6">
-      <MerchantPageHeader
-        backHref="/app/employes"
-        title={`${employee.firstName} ${employee.lastName ?? ""}`}
-        subtitle={`${employee.roleLabel} · ${employee.status}`}
-      />
+    <div className="merchant-detail-grid space-y-6">
+      <div className="space-y-6">
+        <div className="flex items-center gap-4">
+          <InitialsAvatar name={`${employee.firstName} ${employee.lastName ?? ""}`} size="md" />
+          <StatusBadge tone={statusTone(employee.status)}>{employee.status}</StatusBadge>
+        </div>
 
-      <div className="flex items-center gap-4">
-        <InitialsAvatar name={`${employee.firstName} ${employee.lastName ?? ""}`} size="md" />
-        <StatusBadge tone={statusTone(employee.status)}>{employee.status}</StatusBadge>
-      </div>
+        <div className="merchant-stats-row">
+          {[
+            ["Scans auj.", stats.scansToday],
+            ["Attribués", stats.earns],
+            ["Récompenses", stats.redeems],
+            ["Corrections", stats.corrections],
+          ].map(([label, val]) => (
+            <div key={label as string} className="merchant-stat-pill">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted)]">{label}</p>
+              <p className="text-xl font-black text-[var(--ink)]">{val}</p>
+            </div>
+          ))}
+        </div>
 
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        {[
-          ["Scans auj.", stats.scansToday],
-          ["Attribués", stats.earns],
-          ["Récompenses", stats.redeems],
-          ["Corrections", stats.corrections],
-        ].map(([label, val]) => (
-          <div key={label as string} className="merchant-stat-pill">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted)]">{label}</p>
-            <p className="text-xl font-black text-[var(--ink)]">{val}</p>
-          </div>
-        ))}
-      </div>
-
-      <div className="flex flex-wrap gap-2">
-        {employee.status === "Invitation en attente" ? (
-          <Button variant="secondary" className="h-9 px-3 text-xs" onClick={() => void resendInvite()}>
-            Renvoyer l&apos;invitation
-          </Button>
-        ) : null}
-        {employee.status === "Actif" ? (
-          <Button variant="danger" className="h-9 px-3 text-xs" onClick={() => void suspend()}>
-            Suspendre
-          </Button>
-        ) : null}
+        <div className="flex flex-wrap gap-2">
+          {employee.status === "Invitation en attente" ? (
+            <Button variant="secondary" className="h-9 px-3 text-xs" onClick={() => void resendInvite()}>
+              Renvoyer l&apos;invitation
+            </Button>
+          ) : null}
+          {employee.status === "Actif" ? (
+            <Button variant="danger" className="h-9 px-3 text-xs" onClick={() => void suspend()}>
+              Suspendre
+            </Button>
+          ) : null}
+        </div>
       </div>
 
       <section>

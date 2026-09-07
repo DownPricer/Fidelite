@@ -2,16 +2,19 @@ import { redirect } from "next/navigation";
 import { EmployeeDetailPanel } from "../ui";
 import { resolveMerchantDemo } from "@/lib/merchant-demo-server";
 import { canManageEmployees, firstActiveStaffMembership } from "@/lib/rbac";
+import { MerchantPageHeader, MerchantPageShell } from "@/components/merchant/merchant-ui";
 
 export default async function EmployeeDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const { user, demo } = await resolveMerchantDemo();
 
   if (demo) {
+    const name = id === "e1" ? "Sam Durand" : id === "e2" ? "Noa Petit" : "Employé";
     return (
-      <main className="obsidian-scene mx-auto max-w-3xl px-5 py-6">
+      <MerchantPageShell>
+        <MerchantPageHeader backHref="/app/employes" eyebrow="Équipe" title={name} />
         <EmployeeDetailPanel id={id} demo />
-      </main>
+      </MerchantPageShell>
     );
   }
 
@@ -20,8 +23,9 @@ export default async function EmployeeDetailPage({ params }: { params: Promise<{
   if (!membership || !canManageEmployees(membership.role)) redirect("/app");
 
   return (
-    <main className="obsidian-scene mx-auto max-w-3xl px-5 py-6">
+    <MerchantPageShell>
+      <MerchantPageHeader backHref="/app/employes" eyebrow="Équipe" title="Fiche employé" />
       <EmployeeDetailPanel id={id} />
-    </main>
+    </MerchantPageShell>
   );
 }

@@ -26,7 +26,7 @@ export function UniversalDetail({
 
   return (
     <main className="obsidian-scene fife-universal-page min-h-dvh text-[var(--ink-soft)]">
-      <div className="fife-universal-layout fife-page-shell mx-auto flex min-h-dvh w-full max-w-md flex-col px-5 pb-8 pt-3">
+      <div className="fife-universal-layout fife-page-shell mx-auto flex min-h-dvh w-full max-w-md flex-col px-5 pb-8 pt-3 lg:max-w-none">
         <header className="fife-universal-header flex shrink-0 items-center justify-between">
           <Link href="/carte" className="glass-chip px-3 py-1.5 text-xs font-semibold text-[var(--ink-soft)]">
             ← Portefeuille
@@ -37,7 +37,7 @@ export function UniversalDetail({
         </header>
 
         <div className="fife-universal-main mt-5">
-          <GlobalCard points={fifeLifePoints} large />
+          <GlobalCard points={fifeLifePoints} large demoVisual={preview} />
         </div>
 
         <section className="fife-universal-main mt-5 space-y-2 px-1">

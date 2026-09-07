@@ -2,46 +2,87 @@
 
 import Link from "next/link";
 import { motion, useMotionValue, useReducedMotion } from "motion/react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { DEMO_TIER_DECK_ORDER } from "@/lib/demo-tier-card-images";
 import { GlobalCard } from "./global-card";
 import { MerchantFace } from "./merchant-face";
 import { PrismCard } from "./prism-card";
-import type { MerchantCardData } from "./types";
+import { resolveTier } from "./tier";
+import type { MerchantCardData, WalletTier } from "./types";
 
-const CARD_W = 320;
-const SPREAD = 32;
 const SWIPE_THRESHOLD = 50;
 const VELOCITY_THRESHOLD = 500;
 const VISIBLE_RANGE = 2;
 
 type DeckItem =
   | { kind: "global" }
+  | { kind: "global-tier"; tier: WalletTier }
   | { kind: "merchant"; card: MerchantCardData };
+
+function readDeckMetrics(root: HTMLElement | null) {
+  if (!root) return { spread: 32, offsetY: 105 };
+  const style = getComputedStyle(root);
+  const cardW = parseFloat(style.getPropertyValue("--wallet-card-width")) || 320;
+  const cardH = parseFloat(style.getPropertyValue("--wallet-card-height")) || cardW / 1.586;
+  const spread = parseFloat(style.getPropertyValue("--wallet-spread")) || Math.round(32 * (cardW / 320));
+  return { spread, offsetY: cardH / 2 };
+}
+
+function demoStartIndex(points: number) {
+  const current = resolveTier(points).name;
+  const idx = DEMO_TIER_DECK_ORDER.indexOf(current);
+  return idx >= 0 ? idx : 0;
+}
 
 export function CardDeck({
   points,
   cards,
   onOpenMerchant,
   onEnlargeCard,
+  demoVisual = false,
 }: {
   points: number;
   fifeLifePoints?: number;
   cards: MerchantCardData[];
   onOpenMerchant: (card: MerchantCardData) => void;
   onEnlargeCard?: (card: MerchantCardData) => void;
+  demoVisual?: boolean;
 }) {
   const prefersReduced = useReducedMotion();
-  const [index, setIndex] = useState(0);
+  const sceneRef = useRef<HTMLDivElement>(null);
+  const [index, setIndex] = useState(() => (demoVisual ? demoStartIndex(points) : 0));
+  const [deckMetrics, setDeckMetrics] = useState({ spread: 32, offsetY: 105 });
   const dragY = useMotionValue(0);
 
-  const deck = useMemo<DeckItem[]>(() => [{ kind: "global" }, ...cards.map((card) => ({ kind: "merchant" as const, card }))], [cards]);
+  const deck = useMemo<DeckItem[]>(() => {
+    if (demoVisual) {
+      return [
+        ...DEMO_TIER_DECK_ORDER.map((tier) => ({ kind: "global-tier" as const, tier })),
+        ...cards.map((card) => ({ kind: "merchant" as const, card })),
+      ];
+    }
+    return [{ kind: "global" }, ...cards.map((card) => ({ kind: "merchant" as const, card }))];
+  }, [cards, demoVisual]);
 
   useEffect(() => {
     if (index > deck.length - 1) setIndex(Math.max(0, deck.length - 1));
   }, [deck.length, index]);
 
+  useEffect(() => {
+    const el = sceneRef.current;
+    if (!el) return;
+    const update = () => setDeckMetrics(readDeckMetrics(el));
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    window.addEventListener("resize", update);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", update);
+    };
+  }, []);
+
   function snapTo(next: number) {
-    // Boucler entre première et dernière carte
     const wrapped = ((next % deck.length) + deck.length) % deck.length;
     setIndex(wrapped);
     dragY.set(0);
@@ -51,17 +92,10 @@ export function CardDeck({
     const swipe = info.offset.y;
     const velocity = info.velocity.y;
 
-    // Swipe haut (suivant) ou bas (précédent)
     if (Math.abs(swipe) > SWIPE_THRESHOLD || Math.abs(velocity) > VELOCITY_THRESHOLD) {
-      if (swipe < 0) {
-        // Swipe haut = carte suivante
-        snapTo(index + 1);
-      } else {
-        // Swipe bas = carte précédente
-        snapTo(index - 1);
-      }
+      if (swipe < 0) snapTo(index + 1);
+      else snapTo(index - 1);
     } else {
-      // Retour au centre
       dragY.set(0);
     }
   }
@@ -69,17 +103,34 @@ export function CardDeck({
   function handleKeyDown(e: React.KeyboardEvent) {
     if (e.key === "ArrowUp") {
       e.preventDefault();
-      snapTo(index + 1);
+      snapTo(index - 1);
     } else if (e.key === "ArrowDown") {
       e.preventDefault();
-      snapTo(index - 1);
+      snapTo(index + 1);
     }
   }
 
-  if (deck.length === 1 && cards.length === 0) {
+  function globalEnlargePayload(tier?: WalletTier): MerchantCardData {
+    return {
+      id: tier ? `fife-life-tier-${tier}` : "fife-life-global",
+      merchantId: "fife-life",
+      slug: "fife-life",
+      name: "Fife Life",
+      logoUrl: null,
+      primaryColor: "#8557ff",
+      points,
+      visitsRequired: 100,
+      rewardLabel: "Avantage Fife Life",
+      demoTier: tier,
+    };
+  }
+
+  if (deck.length === 1 && cards.length === 0 && !demoVisual) {
     return (
-      <div className="deck-scene fife-deck-scene relative mx-auto h-[220px] w-full max-w-[340px]">
-        <Link href="/carte/identite" className="absolute inset-x-0 top-6 z-20 block">
+      <div ref={sceneRef} className="deck-scene fife-deck-scene deck-scene-solo relative mx-auto w-full select-none overflow-visible">
+        <div className="deck-halo" aria-hidden />
+        <div className="deck-floor-shadow" aria-hidden />
+        <Link href="/carte/identite" className="absolute inset-x-0 top-[12%] z-20 mx-auto block w-[var(--wallet-card-width)] max-w-full">
           <GlobalCard points={points} large />
         </Link>
       </div>
@@ -88,155 +139,141 @@ export function CardDeck({
 
   return (
     <div className="fife-deck-wrap relative">
-      {/* Icône rotation à gauche */}
-      <div className="absolute left-0 top-1/2 -translate-y-1/2 z-10 -ml-12">
+      <div className="deck-rotate-hint absolute left-0 top-1/2 z-10 -translate-y-1/2" aria-hidden>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img 
-          src="/rotate-phone-icon.png" 
-          alt="Tourner pour agrandir"
-          className="h-8 w-8 opacity-40"
-        />
+        <img src="/rotate-phone-icon.png" alt="" className="h-8 w-8 opacity-40" />
       </div>
 
-      <div 
-        className="deck-scene fife-deck-scene relative mx-auto h-[300px] w-full max-w-[360px] select-none overflow-visible" 
-        style={{ perspective: "1400px" }}
+      <button
+        type="button"
+        onClick={() => snapTo(index - 1)}
+        className="deck-nav-btn deck-nav-prev"
+        aria-label="Carte précédente"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-5 w-5">
+          <path d="M18 15l-6-6-6 6" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
+      <button
+        type="button"
+        onClick={() => snapTo(index + 1)}
+        className="deck-nav-btn deck-nav-next"
+        aria-label="Carte suivante"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-5 w-5">
+          <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
+
+      <div
+        ref={sceneRef}
+        className="deck-scene fife-deck-scene relative mx-auto w-full select-none overflow-visible"
         onKeyDown={handleKeyDown}
         tabIndex={0}
         role="region"
         aria-label="Carousel de cartes"
       >
-      {/* Boutons accessibles */}
-      <button
-        onClick={() => snapTo(index - 1)}
-        className="absolute left-1/2 top-2 z-50 -translate-x-1/2 rounded-full bg-black/20 p-2 text-white/60 opacity-0 focus:opacity-100"
-        aria-label="Carte précédente"
-      >
-        ↑
-      </button>
-      <button
-        onClick={() => snapTo(index + 1)}
-        className="absolute left-1/2 bottom-2 z-50 -translate-x-1/2 rounded-full bg-black/20 p-2 text-white/60 opacity-0 focus:opacity-100"
-        aria-label="Carte suivante"
-      >
-        ↓
-      </button>
+        <div className="deck-halo" aria-hidden />
+        <div className="deck-floor-shadow" aria-hidden />
 
-      <motion.div
-        className="relative h-full w-full touch-pan-y cursor-grab active:cursor-grabbing"
-        style={{ y: dragY, transformStyle: "preserve-3d" }}
-        drag={prefersReduced ? false : "y"}
-        dragConstraints={{ top: 0, bottom: 0 }}
-        dragElastic={0.2}
-        onDragEnd={handleDragEnd}
-      >
-        {deck.map((item, i) => {
-          let rel = i - index;
-          
-          // Rendre le carousel circulaire (infini)
-          if (rel > deck.length / 2) rel -= deck.length;
-          if (rel < -deck.length / 2) rel += deck.length;
-          
-          const dist = Math.abs(rel);
-          
-          // N'afficher que les cartes proches du centre
-          if (dist > VISIBLE_RANGE) return null;
-          
-          const active = rel === 0;
-          const behind = rel > 0;
-          
-          // Cartes empilées verticalement avec profondeur
-          const translateY = rel * SPREAD; // Décalage vertical
-          const translateZ = active ? 0 : -Math.abs(rel) * 35; // Profondeur
-          const rotateX = active ? -3 : rel * 4; // Rotation légère
-          
-          // Taille et opacité
-          const scale = active ? 1.0 : Math.max(0.88, 1 - dist * 0.08);
-          const opacity = active ? 1 : Math.max(0.55, 1 - dist * 0.22);
-          const zIndex = active ? 50 : behind ? 40 - dist * 5 : 45 - dist * 5;
-          const brightness = active ? 1 : Math.max(0.7, 1 - dist * 0.18);
+        <motion.div
+          className="relative h-full w-full touch-pan-y cursor-grab active:cursor-grabbing"
+          style={{ y: dragY, transformStyle: "preserve-3d" }}
+          drag={prefersReduced ? false : "y"}
+          dragConstraints={{ top: 0, bottom: 0 }}
+          dragElastic={0.2}
+          onDragEnd={handleDragEnd}
+        >
+          {deck.map((item, i) => {
+            let rel = i - index;
+            if (rel > deck.length / 2) rel -= deck.length;
+            if (rel < -deck.length / 2) rel += deck.length;
 
-          const key = item.kind === "global" ? "global" : item.card.id;
+            const dist = Math.abs(rel);
+            if (dist > VISIBLE_RANGE) return null;
 
-          const content =
-            item.kind === "global" ? (
-              <button 
-                className="block h-full cursor-pointer w-full"
-                onClick={() => {
-                  if (active && onEnlargeCard) {
-                    // Pour la carte globale, on créée un objet card factice
-                    const globalCard: MerchantCardData = {
-                      id: "fife-life-global",
-                      merchantId: "fife-life",
-                      slug: "fife-life",
-                      name: "Fife Life",
-                      logoUrl: null,
-                      primaryColor: "#8557ff",
-                      points: points,
-                      visitsRequired: 100,
-                      rewardLabel: "Avantage Fife Life"
-                    };
-                    onEnlargeCard(globalCard);
-                  }
-                }}
-              >
-                <GlobalCard points={points} large mode="wallet" />
-              </button>
-            ) : (
-              <PrismCard
-                as="button"
-                material="merchant"
-                hue={item.card.primaryColor}
-                className="h-full w-full p-4 text-left cursor-pointer"
-                onClick={() => {
-                  if (active && onEnlargeCard) {
-                    onEnlargeCard(item.card);
-                  } else if (!active) {
-                    setIndex(i);
-                  }
-                }}
-              >
-                <MerchantFace card={item.card} />
-              </PrismCard>
-            );
+            const active = rel === 0;
+            const behind = rel > 0;
+            const translateY = rel * deckMetrics.spread;
+            const translateZ = active ? 0 : -Math.abs(rel) * 35;
+            const rotateX = active ? -3 : rel * 4;
+            const scale = active ? 1.0 : Math.max(0.88, 1 - dist * 0.08);
+            const opacity = active ? 1 : Math.max(0.55, 1 - dist * 0.22);
+            const zIndex = active ? 50 : behind ? 40 - dist * 5 : 45 - dist * 5;
+            const brightness = active ? 1 : Math.max(0.7, 1 - dist * 0.18);
 
-          return (
-            <motion.div
-              key={key}
-              className="absolute left-1/2 top-1/2"
-              style={{
-                width: CARD_W,
-                marginLeft: -CARD_W / 2,
-                marginTop: -105,
-                zIndex,
-                filter: `brightness(${brightness})`,
-                transformStyle: "preserve-3d",
-                willChange: active ? "transform, opacity" : "auto",
-              }}
-              initial={false}
-              animate={
-                prefersReduced
-                  ? { rotateX: -3, y: translateY, z: translateZ, scale, opacity }
-                  : {
-                      rotateX,
-                      y: translateY,
-                      z: translateZ,
-                      scale,
-                      opacity,
+            const key =
+              item.kind === "global"
+                ? "global"
+                : item.kind === "global-tier"
+                  ? `global-tier-${item.tier}`
+                  : item.card.id;
+
+            const content =
+              item.kind === "global" || item.kind === "global-tier" ? (
+                <button
+                  type="button"
+                  className="deck-card-slot block h-full w-full cursor-pointer border-0 bg-transparent p-0"
+                  onClick={() => {
+                    if (active && onEnlargeCard) {
+                      onEnlargeCard(globalEnlargePayload(item.kind === "global-tier" ? item.tier : undefined));
                     }
-              }
-              transition={{
-                type: "spring",
-                stiffness: 340,
-                damping: 28,
-                mass: 0.7,
-              }}
-            >
-              {content}
-            </motion.div>
-          );
-        })}
-      </motion.div>
+                  }}
+                >
+                  <GlobalCard
+                    points={points}
+                    large
+                    mode="wallet"
+                    demoVisual={demoVisual && item.kind === "global-tier"}
+                    tierOverride={item.kind === "global-tier" ? item.tier : undefined}
+                  />
+                </button>
+              ) : (
+                <PrismCard
+                  as="button"
+                  material="merchant"
+                  hue={item.card.primaryColor}
+                  className="deck-card-slot h-full w-full p-4 text-left cursor-pointer"
+                  onClick={() => {
+                    if (active && onEnlargeCard) onEnlargeCard(item.card);
+                    else if (!active) setIndex(i);
+                  }}
+                >
+                  <MerchantFace card={item.card} />
+                </PrismCard>
+              );
+
+            return (
+              <motion.div
+                key={key}
+                className="deck-card-layer absolute left-1/2 top-1/2 -translate-x-1/2"
+                style={{
+                  width: "var(--wallet-card-width)",
+                  zIndex,
+                  filter: `brightness(${brightness})`,
+                  transformStyle: "preserve-3d",
+                  willChange: active ? "transform, opacity" : "auto",
+                  marginTop: -deckMetrics.offsetY,
+                }}
+                initial={false}
+                animate={
+                  prefersReduced
+                    ? { rotateX: -3, y: translateY, z: translateZ, scale, opacity }
+                    : { rotateX, y: translateY, z: translateZ, scale, opacity }
+                }
+                transition={{
+                  type: "spring",
+                  stiffness: 340,
+                  damping: 28,
+                  mass: 0.7,
+                }}
+                whileHover={active && !prefersReduced ? { rotateX: -5, scale: 1.02 } : undefined}
+              >
+                {content}
+              </motion.div>
+            );
+          })}
+        </motion.div>
       </div>
     </div>
   );

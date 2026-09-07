@@ -182,7 +182,7 @@ Le commerçant se réserve le droit de modifier ou d'annuler le programme de fid
   return (
     <>
       <main className="merchant-detail-scene min-h-dvh">
-        <div className="merchant-detail-container fife-page-shell fife-merchant-layout mx-auto w-full max-w-md px-5 pb-16 pt-3">
+        <div className="merchant-detail-container fife-page-shell fife-merchant-layout mx-auto w-full max-w-md px-5 pb-16 pt-3 lg:max-w-none">
           {/* Header */}
           <header className="merchant-detail-header flex shrink-0 items-center justify-between">
             <Link

@@ -4,17 +4,17 @@ import { prisma } from "@/lib/prisma";
 import { resolveMerchantDemo } from "@/lib/merchant-demo-server";
 import { canManageMerchantSettings, firstActiveStaffMembership } from "@/lib/rbac";
 import { SettingsPanel } from "./ui";
-import { MerchantPageHeader } from "@/components/merchant/merchant-ui";
+import { MerchantPageHeader, MerchantPageShell } from "@/components/merchant/merchant-ui";
 
 export default async function SettingsPage() {
   const { user, demo } = await resolveMerchantDemo();
 
   if (demo) {
     return (
-      <main className="obsidian-scene mx-auto max-w-3xl px-5 py-6">
+      <MerchantPageShell narrow>
         <MerchantPageHeader eyebrow="Configuration" title="Réglages" subtitle={DEMO_MERCHANT.merchantName} />
         <SettingsPanel demo merchantName={DEMO_MERCHANT.merchantName} programSummary="10 passages = 1 boisson offerte" />
-      </main>
+      </MerchantPageShell>
     );
   }
 
@@ -40,9 +40,9 @@ export default async function SettingsPage() {
     : `${merchant.program.visitsRequired} passages = ${merchant.program.rewardLabel}`;
 
   return (
-    <main className="obsidian-scene mx-auto max-w-3xl px-5 py-6">
+    <MerchantPageShell narrow>
       <MerchantPageHeader eyebrow="Configuration" title="Réglages" subtitle={merchant.name} />
       <SettingsPanel merchantName={merchant.name} programSummary={summary} />
-    </main>
+    </MerchantPageShell>
   );
 }

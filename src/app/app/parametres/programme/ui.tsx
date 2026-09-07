@@ -157,7 +157,7 @@ export function ProgramConfigurator({ demo = false }: { demo?: boolean }) {
   }
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6">
+    <div className="space-y-6">
       <MerchantPageHeader
         backHref="/app/parametres"
         eyebrow="Configurateur"
@@ -168,24 +168,28 @@ export function ProgramConfigurator({ demo = false }: { demo?: boolean }) {
       {error ? <Alert>{error}</Alert> : null}
       {ok ? <Alert tone="ok">{ok}</Alert> : null}
 
-      <div className="flex gap-1 overflow-x-auto pb-1">
-        {STEPS.map((label, i) => (
-          <button
-            key={label}
-            type="button"
-            onClick={() => setStep(i)}
-            className={cn(
-              "shrink-0 rounded-full px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider",
-              step === i ? "bg-[var(--violet)] text-[var(--ink)]" : "bg-white/6 text-[var(--muted)]",
-            )}
-          >
-            {i + 1}. {label}
-          </button>
-        ))}
-      </div>
+      <div className="program-config-layout">
+        <nav className="program-steps-nav">
+          <div className="flex gap-1 overflow-x-auto pb-1 lg:flex-col lg:overflow-visible lg:pb-0">
+            {STEPS.map((label, i) => (
+              <button
+                key={label}
+                type="button"
+                onClick={() => setStep(i)}
+                className={cn(
+                  "shrink-0 rounded-xl px-3 py-2.5 text-left text-[10px] font-bold uppercase tracking-wider lg:w-full lg:text-xs",
+                  step === i ? "bg-[var(--violet)] text-[var(--ink)]" : "bg-white/6 text-[var(--muted)]",
+                )}
+              >
+                {i + 1}. {label}
+              </button>
+            ))}
+          </div>
+        </nav>
 
+        <div className="space-y-6">
       {step === 0 && (
-        <div className="space-y-3">
+        <div className="program-mode-grid space-y-3 lg:space-y-0">
           {MODES.map((m) => (
             <button
               key={m.id}
@@ -384,6 +388,8 @@ export function ProgramConfigurator({ demo = false }: { demo?: boolean }) {
             Suivant
           </Button>
         ) : null}
+      </div>
+        </div>
       </div>
     </div>
   );

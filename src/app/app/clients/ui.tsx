@@ -4,13 +4,13 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui";
 import {
+  CompactListHeader,
   CompactListRow,
   CompactListShell,
   EmptyState,
   FilterChip,
   InitialsAvatar,
   ListToolbar,
-  MerchantPageHeader,
 } from "@/components/merchant/merchant-ui";
 
 type Customer = {
@@ -130,6 +130,7 @@ export function CustomersPanel({ demo = false }: { demo?: boolean }) {
         <EmptyState title="Aucun client" hint="Les clients apparaîtront après leur premier scan." />
       ) : (
         <CompactListShell>
+          <CompactListHeader columns={["Client", "Fidélité", "Dernière activité"]} />
           {list.map((c) => (
             <CompactListRow
               key={c.id}

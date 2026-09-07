@@ -8,10 +8,12 @@ export function WalletCardsList({
   cards,
   onOpenCard,
   compact = false,
+  desktopGrid = false,
 }: {
   cards: MerchantCardData[];
   onOpenCard: (card: MerchantCardData) => void;
   compact?: boolean;
+  desktopGrid?: boolean;
 }) {
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -77,7 +79,7 @@ export function WalletCardsList({
             ) : null}
           </div>
         ) : (
-          <ul className="space-y-3">
+          <ul className={desktopGrid ? "wallet-cards-grid space-y-3 lg:grid lg:grid-cols-2 lg:gap-3 lg:space-y-0" : "space-y-3"}>
             {filtered.map((card) => {
               const remaining = Math.max(0, card.visitsRequired - card.points);
               return (

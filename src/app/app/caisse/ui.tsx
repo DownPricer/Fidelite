@@ -153,7 +153,7 @@ export function CaisseScreen({
         </div>
       </header>
 
-      <div className="mx-auto flex min-h-0 w-full max-w-2xl flex-1 flex-col gap-4 px-4 py-4">
+      <div className="merchant-page-shell mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col gap-4 px-4 py-4 lg:max-w-7xl lg:px-8 lg:py-6">
         <AnimatePresence initial={false} mode="wait">
           {success && !result ? (
             <motion.p

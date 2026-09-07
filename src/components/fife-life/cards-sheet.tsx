@@ -58,7 +58,7 @@ export function CardsSheet({
             role="dialog"
             aria-modal="true"
             aria-label="Mes cartes et mes avantages"
-            className="obsidian-sheet fife-desktop-sheet fixed inset-x-0 bottom-0 z-50 flex h-[min(88dvh,640px)] flex-col overflow-hidden rounded-t-[32px] cursor-grab active:cursor-grabbing"
+            className="obsidian-sheet fife-desktop-sheet fixed inset-x-0 bottom-0 z-50 flex h-[min(88dvh,640px)] flex-col overflow-hidden rounded-t-[32px] cursor-grab active:cursor-grabbing lg:cursor-default lg:rounded-none"
             initial={{ y: "100%" }}
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
@@ -87,7 +87,8 @@ export function CardsSheet({
               </svg>
             </div>
             <div className="relative z-10 flex min-h-0 flex-1 flex-col px-5 pb-8 pt-4">
-              <WalletCardsList cards={cards} onOpenCard={onOpenCard} compact />
+              <h2 className="section-title mb-4 hidden shrink-0 lg:block">Mes cartes et mes avantages</h2>
+              <WalletCardsList cards={cards} onOpenCard={onOpenCard} compact desktopGrid />
             </div>
           </motion.section>
         </>

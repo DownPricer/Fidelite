@@ -12,7 +12,7 @@ export function SettingsPanel({
   demo?: boolean;
 }) {
   return (
-    <div className="max-w-2xl space-y-4">
+    <div className="merchant-settings-grid space-y-4">
       <div className="glass-panel p-5">
         <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted)]">Commerce</p>
         <h2 className="mt-1 text-xl font-black text-[var(--ink)]">{merchantName}</h2>

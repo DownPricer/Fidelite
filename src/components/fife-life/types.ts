@@ -10,6 +10,8 @@ export type MerchantCardData = {
   points: number;
   visitsRequired: number;
   rewardLabel: string;
+  /** Niveau Fife Life pour l’image statique en mode démo. */
+  demoTier?: WalletTier;
 };
 
 export type CardHistoryItem = {
