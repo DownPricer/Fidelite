@@ -114,9 +114,8 @@ export function CardEnlargedView({
                   qrMode="standard"
                   clientNumber={effectiveClientNumber}
                   qrZoomEnabled
-                  interactive={false}
+                  layout="enlarged"
                   className="card-enlarged-loyalty-card"
-                  shellClassName="card-enlarged-loyalty-shell"
                 />
               </div>
             ) : (

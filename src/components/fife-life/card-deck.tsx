@@ -52,6 +52,7 @@ export function CardDeck({
 }) {
   const prefersReduced = useReducedMotion();
   const sceneRef = useRef<HTMLDivElement>(null);
+  const [isDesktop, setIsDesktop] = useState(false);
   const [index, setIndex] = useState(() => (demoVisual ? demoStartIndex(points) : 0));
   const [deckMetrics, setDeckMetrics] = useState({ spread: 32, offsetY: 105 });
   const dragY = useMotionValue(0);
@@ -69,6 +70,14 @@ export function CardDeck({
   useEffect(() => {
     if (index > deck.length - 1) setIndex(Math.max(0, deck.length - 1));
   }, [deck.length, index]);
+
+  useEffect(() => {
+    const media = window.matchMedia("(min-width: 1024px)");
+    const update = () => setIsDesktop(media.matches);
+    update();
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, []);
 
   useEffect(() => {
     const el = sceneRef.current;
@@ -130,9 +139,7 @@ export function CardDeck({
   if (deck.length === 1 && cards.length === 0 && !demoVisual) {
     return (
       <div ref={sceneRef} className="deck-scene fife-deck-scene deck-scene-solo relative mx-auto w-full select-none overflow-visible">
-        <div className="deck-halo" aria-hidden />
-        <div className="deck-floor-shadow" aria-hidden />
-        <Link href="/carte/identite" className="absolute inset-x-0 top-[12%] z-20 mx-auto block w-[var(--wallet-card-width)] max-w-full">
+        <Link href="/carte/identite" className="absolute inset-x-0 top-1/2 z-20 mx-auto block w-[var(--wallet-card-width)] max-w-full -translate-y-1/2">
           <GlobalCard points={points} customerName={customerName} large />
         </Link>
       </div>
@@ -141,11 +148,6 @@ export function CardDeck({
 
   return (
     <div className="fife-deck-wrap relative">
-      <div className="deck-rotate-hint absolute left-0 top-1/2 z-10 -translate-y-1/2" aria-hidden>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/rotate-phone-icon.png" alt="" className="h-8 w-8 opacity-40" />
-      </div>
-
       <button
         type="button"
         onClick={() => snapTo(index - 1)}
@@ -154,16 +156,6 @@ export function CardDeck({
       >
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-5 w-5">
           <path d="M18 15l-6-6-6 6" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      </button>
-      <button
-        type="button"
-        onClick={() => snapTo(index + 1)}
-        className="deck-nav-btn deck-nav-next"
-        aria-label="Carte suivante"
-      >
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-5 w-5">
-          <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </button>
 
@@ -175,11 +167,8 @@ export function CardDeck({
         role="region"
         aria-label="Carousel de cartes"
       >
-        <div className="deck-halo" aria-hidden />
-        <div className="deck-floor-shadow" aria-hidden />
-
         <motion.div
-          className="relative h-full w-full touch-pan-y cursor-grab active:cursor-grabbing"
+          className="deck-stage relative grid h-full w-full place-items-center"
           style={{ y: dragY, transformStyle: "preserve-3d" }}
           drag={prefersReduced ? false : "y"}
           dragConstraints={{ top: 0, bottom: 0 }}
@@ -197,9 +186,9 @@ export function CardDeck({
             const active = rel === 0;
             const behind = rel > 0;
             const translateY = rel * deckMetrics.spread;
-            const translateZ = active ? 0 : -Math.abs(rel) * 35;
-            const rotateX = active ? -3 : rel * 4;
-            const scale = active ? 1.0 : Math.max(0.88, 1 - dist * 0.08);
+            const translateZ = isDesktop || prefersReduced ? 0 : active ? 0 : -Math.abs(rel) * 35;
+            const rotateX = isDesktop || prefersReduced ? 0 : active ? -3 : rel * 4;
+            const scale = isDesktop || prefersReduced ? 1 : active ? 1.0 : Math.max(0.88, 1 - dist * 0.08);
             const opacity = active ? 1 : Math.max(0.55, 1 - dist * 0.22);
             const zIndex = active ? 50 : behind ? 40 - dist * 5 : 45 - dist * 5;
             const brightness = active ? 1 : Math.max(0.7, 1 - dist * 0.18);
@@ -231,7 +220,7 @@ export function CardDeck({
                     preview={demoVisual}
                     tierOverride={item.kind === "global-tier" ? item.tier : undefined}
                     demoTierPreview={demoVisual && item.kind === "global-tier"}
-                    interactive={active}
+                    interactive={active && !isDesktop}
                     qrZoomEnabled={false}
                   />
                 </button>
@@ -259,42 +248,63 @@ export function CardDeck({
                     clientNumber={clientNumber}
                     showQr
                     qrZoomEnabled={false}
-                    interactive={active}
+                    interactive={active && !isDesktop}
                   />
                 </div>
               );
 
             return (
-              <motion.div
+              <div
                 key={key}
-                className="deck-card-layer absolute left-1/2 top-1/2 -translate-x-1/2"
+                className="deck-card-layer col-start-1 row-start-1 max-w-full"
                 style={{
                   width: "var(--wallet-card-width)",
                   zIndex,
-                  filter: `brightness(${brightness})`,
-                  transformStyle: "preserve-3d",
-                  willChange: active ? "transform, opacity" : "auto",
-                  marginTop: -deckMetrics.offsetY,
                 }}
-                initial={false}
-                animate={
-                  prefersReduced
-                    ? { rotateX: -3, y: translateY, z: translateZ, scale, opacity }
-                    : { rotateX, y: translateY, z: translateZ, scale, opacity }
-                }
-                transition={{
-                  type: "spring",
-                  stiffness: 340,
-                  damping: 28,
-                  mass: 0.7,
-                }}
-                whileHover={active && !prefersReduced ? { rotateX: -5, scale: 1.02 } : undefined}
               >
-                {content}
-              </motion.div>
+                <motion.div
+                  className="w-full"
+                  style={{
+                    filter: `brightness(${brightness})`,
+                    transformStyle: "preserve-3d",
+                    willChange: active ? "transform, opacity" : "auto",
+                  }}
+                  initial={false}
+                  animate={
+                    prefersReduced || isDesktop
+                      ? { rotateX: 0, y: translateY, z: 0, scale: 1, opacity }
+                      : { rotateX, y: translateY, z: translateZ, scale, opacity }
+                  }
+                  transition={{
+                    type: "spring",
+                    stiffness: 340,
+                    damping: 28,
+                    mass: 0.7,
+                  }}
+                  whileHover={active && !prefersReduced && !isDesktop ? { rotateX: -5, scale: 1.02 } : undefined}
+                >
+                  {content}
+                </motion.div>
+              </div>
             );
           })}
         </motion.div>
+      </div>
+
+      <button
+        type="button"
+        onClick={() => snapTo(index + 1)}
+        className="deck-nav-btn deck-nav-next"
+        aria-label="Carte suivante"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-5 w-5">
+          <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
+
+      <div className="deck-rotate-hint absolute left-0 top-1/2 z-10 -translate-y-1/2 lg:hidden" aria-hidden>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/rotate-phone-icon.png" alt="" className="h-8 w-8 opacity-40" />
       </div>
     </div>
   );

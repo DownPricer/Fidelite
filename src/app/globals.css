@@ -206,6 +206,33 @@ body:has(.wallet-shell) {
 
 .deck-card-layer {
   transform-origin: center center;
+  justify-self: center;
+  align-self: center;
+}
+
+.deck-stage {
+  touch-action: pan-y;
+  cursor: grab;
+}
+
+.deck-stage:active {
+  cursor: grabbing;
+}
+
+.fife-deck-scene .merchant-interactive-card {
+  aspect-ratio: 1427 / 863;
+  height: auto;
+  box-sizing: border-box;
+  max-width: 100%;
+}
+
+.fife-deck-scene .merchant-card-shell,
+.fife-deck-scene .loyalty-card-shell,
+.fife-deck-scene .deck-card-slot,
+.fife-deck-scene .loyalty-card {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .deck-card-slot {
@@ -299,7 +326,25 @@ body:has(.wallet-shell) {
 }
 
 .fife-deck-scene .loyalty-card {
-  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.32));
+  filter: none;
+}
+
+.fife-deck-scene .merchant-interactive-card {
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--merchant-hue, #8557ff) 22%, #05050a) 0%,
+    color-mix(in srgb, var(--merchant-hue, #8557ff) 68%, #090911) 52%,
+    #05050a 100%
+  );
+  box-shadow: none;
+}
+
+.fife-deck-scene .merchant-interactive-card__noise {
+  opacity: 0.06;
+}
+
+.fife-deck-scene .loyalty-card-shell .interactive-card-glare {
+  display: none;
 }
 
 .loyalty-card__background,
@@ -426,7 +471,7 @@ body:has(.wallet-shell) {
   z-index: 10;
   left: 34%;
   right: 7%;
-  top: 47.5%;
+  top: 51.2%;
   margin: 0;
   font-size: 3.2cqw;
   letter-spacing: 0.1cqw;
@@ -434,6 +479,11 @@ body:has(.wallet-shell) {
   text-align: left;
   font-variant-numeric: tabular-nums;
   opacity: 0.92;
+}
+
+.loyalty-card__name[data-length="long"] + .loyalty-card__client-number,
+.loyalty-card__name[data-length="very-long"] + .loyalty-card__client-number {
+  top: 52.8%;
 }
 
 .loyalty-card__qr-image {
@@ -583,17 +633,26 @@ body:has(.wallet-shell) {
 }
 
 .card-enlarged-overlay {
-  padding: 0.625rem;
+  padding:
+    max(0.5rem, env(safe-area-inset-top))
+    max(0.5rem, env(safe-area-inset-right))
+    max(0.5rem, env(safe-area-inset-bottom))
+    max(0.5rem, env(safe-area-inset-left));
+}
+
+.card-enlarged-modal {
+  width: 100%;
+  max-width: none;
 }
 
 .card-enlarged-loyalty-wrap {
-  width: min(calc(100vw - 1.25rem), 760px);
+  width: min(calc(100dvw - max(1rem, env(safe-area-inset-left)) - max(1rem, env(safe-area-inset-right))), 760px);
   margin-inline: auto;
 }
 
 .card-enlarged-merchant-shell,
 .card-enlarged-merchant-card {
-  width: min(calc(100vw - 1.25rem), 760px);
+  width: min(calc(100dvw - max(1rem, env(safe-area-inset-left)) - max(1rem, env(safe-area-inset-right))), 760px);
   margin-inline: auto;
 }
 
@@ -601,22 +660,36 @@ body:has(.wallet-shell) {
   aspect-ratio: 1427 / 863;
 }
 
-.card-enlarged-modal {
+.card-enlarged-loyalty-card,
+.loyalty-card--enlarged.card-enlarged-loyalty-card {
   width: 100%;
-  max-width: min(calc(100vw - 1.25rem), 820px);
-}
-
-.card-enlarged-loyalty-shell {
-  width: 100%;
-}
-
-.card-enlarged-loyalty-card {
-  width: 100%;
+  max-width: 100%;
+  display: grid;
   aspect-ratio: 1427 / 863;
+  transform: none !important;
+  rotate: 0deg !important;
 }
 
-.card-enlarged-loyalty-card.loyalty-card {
+.card-enlarged-loyalty-card .loyalty-card__background,
+.loyalty-card--enlarged .loyalty-card__background {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1427 / 863;
+  object-fit: cover;
+}
+
+.card-enlarged-loyalty-card.loyalty-card,
+.loyalty-card--enlarged.loyalty-card {
   filter: drop-shadow(0 10px 28px rgba(0, 0, 0, 0.48));
+}
+
+@media (max-width: 1023px) {
+  .card-enlarged-loyalty-wrap,
+  .card-enlarged-merchant-shell,
+  .card-enlarged-merchant-card {
+    width: calc(100dvw - max(0.75rem, env(safe-area-inset-left)) - max(0.75rem, env(safe-area-inset-right)));
+    max-width: none;
+  }
 }
 
 /* ── Merchant interactive cards ── */
@@ -1926,6 +1999,7 @@ body:has(.wallet-shell) {
     max-width: none !important;
     padding: clamp(1.25rem, 2.5vw, 3.5rem) clamp(1.25rem, 4vw, 3.5rem) clamp(1.5rem, 2.5vw, 2.5rem);
     --wallet-card-width: clamp(480px, 36vw, 560px);
+    --wallet-card-height: calc(var(--wallet-card-width) / (1427 / 863));
     --wallet-spread: clamp(34px, 2.5vw, 42px);
   }
 
@@ -1979,8 +2053,14 @@ body:has(.wallet-shell) {
     display: flex;
     align-items: center;
     justify-content: center;
+    width: 100%;
+    align-self: stretch;
     min-height: 0;
     padding-block: clamp(0.5rem, 2vh, 2rem);
+  }
+
+  .wallet-deck-block .fife-deck-wrap {
+    width: 100%;
   }
 
   .wallet-sidebar-column {
@@ -2030,50 +2110,63 @@ body:has(.wallet-shell) {
   }
 
   .fife-deck-wrap {
+    display: grid;
+    grid-template-rows: auto auto auto;
+    justify-items: center;
+    align-items: center;
     width: 100%;
-    max-width: 700px;
+    max-width: none;
     margin-inline: auto;
-    position: relative;
-    padding-inline: 3rem;
+    padding: 0;
+    gap: 0.75rem;
   }
 
   .fife-deck-scene,
   .deck-scene.fife-deck-scene {
-    max-width: min(700px, 100%) !important;
-    width: 100% !important;
-    height: min(500px, 52vh) !important;
-    --wallet-card-width: clamp(480px, 34vw, 560px);
+    grid-row: 2;
+    max-width: var(--wallet-card-width) !important;
+    width: var(--wallet-card-width) !important;
+    height: var(--wallet-card-height) !important;
+    min-height: var(--wallet-card-height) !important;
+    margin-inline: auto;
+    justify-self: center;
+    align-self: center;
   }
 
   .deck-scene-solo.fife-deck-scene {
-    height: min(380px, 44vh) !important;
-    max-width: min(620px, 100%) !important;
+    height: var(--wallet-card-height) !important;
+    min-height: var(--wallet-card-height) !important;
+    max-width: var(--wallet-card-width) !important;
+    width: var(--wallet-card-width) !important;
   }
 
   .deck-nav-btn {
     display: grid;
     place-items: center;
-    position: absolute;
-    left: 50%;
+    position: relative;
+    left: auto;
+    top: auto;
+    bottom: auto;
     z-index: 60;
     height: 2.75rem;
     width: 2.75rem;
-    transform: translateX(-50%);
+    transform: none;
+    justify-self: center;
     border-radius: 999px;
     border: 1px solid rgba(190, 164, 255, 0.22);
     background: rgba(12, 10, 22, 0.72);
     backdrop-filter: blur(14px);
     color: rgba(255, 255, 255, 0.75);
     opacity: 0;
-    transition: opacity 0.2s ease, background 0.2s ease, transform 0.2s ease;
+    transition: opacity 0.2s ease, background 0.2s ease;
   }
 
   .deck-nav-prev {
-    top: 0.25rem;
+    grid-row: 1;
   }
 
   .deck-nav-next {
-    bottom: 0.25rem;
+    grid-row: 3;
   }
 
   .fife-deck-wrap:hover .deck-nav-btn,
@@ -2297,7 +2390,6 @@ body:has(.wallet-shell) {
   .fife-deck-scene,
   .deck-scene.fife-deck-scene {
     height: min(500px, 55vh) !important;
-    --wallet-card-width: clamp(500px, 32vw, 580px);
   }
 
   .wallet-page-body {

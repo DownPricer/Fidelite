@@ -25,6 +25,7 @@ type InteractiveLoyaltyCardProps = {
   progressPercent?: number;
   interactive?: boolean;
   entrance?: boolean;
+  layout?: "default" | "enlarged";
   className?: string;
   shellClassName?: string;
   as?: "article" | "div" | "button";
@@ -43,6 +44,7 @@ export function InteractiveLoyaltyCard({
   progressPercent,
   interactive = true,
   entrance = false,
+  layout = "default",
   className,
   shellClassName,
   as = "article",
@@ -93,96 +95,105 @@ export function InteractiveLoyaltyCard({
   const effectiveQrSrc = qrSrc || autoQr;
   const Element = as;
   const backgroundSrc = getLoyaltyCardBackground(tier);
+  const enlarged = layout === "enlarged";
+
+  const card = (
+    <Element
+      {...rest}
+      data-tier={model.tierKey}
+      data-qr-mode={model.qrMode}
+      aria-label={`Carte ${model.tierLabel} de ${model.name}`}
+      className={cn("loyalty-card", enlarged && "loyalty-card--enlarged", className)}
+      style={{ ["--progress" as never]: `${model.progress}%` }}
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={backgroundSrc} alt="" className="loyalty-card__background" draggable={false} />
+
+      <div className="loyalty-card__overlay">
+        <header className="loyalty-card__heading">
+          <p className="loyalty-card__eyebrow">MEMBRE</p>
+          <h2 className="loyalty-card__tier">{model.tierLabel}</h2>
+        </header>
+
+        {showQr ? (
+          <div className="loyalty-card__qr-block">
+            <button
+              type="button"
+              className="loyalty-card__qr"
+              aria-label={qrZoomEnabled ? "Agrandir le QR code" : "QR code client"}
+              onClick={(event) => {
+                event.stopPropagation();
+                if (qrZoomEnabled && effectiveQrSrc && !qrFailed) {
+                  setQrEnlarged(true);
+                }
+              }}
+            >
+              {effectiveQrSrc && !qrFailed ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={effectiveQrSrc}
+                  alt={`QR code de ${model.name}`}
+                  className="loyalty-card__qr-image"
+                  onError={() => setQrFailed(true)}
+                />
+              ) : (
+                <span className="loyalty-card__qr-placeholder">
+                  {qrFailed ? "QR INDISPONIBLE" : "QR CLIENT"}
+                </span>
+              )}
+            </button>
+          </div>
+        ) : null}
+
+        <p className="loyalty-card__name" data-length={model.nameLength} title={model.name}>
+          {model.name}
+        </p>
+
+        {showQr && clientNumber ? (
+          <p className="loyalty-card__client-number" title={`Numéro client ${clientNumber}`}>
+            N° {formatClientNumberDisplay(clientNumber)}
+          </p>
+        ) : null}
+
+        <p className="loyalty-card__points" data-length={model.pointsLength}>
+          {model.pointsText}
+        </p>
+
+        <p className="loyalty-card__status" data-length={model.statusLength} title={model.status}>
+          {model.status}
+        </p>
+
+        {model.showProgress ? (
+          <div
+            className="loyalty-card__progress"
+            role="progressbar"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={Math.round(model.progress * 10) / 10}
+            aria-label={model.status || "Progression du membre"}
+            aria-valuetext={model.status || `${Math.round(model.progress)} %`}
+          >
+            <span className="loyalty-card__progress-fill" />
+          </div>
+        ) : null}
+      </div>
+    </Element>
+  );
 
   return (
     <>
-      <InteractiveCardShell
-        interactive={interactive}
-        entrance={entrance}
-        halo={false}
-        className={cn("loyalty-card-shell w-full", shellClassName)}
-      >
-        <Element
-          {...rest}
-          data-tier={model.tierKey}
-          data-qr-mode={model.qrMode}
-          aria-label={`Carte ${model.tierLabel} de ${model.name}`}
-          className={cn("loyalty-card", className)}
-          style={{ ["--progress" as never]: `${model.progress}%` }}
+      {enlarged ? (
+        card
+      ) : (
+        <InteractiveCardShell
+          interactive={interactive}
+          entrance={entrance}
+          halo={false}
+          className={cn("loyalty-card-shell w-full", shellClassName)}
         >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={backgroundSrc} alt="" className="loyalty-card__background" draggable={false} />
-
-          <div className="loyalty-card__overlay">
-            <header className="loyalty-card__heading">
-              <p className="loyalty-card__eyebrow">MEMBRE</p>
-              <h2 className="loyalty-card__tier">{model.tierLabel}</h2>
-            </header>
-
-            {showQr ? (
-              <div className="loyalty-card__qr-block">
-                <button
-                  type="button"
-                  className="loyalty-card__qr"
-                  aria-label={qrZoomEnabled ? "Agrandir le QR code" : "QR code client"}
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    if (qrZoomEnabled && effectiveQrSrc && !qrFailed) {
-                      setQrEnlarged(true);
-                    }
-                  }}
-                >
-                  {effectiveQrSrc && !qrFailed ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={effectiveQrSrc}
-                      alt={`QR code de ${model.name}`}
-                      className="loyalty-card__qr-image"
-                      onError={() => setQrFailed(true)}
-                    />
-                  ) : (
-                    <span className="loyalty-card__qr-placeholder">
-                      {qrFailed ? "QR INDISPONIBLE" : "QR CLIENT"}
-                    </span>
-                  )}
-                </button>
-              </div>
-            ) : null}
-
-            <p className="loyalty-card__name" data-length={model.nameLength} title={model.name}>
-              {model.name}
-            </p>
-
-            {showQr && clientNumber ? (
-              <p className="loyalty-card__client-number" title={`Numéro client ${clientNumber}`}>
-                N° {formatClientNumberDisplay(clientNumber)}
-              </p>
-            ) : null}
-
-            <p className="loyalty-card__points" data-length={model.pointsLength}>
-              {model.pointsText}
-            </p>
-
-            <p className="loyalty-card__status" data-length={model.statusLength} title={model.status}>
-              {model.status}
-            </p>
-
-            {model.showProgress ? (
-              <div
-                className="loyalty-card__progress"
-                role="progressbar"
-                aria-valuemin={0}
-                aria-valuemax={100}
-                aria-valuenow={Math.round(model.progress * 10) / 10}
-                aria-label={model.status || "Progression du membre"}
-                aria-valuetext={model.status || `${Math.round(model.progress)} %`}
-              >
-                <span className="loyalty-card__progress-fill" />
-              </div>
-            ) : null}
-          </div>
-        </Element>
-      </InteractiveCardShell>
+          {card}
+        </InteractiveCardShell>
+      )}
 
       {mounted
         ? createPortal(
