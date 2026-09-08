@@ -28,3 +28,12 @@ describe("invitation employé", () => {
     expect(isInvitationExpired(new Date(Date.now() - 1000))).toBe(true);
   });
 });
+
+describe("durée d'invitation", () => {
+  it("expire après 48 heures par défaut", async () => {
+    const { invitationExpiryDate } = await import("../src/lib/employee-invitation");
+    const now = new Date("2026-01-01T12:00:00.000Z");
+    const expiry = invitationExpiryDate(now);
+    expect(expiry.getTime() - now.getTime()).toBe(48 * 60 * 60 * 1000);
+  });
+});

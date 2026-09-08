@@ -92,6 +92,7 @@ export function hasPermission(
 
 export function presetLabel(preset: StaffPreset, role: MerchantRole) {
   if (role === "MERCHANT_ADMIN") return "Administrateur";
+  if (role === "EMPLOYEE") return "Employé";
   if (preset === "MANAGER") return "Responsable";
   if (preset === "CASHIER") return "Employé de caisse";
   return "Personnalisé";
@@ -102,6 +103,7 @@ export function statusLabel(input: {
   userActive: boolean;
   invitationStatus: string;
 }) {
+  if (input.invitationStatus === "CANCELLED") return "Accès retiré";
   if (!input.isActive || !input.userActive) return "Suspendu";
   if (input.invitationStatus === "PENDING") return "Invitation en attente";
   return "Actif";

@@ -1,4 +1,5 @@
 import { requireCaisse, requireCaissePermission, requireMutatingRequest } from "@/lib/api-guard";
+import { sanitizeEarnResponse } from "@/lib/caisse-program";
 import { clientIp, jsonError, jsonOk, readJson, userAgent } from "@/lib/http";
 import { LoyaltyError } from "@/lib/loyalty";
 import { applyLoyaltyAction } from "@/lib/loyalty-service";
@@ -41,7 +42,7 @@ export async function POST(req: Request) {
       where: { id: grant.id },
       data: { consumedAt: new Date() },
     });
-    return jsonOk({ ok: true, action: "REDEEM_REWARD", ...result });
+    return jsonOk({ ok: true, action: "REDEEM_REWARD", ...sanitizeEarnResponse(result) });
   } catch (error) {
     if (error instanceof LoyaltyError) return jsonError(error.message);
     return jsonError("Action impossible pour le moment.", 500);

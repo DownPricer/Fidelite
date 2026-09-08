@@ -21,10 +21,13 @@ function employeeCookieName() {
   return env.employeeSessionCookie;
 }
 
-export function employeeTokenFromRequest(req: Request | NextRequest) {
-  const cookie = req.headers.get("cookie") ?? "";
+export function employeeTokenFromRequest(req: Request | import("next/server").NextRequest) {
+  return readEmployeeCookie(req.headers.get("cookie") ?? "");
+}
+
+function readEmployeeCookie(cookieHeader: string) {
   const name = employeeCookieName();
-  const match = cookie.match(new RegExp(`(?:^|;\\s*)${name}=([^;]+)`));
+  const match = cookieHeader.match(new RegExp(`(?:^|;\\s*)${name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}=([^;]+)`));
   return match?.[1] ? decodeURIComponent(match[1]) : null;
 }
 

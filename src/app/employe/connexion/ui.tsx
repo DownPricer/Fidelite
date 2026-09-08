@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useState } from "react";
 import { Alert, Button, Card, EmployeeBrandMark, Field, Input, PasswordInput } from "@/components/ui";
 
@@ -26,6 +25,7 @@ export function EmployeeLoginScreen({
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (pending) return;
     setPending(true);
     setError(null);
     const form = new FormData(event.currentTarget);
@@ -45,7 +45,7 @@ export function EmployeeLoginScreen({
       }
       window.location.href = "/employe/scan";
     } catch {
-      setError("Connexion impossible. Vérifiez votre connexion réseau.");
+      setError("Erreur réseau. Vérifiez votre connexion.");
     } finally {
       setPending(false);
     }
@@ -56,17 +56,31 @@ export function EmployeeLoginScreen({
       <div className="w-full max-w-[390px]">
         <div className="mb-8 flex flex-col items-center text-center">
           <EmployeeBrandMark className="mb-4" />
-          <h1 className="text-2xl font-black tracking-tight text-[var(--ink)]">Connexion caisse</h1>
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--muted)]">Fife Life Employé</p>
+          <h1 className="mt-2 text-2xl font-black tracking-tight text-[var(--ink)]">Connexion</h1>
         </div>
 
         <Card className="glass-panel border-0 p-6 shadow-none sm:p-8">
           <form className="space-y-5" onSubmit={(event) => void onSubmit(event)}>
             {error ? <Alert>{error}</Alert> : null}
-            <Field label="E-mail">
-              <Input name="email" type="email" autoComplete="username" required placeholder="nom@exemple.fr" />
+            <Field label="Adresse e-mail">
+              <Input
+                name="email"
+                type="email"
+                autoComplete="username"
+                required
+                placeholder="nom@exemple.fr"
+                disabled={pending}
+              />
             </Field>
             <Field label="Mot de passe">
-              <PasswordInput name="password" autoComplete="current-password" required placeholder="••••••••" />
+              <PasswordInput
+                name="password"
+                autoComplete="current-password"
+                required
+                placeholder="••••••••"
+                disabled={pending}
+              />
             </Field>
             <Button type="submit" className="w-full py-4 text-base" disabled={pending}>
               {pending ? "Connexion..." : "Se connecter"}
@@ -75,28 +89,13 @@ export function EmployeeLoginScreen({
 
           {demoHref ? (
             <div className="mt-6 border-t border-white/10 pt-6 text-center">
-              <p className="text-xs text-[var(--muted)]">Sans compte ? Explorez l&apos;app en mode démo.</p>
-              <Link
-                href={demoHref}
-                className="mt-2 inline-flex text-sm font-bold text-[var(--violet-bright)] hover:underline"
-              >
-                Voir les démos →
-              </Link>
+              <p className="text-xs text-[var(--muted)]">Mode démonstration local</p>
+              <a href={demoHref} className="mt-2 inline-flex text-sm font-bold text-[var(--violet-bright)] hover:underline">
+                Ouvrir la démo employé →
+              </a>
             </div>
           ) : null}
         </Card>
-
-        <nav className="mt-6 text-center text-xs font-bold uppercase tracking-[0.18em] text-[var(--muted)]">
-          <p className="mb-3">Autres espaces</p>
-          <div className="flex flex-wrap justify-center gap-x-5 gap-y-2">
-            <Link href="/connexion" className="text-[var(--violet-bright)] hover:underline normal-case tracking-normal">
-              Client
-            </Link>
-            <Link href="/app/connexion" className="text-[var(--violet-bright)] hover:underline normal-case tracking-normal">
-              Commerçant
-            </Link>
-          </div>
-        </nav>
       </div>
     </main>
   );

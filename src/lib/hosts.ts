@@ -26,7 +26,7 @@ export function isEmployeeHost(host: string) {
 }
 
 export function employeeInvitationUrl(token: string) {
-  const base = env.employeeOrigin.replace(/\/$/, "");
+  const base = env.employeeAppUrl.replace(/\/$/, "");
   return `${base}/invitation?token=${encodeURIComponent(token)}`;
 }
 

@@ -51,10 +51,12 @@ export function QrScanner({
   onResult,
   active,
   sessionKey = 0,
+  onError,
 }: {
   onResult: (text: string) => void;
   active: boolean;
   sessionKey?: number;
+  onError?: (message: string | null) => void;
 }) {
   const reactId = useId().replace(/:/g, "");
   const instanceIdRef = useRef(`qr-${reactId}-${sessionKey}-${Math.random().toString(36).slice(2, 8)}`);
@@ -79,6 +81,7 @@ export function QrScanner({
     hasScannedRef.current = false;
     lastTokenRef.current = null;
     setError(null);
+    onError?.(null);
 
     function onDecode(text: string) {
       if (cancelled || hasScannedRef.current) return;
@@ -108,7 +111,9 @@ export function QrScanner({
         () => undefined,
       );
     } catch (err: unknown) {
-      setError(formatCameraError(err));
+      const message = formatCameraError(err);
+      setError(message);
+      onError?.(message);
       return () => {
         cancelled = true;
       };
@@ -120,7 +125,9 @@ export function QrScanner({
       cancelled: () => cancelled,
     }).then((result) => {
       if (result.error) {
-        setError(formatCameraError(result.error));
+        const message = formatCameraError(result.error);
+        setError(message);
+        onError?.(message);
         isScanningRef.current = false;
         return;
       }

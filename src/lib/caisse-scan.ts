@@ -1,6 +1,6 @@
 import { normalizeClientNumber } from "@/lib/client-number";
+import { publicScanPayload } from "@/lib/caisse-program";
 import { prisma } from "@/lib/prisma";
-import { computeLoyalty } from "@/lib/loyalty";
 import { QrError, verifyQrToken } from "@/lib/qr";
 
 async function buildScanResult(input: {
@@ -74,18 +74,14 @@ async function buildScanResult(input: {
       },
     });
 
-    const snapshot = computeLoyalty(membership.points, membership.merchant.program.visitsRequired);
-    return {
+    return publicScanPayload({
       grantId: grant.id,
       firstName: membership.user.firstName,
+      program: membership.merchant.program,
       points: membership.points,
-      visitsRequired: membership.merchant.program.visitsRequired,
-      rewardLabel: membership.merchant.program.rewardLabel,
-      rewardAvailable: snapshot.rewardAvailable,
-      progressLabel: snapshot.progressLabel,
       expiresAt: grant.expiresAt.toISOString(),
       cardJustCreated,
-    };
+    });
   });
 }
 

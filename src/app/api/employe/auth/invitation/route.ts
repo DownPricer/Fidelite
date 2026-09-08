@@ -1,46 +1,28 @@
-import { hashInvitationToken, INVITATION_ERROR, isInvitationExpired } from "@/lib/employee-invitation";
+import { findInvitationByToken, validateInvitationLookup } from "@/lib/employee-invitation-service";
 import { jsonError, jsonOk } from "@/lib/http";
-import { prisma } from "@/lib/prisma";
 import { invitationTokenQuerySchema, zodErrorMessage } from "@/lib/validation";
 
 export async function GET(req: Request) {
   const url = new URL(req.url);
   const parsed = invitationTokenQuerySchema.safeParse({ token: url.searchParams.get("token") ?? "" });
-  if (!parsed.success) return jsonError(INVITATION_ERROR.invalid, 400);
+  if (!parsed.success) return jsonError(zodErrorMessage(parsed.error), 400);
 
-  const membership = await prisma.merchantMembership.findFirst({
-    where: {
-      invitationTokenHash: hashInvitationToken(parsed.data.token),
-      role: "EMPLOYEE",
-    },
-    include: {
-      user: { select: { firstName: true, email: true } },
-      merchant: { select: { name: true } },
-    },
-  });
-
-  if (!membership || membership.invitationStatus === "CANCELLED") {
-    return jsonError(INVITATION_ERROR.cancelled, 410);
-  }
-  if (membership.invitationStatus === "ACCEPTED") {
-    return jsonError(INVITATION_ERROR.invalid, 410);
-  }
-  if (isInvitationExpired(membership.invitationExpiresAt)) {
-    return jsonError(INVITATION_ERROR.expired, 410);
-  }
+  const lookup = await findInvitationByToken(parsed.data.token);
+  const validation = validateInvitationLookup(lookup);
+  if (!validation.ok) return jsonError(validation.error, validation.status);
 
   return jsonOk({
     ok: true,
     invitation: {
-      firstName: membership.user.firstName,
-      email: membership.user.email,
-      merchantName: membership.merchant.name,
-      message: membership.inviteMessage,
-      expiresAt: membership.invitationExpiresAt,
+      firstName: validation.lookup.membership.user.firstName,
+      email: validation.lookup.membership.user.email,
+      merchantName: validation.lookup.membership.merchant.name,
+      message: validation.lookup.membership.inviteMessage,
+      expiresAt: validation.lookup.invitation.expiresAt,
     },
   });
 }
 
-export async function POST(req: Request) {
+export async function POST() {
   return jsonError("Utilisez POST /api/employe/auth/accept-invitation.", 405);
 }

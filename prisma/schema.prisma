@@ -204,9 +204,23 @@ model MerchantMembership {
   user                 User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   merchant             Merchant         @relation(fields: [merchantId], references: [id], onDelete: Cascade)
   employeeSessions     Session[]
+  invitations          EmployeeInvitation[]
 
   @@unique([userId, merchantId])
   @@index([merchantId, role, isActive])
+}
+
+model EmployeeInvitation {
+  id           String             @id @default(cuid())
+  membershipId String
+  tokenHash    String             @unique
+  createdAt    DateTime           @default(now())
+  expiresAt    DateTime
+  usedAt       DateTime?
+  revokedAt    DateTime?
+  membership   MerchantMembership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+
+  @@index([membershipId, createdAt])
 }
 
 model LoyaltyProgram {

@@ -125,16 +125,26 @@ export const caisseActionSchema = z.object({
   grantId: z.string().min(1),
 });
 
-export const createEmployeeSchema = z.object({
-  firstName: firstNameSchema,
-  lastName: z.string().trim().max(80).optional(),
-  email: emailSchema,
-  phone: phoneSchema,
-  password: passwordSchema.optional(),
-  staffPreset: z.enum(["MANAGER", "CASHIER", "CUSTOM"]).default("CASHIER"),
-  permissions: z.record(z.boolean()).optional(),
-  inviteMessage: z.string().trim().max(500).optional(),
+export const caisseEarnSchema = z.object({
+  grantId: z.string().min(1),
+  purchaseAmount: z.number().min(0).max(100_000).optional(),
 });
+
+export const createEmployeeSchema = z
+  .object({
+    firstName: firstNameSchema,
+    lastName: z.string().trim().max(80).optional(),
+    email: emailSchema,
+    phone: phoneSchema,
+    password: passwordSchema,
+    passwordConfirm: z.string().min(1, "Confirmez le mot de passe."),
+    staffPreset: z.enum(["MANAGER", "CASHIER", "CUSTOM"]).default("CASHIER"),
+    permissions: z.record(z.boolean()).optional(),
+  })
+  .refine((value) => value.password === value.passwordConfirm, {
+    message: "Les mots de passe ne correspondent pas.",
+    path: ["passwordConfirm"],
+  });
 
 export const updateEmployeeSchema = z.object({
   firstName: firstNameSchema.optional(),
@@ -214,10 +224,16 @@ export const adjustmentSchema = z.object({
   reason: z.string().trim().min(3, "Le motif est obligatoire.").max(200),
 });
 
-export const acceptInvitationSchema = z.object({
-  token: z.string().min(16).max(128),
-  password: passwordSchema,
-});
+export const acceptInvitationSchema = z
+  .object({
+    token: z.string().min(16).max(128),
+    password: passwordSchema,
+    passwordConfirm: z.string().min(1, "Confirmez votre mot de passe."),
+  })
+  .refine((value) => value.password === value.passwordConfirm, {
+    message: "Les mots de passe ne correspondent pas.",
+    path: ["passwordConfirm"],
+  });
 
 export const invitationTokenQuerySchema = z.object({
   token: z.string().min(16).max(128),

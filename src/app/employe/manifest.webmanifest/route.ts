@@ -3,11 +3,12 @@ import { NextResponse } from "next/server";
 export function GET() {
   return NextResponse.json({
     name: "Fife Life Employé",
-    short_name: "Fife Employé",
+    short_name: "Employé",
     description: "Scannez les cartes Fife Life en caisse.",
     start_url: "/employe/scan",
     scope: "/employe/",
     display: "standalone",
+    orientation: "portrait-primary",
     background_color: "#06060B",
     theme_color: "#090911",
     lang: "fr",

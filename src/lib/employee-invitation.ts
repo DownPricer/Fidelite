@@ -10,7 +10,8 @@ export const INVITATION_ERROR = {
 } as const;
 
 export function invitationExpiryDate(now = new Date()) {
-  return new Date(now.getTime() + env.invitationDays * 24 * 60 * 60 * 1000);
+  const hours = env.invitationHours > 0 ? env.invitationHours : env.invitationDays * 24;
+  return new Date(now.getTime() + hours * 60 * 60 * 1000);
 }
 
 export function createInvitationToken() {

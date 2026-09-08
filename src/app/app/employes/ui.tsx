@@ -1,8 +1,8 @@
 "use client";
 
-import Link from "next/link";
+
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Alert, Button, Field, Input, cn } from "@/components/ui";
+import { Alert, Button, Field, Input, PasswordInput } from "@/components/ui";
 import { GlassBottomSheet } from "@/components/fife-life/profile/glass-bottom-sheet";
 import {
   CompactListHeader,
@@ -14,7 +14,6 @@ import {
   ListToolbar,
   StatusBadge,
 } from "@/components/merchant/merchant-ui";
-import { PERMISSION_LABELS, type PermissionKey, type StaffPermissions } from "@/lib/staff-permissions";
 
 type Employee = {
   id: string;
@@ -26,7 +25,7 @@ type Employee = {
   staffPreset: "MANAGER" | "CASHIER" | "CUSTOM";
   status: string;
   lastActivityAt: string | null;
-  permissions: StaffPermissions;
+  joinedAt: string;
 };
 
 const DEMO: Employee[] = [
@@ -35,44 +34,44 @@ const DEMO: Employee[] = [
     firstName: "Hugo",
     lastName: "Bernard",
     email: "employe@cafe-demo.local",
-    roleLabel: "Employé de caisse",
+    roleLabel: "Employé",
     staffPreset: "CASHIER",
     status: "Actif",
     lastActivityAt: new Date().toISOString(),
-    permissions: {} as StaffPermissions,
+    joinedAt: new Date(Date.now() - 86400000 * 30).toISOString(),
   },
   {
     id: "e1",
     firstName: "Sam",
     lastName: "Durand",
     email: "sam@cafe-demo.local",
-    roleLabel: "Responsable",
+    roleLabel: "Employé",
     staffPreset: "MANAGER",
     status: "Actif",
     lastActivityAt: new Date().toISOString(),
-    permissions: {} as StaffPermissions,
+    joinedAt: new Date(Date.now() - 86400000 * 60).toISOString(),
   },
   {
     id: "e2",
     firstName: "Noa",
     lastName: "Petit",
     email: "noa@cafe-demo.local",
-    roleLabel: "Employé de caisse",
+    roleLabel: "Employé",
     staffPreset: "CASHIER",
     status: "Actif",
     lastActivityAt: new Date(Date.now() - 3600000).toISOString(),
-    permissions: {} as StaffPermissions,
+    joinedAt: new Date(Date.now() - 86400000 * 14).toISOString(),
   },
   {
     id: "e3",
     firstName: "Léa",
     lastName: "Robert",
     email: "lea@cafe-demo.local",
-    roleLabel: "Employé de caisse",
+    roleLabel: "Employé",
     staffPreset: "CASHIER",
     status: "Invitation en attente",
     lastActivityAt: null,
-    permissions: {} as StaffPermissions,
+    joinedAt: new Date(Date.now() - 86400000).toISOString(),
   },
 ];
 
@@ -88,24 +87,31 @@ function statusBadgeLabel(status: string) {
   return status;
 }
 
-function formatActivity(iso: string | null) {
-  if (!iso) return "—";
-  const d = new Date(iso);
-  const diff = Date.now() - d.getTime();
-  if (diff < 3600000) return "À l'instant";
-  if (diff < 86400000) return "Aujourd'hui";
-  return d.toLocaleDateString("fr-FR", { day: "numeric", month: "short" });
+function formatActivity(iso: string | null, joinedAt?: string) {
+  if (iso) {
+    const d = new Date(iso);
+    const diff = Date.now() - d.getTime();
+    if (diff < 3600000) return "À l'instant";
+    if (diff < 86400000) return "Aujourd'hui";
+    return d.toLocaleDateString("fr-FR", { day: "numeric", month: "short" });
+  }
+  if (joinedAt) {
+    return `Créé le ${new Date(joinedAt).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}`;
+  }
+  return "—";
 }
 
 export function EmployeesPanel({ demo = false }: { demo?: boolean }) {
   const [employees, setEmployees] = useState<Employee[]>(demo ? DEMO : []);
-  const [activeCount, setActiveCount] = useState(demo ? 2 : 0);
+  const [activeCount, setActiveCount] = useState(demo ? 3 : 0);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
   const [sheetOpen, setSheetOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [tempPassword, setTempPassword] = useState<string | null>(null);
-  const [invitationUrl, setInvitationUrl] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [loginUrl, setLoginUrl] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (demo) return;
@@ -135,22 +141,37 @@ export function EmployeesPanel({ demo = false }: { demo?: boolean }) {
         filter === "all" ||
         (filter === "active" && e.status === "Actif") ||
         (filter === "pending" && e.status === "Invitation en attente") ||
-        (filter === "suspended" && e.status === "Suspendu");
+        (filter === "suspended" && e.status === "Suspendu") ||
+        (filter === "removed" && e.status === "Accès retiré");
       return matchQ && matchF;
     });
   }, [demo, employees, search, filter]);
 
   async function createEmployee(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (creating) return;
+    setCreating(true);
+    setError(null);
+    setSuccess(null);
+    setLoginUrl(null);
+    setFormError(null);
+
     const form = new FormData(event.currentTarget);
-    const staffPreset = form.get("staffPreset") as "MANAGER" | "CASHIER";
-    const permissions: Partial<StaffPermissions> = {};
-    for (const key of Object.keys(PERMISSION_LABELS) as PermissionKey[]) {
-      if (form.get(`perm_${key}`) === "on") permissions[key] = true;
+    const password = String(form.get("password") ?? "");
+    const passwordConfirm = String(form.get("passwordConfirm") ?? "");
+
+    if (password !== passwordConfirm) {
+      setFormError("Les mots de passe ne correspondent pas.");
+      setCreating(false);
+      return;
     }
 
     if (demo) {
       setSheetOpen(false);
+      setSuccess("Le compte employé a été créé. Il peut maintenant se connecter.");
+      setLoginUrl(`${window.location.origin}/employe/connexion`);
+      event.currentTarget.reset();
+      setCreating(false);
       return;
     }
 
@@ -162,19 +183,22 @@ export function EmployeesPanel({ demo = false }: { demo?: boolean }) {
         lastName: form.get("lastName"),
         email: form.get("email"),
         phone: form.get("phone"),
-        staffPreset,
-        permissions,
-        inviteMessage: form.get("inviteMessage"),
+        password,
+        passwordConfirm,
+        staffPreset: "CASHIER",
       }),
     });
     const data = await res.json();
+    setCreating(false);
+
     if (!res.ok) {
-      setError(data.error ?? "Création impossible.");
+      setFormError(data.error ?? "Création impossible.");
       return;
     }
-    setError(null);
+
     setSheetOpen(false);
-    if (data.invitationUrl) setInvitationUrl(data.invitationUrl as string);
+    setSuccess("Le compte employé a été créé. Il peut maintenant se connecter.");
+    if (data.employeeLoginUrl) setLoginUrl(data.employeeLoginUrl as string);
     event.currentTarget.reset();
     void load();
   }
@@ -190,20 +214,18 @@ export function EmployeesPanel({ demo = false }: { demo?: boolean }) {
         </Button>
       </div>
 
-      {invitationUrl ? (
+      {success ? (
         <div className="mb-4">
-          <Alert tone="ok">
-            Lien d&apos;invitation :{" "}
-            <a href={invitationUrl} className="break-all font-semibold underline">
-              {invitationUrl}
-            </a>
-          </Alert>
+          <Alert tone="ok">{success}</Alert>
         </div>
       ) : null}
-      {tempPassword ? (
+      {loginUrl ? (
         <div className="mb-4">
           <Alert tone="ok">
-            Mot de passe temporaire : <strong>{tempPassword}</strong>
+            Connexion employé :{" "}
+            <a href={loginUrl} className="break-all font-semibold underline">
+              {loginUrl}
+            </a>
           </Alert>
         </div>
       ) : null}
@@ -224,6 +246,7 @@ export function EmployeesPanel({ demo = false }: { demo?: boolean }) {
               ["active", "Actifs"],
               ["pending", "En attente"],
               ["suspended", "Suspendus"],
+              ["removed", "Accès retirés"],
             ].map(([k, label]) => (
               <FilterChip key={k} active={filter === k} onClick={() => setFilter(k)}>
                 {label}
@@ -244,55 +267,45 @@ export function EmployeesPanel({ demo = false }: { demo?: boolean }) {
               href={`/app/employes/${e.id}`}
               avatar={<InitialsAvatar name={`${e.firstName} ${e.lastName ?? ""}`} />}
               title={`${e.firstName} ${e.lastName ?? ""}`}
-              subtitle={e.roleLabel}
-              meta={formatActivity(e.lastActivityAt)}
-              badge={<StatusBadge tone={statusTone(e.status)}>{statusBadgeLabel(e.status)}</StatusBadge>}
+              subtitle={e.email}
+              meta={formatActivity(e.lastActivityAt, e.joinedAt)}
+              badge={
+                <div className="flex flex-col items-end gap-1">
+                  <span className="hidden text-[10px] text-[var(--muted)] md:inline">{e.roleLabel}</span>
+                  <StatusBadge tone={statusTone(e.status)}>{statusBadgeLabel(e.status)}</StatusBadge>
+                </div>
+              }
               desktopBadge={<StatusBadge tone={statusTone(e.status)}>{statusBadgeLabel(e.status)}</StatusBadge>}
             />
           ))}
         </CompactListShell>
       )}
 
-      <GlassBottomSheet open={sheetOpen} title="Nouvel employé" onClose={() => setSheetOpen(false)}>
+      <GlassBottomSheet open={sheetOpen} title="Nouvel employé" onClose={() => !creating && setSheetOpen(false)}>
         <form className="space-y-4" onSubmit={(e) => void createEmployee(e)}>
+          {formError ? <Alert>{formError}</Alert> : null}
           <div className="grid grid-cols-2 gap-3">
             <Field label="Prénom">
-              <Input name="firstName" required />
+              <Input name="firstName" required disabled={creating} autoComplete="off" />
             </Field>
             <Field label="Nom">
-              <Input name="lastName" />
+              <Input name="lastName" disabled={creating} autoComplete="off" />
             </Field>
           </div>
           <Field label="E-mail">
-            <Input name="email" type="email" required />
+            <Input name="email" type="email" required disabled={creating} autoComplete="off" />
           </Field>
           <Field label="Téléphone" hint="Facultatif">
-            <Input name="phone" type="tel" />
+            <Input name="phone" type="tel" disabled={creating} autoComplete="off" />
           </Field>
-          <Field label="Rôle">
-            <select name="staffPreset" className="merchant-search-input !pl-3" defaultValue="CASHIER">
-              <option value="MANAGER">Responsable</option>
-              <option value="CASHIER">Employé de caisse</option>
-            </select>
+          <Field label="Mot de passe" hint="8 caractères minimum">
+            <PasswordInput name="password" required minLength={8} disabled={creating} autoComplete="new-password" />
           </Field>
-          <Field label="Message d'invitation" hint="Facultatif">
-            <Input name="inviteMessage" placeholder="Bienvenue dans l'équipe !" />
+          <Field label="Confirmer le mot de passe">
+            <PasswordInput name="passwordConfirm" required minLength={8} disabled={creating} autoComplete="new-password" />
           </Field>
-          <details className="rounded-xl border border-white/10 p-3">
-            <summary className="cursor-pointer text-xs font-bold uppercase tracking-widest text-[var(--muted)]">
-              Permissions
-            </summary>
-            <div className="mt-3 space-y-2">
-              {(Object.keys(PERMISSION_LABELS) as PermissionKey[]).map((key) => (
-                <label key={key} className="flex items-center gap-2 text-sm">
-                  <input type="checkbox" name={`perm_${key}`} defaultChecked={key === "caisse" || key === "addPoints"} />
-                  {PERMISSION_LABELS[key]}
-                </label>
-              ))}
-            </div>
-          </details>
-          <Button type="submit" className="w-full">
-            Envoyer l&apos;invitation
+          <Button type="submit" className="w-full" disabled={creating}>
+            {creating ? "Création..." : "Créer le compte employé"}
           </Button>
         </form>
       </GlassBottomSheet>
@@ -329,6 +342,10 @@ export function EmployeeDetailPanel({ id, demo = false }: { id: string; demo?: b
   const [histFilter, setHistFilter] = useState("all");
   const [histSearch, setHistSearch] = useState("");
   const [selectedTx, setSelectedTx] = useState<(typeof history)[0] | null>(null);
+  const [editOpen, setEditOpen] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [actionSuccess, setActionSuccess] = useState<string | null>(null);
+  const [pendingAction, setPendingAction] = useState(false);
 
   useEffect(() => {
     if (demo) return;
@@ -348,45 +365,53 @@ export function EmployeeDetailPanel({ id, demo = false }: { id: string; demo?: b
 
   if (!employee) return <EmptyState title="Employé introuvable" />;
 
-  async function suspend() {
-    if (!confirm("Suspendre cet employé ? Son accès sera bloqué.")) return;
-    if (demo) return;
-    await fetch(`/api/merchant/employees/${id}`, {
+  async function patchEmployee(body: Record<string, unknown>) {
+    setPendingAction(true);
+    setActionError(null);
+    setActionSuccess(null);
+    const res = await fetch(`/api/merchant/employees/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ isActive: false }),
+      body: JSON.stringify(body),
     });
+    const data = await res.json();
+    setPendingAction(false);
+    if (!res.ok) {
+      setActionError(data.error ?? "Action impossible.");
+      return data;
+    }
+    if (data.employee) setEmployee(data.employee);
+    return data;
+  }
+
+  async function suspend() {
+    if (!confirm("Suspendre cet employé ? Son accès sera bloqué et ses sessions révoquées.")) return;
+    if (demo) return;
+    await patchEmployee({ isActive: false });
     window.location.reload();
   }
 
   async function resendInvite() {
     if (demo) return;
-    const res = await fetch(`/api/merchant/employees/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ invitationStatus: "PENDING" }),
-    });
-    const data = await res.json();
-    if (data.invitationUrl) {
-      alert(`Invitation renvoyée.\n\n${data.invitationUrl}`);
-    } else {
-      alert("Invitation renvoyée.");
+    if (!confirm("Renvoyer l'invitation ? L'ancien lien sera invalidé.")) return;
+    const data = await patchEmployee({ invitationStatus: "PENDING" });
+    if (data?.invitationSent) {
+      setActionSuccess("Invitation renvoyée par e-mail.");
     }
   }
 
   async function revokeSessions() {
     if (demo || !confirm("Révoquer toutes les sessions actives de cet employé ?")) return;
+    setPendingAction(true);
     await fetch(`/api/merchant/employees/${id}/revoke-sessions`, { method: "POST" });
-    alert("Sessions révoquées.");
+    setPendingAction(false);
+    setActionSuccess("Sessions révoquées.");
   }
 
   async function reactivate() {
     if (demo) return;
-    await fetch(`/api/merchant/employees/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ isActive: true }),
-    });
+    if (!confirm("Réactiver cet employé ?")) return;
+    await patchEmployee({ isActive: true });
     window.location.reload();
   }
 
@@ -394,6 +419,26 @@ export function EmployeeDetailPanel({ id, demo = false }: { id: string; demo?: b
     if (demo || !confirm("Annuler cette invitation ?")) return;
     await fetch(`/api/merchant/employees/${id}`, { method: "DELETE" });
     window.location.href = "/app/employes";
+  }
+
+  async function removeAccess() {
+    if (demo || !confirm("Retirer définitivement l'accès de cet employé ? Son historique sera conservé.")) return;
+    await fetch(`/api/merchant/employees/${id}`, { method: "DELETE" });
+    window.location.href = "/app/employes";
+  }
+
+  async function saveProfile(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    await patchEmployee({
+      firstName: form.get("firstName"),
+      lastName: form.get("lastName"),
+      email: form.get("email"),
+      phone: form.get("phone"),
+      inviteMessage: form.get("inviteMessage"),
+    });
+    setEditOpen(false);
+    setActionSuccess("Informations mises à jour.");
   }
 
   function txLine(tx: (typeof history)[0]) {
@@ -409,8 +454,20 @@ export function EmployeeDetailPanel({ id, demo = false }: { id: string; demo?: b
   return (
     <div className="merchant-detail-grid space-y-6">
       <div className="space-y-6">
-        <div className="flex items-center gap-4">
-          <InitialsAvatar name={`${employee.firstName} ${employee.lastName ?? ""}`} size="md" />
+        {actionError ? <Alert>{actionError}</Alert> : null}
+        {actionSuccess ? <Alert tone="ok">{actionSuccess}</Alert> : null}
+
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <InitialsAvatar name={`${employee.firstName} ${employee.lastName ?? ""}`} size="md" />
+            <div>
+              <p className="text-lg font-bold text-[var(--ink)]">
+                {employee.firstName} {employee.lastName ?? ""}
+              </p>
+              <p className="text-sm text-[var(--muted-strong)]">{employee.email}</p>
+              <p className="text-xs text-[var(--muted)]">{employee.roleLabel}</p>
+            </div>
+          </div>
           <StatusBadge tone={statusTone(employee.status)}>{employee.status}</StatusBadge>
         </div>
 
@@ -431,72 +488,119 @@ export function EmployeeDetailPanel({ id, demo = false }: { id: string; demo?: b
         <div className="flex flex-wrap gap-2">
           {employee.status === "Invitation en attente" ? (
             <>
-              <Button variant="secondary" className="h-9 px-3 text-xs" onClick={() => void resendInvite()}>
+              <Button variant="secondary" className="h-9 px-3 text-xs" disabled={pendingAction} onClick={() => void resendInvite()}>
                 Renvoyer l&apos;invitation
               </Button>
-              <Button variant="ghost" className="h-9 px-3 text-xs" onClick={() => void cancelInvite()}>
+              <Button variant="secondary" className="h-9 px-3 text-xs" disabled={pendingAction} onClick={() => setEditOpen(true)}>
+                Modifier
+              </Button>
+              <Button variant="ghost" className="h-9 px-3 text-xs" disabled={pendingAction} onClick={() => void cancelInvite()}>
                 Annuler l&apos;invitation
+              </Button>
+              <Button variant="danger" className="h-9 px-3 text-xs" disabled={pendingAction} onClick={() => void removeAccess()}>
+                Retirer l&apos;accès
               </Button>
             </>
           ) : null}
           {employee.status === "Actif" ? (
             <>
-              <Button variant="secondary" className="h-9 px-3 text-xs" onClick={() => void revokeSessions()}>
+              <Button variant="secondary" className="h-9 px-3 text-xs" disabled={pendingAction} onClick={() => setEditOpen(true)}>
+                Modifier
+              </Button>
+              <Button variant="secondary" className="h-9 px-3 text-xs" disabled={pendingAction} onClick={() => void revokeSessions()}>
                 Révoquer les sessions
               </Button>
-              <Button variant="danger" className="h-9 px-3 text-xs" onClick={() => void suspend()}>
+              <Button variant="danger" className="h-9 px-3 text-xs" disabled={pendingAction} onClick={() => void suspend()}>
                 Suspendre
+              </Button>
+              <Button variant="ghost" className="h-9 px-3 text-xs" disabled={pendingAction} onClick={() => void removeAccess()}>
+                Retirer l&apos;accès
               </Button>
             </>
           ) : null}
           {employee.status === "Suspendu" ? (
-            <Button variant="secondary" className="h-9 px-3 text-xs" onClick={() => void reactivate()}>
-              Réactiver
-            </Button>
+            <>
+              <Button variant="secondary" className="h-9 px-3 text-xs" disabled={pendingAction} onClick={() => void reactivate()}>
+                Réactiver
+              </Button>
+              <Button variant="secondary" className="h-9 px-3 text-xs" disabled={pendingAction} onClick={() => void revokeSessions()}>
+                Révoquer les sessions
+              </Button>
+              <Button variant="danger" className="h-9 px-3 text-xs" disabled={pendingAction} onClick={() => void removeAccess()}>
+                Retirer l&apos;accès
+              </Button>
+            </>
           ) : null}
         </div>
       </div>
 
-      <section>
-        <h3 className="mb-3 text-xs font-bold uppercase tracking-widest text-[var(--muted)]">Historique complet</h3>
-        <ListToolbar
-          search={histSearch}
-          onSearchChange={setHistSearch}
-          searchPlaceholder="Client"
-          filters={
-            <>
-              {[
-                ["all", "Tout"],
-                ["earns", "Gains"],
-                ["rewards", "Récompenses"],
-                ["corrections", "Corrections"],
-                ["cancels", "Annulations"],
-              ].map(([k, label]) => (
-                <FilterChip key={k} active={histFilter === k} onClick={() => setHistFilter(k)}>
-                  {label}
-                </FilterChip>
-              ))}
-            </>
-          }
-        />
-        <CompactListShell layout="stack">
-          {history.map((tx) => (
-            <button
-              key={tx.id}
-              type="button"
-              className="compact-list-row w-full text-left"
-              onClick={() => setSelectedTx(tx)}
-            >
-              <div className="flex-1">
-                <p className={cn("text-sm font-semibold", tx.type === "EARN_VISIT" && "text-[var(--positive)]", tx.type === "REDEEM_REWARD" && "text-[var(--danger)]", tx.type === "ADJUSTMENT" && "text-[var(--warning)]")}>
-                  {txLine(tx)}
-                </p>
-                <p className="text-xs text-[var(--muted)]">{new Date(tx.createdAt).toLocaleString("fr-FR")}</p>
-              </div>
-            </button>
-          ))}
-        </CompactListShell>
-      </section>
+      {employee.status !== "Invitation en attente" ? (
+        <section>
+          <h3 className="mb-3 text-xs font-bold uppercase tracking-widest text-[var(--muted)]">Historique complet</h3>
+          <ListToolbar
+            search={histSearch}
+            onSearchChange={setHistSearch}
+            searchPlaceholder="Client"
+            filters={
+              <>
+                {[
+                  ["all", "Tout"],
+                  ["earns", "Gains"],
+                  ["rewards", "Récompenses"],
+                  ["corrections", "Corrections"],
+                  ["cancels", "Annulations"],
+                ].map(([k, label]) => (
+                  <FilterChip key={k} active={histFilter === k} onClick={() => setHistFilter(k)}>
+                    {label}
+                  </FilterChip>
+                ))}
+              </>
+            }
+          />
+          <CompactListShell layout="stack">
+            {history.map((tx) => (
+              <button
+                key={tx.id}
+                type="button"
+                className="compact-list-row w-full text-left"
+                onClick={() => setSelectedTx(tx)}
+              >
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-[var(--ink)]">{txLine(tx)}</p>
+                  <p className="text-xs text-[var(--muted)]">{new Date(tx.createdAt).toLocaleString("fr-FR")}</p>
+                </div>
+              </button>
+            ))}
+          </CompactListShell>
+        </section>
+      ) : null}
+
+      <GlassBottomSheet open={editOpen} title="Modifier l'employé" onClose={() => setEditOpen(false)}>
+        <form className="space-y-4" onSubmit={(e) => void saveProfile(e)}>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Prénom">
+              <Input name="firstName" defaultValue={employee.firstName} required />
+            </Field>
+            <Field label="Nom">
+              <Input name="lastName" defaultValue={employee.lastName ?? ""} />
+            </Field>
+          </div>
+          <Field label="E-mail">
+            <Input name="email" type="email" defaultValue={employee.email} required />
+          </Field>
+          <Field label="Téléphone">
+            <Input name="phone" type="tel" defaultValue={employee.phone ?? ""} />
+          </Field>
+          {employee.status === "Invitation en attente" ? (
+            <Field label="Message d'invitation">
+              <Input name="inviteMessage" defaultValue="" placeholder="Message personnalisé" />
+            </Field>
+          ) : null}
+          <Button type="submit" className="w-full" disabled={pendingAction}>
+            Enregistrer
+          </Button>
+        </form>
+      </GlassBottomSheet>
 
       <GlassBottomSheet open={!!selectedTx} title="Détail transaction" onClose={() => setSelectedTx(null)}>
         {selectedTx ? (

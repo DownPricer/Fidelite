@@ -18,7 +18,25 @@ export async function POST(req: Request) {
   if (!parsed.success) return jsonError(zodErrorMessage(parsed.error));
 
   const limited = rateLimit(`scan:${staff.user.id}`, LIMITS.scan.limit, LIMITS.scan.windowMs);
-  if (!limited.ok) return jsonError("Trop de scans. Patientez un instant.", 429);
+  if (!limited.ok) {
+    await writeAudit({
+      actorId: staff.user.id,
+      merchantId: staff.membership.merchantId,
+      action: "CAISSE_SCAN_DENIED",
+      metadata: { reason: "rate_limit", via: parsed.data.clientNumber ? "clientNumber" : "qr" },
+      ip: clientIp(req),
+      userAgent: userAgent(req),
+    });
+    return jsonError("Trop de scans. Patientez un instant.", 429);
+  }
+
+  const scanKey = parsed.data.token
+    ? `scan-token:${staff.user.id}:${parsed.data.token.slice(0, 32)}`
+    : `scan-client:${staff.user.id}:${normalizeClientNumber(parsed.data.clientNumber!)}`;
+  const duplicate = rateLimit(scanKey, 1, 2_000);
+  if (!duplicate.ok) {
+    return jsonError("Scan trop rapproché. Patientez un instant.", 429);
+  }
 
   try {
     const result = parsed.data.clientNumber
@@ -40,6 +58,10 @@ export async function POST(req: Request) {
       metadata: {
         grantId: result.grantId,
         via: parsed.data.clientNumber ? "clientNumber" : "qr",
+        method: parsed.data.clientNumber ? "manual_client" : "qr",
+        pointsBefore: result.points,
+        programMode: result.programMode,
+        membershipId: "id" in staff.membership ? staff.membership.id : staff.membership.merchantId,
       },
       ip: clientIp(req),
       userAgent: userAgent(req),
@@ -47,7 +69,20 @@ export async function POST(req: Request) {
 
     return jsonOk(result);
   } catch (error) {
+    const message = error instanceof QrInputError ? error.message : publicQrErrorMessage(error);
+    await writeAudit({
+      actorId: staff.user.id,
+      merchantId: staff.membership.merchantId,
+      action: "CAISSE_SCAN_DENIED",
+      metadata: {
+        reason: message,
+        via: parsed.data.clientNumber ? "clientNumber" : "qr",
+        membershipId: "id" in staff.membership ? staff.membership.id : staff.membership.merchantId,
+      },
+      ip: clientIp(req),
+      userAgent: userAgent(req),
+    });
     if (error instanceof QrInputError) return jsonError(error.message, 400);
-    return jsonError(publicQrErrorMessage(error), 400);
+    return jsonError(message, 400);
   }
 }
