@@ -29,7 +29,7 @@ export default async function CarteIndexPage({
   return (
     <WalletHome
       firstName={user.firstName}
-      lastName={user.lastName}
+      lastName={user.lastName ?? undefined}
       customerName={[user.firstName, user.lastName].filter(Boolean).join(" ") || user.firstName}
       fifeLifePoints={user.fifeLifePoints}
       initialSheetOpen={params.sheet === "1"}
