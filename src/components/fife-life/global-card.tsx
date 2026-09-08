@@ -27,6 +27,7 @@ export function GlobalCard({
   interactive = true,
   demoTierPreview = false,
   preview = false,
+  qrZoomEnabled = false,
 }: {
   points: number;
   customerName: string;
@@ -37,6 +38,7 @@ export function GlobalCard({
   interactive?: boolean;
   demoTierPreview?: boolean;
   preview?: boolean;
+  qrZoomEnabled?: boolean;
 }) {
   const tier = resolveTier(points);
   const tierName = tierOverride ?? tier.name;
@@ -73,6 +75,7 @@ export function GlobalCard({
       qrSrc={showQrOnCard ? (preview ? PREVIEW_QR : qr) : null}
       qrMode="standard"
       clientNumber={showQrOnCard ? effectiveClientNumber : null}
+      qrZoomEnabled={showQrOnCard && qrZoomEnabled}
       interactive={interactive}
       className={large ? "loyalty-card--large" : undefined}
       shellClassName="w-full"

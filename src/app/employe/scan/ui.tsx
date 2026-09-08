@@ -2,10 +2,12 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { QrScanner } from "@/components/qr-scanner";
+import { ClientNumberField, QrScanner } from "@/components/qr-scanner";
 import { Button } from "@/components/ui";
+import { DEMO_CLIENT_NUMBER } from "@/lib/demo-visual";
 import {
   postCaisseScan,
+  readManualClientNumber,
   readManualToken,
   rememberToken,
   shouldIgnoreInstantDuplicate,
@@ -34,18 +36,16 @@ type EmployeeProfile = {
 export function EmployeeScanScreen({
   profile,
   demo = false,
-  initialView = "scan" as "scan" | "paste" | "result" | "error",
-  initialError = "Ce lien n'est pas un QR Fife Life valide.",
+  initialView = "scan" as "scan" | "result" | "error",
+  initialError = "Ce QR n'est pas reconnu.",
 }: {
   profile: EmployeeProfile;
   demo?: boolean;
-  initialView?: "scan" | "paste" | "result" | "error";
+  initialView?: "scan" | "result" | "error";
   initialError?: string;
 }) {
   const [scanning, setScanning] = useState(initialView === "scan");
   const [cameraSession, setCameraSession] = useState(0);
-  const [pasteOpen, setPasteOpen] = useState(initialView === "paste");
-  const [pasteValue, setPasteValue] = useState(initialView === "paste" ? "https://evil.example/not-a-qr" : "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(initialView === "error" ? initialError : null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -69,13 +69,23 @@ export function EmployeeScanScreen({
     setResult(null);
     setError(null);
     setSuccess(null);
-    setPasteOpen(false);
-    setPasteValue("");
     setScanning(true);
     setCameraSession((session) => session + 1);
   }, []);
 
-  const submitToken = useCallback(
+  const showDemoResult = useCallback(() => {
+    setResult({
+      grantId: "demo-grant",
+      firstName: "Léa",
+      points: 7,
+      visitsRequired: 10,
+      rewardLabel: "1 boisson offerte",
+      rewardAvailable: false,
+      progressLabel: "7 / 10 passages",
+    });
+  }, []);
+
+  const submitQr = useCallback(
     async (raw: string, source: "camera" | "manual") => {
       let token: string;
       try {
@@ -95,23 +105,14 @@ export function EmployeeScanScreen({
       setBusy(true);
       setError(null);
       setScanning(false);
-      setPasteOpen(false);
 
       if (demo) {
         setBusy(false);
-        setResult({
-          grantId: "demo-grant",
-          firstName: "Léa",
-          points: 7,
-          visitsRequired: 10,
-          rewardLabel: "1 boisson offerte",
-          rewardAvailable: false,
-          progressLabel: "7 / 10 passages",
-        });
+        showDemoResult();
         return;
       }
 
-      const { ok, data } = await postCaisseScan(token);
+      const { ok, data } = await postCaisseScan({ token });
       setBusy(false);
       if (!ok) {
         setResult(null);
@@ -121,7 +122,40 @@ export function EmployeeScanScreen({
       setResult(data as ScanResult);
       setSuccess(null);
     },
-    [demo],
+    [demo, showDemoResult],
+  );
+
+  const submitClientNumber = useCallback(
+    async (raw: string) => {
+      let clientNumber: string;
+      try {
+        clientNumber = readManualClientNumber(raw);
+      } catch (err) {
+        setError(err instanceof QrInputError ? err.message : "Numéro client invalide.");
+        return;
+      }
+
+      setBusy(true);
+      setError(null);
+      setScanning(false);
+
+      if (demo && clientNumber === DEMO_CLIENT_NUMBER) {
+        setBusy(false);
+        showDemoResult();
+        return;
+      }
+
+      const { ok, data } = await postCaisseScan({ clientNumber });
+      setBusy(false);
+      if (!ok) {
+        setResult(null);
+        setError(typeof data.error === "string" ? data.error : "Client introuvable.");
+        return;
+      }
+      setResult(data as ScanResult);
+      setSuccess(null);
+    },
+    [demo, showDemoResult],
   );
 
   async function act(path: "/api/caisse/earn" | "/api/caisse/redeem") {
@@ -129,8 +163,8 @@ export function EmployeeScanScreen({
     if (demo) {
       setSuccess(
         path.endsWith("earn")
-          ? "+1 passage pour Marie. 8 / 10 passages"
-          : "Récompense utilisée pour Marie.",
+          ? "+1 passage pour Léa. 8 / 10 passages"
+          : "Récompense utilisée pour Léa.",
       );
       setResult(null);
       setTimeout(resetScanner, 1200);
@@ -186,7 +220,7 @@ export function EmployeeScanScreen({
           onClick={() => void logout()}
           className="shrink-0 rounded-lg px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-[var(--muted-text)] hover:text-[var(--panel-text)]"
         >
-          Déconnexion
+          {demo ? "Quitter la démo" : "Déconnexion"}
         </button>
       </header>
 
@@ -235,34 +269,6 @@ export function EmployeeScanScreen({
                 Scanner un autre client
               </Button>
             </motion.div>
-          ) : pasteOpen ? (
-            <motion.div
-              key="paste"
-              className="flex min-h-0 flex-1 flex-col gap-3"
-              initial={false}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-            >
-              <p className="text-sm font-semibold text-[var(--ink)]">Coller un lien ou un code QR</p>
-              <textarea
-                value={pasteValue}
-                onChange={(event) => setPasteValue(event.target.value)}
-                className="min-h-[120px] flex-1 rounded-2xl border border-[var(--border)] bg-[var(--panel-bg)] p-4 text-sm text-[var(--panel-text)] outline-none"
-                placeholder="Collez ici le lien ou le contenu du QR Fife Life"
-              />
-              <div className="grid grid-cols-2 gap-2">
-                <Button variant="ghost" onClick={() => setPasteOpen(false)}>
-                  Retour caméra
-                </Button>
-                <Button
-                  variant="primary"
-                  disabled={busy || !pasteValue.trim()}
-                  onClick={() => void submitToken(pasteValue, "manual")}
-                >
-                  Valider
-                </Button>
-              </div>
-            </motion.div>
           ) : (
             <motion.div
               key="scan"
@@ -271,21 +277,19 @@ export function EmployeeScanScreen({
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
             >
-              <div className="relative shrink-0">
-                <div className="qr-scanner-shell max-h-[min(42vh,280px)] overflow-hidden rounded-3xl border border-white/10 bg-black">
-                  {scanning ? (
-                    <QrScanner
-                      key={cameraSession}
-                      sessionKey={cameraSession}
-                      active={scanning && !busy}
-                      onResult={(text) => void submitToken(text, "camera")}
-                    />
-                  ) : (
-                    <div className="flex h-[min(42vh,280px)] min-h-[12rem] items-center justify-center text-sm text-white/70">
-                      {busy ? "Traitement..." : "Caméra en pause"}
-                    </div>
-                  )}
-                </div>
+              <div className="relative shrink-0 overflow-hidden rounded-3xl border border-white/10 bg-black">
+                {scanning ? (
+                  <QrScanner
+                    key={cameraSession}
+                    sessionKey={cameraSession}
+                    active={scanning && !busy}
+                    onResult={(text) => void submitQr(text, "camera")}
+                  />
+                ) : (
+                  <div className="flex h-[min(52vh,420px)] min-h-[240px] items-center justify-center text-sm text-white/70">
+                    {busy ? "Traitement..." : "Caméra en pause"}
+                  </div>
+                )}
                 <div className="pointer-events-none absolute inset-3 rounded-2xl border-2 border-white/35" />
               </div>
 
@@ -293,9 +297,17 @@ export function EmployeeScanScreen({
                 <Button variant="secondary" onClick={() => setCameraSession((value) => value + 1)}>
                   Relancer caméra
                 </Button>
-                <Button variant="secondary" onClick={() => setPasteOpen(true)}>
-                  Coller un lien
+                <Button variant="secondary" onClick={() => setScanning((value) => !value)}>
+                  {scanning ? "Pause caméra" : "Reprendre caméra"}
                 </Button>
+              </div>
+
+              <div className="shrink-0 space-y-2">
+                <p className="text-sm font-semibold text-[var(--ink)]">Entrer le numéro du client</p>
+                <ClientNumberField
+                  disabled={busy}
+                  onSubmit={(value) => void submitClientNumber(value)}
+                />
               </div>
             </motion.div>
           )}

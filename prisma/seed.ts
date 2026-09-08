@@ -170,6 +170,7 @@ async function main() {
       firstName: "Léa",
       lastName: "Martin",
       fifeLifePoints: 180,
+      clientNumber: "482917",
     },
     create: {
       email: customerEmail,
@@ -177,6 +178,7 @@ async function main() {
       firstName: "Léa",
       lastName: "Martin",
       fifeLifePoints: 180,
+      clientNumber: "482917",
       platformRole: PlatformRole.CUSTOMER,
       privacyConsentAt: new Date(),
     },

@@ -1,6 +1,7 @@
 import { requireCaisse, requireMutatingRequest } from "@/lib/api-guard";
+import { processCaisseScan, processCaisseScanByClientNumber } from "@/lib/caisse-scan";
+import { normalizeClientNumber } from "@/lib/client-number";
 import { writeAudit } from "@/lib/audit";
-import { processCaisseScan } from "@/lib/caisse-scan";
 import { clientIp, jsonError, jsonOk, readJson, userAgent } from "@/lib/http";
 import { publicQrErrorMessage } from "@/lib/qr";
 import { QrInputError, extractFifeLifeQrToken } from "@/lib/qr-input";
@@ -16,29 +17,30 @@ export async function POST(req: Request) {
   const parsed = scanSchema.safeParse(await readJson(req));
   if (!parsed.success) return jsonError(zodErrorMessage(parsed.error));
 
-  let token: string;
-  try {
-    token = extractFifeLifeQrToken(parsed.data.token);
-  } catch (error) {
-    if (error instanceof QrInputError) return jsonError(error.message, 400);
-    return jsonError("QR invalide.", 400);
-  }
-
   const limited = rateLimit(`scan:${staff.user.id}`, LIMITS.scan.limit, LIMITS.scan.windowMs);
   if (!limited.ok) return jsonError("Trop de scans. Patientez un instant.", 429);
 
   try {
-    const result = await processCaisseScan({
-      token,
-      merchantId: staff.membership.merchantId,
-      actorUserId: staff.user.id,
-    });
+    const result = parsed.data.clientNumber
+      ? await processCaisseScanByClientNumber({
+          clientNumber: normalizeClientNumber(parsed.data.clientNumber),
+          merchantId: staff.membership.merchantId,
+          actorUserId: staff.user.id,
+        })
+      : await processCaisseScan({
+          token: extractFifeLifeQrToken(parsed.data.token!),
+          merchantId: staff.membership.merchantId,
+          actorUserId: staff.user.id,
+        });
 
     await writeAudit({
       actorId: staff.user.id,
       merchantId: staff.membership.merchantId,
       action: "CAISSE_SCAN",
-      metadata: { grantId: result.grantId },
+      metadata: {
+        grantId: result.grantId,
+        via: parsed.data.clientNumber ? "clientNumber" : "qr",
+      },
       ip: clientIp(req),
       userAgent: userAgent(req),
     });

@@ -119,8 +119,8 @@ describe("champ manuel et caméra", () => {
     const manualToken = readManualToken(typed);
     expect(manualToken).toBe(cameraToken);
 
-    const camera = await postCaisseScan(cameraToken);
-    const manual = await postCaisseScan(manualToken);
+    const camera = await postCaisseScan({ token: cameraToken });
+    const manual = await postCaisseScan({ token: manualToken });
 
     expect(camera.data).toEqual(manual.data);
     expect(fetchMock).toHaveBeenCalledTimes(2);

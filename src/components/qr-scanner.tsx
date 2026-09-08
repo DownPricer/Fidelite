@@ -95,7 +95,15 @@ export function QrScanner({
       scannerRef.current = scanner;
       startPromise = scanner.start(
         { facingMode: "environment" },
-        { fps: 8, qrbox: { width: 220, height: 220 } },
+        {
+          fps: 10,
+          qrbox: (viewfinderWidth, viewfinderHeight) => {
+            const edge = Math.min(viewfinderWidth, viewfinderHeight);
+            const size = Math.max(180, Math.floor(edge * 0.72));
+            return { width: size, height: size };
+          },
+          aspectRatio: 1.333333,
+        },
         onDecode,
         () => undefined,
       );
@@ -128,7 +136,7 @@ export function QrScanner({
           try {
             await withTimeout(startPromise, 3_000, "TimeoutError");
           } catch {
-            // Démarrage refusé, occupé, ou encore en cours — on tente un stop sûr.
+            // Démarrage refusé, occupé, ou encore en cours.
           }
         }
         await safeStopScanner(instance);
@@ -141,7 +149,7 @@ export function QrScanner({
     <div className="qr-scanner-shell flex min-h-0 flex-col gap-2">
       <div
         id={scannerId}
-        className="qr-scanner-viewport max-h-[min(42vh,280px)] min-h-[12rem] flex-1 overflow-hidden rounded-2xl bg-black [&>video]:h-full [&>video]:w-full [&>video]:object-cover"
+        className="qr-scanner-viewport h-[min(52vh,420px)] min-h-[240px] w-full overflow-hidden rounded-2xl bg-black [&>video]:h-full [&>video]:w-full [&>video]:object-cover"
       />
       {error ? (
         <p role="alert" className="shrink-0 text-sm font-medium text-[var(--danger)]">
@@ -152,7 +160,7 @@ export function QrScanner({
   );
 }
 
-export function UsbScannerField({
+export function ClientNumberField({
   onSubmit,
   disabled,
 }: {
@@ -171,8 +179,8 @@ export function UsbScannerField({
 
   return (
     <form
-      data-testid="caisse-manual-form"
-      className="flex w-full gap-2"
+      data-testid="caisse-client-number-form"
+      className="flex w-full flex-col gap-2 sm:flex-row"
       onSubmit={(event) => {
         event.preventDefault();
         submitValue();
@@ -182,15 +190,15 @@ export function UsbScannerField({
         id={inputId}
         disabled={disabled}
         value={value}
-        onChange={(event) => setValue(event.target.value)}
+        onChange={(event) => setValue(event.target.value.replace(/[^\d\s-]/g, ""))}
         className="min-w-0 flex-1 rounded-xl border border-[var(--border)] bg-[var(--panel-bg)] px-4 py-3 text-base text-[var(--panel-text)] outline-none placeholder:text-[var(--muted-text)] focus:border-[var(--violet)]"
-        placeholder="Coller le code de la carte"
+        placeholder="Numéro client (ex. 482 917)"
         autoComplete="off"
-        inputMode="text"
+        inputMode="numeric"
         enterKeyHint="done"
       />
-      <Button type="submit" variant="primary" className="shrink-0 px-5" disabled={disabled}>
-        Valider le code
+      <Button type="submit" variant="primary" className="shrink-0 px-5 sm:min-w-[9rem]" disabled={disabled}>
+        Valider
       </Button>
     </form>
   );

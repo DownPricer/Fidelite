@@ -3,14 +3,17 @@
 import Link from "next/link";
 import { useCallback, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { QrScanner, UsbScannerField } from "@/components/qr-scanner";
+import { QrScanner, ClientNumberField } from "@/components/qr-scanner";
 import { Button } from "@/components/ui";
+import { DEMO_CLIENT_NUMBER } from "@/lib/demo-visual";
 import {
   postCaisseScan,
+  readManualClientNumber,
   rememberToken,
   shouldIgnoreInstantDuplicate,
   type TokenMemory,
 } from "@/lib/scan-session";
+import { QrInputError } from "@/lib/qr-input";
 
 type ScanResult = {
   grantId: string;
@@ -74,7 +77,7 @@ export function CaisseScreen({
       return;
     }
 
-    const { ok, data } = await postCaisseScan(token);
+    const { ok, data } = await postCaisseScan({ token });
     setBusy(false);
     if (!ok) {
       setResult(null);
@@ -84,6 +87,47 @@ export function CaisseScreen({
     setResult(data as ScanResult);
     setSuccess(null);
   }, [demo]);
+
+  const submitClientNumber = useCallback(
+    async (raw: string) => {
+      let clientNumber: string;
+      try {
+        clientNumber = readManualClientNumber(raw);
+      } catch (err) {
+        setError(err instanceof QrInputError ? err.message : "Numéro client invalide.");
+        return;
+      }
+
+      setBusy(true);
+      setError(null);
+      setScanning(false);
+
+      if (demo && clientNumber === DEMO_CLIENT_NUMBER) {
+        setBusy(false);
+        setResult({
+          grantId: "demo-grant",
+          firstName: "Léa",
+          points: 7,
+          visitsRequired: 10,
+          rewardLabel: "1 boisson offerte",
+          rewardAvailable: false,
+          progressLabel: "7 / 10 passages",
+        });
+        return;
+      }
+
+      const { ok, data } = await postCaisseScan({ clientNumber });
+      setBusy(false);
+      if (!ok) {
+        setResult(null);
+        setError(typeof data.error === "string" ? data.error : "Client introuvable.");
+        return;
+      }
+      setResult(data as ScanResult);
+      setSuccess(null);
+    },
+    [demo],
+  );
 
   async function act(path: "/api/caisse/earn" | "/api/caisse/redeem") {
     if (!result || busy) return;
@@ -184,7 +228,7 @@ export function CaisseScreen({
                   <div>
                     <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--muted)]">Passage caisse</p>
                     <h2 className="mt-1 text-xl font-black text-[var(--ink)]">Scanner un QR Fife Life</h2>
-                    <p className="mt-1 text-sm text-[var(--muted-strong)]">Ou saisissez un code client ci-dessous.</p>
+                    <p className="mt-1 text-sm text-[var(--muted-strong)]">Ou saisissez le numéro client ci-dessous.</p>
                   </div>
                   <motion.button
                     type="button"
@@ -205,7 +249,7 @@ export function CaisseScreen({
                   exit={{ opacity: 0, scale: 0.96 }}
                   transition={{ type: "spring", duration: 0.45, bounce: 0.12 }}
                 >
-                  <div className="qr-scanner-shell max-h-[min(42vh,280px)] overflow-hidden rounded-2xl border border-white/10 bg-black">
+                  <div className="overflow-hidden rounded-2xl border border-white/10 bg-black">
                     <QrScanner
                       key={cameraSession}
                       sessionKey={cameraSession}
@@ -216,7 +260,13 @@ export function CaisseScreen({
                 </motion.div>
               )}
 
-              <UsbScannerField onSubmit={(value) => void submitToken(value, "manual")} disabled={busy} />
+              <div className="shrink-0 space-y-2">
+                <p className="text-sm font-semibold text-[var(--ink)]">Entrer le numéro du client</p>
+                <ClientNumberField
+                  disabled={busy}
+                  onSubmit={(value) => void submitClientNumber(value)}
+                />
+              </div>
 
               {error ? (
                 <motion.p

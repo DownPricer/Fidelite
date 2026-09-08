@@ -88,12 +88,12 @@ export function CardEnlargedView({
           onClick={onClose}
         >
           <motion.div
-            className="card-enlarged-modal mx-auto flex w-full max-w-md flex-col items-center"
-            initial={{ scale: 0.92, y: 16 }}
+            className="card-enlarged-modal mx-auto flex w-full flex-col items-center"
+            initial={{ scale: 0.94, y: 12 }}
             animate={{ scale: 1, y: 0 }}
-            exit={{ scale: 0.92, y: 16 }}
+            exit={{ scale: 0.94, y: 12 }}
             transition={spring}
-            onClick={onClose}
+            onClick={(event) => event.stopPropagation()}
           >
             {fifeLife ? (
               <div className="card-enlarged-loyalty-wrap w-full">
@@ -105,6 +105,7 @@ export function CardEnlargedView({
                   qrSrc={qr}
                   qrMode="standard"
                   clientNumber={effectiveClientNumber}
+                  qrZoomEnabled
                   interactive={false}
                   className="card-enlarged-loyalty-card"
                   shellClassName="card-enlarged-loyalty-shell"
@@ -117,13 +118,16 @@ export function CardEnlargedView({
                 slug={slug}
                 preview={preview}
                 clientNumber={effectiveClientNumber}
+                qrZoomEnabled
                 interactive={false}
                 className="card-enlarged-merchant-card w-full"
                 shellClassName="card-enlarged-merchant-shell"
               />
             )}
 
-            <p className="card-enlarged-hint mt-5 text-center text-sm text-[var(--muted)]">Appuyez pour fermer</p>
+            <p className="card-enlarged-hint mt-5 text-center text-sm text-[var(--muted)]">
+              Appuyez à côté de la carte pour fermer
+            </p>
           </motion.div>
         </motion.div>
       ) : null}

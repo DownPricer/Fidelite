@@ -5,6 +5,7 @@ import { cn } from "@/components/ui";
 import { buildLoyaltyCardViewModel, type LoyaltyCardQrMode } from "@/lib/loyalty-card-view-model";
 import { getLoyaltyCardBackground } from "@/lib/loyalty-card-assets";
 import { getCachedQr, loadUniversalQr } from "./qr-cache";
+import { PREVIEW_QR } from "./preview-data";
 import { QrEnlargedView } from "./qr-enlarged-view";
 import type { WalletTier } from "./types";
 import { InteractiveCardShell } from "./interactive-card-shell";
@@ -17,6 +18,7 @@ type InteractiveLoyaltyCardProps = {
   qrMode?: LoyaltyCardQrMode;
   showQr?: boolean;
   clientNumber?: string | null;
+  qrZoomEnabled?: boolean;
   statusText?: string;
   progressPercent?: number;
   interactive?: boolean;
@@ -34,6 +36,7 @@ export function InteractiveLoyaltyCard({
   qrMode = "standard",
   showQr = false,
   clientNumber = null,
+  qrZoomEnabled = false,
   statusText,
   progressPercent,
   interactive = true,
@@ -56,10 +59,13 @@ export function InteractiveLoyaltyCard({
     [tier, name, points, qrMode, statusText, progressPercent],
   );
 
-  const [qrVisible, setQrVisible] = useState(false);
   const [qrFailed, setQrFailed] = useState(false);
   const [qrEnlarged, setQrEnlarged] = useState(false);
-  const [autoQr, setAutoQr] = useState<string | null>(() => (showQr && !qrSrc ? getCachedQr() : null));
+  const [autoQr, setAutoQr] = useState<string | null>(() => {
+    if (!showQr) return null;
+    if (qrSrc) return qrSrc;
+    return getCachedQr();
+  });
 
   useEffect(() => {
     if (!showQr || qrSrc) return;
@@ -74,7 +80,6 @@ export function InteractiveLoyaltyCard({
   }, [showQr, qrSrc, autoQr]);
 
   useEffect(() => {
-    setQrVisible(false);
     setQrFailed(false);
   }, [qrSrc, autoQr]);
 
@@ -112,10 +117,12 @@ export function InteractiveLoyaltyCard({
                 <button
                   type="button"
                   className="loyalty-card__qr"
-                  aria-label="Agrandir le QR code"
+                  aria-label={qrZoomEnabled ? "Agrandir le QR code" : "QR code client"}
                   onClick={(event) => {
                     event.stopPropagation();
-                    if (effectiveQrSrc && !qrFailed && qrVisible) setQrEnlarged(true);
+                    if (qrZoomEnabled && effectiveQrSrc && !qrFailed) {
+                      setQrEnlarged(true);
+                    }
                   }}
                 >
                   {effectiveQrSrc && !qrFailed ? (
@@ -124,22 +131,14 @@ export function InteractiveLoyaltyCard({
                       src={effectiveQrSrc}
                       alt={`QR code de ${model.name}`}
                       className="loyalty-card__qr-image"
-                      hidden={!qrVisible}
-                      onLoad={() => setQrVisible(true)}
                       onError={() => setQrFailed(true)}
                     />
-                  ) : null}
-                  {!effectiveQrSrc || qrFailed || !qrVisible ? (
+                  ) : (
                     <span className="loyalty-card__qr-placeholder">
                       {qrFailed ? "QR INDISPONIBLE" : "QR CLIENT"}
                     </span>
-                  ) : null}
+                  )}
                 </button>
-                {clientNumber ? (
-                  <p className="loyalty-card__client-number" aria-label="Numéro client">
-                    {clientNumber.replace(/(\d{3})(?=\d)/g, "$1 ")}
-                  </p>
-                ) : null}
               </div>
             ) : null}
 

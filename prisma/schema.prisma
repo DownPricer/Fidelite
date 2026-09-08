@@ -108,6 +108,8 @@ model User {
   privacyConsentAt   DateTime?
   /// Solde global de points Fife Life (tous commerces confondus).
   fifeLifePoints     Int          @default(0)
+  /// Numéro client court affiché sur la carte et saisissable en caisse.
+  clientNumber       String?      @unique
   createdAt          DateTime     @default(now())
   updatedAt          DateTime     @updatedAt
 

@@ -232,22 +232,36 @@ export function CardDeck({
                     tierOverride={item.kind === "global-tier" ? item.tier : undefined}
                     demoTierPreview={demoVisual && item.kind === "global-tier"}
                     interactive={active}
+                    qrZoomEnabled={false}
                   />
                 </button>
               ) : (
-                <MerchantInteractiveCard
-                  as="button"
-                  card={item.card}
-                  slug={item.card.slug}
-                  preview={demoVisual || !item.card.slug}
-                  clientNumber={demoVisual ? clientNumber : null}
-                  className="deck-card-slot h-full w-full cursor-pointer text-left"
-                  interactive={active}
+                <div
+                  role="button"
+                  tabIndex={0}
+                  className="deck-card-slot block w-full cursor-pointer border-0 bg-transparent p-0 text-left"
                   onClick={() => {
                     if (active && onEnlargeCard) onEnlargeCard(item.card);
                     else if (!active) setIndex(i);
                   }}
-                />
+                  onKeyDown={(event) => {
+                    if (event.key !== "Enter" && event.key !== " ") return;
+                    event.preventDefault();
+                    if (active && onEnlargeCard) onEnlargeCard(item.card);
+                    else if (!active) setIndex(i);
+                  }}
+                >
+                  <MerchantInteractiveCard
+                    as="div"
+                    card={item.card}
+                    slug={item.card.slug}
+                    preview={demoVisual || !item.card.slug}
+                    clientNumber={clientNumber}
+                    showQr
+                    qrZoomEnabled={false}
+                    interactive={active}
+                  />
+                </div>
               );
 
             return (

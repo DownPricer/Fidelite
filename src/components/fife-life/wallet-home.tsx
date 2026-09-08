@@ -9,6 +9,8 @@ import { CardEnlargedView } from "./card-enlarged-view";
 import { CardsSheet } from "./cards-sheet";
 import { WalletCardsList } from "./wallet-cards-list";
 import { NewCardToast } from "./new-card-toast";
+import { DEMO_CLIENT_NUMBER } from "@/lib/demo-visual";
+import { formatClientNumberDisplay } from "@/lib/client-number";
 import { resolveTier } from "./tier";
 import type { MerchantCardData, WalletEventPayload } from "./types";
 import { useWalletEvents } from "./use-wallet-events";
@@ -176,6 +178,14 @@ export function WalletHome({
               onEnlargeCard={setEnlargedCard}
               demoVisual={preview}
             />
+            {(clientNumber || preview) && (
+              <p className="wallet-client-number mt-4 text-center text-sm font-semibold tabular-nums text-[var(--ink-soft)]">
+                N° client :{" "}
+                <span className="text-[var(--ink)]">
+                  {formatClientNumberDisplay(clientNumber ?? DEMO_CLIENT_NUMBER)}
+                </span>
+              </p>
+            )}
           </div>
         </div>
 

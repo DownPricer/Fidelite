@@ -201,6 +201,17 @@ body:has(.wallet-shell) {
   display: none;
 }
 
+.wallet-client-number {
+  letter-spacing: 0.04em;
+}
+
+.fife-deck-wrap {
+  position: relative;
+  margin-inline: auto;
+  width: 100%;
+  max-width: min(760px, 100%);
+}
+
 .deck-card-layer {
   transform-origin: center center;
 }
@@ -466,7 +477,7 @@ body:has(.wallet-shell) {
 .loyalty-card__name {
   position: absolute;
   z-index: 10;
-  left: 38.2%;
+  left: 34%;
   right: 7%;
   top: 39.5%;
   font-size: 5.1cqw;
@@ -476,6 +487,7 @@ body:has(.wallet-shell) {
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
   overflow: hidden;
+  text-align: left;
 }
 
 .loyalty-card__name[data-length="long"] {
@@ -570,20 +582,24 @@ body:has(.wallet-shell) {
 }
 
 .card-enlarged-loyalty-wrap {
-  width: min(100%, clamp(280px, 88vw, 420px));
+  width: min(96vw, 760px);
   margin-inline: auto;
 }
 
 .card-enlarged-merchant-shell,
 .card-enlarged-merchant-card {
-  width: min(100%, clamp(280px, 88vw, 420px));
+  width: min(96vw, 760px);
   margin-inline: auto;
 }
 
 .card-enlarged-merchant-card {
   aspect-ratio: 1.586 / 1;
-  max-height: min(72vh, 520px);
+  max-height: min(78vh, 480px);
   height: auto !important;
+}
+
+.card-enlarged-modal {
+  max-width: min(96vw, 820px);
 }
 
 .card-enlarged-loyalty-shell {
@@ -592,6 +608,8 @@ body:has(.wallet-shell) {
 
 .card-enlarged-loyalty-card {
   width: 100%;
+  aspect-ratio: 1.586 / 1;
+  max-height: min(78vh, 480px);
 }
 
 /* ── Merchant interactive cards ── */
@@ -2194,18 +2212,18 @@ body:has(.wallet-shell) {
     background: rgba(5, 5, 10, 0.55);
   }
 
-  /* Carte agrandie — portrait vertical */
+  /* Carte agrandie — paysage */
   .card-enlarged-card,
   .card-enlarged-card-portrait {
     rotate: 0deg !important;
     transform: none !important;
-    width: min(100%, clamp(280px, 88vw, 420px)) !important;
+    width: min(96vw, 760px) !important;
     height: auto !important;
-    max-height: min(72vh, 520px) !important;
+    max-height: min(78vh, 480px) !important;
   }
 
   .card-enlarged-modal {
-    max-width: min(72rem, calc(100vw - 4rem)) !important;
+    max-width: min(96vw, 820px) !important;
   }
 
   .card-enlarged-qr-wrap {

@@ -15,6 +15,7 @@ type MerchantInteractiveCardProps = {
   showQr?: boolean;
   compactQr?: boolean;
   clientNumber?: string | null;
+  qrZoomEnabled?: boolean;
   interactive?: boolean;
   entrance?: boolean;
   className?: string;
@@ -29,6 +30,7 @@ export function MerchantInteractiveCard({
   showQr = true,
   compactQr = false,
   clientNumber = null,
+  qrZoomEnabled = false,
   interactive = true,
   entrance = false,
   className,
@@ -109,10 +111,12 @@ export function MerchantInteractiveCard({
               <button
                 type="button"
                 className={cn("merchant-interactive-card__qr", compactQr && "is-compact")}
-                aria-label="Agrandir le QR code"
+                aria-label={qrZoomEnabled ? "Agrandir le QR code" : "QR code client"}
                 onClick={(event) => {
                   event.stopPropagation();
-                  if (qr && !qrError) setQrEnlarged(true);
+                  if (qrZoomEnabled && qr && !qrError) {
+                    setQrEnlarged(true);
+                  }
                 }}
               >
                 {qr && !qrError ? (
@@ -124,9 +128,6 @@ export function MerchantInteractiveCard({
                   </span>
                 )}
               </button>
-              {clientNumber ? (
-                <p className="merchant-interactive-card__client-number">{clientNumber.replace(/(\d{3})(?=\d)/g, "$1 ")}</p>
-              ) : null}
             </div>
           ) : null}
 

@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { WalletHome } from "@/components/fife-life/wallet-home";
 import { demoWalletProps } from "@/lib/demo-visual";
 import { isClientDemoPage } from "@/lib/demo-visual-server";
+import { resolveClientNumber } from "@/lib/client-number";
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/session";
 
@@ -31,6 +32,7 @@ export default async function CarteIndexPage({
       firstName={user.firstName}
       lastName={user.lastName ?? undefined}
       customerName={[user.firstName, user.lastName].filter(Boolean).join(" ") || user.firstName}
+      clientNumber={resolveClientNumber({ clientNumber: user.clientNumber, userId: user.id })}
       fifeLifePoints={user.fifeLifePoints}
       initialSheetOpen={params.sheet === "1"}
       initialNewCard={params.toast ?? null}

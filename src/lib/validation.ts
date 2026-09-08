@@ -108,9 +108,18 @@ export const preferencesUpdateSchema = z.object({
 
 export const historyFilterSchema = z.enum(["all", "earned", "used", "expired", "correction"]);
 
-export const scanSchema = z.object({
-  token: z.string().min(10, "QR invalide.").max(4000),
-});
+export const scanSchema = z
+  .object({
+    token: z.string().min(10, "QR invalide.").max(4000).optional(),
+    clientNumber: z
+      .string()
+      .trim()
+      .regex(/^[\d\s-]{4,12}$/, "Numéro client invalide.")
+      .optional(),
+  })
+  .refine((value) => Boolean(value.token || value.clientNumber), {
+    message: "QR ou numéro client requis.",
+  });
 
 export const caisseActionSchema = z.object({
   grantId: z.string().min(1),

@@ -96,14 +96,22 @@ export async function finalizeCameraStart(input: {
 
 export const CAISSE_SCAN_PATH = "/api/caisse/scan";
 
-export async function postCaisseScan(token: string) {
+export async function postCaisseScan(input: { token?: string; clientNumber?: string }) {
   const response = await fetch(CAISSE_SCAN_PATH, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ token }),
+    body: JSON.stringify(input),
   });
   const data = (await response.json()) as Record<string, unknown>;
   return { ok: response.ok, status: response.status, data };
+}
+
+export function readManualClientNumber(raw: string) {
+  const digits = raw.replace(/\D/g, "");
+  if (digits.length < 4 || digits.length > 8) {
+    throw new QrInputError("Saisissez un numéro client valide (4 à 8 chiffres).");
+  }
+  return digits;
 }
 
 export function readManualToken(raw: string) {
