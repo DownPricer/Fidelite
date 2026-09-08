@@ -1,7 +1,8 @@
 import { redirect } from "next/navigation";
 import { UniversalDetail } from "@/components/fife-life/universal-detail";
 import { PREVIEW_HISTORY } from "@/components/fife-life/preview-data";
-import { demoUniversalDetailProps, isDevVisualDemo } from "@/lib/demo-visual";
+import { demoUniversalDetailProps } from "@/lib/demo-visual";
+import { isClientDemoPage } from "@/lib/demo-visual-server";
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/session";
 
@@ -14,7 +15,7 @@ export default async function CarteIdentitePage({
   const user = await getSessionUser();
 
   if (!user) {
-    if (isDevVisualDemo(params)) {
+    if (await isClientDemoPage(params)) {
       const demo = demoUniversalDetailProps();
       return (
         <UniversalDetail

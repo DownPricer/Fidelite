@@ -50,6 +50,8 @@ export function Input({ className, ...props }: InputHTMLAttributes<HTMLInputElem
   );
 }
 
+export { PasswordInput } from "./password-input";
+
 export function Field({
   label,
   children,

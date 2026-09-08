@@ -2,7 +2,7 @@
 
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useEffect, useState } from "react";
-import { useIsWalletDesktop } from "@/lib/use-media-query";
+import { DEMO_CLIENT_NUMBER } from "@/lib/demo-visual";
 import { getCachedQr, loadUniversalQr } from "./qr-cache";
 import { PREVIEW_QR } from "./preview-data";
 import { InteractiveLoyaltyCard } from "./interactive-loyalty-card";
@@ -15,6 +15,7 @@ type CardEnlargedViewProps = {
   card: MerchantCardData;
   slug: string;
   customerName?: string;
+  clientNumber?: string | null;
   fifeLifePoints?: number;
   preview?: boolean;
   onClose: () => void;
@@ -29,26 +30,18 @@ export function CardEnlargedView({
   card,
   slug,
   customerName = "Membre",
+  clientNumber = null,
   fifeLifePoints,
   preview = false,
   onClose,
 }: CardEnlargedViewProps) {
   const reduced = useReducedMotion();
-  const isDesktop = useIsWalletDesktop();
-  const [isLandscape, setIsLandscape] = useState(false);
+  const spring = reduced ? { duration: 0 } : { type: "spring" as const, stiffness: 280, damping: 30 };
+  const fifeLife = isFifeLifeCard(card);
+  const tier: WalletTier = card.demoTier ?? resolveTier(fifeLifePoints ?? card.points).name;
+  const effectiveClientNumber = clientNumber ?? (preview ? DEMO_CLIENT_NUMBER : null);
 
-  useEffect(() => {
-    const checkOrientation = () => {
-      setIsLandscape(window.innerWidth > window.innerHeight);
-    };
-    checkOrientation();
-    window.addEventListener("resize", checkOrientation);
-    window.addEventListener("orientationchange", checkOrientation);
-    return () => {
-      window.removeEventListener("resize", checkOrientation);
-      window.removeEventListener("orientationchange", checkOrientation);
-    };
-  }, []);
+  const [qr, setQr] = useState<string | null>(() => (preview ? PREVIEW_QR : getCachedQr()));
 
   useEffect(() => {
     if (open) document.body.style.overflow = "hidden";
@@ -60,20 +53,12 @@ export function CardEnlargedView({
 
   useEffect(() => {
     if (!open) return;
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
+    function onKey(event: KeyboardEvent) {
+      if (event.key === "Escape") onClose();
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
-
-  const portraitMobile = !isDesktop && !isLandscape;
-  const spring = reduced ? { duration: 0 } : { type: "spring" as const, stiffness: 280, damping: 30 };
-  const fifeLife = isFifeLifeCard(card);
-  const tier: WalletTier =
-    card.demoTier ?? resolveTier(fifeLifePoints ?? card.points).name;
-
-  const [qr, setQr] = useState<string | null>(() => (preview ? PREVIEW_QR : getCachedQr()));
 
   useEffect(() => {
     if (!open || !fifeLife) return;
@@ -95,7 +80,7 @@ export function CardEnlargedView({
     <AnimatePresence>
       {open ? (
         <motion.div
-          className="card-enlarged-overlay fixed inset-0 z-[100] flex items-center justify-center bg-[#05050a]/95 backdrop-blur-md"
+          className="card-enlarged-overlay fixed inset-0 z-[100] flex items-center justify-center bg-[#05050a]/95 px-4 backdrop-blur-md"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -103,26 +88,24 @@ export function CardEnlargedView({
           onClick={onClose}
         >
           <motion.div
-            className="card-enlarged-modal mx-auto w-full px-4"
-            initial={{ scale: 0.9, rotate: portraitMobile && !fifeLife ? -5 : 0 }}
-            animate={{ scale: 1, rotate: 0 }}
-            exit={{ scale: 0.9, rotate: portraitMobile && !fifeLife ? 5 : 0 }}
+            className="card-enlarged-modal mx-auto flex w-full max-w-md flex-col items-center"
+            initial={{ scale: 0.92, y: 16 }}
+            animate={{ scale: 1, y: 0 }}
+            exit={{ scale: 0.92, y: 16 }}
             transition={spring}
-            onClick={(e) => {
-              e.stopPropagation();
-              onClose();
-            }}
+            onClick={onClose}
           >
             {fifeLife ? (
-              <div className="card-enlarged-loyalty-wrap">
+              <div className="card-enlarged-loyalty-wrap w-full">
                 <InteractiveLoyaltyCard
                   tier={tier}
                   name={customerName}
                   points={fifeLifePoints ?? card.points}
                   showQr
                   qrSrc={qr}
-                  qrMode="engraved"
-                  interactive
+                  qrMode="standard"
+                  clientNumber={effectiveClientNumber}
+                  interactive={false}
                   className="card-enlarged-loyalty-card"
                   shellClassName="card-enlarged-loyalty-shell"
                 />
@@ -133,27 +116,14 @@ export function CardEnlargedView({
                 card={card}
                 slug={slug}
                 preview={preview}
-                className={`card-enlarged-card w-full ${portraitMobile ? "card-enlarged-card-portrait" : ""}`}
+                clientNumber={effectiveClientNumber}
+                interactive={false}
+                className="card-enlarged-merchant-card w-full"
+                shellClassName="card-enlarged-merchant-shell"
               />
             )}
 
-            {portraitMobile && !fifeLife ? (
-              <div className="card-enlarged-hint-mobile mt-4 flex flex-col items-center gap-2">
-                <div className="flex items-center gap-2 text-xs text-[var(--muted)]">
-                  <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                    <path d="M7 2h10l2 2v16l-2 2H7l-2-2V4l2-2z" />
-                    <path d="M9 6h6" />
-                    <path d="M9 10h6" />
-                  </svg>
-                  <span>Tournez le téléphone</span>
-                </div>
-                <p className="text-center text-xs text-[var(--muted)]">Appuyez pour fermer</p>
-              </div>
-            ) : (
-              <p className="card-enlarged-hint-desktop mt-4 text-center text-xs text-[var(--muted)]">
-                Touchez à nouveau pour fermer
-              </p>
-            )}
+            <p className="card-enlarged-hint mt-5 text-center text-sm text-[var(--muted)]">Appuyez pour fermer</p>
           </motion.div>
         </motion.div>
       ) : null}

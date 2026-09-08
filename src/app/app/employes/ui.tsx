@@ -31,6 +31,17 @@ type Employee = {
 
 const DEMO: Employee[] = [
   {
+    id: "e0",
+    firstName: "Hugo",
+    lastName: "Bernard",
+    email: "employe@cafe-demo.local",
+    roleLabel: "Employé de caisse",
+    staffPreset: "CASHIER",
+    status: "Actif",
+    lastActivityAt: new Date().toISOString(),
+    permissions: {} as StaffPermissions,
+  },
+  {
     id: "e1",
     firstName: "Sam",
     lastName: "Durand",

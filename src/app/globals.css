@@ -63,17 +63,18 @@ html {
 
 html,
 body {
-  min-height: 100%;
+  min-height: 100dvh;
+  background-color: var(--void);
 }
 
 body {
-  background-color: var(--void);
   color: var(--body-text);
   font-family: var(--font-sans);
 }
 
 .obsidian-scene {
   position: relative;
+  min-height: 100dvh;
   background:
     radial-gradient(ellipse 110% 70% at 50% -8%, rgba(231, 116, 255, 0.48), transparent 64%),
     radial-gradient(ellipse 85% 55% at 85% 12%, rgba(133, 87, 255, 0.38), transparent 56%),
@@ -85,6 +86,11 @@ body {
     radial-gradient(ellipse 100% 80% at 8% 108%, rgba(145, 111, 255, 0.42), transparent 71%),
     radial-gradient(ellipse 90% 70% at 92% 112%, rgba(64, 92, 255, 0.38), transparent 70%),
     linear-gradient(180deg, #0f0a1d 0%, #05050a 100%);
+}
+
+.login-scene {
+  width: 100%;
+  overflow-x: hidden;
 }
 
 .wallet-shell {
@@ -171,20 +177,7 @@ body:has(.wallet-shell) {
 }
 
 .deck-halo {
-  pointer-events: none;
-  position: absolute;
-  left: 50%;
-  top: 44%;
-  z-index: 0;
-  height: calc(var(--wallet-card-height) * 1.15);
-  width: calc(var(--wallet-card-width) * 1.05);
-  transform: translate(-50%, -50%);
-  border-radius: 999px;
-  background:
-    radial-gradient(circle at 50% 30%, rgba(166, 139, 255, 0.48) 0%, transparent 55%),
-    radial-gradient(circle at 10% 80%, rgba(231, 116, 255, 0.32) 0%, transparent 60%),
-    radial-gradient(circle at 90% 70%, rgba(112, 133, 255, 0.3) 0%, transparent 60%);
-  filter: blur(30px);
+  display: none;
 }
 
 .deck-floor-shadow {
@@ -229,17 +222,7 @@ body:has(.wallet-shell) {
 }
 
 .interactive-card-halo {
-  pointer-events: none;
-  position: absolute;
-  inset: -18%;
-  z-index: 0;
-  background:
-    radial-gradient(circle at 0% 0%, rgba(255, 255, 255, 0.12), transparent 42%),
-    radial-gradient(circle at 100% 0%, rgba(173, 209, 255, 0.18), transparent 44%),
-    radial-gradient(circle at 50% 115%, rgba(166, 139, 255, 0.28), transparent 72%);
-  mix-blend-mode: screen;
-  opacity: 0.85;
-  filter: blur(8px);
+  display: none;
 }
 
 .interactive-card-glare {
@@ -309,7 +292,7 @@ body:has(.wallet-shell) {
   font-weight: 300;
   text-shadow: 0 0.07cqw 0.13cqw #0009;
   -webkit-font-smoothing: antialiased;
-  filter: drop-shadow(0 clamp(18px, 4vw, 40px) clamp(32px, 6vw, 70px) rgba(0, 0, 0, 0.72));
+  filter: drop-shadow(0 clamp(12px, 3vw, 24px) clamp(20px, 4vw, 40px) rgba(0, 0, 0, 0.55));
 }
 
 .loyalty-card__background,
@@ -411,13 +394,34 @@ body:has(.wallet-shell) {
   text-transform: uppercase;
 }
 
-.loyalty-card__qr {
+.loyalty-card__qr-block {
   position: absolute;
   z-index: 10;
   left: 6.8%;
   top: 32%;
   width: 25.7%;
+}
+
+.loyalty-card__qr {
+  display: block;
+  width: 100%;
   aspect-ratio: 1;
+  padding: 0;
+  border: 0;
+  background: #fff;
+  border-radius: 0.7cqw;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.loyalty-card__client-number {
+  margin: 0.55cqw 0 0;
+  font-size: 1.55cqw;
+  letter-spacing: 0.18cqw;
+  line-height: 1.2;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.92;
 }
 
 .loyalty-card__qr-image {
@@ -426,6 +430,11 @@ body:has(.wallet-shell) {
   height: 100%;
   object-fit: contain;
   image-rendering: pixelated;
+}
+
+.loyalty-card[data-qr-mode="standard"] .loyalty-card__qr-image {
+  filter: none;
+  background: #fff;
 }
 
 .loyalty-card[data-qr-mode="engraved"] .loyalty-card__qr {
@@ -561,8 +570,20 @@ body:has(.wallet-shell) {
 }
 
 .card-enlarged-loyalty-wrap {
-  width: min(100%, clamp(320px, 72vw, 920px));
+  width: min(100%, clamp(280px, 88vw, 420px));
   margin-inline: auto;
+}
+
+.card-enlarged-merchant-shell,
+.card-enlarged-merchant-card {
+  width: min(100%, clamp(280px, 88vw, 420px));
+  margin-inline: auto;
+}
+
+.card-enlarged-merchant-card {
+  aspect-ratio: 1.586 / 1;
+  max-height: min(72vh, 520px);
+  height: auto !important;
 }
 
 .card-enlarged-loyalty-shell {
@@ -592,24 +613,47 @@ body:has(.wallet-shell) {
     radial-gradient(ellipse 120% 160% at 90% 120%, color-mix(in srgb, var(--merchant-hue, #8557ff) 55%, transparent) 0%, transparent 68%),
     linear-gradient(135deg, color-mix(in srgb, var(--merchant-hue, #8557ff) 22%, #05050a) 0%, color-mix(in srgb, var(--merchant-hue, #8557ff) 68%, #090911) 52%, #05050a 100%);
   box-shadow:
-    0 clamp(20px, 4vw, 44px) clamp(36px, 7vw, 90px) rgba(0, 0, 0, 0.88),
-    0 0 0 1px rgba(255, 255, 255, 0.08),
-    0 0 clamp(40px, 8vw, 80px) color-mix(in srgb, var(--merchant-hue, #8557ff) 45%, transparent);
+    0 clamp(12px, 3vw, 28px) clamp(24px, 5vw, 56px) rgba(0, 0, 0, 0.75),
+    0 0 0 1px rgba(255, 255, 255, 0.08);
   color: var(--ink);
   padding: 5cqw;
 }
 
 .merchant-interactive-card__halo {
-  pointer-events: none;
-  position: absolute;
-  inset: -30%;
-  background:
-    radial-gradient(circle at 0% 0%, rgba(255, 255, 255, 0.12), transparent 40%),
-    radial-gradient(circle at 100% 0%, rgba(173, 209, 255, 0.16), transparent 42%),
-    radial-gradient(circle at 50% 115%, color-mix(in srgb, var(--merchant-hue, #8557ff) 60%, transparent) 0%, transparent 70%);
-  mix-blend-mode: screen;
-  opacity: 0.9;
-  filter: blur(6px);
+  display: none;
+}
+
+.merchant-interactive-card__qr-wrap {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 4cqw;
+}
+
+.merchant-interactive-card__qr-wrap.is-compact {
+  margin-top: 2cqw;
+}
+
+.merchant-interactive-card__client-number {
+  margin-top: 1.2cqw;
+  font-size: 2.2cqw;
+  letter-spacing: 0.22cqw;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.88;
+}
+
+.merchant-interactive-card__qr {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  background: #fff;
+  border-radius: 2cqw;
+  cursor: pointer;
 }
 
 .merchant-interactive-card__noise {
@@ -661,18 +705,6 @@ body:has(.wallet-shell) {
   letter-spacing: 0.08em;
   text-transform: uppercase;
   line-height: 1.1;
-}
-
-.merchant-interactive-card__qr {
-  position: relative;
-  z-index: 2;
-  display: flex;
-  justify-content: center;
-  margin-top: 4cqw;
-}
-
-.merchant-interactive-card__qr.is-compact {
-  margin-top: 2cqw;
 }
 
 .merchant-interactive-card__qr-image {
@@ -2162,19 +2194,14 @@ body:has(.wallet-shell) {
     background: rgba(5, 5, 10, 0.55);
   }
 
-  /* Carte agrandie — paysage desktop */
-  .card-enlarged-card {
+  /* Carte agrandie — portrait vertical */
+  .card-enlarged-card,
+  .card-enlarged-card-portrait {
     rotate: 0deg !important;
     transform: none !important;
+    width: min(100%, clamp(280px, 88vw, 420px)) !important;
     height: auto !important;
-    max-height: min(70vh, 520px) !important;
-  }
-
-  .card-enlarged-card-portrait {
-    rotate: 90deg !important;
-    transform-origin: center center;
-    height: 60vw !important;
-    max-height: 400px !important;
+    max-height: min(72vh, 520px) !important;
   }
 
   .card-enlarged-modal {

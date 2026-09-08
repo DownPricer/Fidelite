@@ -5,9 +5,5 @@ import { EmployeeLoginScreen } from "./ui";
 export default async function EmployeeLoginPage() {
   const session = await getEmployeeSession();
   if (session) redirect("/employe/scan");
-  return (
-    <EmployeeLoginScreen
-      demoHref={process.env.NODE_ENV === "development" ? "/employe/enter-demo" : undefined}
-    />
-  );
+  return <EmployeeLoginScreen demoHref="/demo" />;
 }

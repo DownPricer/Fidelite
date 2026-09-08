@@ -149,6 +149,17 @@ export const PREVIEW_BENEFITS: BenefitEntry[] = [
 
 export const PREVIEW_CARDS: MerchantCardData[] = [
   {
+    id: "preview-cafe",
+    merchantId: "cafe-demo",
+    slug: "cafe-demo",
+    name: "Café Demo",
+    logoUrl: null,
+    primaryColor: "#B45309",
+    points: 7,
+    visitsRequired: 10,
+    rewardLabel: "1 boisson offerte",
+  },
+  {
     id: "preview-hotel",
     merchantId: "m-hotel",
     slug: "prism-hotel",

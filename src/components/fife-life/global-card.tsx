@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { displayFullName } from "@/lib/customer-profile";
+import { DEMO_CLIENT_NUMBER } from "@/lib/demo-visual";
 import { getCachedQr, loadUniversalQr } from "./qr-cache";
+import { PREVIEW_QR } from "./preview-data";
 import { InteractiveLoyaltyCard } from "./interactive-loyalty-card";
 import { resolveTier } from "./tier";
 import type { WalletTier } from "./types";
@@ -19,29 +20,35 @@ const DEMO_TIER_POINTS: Record<WalletTier, number> = {
 export function GlobalCard({
   points,
   customerName,
+  clientNumber = null,
   large = false,
   mode = "detail",
   tierOverride,
   interactive = true,
   demoTierPreview = false,
+  preview = false,
 }: {
   points: number;
   customerName: string;
+  clientNumber?: string | null;
   large?: boolean;
   mode?: GlobalCardMode;
   tierOverride?: WalletTier;
   interactive?: boolean;
   demoTierPreview?: boolean;
+  preview?: boolean;
 }) {
   const tier = resolveTier(points);
   const tierName = tierOverride ?? tier.name;
   const displayPoints = tierOverride && demoTierPreview ? DEMO_TIER_POINTS[tierName] : points;
   const showQrOnCard = mode === "wallet" && large;
 
-  const [qr, setQr] = useState<string | null>(() => (showQrOnCard ? getCachedQr() : null));
+  const [qr, setQr] = useState<string | null>(() =>
+    showQrOnCard ? (preview ? PREVIEW_QR : getCachedQr()) : null,
+  );
 
   useEffect(() => {
-    if (!showQrOnCard) return;
+    if (!showQrOnCard || preview) return;
     if (qr) return;
 
     let cancelled = false;
@@ -52,9 +59,10 @@ export function GlobalCard({
     return () => {
       cancelled = true;
     };
-  }, [showQrOnCard, qr]);
+  }, [showQrOnCard, preview, qr]);
 
   const name = customerName.trim() || "Membre";
+  const effectiveClientNumber = clientNumber ?? (preview ? DEMO_CLIENT_NUMBER : null);
 
   return (
     <InteractiveLoyaltyCard
@@ -62,8 +70,9 @@ export function GlobalCard({
       name={name}
       points={displayPoints}
       showQr={showQrOnCard}
-      qrSrc={showQrOnCard ? qr : null}
-      qrMode="engraved"
+      qrSrc={showQrOnCard ? (preview ? PREVIEW_QR : qr) : null}
+      qrMode="standard"
+      clientNumber={showQrOnCard ? effectiveClientNumber : null}
       interactive={interactive}
       className={large ? "loyalty-card--large" : undefined}
       shellClassName="w-full"
@@ -77,13 +86,6 @@ export function loyaltyCardDisplayName(input: {
   lastName?: string | null;
   displayName?: string | null;
 }) {
-  return (
-    displayFullName({
-      firstName: input.firstName,
-      lastName: input.lastName ?? null,
-      displayName: input.displayName ?? null,
-    }) ||
-    input.firstName ||
-    "Membre"
-  );
+  const parts = [input.displayName?.trim(), `${input.firstName} ${input.lastName ?? ""}`.trim()].filter(Boolean);
+  return parts[0] || input.firstName || "Membre";
 }

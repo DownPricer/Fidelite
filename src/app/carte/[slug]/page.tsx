@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { MerchantCardDetail } from "@/components/fife-life/merchant-detail";
 import { PREVIEW_CARDS, PREVIEW_HISTORY } from "@/components/fife-life/preview-data";
-import { isDevVisualDemo } from "@/lib/demo-visual";
+import { isClientDemoPage } from "@/lib/demo-visual-server";
 import { isGoogleWalletConfigured } from "@/lib/google-wallet";
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/session";
@@ -18,7 +18,7 @@ export default async function CardPage({
   const user = await getSessionUser();
 
   if (!user) {
-    if (isDevVisualDemo(query)) {
+    if (await isClientDemoPage(query)) {
       const card = PREVIEW_CARDS.find((item) => item.slug === slug) ?? PREVIEW_CARDS[0];
       return (
         <MerchantCardDetail

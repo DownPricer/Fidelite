@@ -138,10 +138,10 @@ export function QrScanner({
   }, [active, scannerId]);
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-2">
+    <div className="qr-scanner-shell flex min-h-0 flex-col gap-2">
       <div
         id={scannerId}
-        className="min-h-[12rem] flex-1 rounded-2xl bg-black [&>video]:h-full [&>video]:w-full [&>video]:object-cover"
+        className="qr-scanner-viewport max-h-[min(42vh,280px)] min-h-[12rem] flex-1 overflow-hidden rounded-2xl bg-black [&>video]:h-full [&>video]:w-full [&>video]:object-cover"
       />
       {error ? (
         <p role="alert" className="shrink-0 text-sm font-medium text-[var(--danger)]">

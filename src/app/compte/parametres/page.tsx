@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { SettingsPage } from "@/components/fife-life/profile/settings-page";
-import { demoProfileProps, isDevVisualDemo } from "@/lib/demo-visual";
+import { demoProfileProps } from "@/lib/demo-visual";
+import { isClientDemoPage } from "@/lib/demo-visual-server";
 import {
   ensureCustomerPreferences,
   getProfileUser,
@@ -18,7 +19,7 @@ export default async function ParametresPage({
   const user = await getSessionUser();
 
   if (!user) {
-    if (isDevVisualDemo(params)) {
+    if (await isClientDemoPage(params)) {
       const demo = demoProfileProps();
       return (
         <SettingsPage

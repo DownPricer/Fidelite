@@ -21,6 +21,9 @@ const ACTIVITY = [
 
 export function WalletHome({
   firstName,
+  lastName,
+  customerName,
+  clientNumber,
   fifeLifePoints,
   cards: initialCards,
   preview = false,
@@ -28,6 +31,9 @@ export function WalletHome({
   initialNewCard = null,
 }: {
   firstName: string;
+  lastName?: string;
+  customerName?: string;
+  clientNumber?: string | null;
   fifeLifePoints: number;
   cards: MerchantCardData[];
   preview?: boolean;
@@ -35,6 +41,7 @@ export function WalletHome({
   initialNewCard?: string | null;
 }) {
   const router = useRouter();
+  const displayName = customerName ?? (lastName ? `${firstName} ${lastName}` : firstName);
   const profileHref = preview ? "/compte?demo=1" : "/compte";
   const settingsHref = preview ? "/compte/parametres?demo=1" : "/compte/parametres";
 
@@ -162,7 +169,8 @@ export function WalletHome({
           <div className="wallet-deck-block mt-4 shrink-0">
             <CardDeck
               points={points}
-              customerName={firstName}
+              customerName={displayName}
+              clientNumber={clientNumber}
               cards={cards}
               onOpenMerchant={openCard}
               onEnlargeCard={setEnlargedCard}
@@ -264,7 +272,8 @@ export function WalletHome({
           open
           card={enlargedCard}
           slug={enlargedCard.slug}
-          customerName={firstName}
+          customerName={displayName}
+          clientNumber={clientNumber}
           fifeLifePoints={points}
           preview={preview}
           onClose={() => setEnlargedCard(null)}

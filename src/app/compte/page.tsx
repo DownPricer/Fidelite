@@ -1,7 +1,8 @@
 import { redirect } from "next/navigation";
 import { ProfilePage } from "@/components/fife-life/profile/profile-page";
 import { PREVIEW_BENEFITS, PREVIEW_PROFILE_HISTORY } from "@/components/fife-life/preview-data";
-import { demoProfileProps, isDevVisualDemo } from "@/lib/demo-visual";
+import { demoProfileProps } from "@/lib/demo-visual";
+import { isClientDemoPage } from "@/lib/demo-visual-server";
 import { getProfileUser, serializeProfile } from "@/lib/customer-profile";
 import { getSessionUser } from "@/lib/session";
 
@@ -14,7 +15,7 @@ export default async function AccountPage({
   const user = await getSessionUser();
 
   if (!user) {
-    if (isDevVisualDemo(params)) {
+    if (await isClientDemoPage(params)) {
       const demo = demoProfileProps();
       return (
         <ProfilePage

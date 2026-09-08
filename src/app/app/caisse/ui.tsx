@@ -64,7 +64,7 @@ export function CaisseScreen({
       setBusy(false);
       setResult({
         grantId: "demo-grant",
-        firstName: "Marie",
+        firstName: "Léa",
         points: 7,
         visitsRequired: 10,
         rewardLabel: "1 boisson offerte",
@@ -199,18 +199,20 @@ export function CaisseScreen({
               ) : (
                 <motion.div
                   key={`camera-${cameraSession}`}
-                  className="flex min-h-0 flex-1 flex-col"
+                  className="flex shrink-0 flex-col gap-3"
                   initial={{ opacity: 0, scale: 0.96 }}
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.96 }}
                   transition={{ type: "spring", duration: 0.45, bounce: 0.12 }}
                 >
-                  <QrScanner
-                    key={cameraSession}
-                    sessionKey={cameraSession}
-                    active={scanning}
-                    onResult={(text) => void submitToken(text, "camera")}
-                  />
+                  <div className="qr-scanner-shell max-h-[min(42vh,280px)] overflow-hidden rounded-2xl border border-white/10 bg-black">
+                    <QrScanner
+                      key={cameraSession}
+                      sessionKey={cameraSession}
+                      active={scanning}
+                      onResult={(text) => void submitToken(text, "camera")}
+                    />
+                  </div>
                 </motion.div>
               )}
 

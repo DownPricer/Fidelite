@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { WalletHome } from "@/components/fife-life/wallet-home";
-import { demoWalletProps, isDevVisualDemo } from "@/lib/demo-visual";
+import { demoWalletProps } from "@/lib/demo-visual";
+import { isClientDemoPage } from "@/lib/demo-visual-server";
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/session";
 
@@ -13,7 +14,7 @@ export default async function CarteIndexPage({
   const user = await getSessionUser();
 
   if (!user) {
-    if (isDevVisualDemo(params)) {
+    if (await isClientDemoPage(params)) {
       return <WalletHome {...demoWalletProps(params)} />;
     }
     redirect("/connexion");
@@ -28,6 +29,8 @@ export default async function CarteIndexPage({
   return (
     <WalletHome
       firstName={user.firstName}
+      lastName={user.lastName}
+      customerName={[user.firstName, user.lastName].filter(Boolean).join(" ") || user.firstName}
       fifeLifePoints={user.fifeLifePoints}
       initialSheetOpen={params.sheet === "1"}
       initialNewCard={params.toast ?? null}

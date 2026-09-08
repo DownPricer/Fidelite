@@ -53,7 +53,7 @@ export function EmployeeScanScreen({
     initialView === "result"
       ? {
           grantId: "demo-grant",
-          firstName: "Marie",
+          firstName: "Léa",
           points: 7,
           visitsRequired: 10,
           rewardLabel: "1 boisson offerte",
@@ -101,7 +101,7 @@ export function EmployeeScanScreen({
         setBusy(false);
         setResult({
           grantId: "demo-grant",
-          firstName: "Marie",
+          firstName: "Léa",
           points: 7,
           visitsRequired: 10,
           rewardLabel: "1 boisson offerte",
@@ -271,20 +271,22 @@ export function EmployeeScanScreen({
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
             >
-              <div className="relative min-h-0 flex-1 overflow-hidden rounded-3xl border border-white/10 bg-black">
-                {scanning ? (
-                  <QrScanner
-                    key={cameraSession}
-                    sessionKey={cameraSession}
-                    active={scanning && !busy}
-                    onResult={(text) => void submitToken(text, "camera")}
-                  />
-                ) : (
-                  <div className="flex h-full items-center justify-center text-sm text-white/70">
-                    {busy ? "Traitement..." : "Caméra en pause"}
-                  </div>
-                )}
-                <div className="pointer-events-none absolute inset-6 rounded-2xl border-2 border-white/35" />
+              <div className="relative shrink-0">
+                <div className="qr-scanner-shell max-h-[min(42vh,280px)] overflow-hidden rounded-3xl border border-white/10 bg-black">
+                  {scanning ? (
+                    <QrScanner
+                      key={cameraSession}
+                      sessionKey={cameraSession}
+                      active={scanning && !busy}
+                      onResult={(text) => void submitToken(text, "camera")}
+                    />
+                  ) : (
+                    <div className="flex h-[min(42vh,280px)] min-h-[12rem] items-center justify-center text-sm text-white/70">
+                      {busy ? "Traitement..." : "Caméra en pause"}
+                    </div>
+                  )}
+                </div>
+                <div className="pointer-events-none absolute inset-3 rounded-2xl border-2 border-white/35" />
               </div>
 
               <div className="grid grid-cols-2 gap-2">

@@ -36,6 +36,7 @@ function demoStartIndex(points: number) {
 export function CardDeck({
   points,
   customerName,
+  clientNumber,
   cards,
   onOpenMerchant,
   onEnlargeCard,
@@ -43,7 +44,7 @@ export function CardDeck({
 }: {
   points: number;
   customerName: string;
-  fifeLifePoints?: number;
+  clientNumber?: string | null;
   cards: MerchantCardData[];
   onOpenMerchant: (card: MerchantCardData) => void;
   onEnlargeCard?: (card: MerchantCardData) => void;
@@ -224,8 +225,10 @@ export function CardDeck({
                   <GlobalCard
                     points={points}
                     customerName={customerName}
+                    clientNumber={clientNumber}
                     large
                     mode="wallet"
+                    preview={demoVisual}
                     tierOverride={item.kind === "global-tier" ? item.tier : undefined}
                     demoTierPreview={demoVisual && item.kind === "global-tier"}
                     interactive={active}
@@ -236,7 +239,8 @@ export function CardDeck({
                   as="button"
                   card={item.card}
                   slug={item.card.slug}
-                  preview={!item.card.slug}
+                  preview={demoVisual || !item.card.slug}
+                  clientNumber={demoVisual ? clientNumber : null}
                   className="deck-card-slot h-full w-full cursor-pointer text-left"
                   interactive={active}
                   onClick={() => {

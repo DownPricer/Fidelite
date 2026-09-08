@@ -24,7 +24,7 @@ export default function CompteError({
           <button type="button" className="profile-btn-primary px-4 py-3 text-sm" onClick={reset}>
             Réessayer
           </button>
-          <Link href="/carte?demo=1" className="profile-btn-secondary px-4 py-3 text-sm">
+          <Link href="/demo" className="profile-btn-secondary px-4 py-3 text-sm">
             Ouvrir le wallet démo
           </Link>
           <Link href="/carte" className="text-xs text-[var(--violet-bright)] underline">

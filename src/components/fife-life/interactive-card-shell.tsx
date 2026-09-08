@@ -19,7 +19,7 @@ export function InteractiveCardShell({
   className,
   interactive = true,
   shine = false,
-  halo = true,
+  halo = false,
   entrance = false,
   style,
 }: InteractiveCardShellProps) {

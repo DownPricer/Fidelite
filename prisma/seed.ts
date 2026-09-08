@@ -1,5 +1,7 @@
+import { randomUUID } from "crypto";
 import { PrismaClient, MerchantRole, PlatformRole } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import { signQrToken } from "../src/lib/qr";
 
 const prisma = new PrismaClient();
 
@@ -9,6 +11,48 @@ function requiredEnv(name: string, fallback?: string) {
     throw new Error(`Variable manquante pour le seed : ${name}`);
   }
   return value;
+}
+
+async function upsertEmployee(input: {
+  email: string;
+  password: string;
+  firstName: string;
+  lastName: string;
+  merchantId: string;
+}) {
+  const user = await prisma.user.upsert({
+    where: { email: input.email.toLowerCase() },
+    update: { isActive: true },
+    create: {
+      email: input.email.toLowerCase(),
+      passwordHash: await bcrypt.hash(input.password, 12),
+      firstName: input.firstName,
+      lastName: input.lastName,
+      platformRole: PlatformRole.CUSTOMER,
+      privacyConsentAt: new Date(),
+    },
+  });
+
+  await prisma.merchantMembership.upsert({
+    where: { userId_merchantId: { userId: user.id, merchantId: input.merchantId } },
+    update: {
+      role: MerchantRole.EMPLOYEE,
+      isActive: true,
+      invitationStatus: "ACCEPTED",
+      invitationAcceptedAt: new Date(),
+      invitationTokenHash: null,
+      invitationExpiresAt: null,
+    },
+    create: {
+      userId: user.id,
+      merchantId: input.merchantId,
+      role: MerchantRole.EMPLOYEE,
+      invitationStatus: "ACCEPTED",
+      invitationAcceptedAt: new Date(),
+    },
+  });
+
+  return user;
 }
 
 async function main() {
@@ -24,6 +68,10 @@ async function main() {
   const adminPassword = requiredEnv("SEED_MERCHANT_ADMIN_PASSWORD", "ChangeMe!Merchant1");
   const employeeEmail = requiredEnv("SEED_EMPLOYEE_EMAIL", "employe@cafe-demo.local").toLowerCase();
   const employeePassword = requiredEnv("SEED_EMPLOYEE_PASSWORD", "ChangeMe!Employee1");
+  const employee2Email = requiredEnv("SEED_EMPLOYEE2_EMAIL", "sam@cafe-demo.local").toLowerCase();
+  const employee2Password = requiredEnv("SEED_EMPLOYEE2_PASSWORD", "ChangeMe!Employee2");
+  const employee3Email = requiredEnv("SEED_EMPLOYEE3_EMAIL", "noa@cafe-demo.local").toLowerCase();
+  const employee3Password = requiredEnv("SEED_EMPLOYEE3_PASSWORD", "ChangeMe!Employee3");
   const customerEmail = requiredEnv("SEED_CUSTOMER_EMAIL", "client@demo.local").toLowerCase();
   const customerPassword = requiredEnv("SEED_CUSTOMER_PASSWORD", "ChangeMe!Customer1");
 
@@ -91,46 +139,44 @@ async function main() {
     },
   });
 
-  const employee = await prisma.user.upsert({
-    where: { email: employeeEmail },
-    update: { isActive: true },
-    create: {
-      email: employeeEmail,
-      passwordHash: await bcrypt.hash(employeePassword, 12),
-      firstName: "Hugo",
-      lastName: "Bernard",
-      platformRole: PlatformRole.CUSTOMER,
-      privacyConsentAt: new Date(),
-    },
+  await upsertEmployee({
+    email: employeeEmail,
+    password: employeePassword,
+    firstName: "Hugo",
+    lastName: "Bernard",
+    merchantId: merchant.id,
   });
 
-  await prisma.merchantMembership.upsert({
-    where: { userId_merchantId: { userId: employee.id, merchantId: merchant.id } },
-    update: {
-      role: MerchantRole.EMPLOYEE,
-      isActive: true,
-      invitationStatus: "ACCEPTED",
-      invitationAcceptedAt: new Date(),
-      invitationTokenHash: null,
-      invitationExpiresAt: null,
-    },
-    create: {
-      userId: employee.id,
-      merchantId: merchant.id,
-      role: MerchantRole.EMPLOYEE,
-      invitationStatus: "ACCEPTED",
-      invitationAcceptedAt: new Date(),
-    },
+  await upsertEmployee({
+    email: employee2Email,
+    password: employee2Password,
+    firstName: "Sam",
+    lastName: "Durand",
+    merchantId: merchant.id,
+  });
+
+  await upsertEmployee({
+    email: employee3Email,
+    password: employee3Password,
+    firstName: "Noa",
+    lastName: "Petit",
+    merchantId: merchant.id,
   });
 
   const customer = await prisma.user.upsert({
     where: { email: customerEmail },
-    update: { isActive: true },
+    update: {
+      isActive: true,
+      firstName: "Léa",
+      lastName: "Martin",
+      fifeLifePoints: 180,
+    },
     create: {
       email: customerEmail,
       passwordHash: await bcrypt.hash(customerPassword, 12),
-      firstName: "Camille",
-      lastName: "Petit",
+      firstName: "Léa",
+      lastName: "Martin",
+      fifeLifePoints: 180,
       platformRole: PlatformRole.CUSTOMER,
       privacyConsentAt: new Date(),
     },
@@ -138,7 +184,7 @@ async function main() {
 
   await prisma.customerMembership.upsert({
     where: { userId_merchantId: { userId: customer.id, merchantId: merchant.id } },
-    update: {},
+    update: { points: 7 },
     create: {
       userId: customer.id,
       merchantId: merchant.id,
@@ -146,12 +192,24 @@ async function main() {
     },
   });
 
+  const qrRecord = await prisma.fifeLifeQrToken.upsert({
+    where: { userId: customer.id },
+    update: {},
+    create: {
+      id: randomUUID(),
+      userId: customer.id,
+      jti: randomUUID(),
+    },
+  });
+
+  const demoQrToken = await signQrToken({ jti: qrRecord.jti });
+
   await prisma.auditLog.create({
     data: {
       actorId: superAdmin.id,
       merchantId: merchant.id,
       action: "SEED_DEMO",
-      metadata: { merchant: "cafe-demo" },
+      metadata: { merchant: "cafe-demo", demoClientNumber: "482917" },
     },
   });
 
@@ -159,8 +217,14 @@ async function main() {
   console.log("Comptes créés (mots de passe lus depuis les variables d'environnement) :");
   console.log(`  Super-admin : ${superEmail}`);
   console.log(`  Admin Café Demo : ${adminEmail}`);
-  console.log(`  Employé Café Demo : ${employeeEmail}`);
-  console.log(`  Client démo : ${customerEmail}`);
+  console.log(`  Employé caisse (Hugo) : ${employeeEmail}`);
+  console.log(`  Employé caisse (Sam) : ${employee2Email}`);
+  console.log(`  Employé caisse (Noa) : ${employee3Email}`);
+  console.log(`  Client démo (Léa Martin) : ${customerEmail}`);
+  console.log("");
+  console.log("QR de test client (coller dans le scan caisse) :");
+  console.log(`  ${demoQrToken}`);
+  console.log("Numéro client affiché sur la carte : 482917");
 }
 
 main()

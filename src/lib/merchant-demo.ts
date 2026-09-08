@@ -1,10 +1,12 @@
-/** Mode démo commerçant : actif en local sans session (pas de base requise). */
+import { isDemoCookie, isPublicDemoEnabled, MERCHANT_DEMO_COOKIE } from "@/lib/demo-mode";
+
+export { MERCHANT_DEMO_COOKIE };
+
+/** Fallback sans session : actif en local ou via cookie démo. */
 export function isMerchantDevDemo(user: unknown) {
-  return process.env.NODE_ENV === "development" && !user;
+  return isPublicDemoEnabled() && !user && process.env.NODE_ENV === "development";
 }
 
-export const MERCHANT_DEMO_COOKIE = "fife_merchant_demo";
-
 export function isMerchantDemoCookie(value: string | undefined) {
-  return process.env.NODE_ENV === "development" && value === "1";
+  return isDemoCookie(value);
 }

@@ -18,8 +18,8 @@ export default function HomePage() {
             lumineuse, profonde et désirable.
           </p>
           <div className="mt-10 flex flex-wrap gap-3">
-            <Link href="/carte" className="glass-cta inline-flex min-w-[220px] justify-center px-6 py-3.5 text-sm">
-              Ouvrir mon wallet Fife Life
+            <Link href="/demo" className="glass-cta inline-flex min-w-[220px] justify-center px-6 py-3.5 text-sm">
+              Voir le wallet démo
             </Link>
             <Link
               href="/connexion"

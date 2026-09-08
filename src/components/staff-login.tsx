@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { Alert, BrandMark, Button, Card, Field, Input } from "./ui";
+import { Alert, BrandMark, Button, Card, Field, Input, PasswordInput } from "./ui";
 
 async function readApiJson(response: Response) {
   const text = await response.text();
@@ -18,10 +18,12 @@ export function StaffLogin({
   title,
   nextPath,
   demoHref,
+  otherSpaces,
 }: {
   title: string;
   nextPath: string;
   demoHref?: string;
+  otherSpaces?: Array<{ label: string; href: string }>;
 }) {
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -58,22 +60,24 @@ export function StaffLogin({
   }
 
   return (
-    <main className="obsidian-scene flex min-h-dvh flex-col items-center justify-center px-6 py-12 text-[var(--ink)] lg:py-24">
+    <main className="login-scene obsidian-scene flex min-h-dvh flex-col items-center justify-center px-5 py-10 sm:px-6 sm:py-12">
       <div className="w-full max-w-[440px]">
-        <div className="mb-10 flex flex-col items-center text-center">
-          <BrandMark className="mb-8 scale-110" />
-          <h1 className="text-3xl font-black tracking-tight text-[var(--ink)]">{title}</h1>
-          <p className="mt-2 font-medium italic text-[var(--muted-strong)]">Accédez à votre espace de gestion.</p>
+        <div className="mb-8 flex flex-col items-center text-center sm:mb-10">
+          <BrandMark className="mb-6 scale-110 sm:mb-8" />
+          <h1 className="text-2xl font-black tracking-tight text-[var(--ink)] sm:text-3xl">{title}</h1>
+          <p className="mt-2 text-sm font-medium italic text-[var(--muted-strong)] sm:text-base">
+            Accédez à votre espace de gestion.
+          </p>
         </div>
 
-        <Card className="glass-panel border-0 p-10 shadow-none">
-          <form className="space-y-6" onSubmit={(event) => void onSubmit(event)}>
+        <Card className="glass-panel border-0 p-6 shadow-none sm:p-10">
+          <form className="space-y-5 sm:space-y-6" onSubmit={(event) => void onSubmit(event)}>
             {error ? <Alert>{error}</Alert> : null}
             <Field label="Adresse e-mail">
               <Input name="email" type="email" autoComplete="username" required placeholder="nom@exemple.fr" />
             </Field>
             <Field label="Mot de passe">
-              <Input name="password" type="password" autoComplete="current-password" required placeholder="••••••••" />
+              <PasswordInput name="password" autoComplete="current-password" required placeholder="••••••••" />
             </Field>
             <Button type="submit" className="w-full py-4 text-base" disabled={pending}>
               {pending ? "Connexion en cours..." : "Accéder à mon compte"}
@@ -82,18 +86,37 @@ export function StaffLogin({
 
           {demoHref ? (
             <div className="mt-6 border-t border-white/10 pt-6 text-center">
-              <p className="text-xs text-[var(--muted)]">Base de données non requise en local</p>
+              <p className="text-xs text-[var(--muted)]">Sans compte ? Explorez l&apos;application en mode démo.</p>
               <Link
                 href={demoHref}
                 className="mt-2 inline-flex text-sm font-bold text-[var(--violet-bright)] hover:underline"
               >
-                Continuer en mode démo →
+                Voir les démos →
               </Link>
             </div>
           ) : null}
         </Card>
 
-        <p className="mt-10 text-center text-xs font-bold uppercase tracking-[0.2em] text-[var(--muted)]">Fife Life</p>
+        {otherSpaces?.length ? (
+          <nav className="mt-6 text-center text-xs font-bold uppercase tracking-[0.18em] text-[var(--muted)]">
+            <p className="mb-3">Autres espaces</p>
+            <div className="flex flex-wrap justify-center gap-x-5 gap-y-2">
+              {otherSpaces.map((space) => (
+                <Link
+                  key={space.href}
+                  href={space.href}
+                  className="text-[var(--violet-bright)] hover:underline normal-case tracking-normal"
+                >
+                  {space.label}
+                </Link>
+              ))}
+            </div>
+          </nav>
+        ) : null}
+
+        <p className="mt-8 text-center text-xs font-bold uppercase tracking-[0.2em] text-[var(--muted)] sm:mt-10">
+          Fife Life
+        </p>
       </div>
     </main>
   );

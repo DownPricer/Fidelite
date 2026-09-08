@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { Alert, Button, Card, EmployeeBrandMark, Field, Input } from "@/components/ui";
+import { Alert, Button, Card, EmployeeBrandMark, Field, Input, PasswordInput } from "@/components/ui";
 
 async function readApiJson(response: Response) {
   const text = await response.text();
@@ -52,21 +52,21 @@ export function EmployeeLoginScreen({
   }
 
   return (
-    <main className="obsidian-scene flex min-h-dvh flex-col items-center justify-center px-6 py-10">
+    <main className="login-scene obsidian-scene flex min-h-dvh flex-col items-center justify-center px-5 py-10">
       <div className="w-full max-w-[390px]">
         <div className="mb-8 flex flex-col items-center text-center">
           <EmployeeBrandMark className="mb-4" />
           <h1 className="text-2xl font-black tracking-tight text-[var(--ink)]">Connexion caisse</h1>
         </div>
 
-        <Card className="glass-panel border-0 p-8 shadow-none">
+        <Card className="glass-panel border-0 p-6 shadow-none sm:p-8">
           <form className="space-y-5" onSubmit={(event) => void onSubmit(event)}>
             {error ? <Alert>{error}</Alert> : null}
             <Field label="E-mail">
               <Input name="email" type="email" autoComplete="username" required placeholder="nom@exemple.fr" />
             </Field>
             <Field label="Mot de passe">
-              <Input name="password" type="password" autoComplete="current-password" required placeholder="••••••••" />
+              <PasswordInput name="password" autoComplete="current-password" required placeholder="••••••••" />
             </Field>
             <Button type="submit" className="w-full py-4 text-base" disabled={pending}>
               {pending ? "Connexion..." : "Se connecter"}
@@ -75,16 +75,28 @@ export function EmployeeLoginScreen({
 
           {demoHref ? (
             <div className="mt-6 border-t border-white/10 pt-6 text-center">
-              <p className="text-xs text-[var(--muted)]">Base de données non requise en local</p>
+              <p className="text-xs text-[var(--muted)]">Sans compte ? Explorez l&apos;app en mode démo.</p>
               <Link
                 href={demoHref}
                 className="mt-2 inline-flex text-sm font-bold text-[var(--violet-bright)] hover:underline"
               >
-                Continuer en mode démo →
+                Voir les démos →
               </Link>
             </div>
           ) : null}
         </Card>
+
+        <nav className="mt-6 text-center text-xs font-bold uppercase tracking-[0.18em] text-[var(--muted)]">
+          <p className="mb-3">Autres espaces</p>
+          <div className="flex flex-wrap justify-center gap-x-5 gap-y-2">
+            <Link href="/connexion" className="text-[var(--violet-bright)] hover:underline normal-case tracking-normal">
+              Client
+            </Link>
+            <Link href="/app/connexion" className="text-[var(--violet-bright)] hover:underline normal-case tracking-normal">
+              Commerçant
+            </Link>
+          </div>
+        </nav>
       </div>
     </main>
   );

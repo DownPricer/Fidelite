@@ -5,7 +5,12 @@ export default function AppLoginPage() {
     <StaffLogin
       title="Espace commerçant"
       nextPath="/app"
-      demoHref={process.env.NODE_ENV === "development" ? "/app/enter-demo" : undefined}
+      demoHref="/demo"
+      otherSpaces={[
+        { label: "Client", href: "/connexion" },
+        { label: "Employé", href: "/employe/connexion" },
+        { label: "Démos", href: "/demo" },
+      ]}
     />
   );
 }
