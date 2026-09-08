@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { cn } from "@/components/ui";
 import { getCachedQr, loadUniversalQr } from "./qr-cache";
 import { PREVIEW_QR } from "./preview-data";
@@ -45,9 +46,14 @@ export function MerchantInteractiveCard({
     ? `${card.rewardLabel} disponible`
     : `Encore ${remaining} · ${card.rewardLabel}`;
 
+  const [mounted, setMounted] = useState(false);
   const [qr, setQr] = useState<string | null>(() => (preview ? PREVIEW_QR : getCachedQr()));
   const [qrError, setQrError] = useState(false);
   const [qrEnlarged, setQrEnlarged] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (preview) {
@@ -151,12 +157,17 @@ export function MerchantInteractiveCard({
         </Element>
       </InteractiveCardShell>
 
-      <QrEnlargedView
-        open={qrEnlarged}
-        qrSrc={qr ?? ""}
-        clientNumber={clientNumber}
-        onClose={() => setQrEnlarged(false)}
-      />
+      {mounted
+        ? createPortal(
+            <QrEnlargedView
+              open={qrEnlarged}
+              qrSrc={qr ?? ""}
+              clientNumber={clientNumber}
+              onClose={() => setQrEnlarged(false)}
+            />,
+            document.body,
+          )
+        : null}
     </>
   );
 }

@@ -181,15 +181,7 @@ body:has(.wallet-shell) {
 }
 
 .deck-floor-shadow {
-  pointer-events: none;
-  position: absolute;
-  inset-inline: 10%;
-  bottom: 4%;
-  height: calc(var(--wallet-card-width) * 0.14);
-  border-radius: 999px;
-  background: radial-gradient(ellipse at 50% 0%, rgba(0, 0, 0, 0.9), transparent 70%);
-  opacity: 0.9;
-  filter: blur(12px);
+  display: none;
 }
 
 .deck-rotate-hint {
@@ -202,7 +194,7 @@ body:has(.wallet-shell) {
 }
 
 .wallet-client-number {
-  letter-spacing: 0.04em;
+  display: none;
 }
 
 .fife-deck-wrap {
@@ -303,7 +295,11 @@ body:has(.wallet-shell) {
   font-weight: 300;
   text-shadow: 0 0.07cqw 0.13cqw #0009;
   -webkit-font-smoothing: antialiased;
-  filter: drop-shadow(0 clamp(12px, 3vw, 24px) clamp(20px, 4vw, 40px) rgba(0, 0, 0, 0.55));
+  filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.38));
+}
+
+.fife-deck-scene .loyalty-card {
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.32));
 }
 
 .loyalty-card__background,
@@ -426,11 +422,16 @@ body:has(.wallet-shell) {
 }
 
 .loyalty-card__client-number {
-  margin: 0.55cqw 0 0;
-  font-size: 1.55cqw;
-  letter-spacing: 0.18cqw;
-  line-height: 1.2;
-  text-align: center;
+  position: absolute;
+  z-index: 10;
+  left: 34%;
+  right: 7%;
+  top: 47.5%;
+  margin: 0;
+  font-size: 3.2cqw;
+  letter-spacing: 0.1cqw;
+  line-height: 1.15;
+  text-align: left;
   font-variant-numeric: tabular-nums;
   opacity: 0.92;
 }
@@ -581,25 +582,28 @@ body:has(.wallet-shell) {
   box-shadow: inset 0 0 0.4cqw #fff, 0 0 0.45cqw #8fdaff;
 }
 
+.card-enlarged-overlay {
+  padding: 0.625rem;
+}
+
 .card-enlarged-loyalty-wrap {
-  width: min(96vw, 760px);
+  width: min(calc(100vw - 1.25rem), 760px);
   margin-inline: auto;
 }
 
 .card-enlarged-merchant-shell,
 .card-enlarged-merchant-card {
-  width: min(96vw, 760px);
+  width: min(calc(100vw - 1.25rem), 760px);
   margin-inline: auto;
 }
 
 .card-enlarged-merchant-card {
-  aspect-ratio: 1.586 / 1;
-  max-height: min(78vh, 480px);
-  height: auto !important;
+  aspect-ratio: 1427 / 863;
 }
 
 .card-enlarged-modal {
-  max-width: min(96vw, 820px);
+  width: 100%;
+  max-width: min(calc(100vw - 1.25rem), 820px);
 }
 
 .card-enlarged-loyalty-shell {
@@ -608,8 +612,11 @@ body:has(.wallet-shell) {
 
 .card-enlarged-loyalty-card {
   width: 100%;
-  aspect-ratio: 1.586 / 1;
-  max-height: min(78vh, 480px);
+  aspect-ratio: 1427 / 863;
+}
+
+.card-enlarged-loyalty-card.loyalty-card {
+  filter: drop-shadow(0 10px 28px rgba(0, 0, 0, 0.48));
 }
 
 /* ── Merchant interactive cards ── */
@@ -631,7 +638,7 @@ body:has(.wallet-shell) {
     radial-gradient(ellipse 120% 160% at 90% 120%, color-mix(in srgb, var(--merchant-hue, #8557ff) 55%, transparent) 0%, transparent 68%),
     linear-gradient(135deg, color-mix(in srgb, var(--merchant-hue, #8557ff) 22%, #05050a) 0%, color-mix(in srgb, var(--merchant-hue, #8557ff) 68%, #090911) 52%, #05050a 100%);
   box-shadow:
-    0 clamp(12px, 3vw, 28px) clamp(24px, 5vw, 56px) rgba(0, 0, 0, 0.75),
+    0 clamp(8px, 2vw, 16px) clamp(16px, 3vw, 28px) rgba(0, 0, 0, 0.55),
     0 0 0 1px rgba(255, 255, 255, 0.08);
   color: var(--ink);
   padding: 5cqw;
@@ -2217,9 +2224,9 @@ body:has(.wallet-shell) {
   .card-enlarged-card-portrait {
     rotate: 0deg !important;
     transform: none !important;
-    width: min(96vw, 760px) !important;
+    width: min(calc(100vw - 1.25rem), 760px) !important;
     height: auto !important;
-    max-height: min(78vh, 480px) !important;
+    max-height: none !important;
   }
 
   .card-enlarged-modal {

@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { cn } from "@/components/ui";
+import { formatClientNumberDisplay } from "@/lib/client-number";
 import { buildLoyaltyCardViewModel, type LoyaltyCardQrMode } from "@/lib/loyalty-card-view-model";
 import { getLoyaltyCardBackground } from "@/lib/loyalty-card-assets";
 import { getCachedQr, loadUniversalQr } from "./qr-cache";
@@ -59,6 +61,7 @@ export function InteractiveLoyaltyCard({
     [tier, name, points, qrMode, statusText, progressPercent],
   );
 
+  const [mounted, setMounted] = useState(false);
   const [qrFailed, setQrFailed] = useState(false);
   const [qrEnlarged, setQrEnlarged] = useState(false);
   const [autoQr, setAutoQr] = useState<string | null>(() => {
@@ -66,6 +69,10 @@ export function InteractiveLoyaltyCard({
     if (qrSrc) return qrSrc;
     return getCachedQr();
   });
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (!showQr || qrSrc) return;
@@ -146,6 +153,12 @@ export function InteractiveLoyaltyCard({
               {model.name}
             </p>
 
+            {showQr && clientNumber ? (
+              <p className="loyalty-card__client-number" title={`Numéro client ${clientNumber}`}>
+                N° {formatClientNumberDisplay(clientNumber)}
+              </p>
+            ) : null}
+
             <p className="loyalty-card__points" data-length={model.pointsLength}>
               {model.pointsText}
             </p>
@@ -171,12 +184,17 @@ export function InteractiveLoyaltyCard({
         </Element>
       </InteractiveCardShell>
 
-      <QrEnlargedView
-        open={qrEnlarged}
-        qrSrc={effectiveQrSrc ?? ""}
-        clientNumber={clientNumber}
-        onClose={() => setQrEnlarged(false)}
-      />
+      {mounted
+        ? createPortal(
+            <QrEnlargedView
+              open={qrEnlarged}
+              qrSrc={effectiveQrSrc ?? ""}
+              clientNumber={clientNumber}
+              onClose={() => setQrEnlarged(false)}
+            />,
+            document.body,
+          )
+        : null}
     </>
   );
 }

@@ -49,9 +49,13 @@ export function QrEnlargedView({ open, qrSrc, clientNumber, onClose }: QrEnlarge
             transition={reduced ? { duration: 0 } : { type: "spring", stiffness: 280, damping: 28 }}
             onClick={onClose}
           >
-            <div className="qr-enlarged-frame mx-auto rounded-3xl bg-white p-6 shadow-[0_24px_80px_rgba(0,0,0,0.65)]">
+            <div className="qr-enlarged-frame mx-auto rounded-3xl bg-white p-5 shadow-[0_24px_80px_rgba(0,0,0,0.65)] sm:p-6">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={qrSrc} alt="QR code agrandi" className="mx-auto h-auto w-full max-w-[280px]" />
+              <img
+                src={qrSrc}
+                alt="QR code agrandi"
+                className="mx-auto h-auto w-full max-w-[min(72vw,320px)]"
+              />
               {clientNumber ? (
                 <p className="mt-4 text-lg font-black tabular-nums tracking-[0.2em] text-[#0F172A]">
                   {clientNumber.replace(/(\d{3})(?=\d)/g, "$1 ")}

@@ -2,6 +2,7 @@
 
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { DEMO_CLIENT_NUMBER } from "@/lib/demo-visual";
 import { getCachedQr, loadUniversalQr } from "./qr-cache";
 import { PREVIEW_QR } from "./preview-data";
@@ -41,7 +42,12 @@ export function CardEnlargedView({
   const tier: WalletTier = card.demoTier ?? resolveTier(fifeLifePoints ?? card.points).name;
   const effectiveClientNumber = clientNumber ?? (preview ? DEMO_CLIENT_NUMBER : null);
 
+  const [mounted, setMounted] = useState(false);
   const [qr, setQr] = useState<string | null>(() => (preview ? PREVIEW_QR : getCachedQr()));
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (open) document.body.style.overflow = "hidden";
@@ -76,11 +82,13 @@ export function CardEnlargedView({
     };
   }, [open, fifeLife, preview, qr]);
 
-  return (
+  if (!mounted) return null;
+
+  return createPortal(
     <AnimatePresence>
       {open ? (
         <motion.div
-          className="card-enlarged-overlay fixed inset-0 z-[100] flex items-center justify-center bg-[#05050a]/95 px-4 backdrop-blur-md"
+          className="card-enlarged-overlay fixed inset-0 z-[100] flex items-center justify-center bg-[#05050a]/95 backdrop-blur-md"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -125,12 +133,13 @@ export function CardEnlargedView({
               />
             )}
 
-            <p className="card-enlarged-hint mt-5 text-center text-sm text-[var(--muted)]">
-              Appuyez à côté de la carte pour fermer
+            <p className="card-enlarged-hint mt-4 text-center text-xs text-[var(--muted)] sm:text-sm">
+              Appuyez à côté de la carte pour fermer · touchez le QR pour l&apos;agrandir
             </p>
           </motion.div>
         </motion.div>
       ) : null}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body,
   );
 }
