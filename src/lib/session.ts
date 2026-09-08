@@ -1,6 +1,7 @@
 import { createHash, randomBytes } from "crypto";
 import { cookies } from "next/headers";
 import type { NextRequest } from "next/server";
+import { SessionKind } from "@prisma/client";
 import { env, isProduction } from "./env";
 import { prisma } from "./prisma";
 
@@ -28,6 +29,7 @@ export async function createSession(
     data: {
       userId,
       tokenHash: hashToken(token),
+      kind: SessionKind.STANDARD,
       expiresAt,
       ip: meta.ip,
       userAgent: meta.userAgent,
@@ -42,7 +44,7 @@ export async function destroySession(token?: string) {
   const jar = await cookies();
   const value = token ?? jar.get(env.sessionCookie)?.value;
   if (value) {
-    await prisma.session.deleteMany({ where: { tokenHash: hashToken(value) } });
+    await prisma.session.deleteMany({ where: { tokenHash: hashToken(value), kind: SessionKind.STANDARD } });
   }
   jar.set(env.sessionCookie, "", { ...cookieOptions(new Date(0)), maxAge: 0 });
 }
@@ -62,8 +64,8 @@ export function tokenFromRequest(req: Request | NextRequest) {
 
 export async function userFromToken(token: string) {
   try {
-    const session = await prisma.session.findUnique({
-      where: { tokenHash: hashToken(token) },
+    const session = await prisma.session.findFirst({
+      where: { tokenHash: hashToken(token), kind: SessionKind.STANDARD },
       include: {
         user: {
           include: {

@@ -106,11 +106,20 @@ async function main() {
 
   await prisma.merchantMembership.upsert({
     where: { userId_merchantId: { userId: employee.id, merchantId: merchant.id } },
-    update: { role: MerchantRole.EMPLOYEE, isActive: true },
+    update: {
+      role: MerchantRole.EMPLOYEE,
+      isActive: true,
+      invitationStatus: "ACCEPTED",
+      invitationAcceptedAt: new Date(),
+      invitationTokenHash: null,
+      invitationExpiresAt: null,
+    },
     create: {
       userId: employee.id,
       merchantId: merchant.id,
       role: MerchantRole.EMPLOYEE,
+      invitationStatus: "ACCEPTED",
+      invitationAcceptedAt: new Date(),
     },
   });
 

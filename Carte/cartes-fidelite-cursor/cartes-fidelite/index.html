@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Cartes de fidélité — Bronze, Argent, Or, Diamant</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="./cartes.css">
+  <link rel="stylesheet" href="./demo.css">
+  <script defer src="./cartes.js"></script>
+  <script defer src="./demo.js"></script>
+</head>
+<body>
+  <main class="demo">
+    <header class="demo-header">
+      <div><p class="demo-kicker">COLLECTION MEMBRE</p><h1>Quatre niveaux. Une signature.</h1></div>
+      <p>Fonds métalliques, informations personnalisables.</p>
+    </header>
+    <section class="demo-editor" aria-label="Personnaliser les cartes">
+      <label>Nom du client<input id="client-name" value="Marie Terese" maxlength="100" autocomplete="off"></label>
+      <label>Style du QR<select id="qr-mode"><option value="engraved">Gravé, comme les modèles</option><option value="standard">Noir sur blanc</option></select></label>
+      <label>Largeur d’aperçu<select id="preview-width"><option value="collection">Collection</option><option value="large">Grand format</option><option value="mobile">Carte de 340 px</option></select></label>
+      <button id="reset-demo" type="button">Réinitialiser</button>
+    </section>
+    <p class="demo-note">Exemples visuels : les QR codes sont des démonstrations. Les points de chaque carte sont modifiables ci-dessous.</p>
+    <section class="demo-grid" id="cards" aria-label="Collection de cartes">
+      <figure class="demo-item"><div id="card-bronze"></div><figcaption><span>01 / Bronze</span><label>Points<input type="number" id="points-bronze" value="12450" min="0" max="999999999" step="1"></label></figcaption></figure>
+      <figure class="demo-item"><div id="card-argent"></div><figcaption><span>02 / Argent</span><label>Points<input type="number" id="points-argent" value="72450" min="0" max="999999999" step="1"></label></figcaption></figure>
+      <figure class="demo-item"><div id="card-or"></div><figcaption><span>03 / Or</span><label>Points<input type="number" id="points-or" value="128900" min="0" max="999999999" step="1"></label></figcaption></figure>
+      <figure class="demo-item"><div id="card-diamant"></div><figcaption><span>04 / Diamant</span><label>Points<input type="number" id="points-diamant" value="250000" min="0" max="999999999" step="1"></label></figcaption></figure>
+    </section>
+    <footer class="demo-footer">Les paliers de démonstration sont configurés dans demo.js. L’application peut fournir ses propres niveaux et progressions.</footer>
+    <noscript>Active JavaScript pour afficher la démonstration. exemple-simple.html contient également une carte HTML statique.</noscript>
+  </main>
+</body>
+</html>

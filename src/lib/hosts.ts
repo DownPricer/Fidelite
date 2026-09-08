@@ -21,6 +21,15 @@ export function isCustomerHost(host: string) {
   return hostnameOf(host) === env.customerHost.toLowerCase();
 }
 
+export function isEmployeeHost(host: string) {
+  return hostnameOf(host) === env.employeeHost.toLowerCase();
+}
+
+export function employeeInvitationUrl(token: string) {
+  const base = env.employeeOrigin.replace(/\/$/, "");
+  return `${base}/invitation?token=${encodeURIComponent(token)}`;
+}
+
 export function publicCustomerUrl(path = "/") {
   if (env.customerOrigin) {
     return `${env.customerOrigin.replace(/\/$/, "")}${path}`;

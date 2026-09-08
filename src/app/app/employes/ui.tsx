@@ -72,6 +72,11 @@ function statusTone(status: string): "ok" | "warn" | "muted" | "danger" {
   return "muted";
 }
 
+function statusBadgeLabel(status: string) {
+  if (status === "Invitation en attente") return "En attente";
+  return status;
+}
+
 function formatActivity(iso: string | null) {
   if (!iso) return "—";
   const d = new Date(iso);
@@ -89,6 +94,7 @@ export function EmployeesPanel({ demo = false }: { demo?: boolean }) {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [tempPassword, setTempPassword] = useState<string | null>(null);
+  const [invitationUrl, setInvitationUrl] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (demo) return;
@@ -157,7 +163,7 @@ export function EmployeesPanel({ demo = false }: { demo?: boolean }) {
     }
     setError(null);
     setSheetOpen(false);
-    if (data.temporaryPassword) setTempPassword(data.temporaryPassword);
+    if (data.invitationUrl) setInvitationUrl(data.invitationUrl as string);
     event.currentTarget.reset();
     void load();
   }
@@ -173,6 +179,16 @@ export function EmployeesPanel({ demo = false }: { demo?: boolean }) {
         </Button>
       </div>
 
+      {invitationUrl ? (
+        <div className="mb-4">
+          <Alert tone="ok">
+            Lien d&apos;invitation :{" "}
+            <a href={invitationUrl} className="break-all font-semibold underline">
+              {invitationUrl}
+            </a>
+          </Alert>
+        </div>
+      ) : null}
       {tempPassword ? (
         <div className="mb-4">
           <Alert tone="ok">
@@ -219,8 +235,8 @@ export function EmployeesPanel({ demo = false }: { demo?: boolean }) {
               title={`${e.firstName} ${e.lastName ?? ""}`}
               subtitle={e.roleLabel}
               meta={formatActivity(e.lastActivityAt)}
-              badge={<StatusBadge tone={statusTone(e.status)}>{e.status}</StatusBadge>}
-              desktopBadge={<StatusBadge tone={statusTone(e.status)}>{e.status}</StatusBadge>}
+              badge={<StatusBadge tone={statusTone(e.status)}>{statusBadgeLabel(e.status)}</StatusBadge>}
+              desktopBadge={<StatusBadge tone={statusTone(e.status)}>{statusBadgeLabel(e.status)}</StatusBadge>}
             />
           ))}
         </CompactListShell>
@@ -334,12 +350,39 @@ export function EmployeeDetailPanel({ id, demo = false }: { id: string; demo?: b
 
   async function resendInvite() {
     if (demo) return;
-    await fetch(`/api/merchant/employees/${id}`, {
+    const res = await fetch(`/api/merchant/employees/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ invitationStatus: "PENDING" }),
     });
-    alert("Invitation renvoyée.");
+    const data = await res.json();
+    if (data.invitationUrl) {
+      alert(`Invitation renvoyée.\n\n${data.invitationUrl}`);
+    } else {
+      alert("Invitation renvoyée.");
+    }
+  }
+
+  async function revokeSessions() {
+    if (demo || !confirm("Révoquer toutes les sessions actives de cet employé ?")) return;
+    await fetch(`/api/merchant/employees/${id}/revoke-sessions`, { method: "POST" });
+    alert("Sessions révoquées.");
+  }
+
+  async function reactivate() {
+    if (demo) return;
+    await fetch(`/api/merchant/employees/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ isActive: true }),
+    });
+    window.location.reload();
+  }
+
+  async function cancelInvite() {
+    if (demo || !confirm("Annuler cette invitation ?")) return;
+    await fetch(`/api/merchant/employees/${id}`, { method: "DELETE" });
+    window.location.href = "/app/employes";
   }
 
   function txLine(tx: (typeof history)[0]) {
@@ -376,13 +419,28 @@ export function EmployeeDetailPanel({ id, demo = false }: { id: string; demo?: b
 
         <div className="flex flex-wrap gap-2">
           {employee.status === "Invitation en attente" ? (
-            <Button variant="secondary" className="h-9 px-3 text-xs" onClick={() => void resendInvite()}>
-              Renvoyer l&apos;invitation
-            </Button>
+            <>
+              <Button variant="secondary" className="h-9 px-3 text-xs" onClick={() => void resendInvite()}>
+                Renvoyer l&apos;invitation
+              </Button>
+              <Button variant="ghost" className="h-9 px-3 text-xs" onClick={() => void cancelInvite()}>
+                Annuler l&apos;invitation
+              </Button>
+            </>
           ) : null}
           {employee.status === "Actif" ? (
-            <Button variant="danger" className="h-9 px-3 text-xs" onClick={() => void suspend()}>
-              Suspendre
+            <>
+              <Button variant="secondary" className="h-9 px-3 text-xs" onClick={() => void revokeSessions()}>
+                Révoquer les sessions
+              </Button>
+              <Button variant="danger" className="h-9 px-3 text-xs" onClick={() => void suspend()}>
+                Suspendre
+              </Button>
+            </>
+          ) : null}
+          {employee.status === "Suspendu" ? (
+            <Button variant="secondary" className="h-9 px-3 text-xs" onClick={() => void reactivate()}>
+              Réactiver
             </Button>
           ) : null}
         </div>
@@ -410,7 +468,7 @@ export function EmployeeDetailPanel({ id, demo = false }: { id: string; demo?: b
             </>
           }
         />
-        <CompactListShell>
+        <CompactListShell layout="stack">
           {history.map((tx) => (
             <button
               key={tx.id}

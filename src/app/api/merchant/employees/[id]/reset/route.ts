@@ -1,6 +1,7 @@
 import { requireMerchantAdmin, requireMutatingRequest } from "@/lib/api-guard";
 import { writeAudit } from "@/lib/audit";
 import { clientIp, jsonError, jsonOk, userAgent } from "@/lib/http";
+import { revokeEmployeeSessions } from "@/lib/employee-session";
 import { generateTemporaryPassword, hashPassword } from "@/lib/password";
 import { prisma } from "@/lib/prisma";
 
@@ -32,6 +33,7 @@ export async function POST(
     },
   });
   await prisma.session.deleteMany({ where: { userId: membership.userId } });
+  await revokeEmployeeSessions(membership.userId);
   await writeAudit({
     actorId: staff.user.id,
     merchantId: staff.membership.merchantId,

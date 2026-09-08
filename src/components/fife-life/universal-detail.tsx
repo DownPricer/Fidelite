@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { GlobalCard } from "./global-card";
+import { GlobalCard, loyaltyCardDisplayName } from "./global-card";
 import { QrBlock } from "./qr-block";
 import type { CardHistoryItem } from "./types";
 import { resolveTier } from "./tier";
@@ -15,10 +15,12 @@ function historyLabel(type: string) {
 
 export function UniversalDetail({
   fifeLifePoints,
+  customerName,
   history,
   preview = false,
 }: {
   fifeLifePoints: number;
+  customerName: string;
   history: CardHistoryItem[];
   preview?: boolean;
 }) {
@@ -37,7 +39,7 @@ export function UniversalDetail({
         </header>
 
         <div className="fife-universal-main mt-5">
-          <GlobalCard points={fifeLifePoints} large demoVisual={preview} />
+          <GlobalCard points={fifeLifePoints} customerName={customerName} large mode="wallet" />
         </div>
 
         <section className="fife-universal-main mt-5 space-y-2 px-1">
@@ -89,3 +91,5 @@ export function UniversalDetail({
     </main>
   );
 }
+
+export { loyaltyCardDisplayName };

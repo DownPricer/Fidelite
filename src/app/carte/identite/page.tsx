@@ -16,7 +16,14 @@ export default async function CarteIdentitePage({
   if (!user) {
     if (isDevVisualDemo(params)) {
       const demo = demoUniversalDetailProps();
-      return <UniversalDetail fifeLifePoints={demo.fifeLifePoints} history={demo.history} preview={demo.preview} />;
+      return (
+        <UniversalDetail
+          customerName={demo.customerName}
+          fifeLifePoints={demo.fifeLifePoints}
+          history={demo.history}
+          preview={demo.preview}
+        />
+      );
     }
     redirect("/connexion");
   }
@@ -29,6 +36,7 @@ export default async function CarteIdentitePage({
 
   return (
     <UniversalDetail
+      customerName={user.firstName}
       fifeLifePoints={user.fifeLifePoints}
       preview={false}
       history={history.map((row) => ({

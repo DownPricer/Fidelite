@@ -94,7 +94,7 @@ body {
   color: var(--ink-soft);
   touch-action: pan-y pinch-zoom;
   --wallet-card-width: 320px;
-  --wallet-card-height: calc(var(--wallet-card-width) / 1.586);
+  --wallet-card-height: calc(var(--wallet-card-width) / (1427 / 863));
   --wallet-spread: 32px;
 }
 
@@ -167,7 +167,7 @@ body:has(.wallet-shell) {
 
 .fife-deck-scene {
   --wallet-card-width: 320px;
-  --wallet-card-height: calc(var(--wallet-card-width) / 1.586);
+  --wallet-card-height: calc(var(--wallet-card-width) / (1427 / 863));
 }
 
 .deck-halo {
@@ -213,48 +213,576 @@ body:has(.wallet-shell) {
 }
 
 .deck-card-slot {
-  aspect-ratio: 1.586 / 1;
+  width: 100%;
 }
 
-.demo-tier-card-frame {
+.loyalty-card-shell.interactive-card-shell,
+.loyalty-card-shell .interactive-card-depth,
+.loyalty-card-shell .interactive-card-shell {
+  width: 100%;
+  height: auto;
+  background: transparent;
+  overflow: visible;
+  border-radius: 0;
+  --card-radius-x: 2.3%;
+  --card-radius-y: 3.7%;
+}
+
+.interactive-card-halo {
+  pointer-events: none;
+  position: absolute;
+  inset: -18%;
+  z-index: 0;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(255, 255, 255, 0.12), transparent 42%),
+    radial-gradient(circle at 100% 0%, rgba(173, 209, 255, 0.18), transparent 44%),
+    radial-gradient(circle at 50% 115%, rgba(166, 139, 255, 0.28), transparent 72%);
+  mix-blend-mode: screen;
+  opacity: 0.85;
+  filter: blur(8px);
+}
+
+.interactive-card-glare {
+  pointer-events: none;
+  position: absolute;
+  top: 3.5%;
+  right: 4%;
+  bottom: 3.5%;
+  left: 4%;
+  z-index: 20;
+  border-radius: 6.5% / 10.5%;
+  mix-blend-mode: screen;
+  opacity: 0.35;
+}
+
+.loyalty-card-shell .interactive-card-glare {
+  top: 1.8%;
+  right: 2.8%;
+  bottom: 1.8%;
+  left: 2.8%;
+  border-radius: var(--card-radius-x) / var(--card-radius-y);
+}
+
+/* ── Interactive card shell (tilt, glare, halo) ── */
+.interactive-card-shell {
   position: relative;
+  transform-style: preserve-3d;
+  touch-action: pan-y;
+}
+
+.interactive-card-depth {
+  position: relative;
+  z-index: 1;
   width: 100%;
   height: 100%;
-  overflow: visible;
-  background: transparent;
-  border: none;
-  box-shadow: none;
+  transform-style: preserve-3d;
+  overflow: hidden;
+  border-radius: 7.2% / 11.8%;
 }
 
-.demo-tier-card-visual {
+/* ── Loyalty tier cards (fonds « good » uniquement) ── */
+@font-face {
+  font-family: "Card Sans";
+  src: url("/cards/fonts/DejaVuSans-ExtraLight.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 200 400;
+  font-display: swap;
+}
+
+.loyalty-card {
+  --ink: #fff0d7;
+  --bar-light: #ffe0b5;
+  --bar-mid: #efba83;
+  --bar-dark: #a96637;
+  --track: #271405;
+  --progress: 0%;
+  --card-radius-x: 2.3%;
+  --card-radius-y: 3.7%;
+  display: grid;
+  width: 100%;
+  position: relative;
+  isolation: isolate;
+  overflow: visible;
+  background: transparent;
+  color: var(--ink);
+  font-family: "Card Sans", "Segoe UI", sans-serif;
+  font-weight: 300;
+  text-shadow: 0 0.07cqw 0.13cqw #0009;
+  -webkit-font-smoothing: antialiased;
+  filter: drop-shadow(0 clamp(18px, 4vw, 40px) clamp(32px, 6vw, 70px) rgba(0, 0, 0, 0.72));
+}
+
+.loyalty-card__background,
+.loyalty-card__overlay {
+  grid-area: 1 / 1;
+}
+
+.loyalty-card__background {
+  width: 100%;
+  height: auto;
+  display: block;
+  z-index: 0;
+  pointer-events: none;
+  user-select: none;
+  border-radius: var(--card-radius-x) / var(--card-radius-y);
+}
+
+.loyalty-card__overlay {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  align-self: stretch;
+  justify-self: stretch;
+  container-type: inline-size;
+  pointer-events: none;
+  border-radius: var(--card-radius-x) / var(--card-radius-y);
+}
+
+.loyalty-card button,
+.loyalty-card a {
+  pointer-events: auto;
+}
+
+.loyalty-card,
+.loyalty-card * {
+  box-sizing: border-box;
+}
+
+.loyalty-card [hidden] {
+  display: none !important;
+}
+
+.loyalty-card p,
+.loyalty-card h2 {
+  margin: 0;
+  font-weight: inherit;
+}
+
+.loyalty-card[data-tier="bronze"] {
+  --background: url("/cards/bronze-good.png");
+}
+
+.loyalty-card[data-tier="argent"] {
+  --background: url("/cards/argent-good.png");
+  --ink: #f5f5f5;
+  --bar-light: #ffffff;
+  --bar-mid: #e1e1e1;
+  --bar-dark: #8b8f92;
+  --track: #222426;
+}
+
+.loyalty-card[data-tier="or"] {
+  --background: url("/cards/or-good.png");
+  --ink: #fff1cd;
+  --bar-light: #ffeebc;
+  --bar-mid: #e9c173;
+  --bar-dark: #aa792d;
+  --track: #3d2708;
+}
+
+.loyalty-card[data-tier="diamant"] {
+  --background: url("/cards/diamant-good.png");
+  --ink: #f4f8ff;
+  --bar-light: #ffffff;
+  --bar-mid: #b7e6ff;
+  --bar-dark: #4ba2db;
+  --track: #263b50;
+}
+
+.loyalty-card__heading {
+  position: absolute;
+  z-index: 10;
+  left: 6.8%;
+  top: 10.4%;
+  max-width: 64%;
+}
+
+.loyalty-card__eyebrow {
+  font-size: 2.6cqw;
+  letter-spacing: 0.85cqw;
+  line-height: 1.25;
+}
+
+.loyalty-card__tier {
+  margin-top: 0.95cqw !important;
+  font-size: 4.15cqw;
+  letter-spacing: 1.1cqw;
+  line-height: 1.15;
+  text-transform: uppercase;
+}
+
+.loyalty-card__qr {
+  position: absolute;
+  z-index: 10;
+  left: 6.8%;
+  top: 32%;
+  width: 25.7%;
+  aspect-ratio: 1;
+}
+
+.loyalty-card__qr-image {
   display: block;
   width: 100%;
   height: 100%;
   object-fit: contain;
-  object-position: center;
-  background: transparent;
-  border-radius: 26px;
-  filter: drop-shadow(0 28px 48px rgba(0, 0, 0, 0.55));
-  user-select: none;
-  -webkit-user-drag: none;
+  image-rendering: pixelated;
 }
 
-.demo-tier-card-enlarged-wrap {
+.loyalty-card[data-qr-mode="engraved"] .loyalty-card__qr {
+  mix-blend-mode: screen;
+}
+
+.loyalty-card[data-qr-mode="engraved"] .loyalty-card__qr-image {
+  filter: invert(1) sepia(0.65) saturate(0.75);
+}
+
+.loyalty-card[data-tier="argent"][data-qr-mode="engraved"] .loyalty-card__qr-image,
+.loyalty-card[data-tier="diamant"][data-qr-mode="engraved"] .loyalty-card__qr-image {
+  filter: invert(1);
+}
+
+.loyalty-card__qr-placeholder {
+  display: grid;
+  place-content: center;
   width: 100%;
-  max-width: min(72rem, 1150px);
+  height: 100%;
+  border: 0.12cqw solid currentColor;
+  border-radius: 0.7cqw;
+  font-size: 1.6cqw;
+  letter-spacing: 0.2cqw;
+  opacity: 0.65;
+  text-align: center;
+}
+
+.loyalty-card__name {
+  position: absolute;
+  z-index: 10;
+  left: 38.2%;
+  right: 7%;
+  top: 39.5%;
+  font-size: 5.1cqw;
+  line-height: 1.18;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
+.loyalty-card__name[data-length="long"] {
+  font-size: 3.8cqw;
+}
+
+.loyalty-card__name[data-length="very-long"] {
+  font-size: 2.8cqw;
+}
+
+.loyalty-card__points {
+  position: absolute;
+  z-index: 10;
+  right: 7.1%;
+  left: 36%;
+  top: 69.2%;
+  text-align: right;
+  font-size: 5.05cqw;
+  line-height: 1.15;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.loyalty-card__points[data-length="long"] {
+  font-size: 3.6cqw;
+}
+
+.loyalty-card__points[data-length="very-long"] {
+  font-size: 2.8cqw;
+}
+
+.loyalty-card__status {
+  position: absolute;
+  z-index: 10;
+  left: 6.8%;
+  right: 7.1%;
+  top: 80%;
+  font-size: 3.23cqw;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.loyalty-card__status[data-length="long"] {
+  font-size: 2.45cqw;
+}
+
+.loyalty-card__progress {
+  position: absolute;
+  z-index: 10;
+  left: 6.8%;
+  right: 7.1%;
+  top: 87.2%;
+  height: 3.65%;
+  padding: 0.15cqw;
+  border: 0.13cqw solid var(--bar-light);
+  border-radius: 10cqw;
+  background: linear-gradient(#0005, #0000), var(--track);
+  box-shadow:
+    0 0 0 0.12cqw #160f0b,
+    inset 0 0.13cqw 0.3cqw #000c,
+    0 0.09cqw 0.12cqw #ffffff70;
+}
+
+.loyalty-card__progress-fill {
+  display: block;
+  width: var(--progress);
+  height: 100%;
+  border-radius: inherit;
+  background:
+    repeating-linear-gradient(0deg, #ffffff18 0 0.06cqw, transparent 0.06cqw 0.16cqw),
+    linear-gradient(105deg, var(--bar-mid), var(--bar-light) 55%, var(--bar-mid));
+  box-shadow: inset 0 0 0 0.08cqw #ffffff9c, 0.08cqw 0 0.2cqw #0007;
+  transition: width 450ms ease;
+}
+
+.loyalty-card[data-tier="diamant"] .loyalty-card__progress {
+  padding: 0.2cqw;
+  border-width: 0.18cqw;
+  box-shadow:
+    0 0 0 0.12cqw #2f4153,
+    inset 0 0 0 0.12cqw #274c6c,
+    0 0 0.35cqw #d5efffaa;
+}
+
+.loyalty-card[data-tier="diamant"] .loyalty-card__progress-fill {
+  background:
+    repeating-conic-gradient(from 35deg, #fff8 0deg 38deg, #94d4ff99 38deg 98deg, #d9bfff55 98deg 158deg, #d3f8ff88 158deg 220deg) 0 / 1.45cqw 1.5cqw,
+    linear-gradient(90deg, #9bc7ff, #d6f9ff, #b5c9ff, #edfbff);
+  box-shadow: inset 0 0 0.4cqw #fff, 0 0 0.45cqw #8fdaff;
+}
+
+.card-enlarged-loyalty-wrap {
+  width: min(100%, clamp(320px, 72vw, 920px));
   margin-inline: auto;
 }
 
-.demo-tier-card-enlarged {
-  display: block;
+.card-enlarged-loyalty-shell {
   width: 100%;
-  height: auto;
-  max-height: min(70vh, 620px);
+}
+
+.card-enlarged-loyalty-card {
+  width: 100%;
+}
+
+/* ── Merchant interactive cards ── */
+.merchant-interactive-card {
+  --merchant-progress: 0%;
+  position: relative;
+  isolation: isolate;
+  container-type: inline-size;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  aspect-ratio: 1.586 / 1;
+  overflow: hidden;
+  border-radius: 26px;
+  border: 1px solid color-mix(in srgb, var(--merchant-hue, #8557ff) 35%, rgba(255, 255, 255, 0.18));
+  background:
+    radial-gradient(ellipse 140% 120% at 8% -8%, rgba(255, 255, 255, 0.28), transparent 60%),
+    radial-gradient(ellipse 120% 160% at 90% 120%, color-mix(in srgb, var(--merchant-hue, #8557ff) 55%, transparent) 0%, transparent 68%),
+    linear-gradient(135deg, color-mix(in srgb, var(--merchant-hue, #8557ff) 22%, #05050a) 0%, color-mix(in srgb, var(--merchant-hue, #8557ff) 68%, #090911) 52%, #05050a 100%);
+  box-shadow:
+    0 clamp(20px, 4vw, 44px) clamp(36px, 7vw, 90px) rgba(0, 0, 0, 0.88),
+    0 0 0 1px rgba(255, 255, 255, 0.08),
+    0 0 clamp(40px, 8vw, 80px) color-mix(in srgb, var(--merchant-hue, #8557ff) 45%, transparent);
+  color: var(--ink);
+  padding: 5cqw;
+}
+
+.merchant-interactive-card__halo {
+  pointer-events: none;
+  position: absolute;
+  inset: -30%;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(255, 255, 255, 0.12), transparent 40%),
+    radial-gradient(circle at 100% 0%, rgba(173, 209, 255, 0.16), transparent 42%),
+    radial-gradient(circle at 50% 115%, color-mix(in srgb, var(--merchant-hue, #8557ff) 60%, transparent) 0%, transparent 70%);
+  mix-blend-mode: screen;
+  opacity: 0.9;
+  filter: blur(6px);
+}
+
+.merchant-interactive-card__noise {
+  pointer-events: none;
+  position: absolute;
+  inset: -40%;
+  opacity: 0.24;
+  background-image: radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.16) 0, transparent 0.9px);
+  background-size: 3px 3px;
+  mix-blend-mode: soft-light;
+}
+
+.merchant-interactive-card__header {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 3cqw;
+}
+
+.merchant-interactive-card__logo,
+.merchant-interactive-card__logo-fallback {
+  height: 12cqw;
+  width: 12cqw;
+  border-radius: 3cqw;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.merchant-interactive-card__logo-fallback {
+  display: grid;
+  place-items: center;
+  font-size: 5cqw;
+  font-weight: 900;
+  color: var(--ink);
+}
+
+.merchant-interactive-card__eyebrow {
+  font-size: 2.4cqw;
+  letter-spacing: 0.7cqw;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.68);
+}
+
+.merchant-interactive-card__name {
+  margin-top: 0.6cqw;
+  font-size: 4.2cqw;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  line-height: 1.1;
+}
+
+.merchant-interactive-card__qr {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  justify-content: center;
+  margin-top: 4cqw;
+}
+
+.merchant-interactive-card__qr.is-compact {
+  margin-top: 2cqw;
+}
+
+.merchant-interactive-card__qr-image {
+  width: 24cqw;
+  height: 24cqw;
+  border-radius: 2cqw;
   object-fit: contain;
-  object-position: center;
-  border-radius: 28px;
-  filter: drop-shadow(0 32px 64px rgba(0, 0, 0, 0.65));
-  user-select: none;
+  background: #faf9ff;
+  padding: 1.2cqw;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85), 0 14px 32px rgba(0, 0, 0, 0.55);
+}
+
+.merchant-interactive-card__qr.is-compact .merchant-interactive-card__qr-image {
+  width: 20cqw;
+  height: 20cqw;
+}
+
+.merchant-interactive-card__qr-placeholder {
+  display: grid;
+  place-content: center;
+  width: 24cqw;
+  height: 24cqw;
+  border: 0.12cqw solid rgba(255, 255, 255, 0.35);
+  border-radius: 2cqw;
+  font-size: 2cqw;
+  opacity: 0.65;
+}
+
+.merchant-interactive-card__points {
+  position: relative;
+  z-index: 2;
+  margin-top: auto;
+  padding-top: 3cqw;
+}
+
+.merchant-interactive-card__points-value {
+  font-size: 6.5cqw;
+  font-weight: 900;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.merchant-interactive-card__points-value span {
+  font-size: 4cqw;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.merchant-interactive-card__status {
+  margin-top: 1cqw;
+  font-size: 2.8cqw;
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.merchant-interactive-card__progress {
+  position: relative;
+  z-index: 2;
+  margin-top: 2.5cqw;
+  height: 1.2cqw;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.merchant-interactive-card__progress-fill {
+  display: block;
+  width: var(--merchant-progress);
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--merchant-hue, #8557ff) 70%, #fff), #f8f7ff);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--merchant-hue, #8557ff) 50%, transparent);
+  transition: width 450ms ease;
+}
+
+.landing-card-back {
+  background:
+    linear-gradient(145deg, rgba(112, 133, 255, 0.55) 0%, rgba(40, 30, 80, 0.95) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 40px 90px rgba(0, 0, 0, 0.78);
+}
+
+.landing-card-back-left {
+  left: 8%;
+  top: 18%;
+  transform: rotate(-10deg);
+  opacity: 0.55;
+}
+
+.landing-card-back-right {
+  left: 16%;
+  top: 10%;
+  transform: rotate(7deg);
+  opacity: 0.7;
+  background: linear-gradient(145deg, rgba(231, 116, 255, 0.45) 0%, rgba(50, 25, 90, 0.95) 100%);
+}
+
+.landing-card-featured {
+  left: 50%;
+  top: 22%;
+  transform: translateX(-50%) rotate(-3deg);
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  overflow: visible;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .loyalty-card__progress-fill,
+  .merchant-interactive-card__progress-fill {
+    transition: none;
+  }
 }
 
 .wallet-reward-block {
@@ -1951,12 +2479,29 @@ body:has(.wallet-shell) {
 }
 
 .compact-list-shell {
+  container-type: inline-size;
+  container-name: compact-list;
   overflow: hidden;
   border-radius: 1.25rem;
   border: 1px solid rgba(190, 164, 255, 0.14);
   background: rgba(12, 10, 22, 0.72);
   backdrop-filter: blur(16px);
   box-shadow: 0 16px 48px rgba(0, 0, 0, 0.35);
+}
+
+.compact-list-shell-stacked .compact-list-row {
+  display: flex;
+  align-items: flex-start;
+  min-height: 0;
+  padding: 0.75rem 0.85rem;
+}
+
+.compact-list-shell-stacked .compact-list-header,
+.compact-list-shell-stacked .compact-row-col,
+.compact-list-shell-stacked .compact-row-sub-desktop,
+.compact-list-shell-stacked .compact-row-badge-desktop,
+.compact-list-shell-stacked .compact-row-chevron {
+  display: none !important;
 }
 
 .compact-list-header {
@@ -1986,8 +2531,8 @@ body:has(.wallet-shell) {
   display: none;
 }
 
-@media (min-width: 768px) {
-  .compact-list-header {
+@container compact-list (min-width: 40rem) {
+  .compact-list-shell:not(.compact-list-shell-stacked) .compact-list-header {
     display: grid;
     grid-template-columns: 2.75rem minmax(0, 1.4fr) minmax(5rem, 0.7fr) minmax(5.5rem, 0.75fr) 1.25rem;
     align-items: center;
@@ -2002,11 +2547,11 @@ body:has(.wallet-shell) {
     color: var(--muted);
   }
 
-  .compact-list-header-meta {
+  .compact-list-shell:not(.compact-list-shell-stacked) .compact-list-header-meta {
     text-align: right;
   }
 
-  .compact-list-row {
+  .compact-list-shell:not(.compact-list-shell-stacked) .compact-list-row {
     display: grid;
     grid-template-columns: 2.75rem minmax(0, 1.4fr) minmax(5rem, 0.7fr) minmax(5.5rem, 0.75fr) 1.25rem;
     align-items: center;
@@ -2015,54 +2560,49 @@ body:has(.wallet-shell) {
     padding: 0.55rem 1rem;
   }
 
-  .compact-row-main {
+  .compact-list-shell:not(.compact-list-shell-stacked) .compact-row-main {
     min-width: 0;
   }
 
-  .compact-row-sub-mobile {
+  .compact-list-shell:not(.compact-list-shell-stacked) .compact-row-sub-mobile {
     display: none;
   }
 
-  .compact-row-sub-desktop,
-  .compact-row-col {
+  .compact-list-shell:not(.compact-list-shell-stacked) .compact-row-sub-desktop,
+  .compact-list-shell:not(.compact-list-shell-stacked) .compact-row-col {
     display: block;
   }
 
-  .compact-row-meta {
+  .compact-list-shell:not(.compact-list-shell-stacked) .compact-row-meta {
     text-align: right;
   }
 
-  .compact-row-chevron {
+  .compact-list-shell:not(.compact-list-shell-stacked) .compact-row-chevron {
     justify-self: end;
   }
 
-  .compact-row-avatar {
+  .compact-list-shell:not(.compact-list-shell-stacked) .compact-row-avatar {
     justify-self: start;
   }
 
-  .compact-list-shell-4col .compact-list-header,
-  .compact-list-shell-4col .compact-list-row {
-    grid-template-columns: 2.75rem minmax(0, 1.2fr) minmax(5.5rem, 0.75fr) minmax(6.5rem, 0.85fr) minmax(5.5rem, 0.7fr) 1.25rem;
+  .compact-list-shell-4col:not(.compact-list-shell-stacked) .compact-list-header,
+  .compact-list-shell-4col:not(.compact-list-shell-stacked) .compact-list-row {
+    grid-template-columns: 2.75rem minmax(0, 1.2fr) minmax(5rem, 0.7fr) minmax(7.5rem, 0.95fr) minmax(5rem, 0.65fr) 1.25rem;
   }
 
-  .compact-list-shell-4col .compact-row-badge-inline {
+  .compact-list-shell-4col:not(.compact-list-shell-stacked) .compact-row-badge-inline {
     display: none;
   }
 
-  .compact-list-shell-4col .compact-row-badge-desktop {
+  .compact-list-shell-4col:not(.compact-list-shell-stacked) .compact-row-badge-desktop {
     display: block;
   }
 }
 
-@media (min-width: 1024px) {
-  .compact-list-header,
-  .compact-list-row {
-    grid-template-columns: 2.75rem minmax(0, 1.6fr) minmax(6rem, 0.8fr) minmax(7rem, 0.85fr) 1.25rem;
-  }
-
-  .compact-list-shell-4col .compact-list-header,
-  .compact-list-shell-4col .compact-list-row {
-    grid-template-columns: 2.75rem minmax(0, 1.4fr) minmax(7rem, 0.85fr) minmax(8rem, 0.9fr) minmax(6.5rem, 0.75fr) 1.25rem;
+@container compact-list (min-width: 52rem) {
+  .compact-list-shell-4col:not(.compact-list-shell-stacked) .compact-list-header,
+  .compact-list-shell-4col:not(.compact-list-shell-stacked) .compact-list-row {
+    grid-template-columns: 2.75rem minmax(0, 1.35fr) minmax(6rem, 0.75fr) minmax(8.5rem, 0.95fr) minmax(6rem, 0.7fr) 1.25rem;
   }
 }
 
@@ -2160,12 +2700,22 @@ body:has(.wallet-shell) {
 }
 
 .merchant-status-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border-radius: 999px;
-  padding: 0.15rem 0.45rem;
+  padding: 0.2rem 0.55rem;
   font-size: 0.625rem;
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.04em;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.compact-row-badge-inline,
+.compact-row-badge-desktop {
+  min-width: 0;
 }
 
 .merchant-status-badge-ok {
@@ -2304,4 +2854,16 @@ body:has(.wallet-shell) {
 
 .recent-activity-row:last-child {
   border-bottom: none;
+}
+
+/* Fallback taille icônes si le CSS utilitaire tarde à charger */
+.employee-brand-mark svg {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.merchant-bottom-nav-item svg,
+.merchant-sidebar-link svg {
+  width: 1.25rem;
+  height: 1.25rem;
 }

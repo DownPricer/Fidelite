@@ -2,8 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { PrismCard } from "./prism-card";
-import { QrBlock } from "./qr-block";
+import { MerchantInteractiveCard } from "./merchant-interactive-card";
 import { CardEnlargedView } from "./card-enlarged-view";
 import type { CardHistoryItem, MerchantCardData, WalletEventPayload } from "./types";
 import { useWalletEvents } from "./use-wallet-events";
@@ -211,49 +210,14 @@ Le commerçant se réserve le droit de modifier ou d'annuler le programme de fid
               className="card-preview-btn group relative w-full"
               aria-label="Agrandir la carte pour le scan"
             >
-              <PrismCard
+              <MerchantInteractiveCard
                 as="div"
-                material="merchant"
-                hue={card.primaryColor}
-                className="h-auto aspect-[1.586/1] w-full p-5"
-              >
-                <div className="flex h-full flex-col">
-                  <div className="flex items-center gap-3">
-                    {card.logoUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={card.logoUrl} alt="" className="h-12 w-12 rounded-2xl object-cover" />
-                    ) : (
-                      <div
-                        className="grid h-12 w-12 place-items-center rounded-2xl text-lg font-black text-[var(--ink)]"
-                        style={{ backgroundColor: card.primaryColor }}
-                      >
-                        {card.name.slice(0, 1)}
-                      </div>
-                    )}
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-bold uppercase tracking-wider text-[var(--ink-soft)]">{card.name}</p>
-                      <p className="text-xs text-[var(--muted-strong)]">Fife Life</p>
-                    </div>
-                  </div>
-
-                  <div className="flex-1 flex items-center justify-center -mx-2">
-                    <div className="scale-75">
-                      <QrBlock slug={slug} preview={preview} />
-                    </div>
-                  </div>
-
-                  <div className="flex items-end justify-between">
-                    <div>
-                      <p className="text-2xl font-black tabular-nums text-[var(--ink)]">
-                        {card.points}<span className="text-base font-bold text-[var(--muted)]">/{card.visitsRequired}</span>
-                      </p>
-                      <p className="text-xs font-medium text-[var(--ink-soft)] mt-0.5">
-                        {rewardAvailable ? "Récompense disponible" : `Encore ${remaining}`}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </PrismCard>
+                card={card}
+                slug={slug}
+                preview={preview}
+                compactQr
+                className="h-auto aspect-[1.586/1] w-full"
+              />
 
               {/* Expand icon hint */}
               <div className="expand-hint absolute bottom-3 right-3 grid h-8 w-8 place-items-center rounded-full bg-black/40 backdrop-blur-sm opacity-60 group-hover:opacity-100 transition-opacity">

@@ -32,7 +32,8 @@
 #      certbot/certbot certonly --webroot -w /var/www/certbot \
 #      -d fidelite.sitereadyshd.fr \
 #      -d app-fidelite.sitereadyshd.fr \
-#      -d admin-fidelite.sitereadyshd.fr
+#      -d admin-fidelite.sitereadyshd.fr \
+#      -d employe-fidelite.sitereadyshd.fr
 #
 #    Si le VPS utilise déjà un autre montage (ex. /etc/nginx/ssl/live/...),
 #    recopiez exactement cette convention. N’adaptez que les trois noms FifeLite.
@@ -40,9 +41,10 @@
 #    puis nginx -t && nginx -s reload.
 #
 # Sous-domaines FifeLite uniquement
-#   fidelite.sitereadyshd.fr       → espace client
-#   app-fidelite.sitereadyshd.fr   → commerçant / caisse
-#   admin-fidelite.sitereadyshd.fr → super-admin
+#   fidelite.sitereadyshd.fr         → espace client
+#   app-fidelite.sitereadyshd.fr     → commerçant
+#   employe-fidelite.sitereadyshd.fr → application employé (scan)
+#   admin-fidelite.sitereadyshd.fr   → super-admin
 # Ne pas utiliser app.sitereadyshd.fr ni admin.sitereadyshd.fr.
 
 upstream fifelite_web {
@@ -73,6 +75,23 @@ server {
 server {
     listen 80;
     server_name app-fidelite.sitereadyshd.fr;
+
+    location / {
+        proxy_pass http://fifelite_web;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "";
+        proxy_read_timeout 120s;
+    }
+}
+
+server {
+    listen 80;
+    server_name employe-fidelite.sitereadyshd.fr;
 
     location / {
         proxy_pass http://fifelite_web;

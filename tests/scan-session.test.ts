@@ -114,7 +114,7 @@ describe("champ manuel et caméra", () => {
     }));
     vi.stubGlobal("fetch", fetchMock);
 
-    const cameraToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.camera";
+    const cameraToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJjYW1lcmEifQ.signature";
     const typed = `  ${cameraToken}  `;
     const manualToken = readManualToken(typed);
     expect(manualToken).toBe(cameraToken);

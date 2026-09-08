@@ -1,6 +1,13 @@
 import { randomBytes } from "crypto";
 import { requireMerchantAdmin, requireMutatingRequest } from "@/lib/api-guard";
 import { writeAudit } from "@/lib/audit";
+import {
+  buildInvitationLink,
+  createInvitationToken,
+  hashInvitationToken,
+  invitationExpiryDate,
+} from "@/lib/employee-invitation";
+import { revokeEmployeeSessions } from "@/lib/employee-session";
 import { clientIp, jsonError, jsonOk, readJson, userAgent } from "@/lib/http";
 import { hashPassword } from "@/lib/password";
 import { prisma } from "@/lib/prisma";
@@ -105,13 +112,14 @@ export async function POST(req: Request) {
   const existing = await prisma.user.findUnique({ where: { email: parsed.data.email } });
   if (existing) return jsonError("Un compte existe déjà avec cet e-mail.", 409);
 
-  const tempPassword = parsed.data.password ?? randomBytes(5).toString("hex") + "Aa1!";
+  const invitationToken = createInvitationToken();
+  const placeholderPassword = randomBytes(24).toString("hex") + "Aa1!";
   const permissions = parsed.data.permissions ?? presetPermissions(parsed.data.staffPreset);
 
   const user = await prisma.user.create({
     data: {
       email: parsed.data.email,
-      passwordHash: await hashPassword(tempPassword),
+      passwordHash: await hashPassword(placeholderPassword),
       firstName: parsed.data.firstName,
       lastName: parsed.data.lastName,
       phone: parsed.data.phone || null,
@@ -130,6 +138,8 @@ export async function POST(req: Request) {
       invitationStatus: "PENDING",
       invitedAt: new Date(),
       inviteMessage: parsed.data.inviteMessage,
+      invitationTokenHash: hashInvitationToken(invitationToken),
+      invitationExpiresAt: invitationExpiryDate(),
     },
     include: { user: true },
   });
@@ -147,7 +157,7 @@ export async function POST(req: Request) {
     {
       ok: true,
       employee: mapEmployee(membership),
-      temporaryPassword: parsed.data.password ? undefined : tempPassword,
+      invitationUrl: buildInvitationLink(invitationToken),
       invitationSent: true,
     },
     201,

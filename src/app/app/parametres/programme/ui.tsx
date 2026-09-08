@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Alert, Button, Field, Input, cn } from "@/components/ui";
 import { MerchantPageHeader } from "@/components/merchant/merchant-ui";
+import { ProgramPreviewCard } from "@/components/merchant/program-preview-card";
 import type { LoyaltyMode } from "@prisma/client";
 import type { ProgramConfig, RewardConfig, ProgramRules } from "@/lib/loyalty-program";
 import { DEFAULT_RULES } from "@/lib/loyalty-program";
@@ -330,7 +331,15 @@ export function ProgramConfigurator({ demo = false }: { demo?: boolean }) {
           <div className="program-step-card">
             <p className="text-xs font-bold uppercase tracking-widest text-[var(--muted)]">Aperçu client</p>
             <div className="mt-4 flex flex-col items-center">
-              <div className="grid h-16 w-16 place-items-center rounded-full bg-[var(--violet)]/20 text-2xl font-black text-[var(--violet-bright)]">FL</div>
+              <div className="w-full max-w-sm">
+                <ProgramPreviewCard
+                  merchantName="Mon commerce"
+                  primaryColor="#8557ff"
+                  points={Number(simBalance) || 320}
+                  visitsRequired={rewards.find((r) => r.isActive)?.threshold ?? 500}
+                  rewardLabel={rewards.find((r) => r.isActive)?.name ?? "Récompense"}
+                />
+              </div>
               <p className="mt-3 text-sm font-bold text-[var(--ink)]">
                 Prochain : {rewards.find((r) => r.isActive)?.name ?? "—"}
               </p>

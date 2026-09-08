@@ -205,6 +205,15 @@ export const adjustmentSchema = z.object({
   reason: z.string().trim().min(3, "Le motif est obligatoire.").max(200),
 });
 
+export const acceptInvitationSchema = z.object({
+  token: z.string().min(16).max(128),
+  password: passwordSchema,
+});
+
+export const invitationTokenQuerySchema = z.object({
+  token: z.string().min(16).max(128),
+});
+
 export function zodErrorMessage(error: z.ZodError) {
   return error.issues[0]?.message ?? "Données invalides.";
 }

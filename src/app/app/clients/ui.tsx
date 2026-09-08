@@ -198,7 +198,7 @@ export function CustomerDetailPanel({ id, demo = false }: { id: string; demo?: b
 
       <section>
         <h3 className="mb-3 text-xs font-bold uppercase tracking-widest text-[var(--muted)]">Historique récent</h3>
-        <CompactListShell>
+        <CompactListShell layout="stack">
           {txs.map((tx) => (
             <div key={tx.id} className="compact-list-row">
               <div className="flex-1">

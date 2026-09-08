@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Exemple minimal — Carte client</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="./cartes.css">
+</head>
+<body style="margin:0;padding:24px;background:#101113">
+  <!-- Remplacer seulement les valeurs. Largeur libre, proportions conservées. -->
+  <main style="max-width:900px;margin:auto">
+    <article class="loyalty-card" data-tier="bronze" data-qr-mode="engraved"
+             style="--progress:24.9%" aria-label="Carte Bronze de Marie Terese">
+      <header class="loyalty-card__heading">
+        <p class="loyalty-card__eyebrow">MEMBRE</p>
+        <h2 class="loyalty-card__tier">Bronze</h2>
+      </header>
+      <div class="loyalty-card__qr">
+        <img class="loyalty-card__qr-image" src="./assets/qr-demo.svg" alt="QR de démonstration">
+      </div>
+      <p class="loyalty-card__name">Marie Terese</p>
+      <p class="loyalty-card__points">12 450 pts</p>
+      <p class="loyalty-card__status">Vers Argent · 37 550 pts restants</p>
+      <div class="loyalty-card__progress" role="progressbar" aria-valuemin="0" aria-valuemax="100"
+           aria-valuenow="24.9" aria-label="Progression vers Argent">
+        <span class="loyalty-card__progress-fill"></span>
+      </div>
+    </article>
+  </main>
+</body>
+</html>

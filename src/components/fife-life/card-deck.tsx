@@ -5,8 +5,7 @@ import { motion, useMotionValue, useReducedMotion } from "motion/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { DEMO_TIER_DECK_ORDER } from "@/lib/demo-tier-card-images";
 import { GlobalCard } from "./global-card";
-import { MerchantFace } from "./merchant-face";
-import { PrismCard } from "./prism-card";
+import { MerchantInteractiveCard } from "./merchant-interactive-card";
 import { resolveTier } from "./tier";
 import type { MerchantCardData, WalletTier } from "./types";
 
@@ -23,7 +22,7 @@ function readDeckMetrics(root: HTMLElement | null) {
   if (!root) return { spread: 32, offsetY: 105 };
   const style = getComputedStyle(root);
   const cardW = parseFloat(style.getPropertyValue("--wallet-card-width")) || 320;
-  const cardH = parseFloat(style.getPropertyValue("--wallet-card-height")) || cardW / 1.586;
+  const cardH = parseFloat(style.getPropertyValue("--wallet-card-height")) || cardW / (1427 / 863);
   const spread = parseFloat(style.getPropertyValue("--wallet-spread")) || Math.round(32 * (cardW / 320));
   return { spread, offsetY: cardH / 2 };
 }
@@ -36,12 +35,14 @@ function demoStartIndex(points: number) {
 
 export function CardDeck({
   points,
+  customerName,
   cards,
   onOpenMerchant,
   onEnlargeCard,
   demoVisual = false,
 }: {
   points: number;
+  customerName: string;
   fifeLifePoints?: number;
   cards: MerchantCardData[];
   onOpenMerchant: (card: MerchantCardData) => void;
@@ -131,7 +132,7 @@ export function CardDeck({
         <div className="deck-halo" aria-hidden />
         <div className="deck-floor-shadow" aria-hidden />
         <Link href="/carte/identite" className="absolute inset-x-0 top-[12%] z-20 mx-auto block w-[var(--wallet-card-width)] max-w-full">
-          <GlobalCard points={points} large />
+          <GlobalCard points={points} customerName={customerName} large />
         </Link>
       </div>
     );
@@ -213,7 +214,7 @@ export function CardDeck({
               item.kind === "global" || item.kind === "global-tier" ? (
                 <button
                   type="button"
-                  className="deck-card-slot block h-full w-full cursor-pointer border-0 bg-transparent p-0"
+                  className="deck-card-slot block w-full cursor-pointer border-0 bg-transparent p-0"
                   onClick={() => {
                     if (active && onEnlargeCard) {
                       onEnlargeCard(globalEnlargePayload(item.kind === "global-tier" ? item.tier : undefined));
@@ -222,25 +223,27 @@ export function CardDeck({
                 >
                   <GlobalCard
                     points={points}
+                    customerName={customerName}
                     large
                     mode="wallet"
-                    demoVisual={demoVisual && item.kind === "global-tier"}
                     tierOverride={item.kind === "global-tier" ? item.tier : undefined}
+                    demoTierPreview={demoVisual && item.kind === "global-tier"}
+                    interactive={active}
                   />
                 </button>
               ) : (
-                <PrismCard
+                <MerchantInteractiveCard
                   as="button"
-                  material="merchant"
-                  hue={item.card.primaryColor}
-                  className="deck-card-slot h-full w-full p-4 text-left cursor-pointer"
+                  card={item.card}
+                  slug={item.card.slug}
+                  preview={!item.card.slug}
+                  className="deck-card-slot h-full w-full cursor-pointer text-left"
+                  interactive={active}
                   onClick={() => {
                     if (active && onEnlargeCard) onEnlargeCard(item.card);
                     else if (!active) setIndex(i);
                   }}
-                >
-                  <MerchantFace card={item.card} />
-                </PrismCard>
+                />
               );
 
             return (

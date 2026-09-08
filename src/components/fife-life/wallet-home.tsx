@@ -160,7 +160,14 @@ export function WalletHome({
           </section>
 
           <div className="wallet-deck-block mt-4 shrink-0">
-            <CardDeck points={points} cards={cards} onOpenMerchant={openCard} onEnlargeCard={setEnlargedCard} demoVisual={preview} />
+            <CardDeck
+              points={points}
+              customerName={firstName}
+              cards={cards}
+              onOpenMerchant={openCard}
+              onEnlargeCard={setEnlargedCard}
+              demoVisual={preview}
+            />
           </div>
         </div>
 
@@ -257,6 +264,8 @@ export function WalletHome({
           open
           card={enlargedCard}
           slug={enlargedCard.slug}
+          customerName={firstName}
+          fifeLifePoints={points}
           preview={preview}
           onClose={() => setEnlargedCard(null)}
         />

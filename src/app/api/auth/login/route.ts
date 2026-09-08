@@ -1,5 +1,7 @@
+import { MerchantRole } from "@prisma/client";
 import { requireMutatingRequest } from "@/lib/api-guard";
 import { writeAudit } from "@/lib/audit";
+import { env } from "@/lib/env";
 import { clientIp, jsonError, jsonOk, readJson, userAgent } from "@/lib/http";
 import { LIMITS, rateLimit } from "@/lib/rate-limit";
 import { prisma } from "@/lib/prisma";
@@ -24,10 +26,31 @@ export async function POST(req: Request) {
   }
 
   try {
-    const user = await prisma.user.findUnique({ where: { email: parsed.data.email } });
+    const user = await prisma.user.findUnique({
+      where: { email: parsed.data.email },
+      include: {
+        merchantMemberships: {
+          where: { isActive: true },
+          include: { merchant: true },
+        },
+      },
+    });
     const valid = user ? await verifyPassword(parsed.data.password, user.passwordHash) : false;
     if (!user || !user.isActive || !valid) {
       return jsonError("Identifiants incorrects.", 401);
+    }
+
+    const isMerchantAdmin = user.merchantMemberships.some(
+      (item) => item.role === MerchantRole.MERCHANT_ADMIN && item.merchant.isActive,
+    );
+    const isEmployeeOnly =
+      user.merchantMemberships.some((item) => item.role === MerchantRole.EMPLOYEE) && !isMerchantAdmin;
+
+    if (isEmployeeOnly) {
+      return jsonError(
+        `Utilisez l'application employé : ${env.employeeOrigin.replace(/\/$/, "")}`,
+        403,
+      );
     }
 
     await createSession(user.id, { ip, userAgent: userAgent(req) });

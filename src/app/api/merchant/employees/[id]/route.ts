@@ -1,6 +1,12 @@
-import { randomBytes } from "crypto";
 import { requireMerchantAdmin, requireMutatingRequest } from "@/lib/api-guard";
 import { writeAudit } from "@/lib/audit";
+import {
+  buildInvitationLink,
+  createInvitationToken,
+  hashInvitationToken,
+  invitationExpiryDate,
+} from "@/lib/employee-invitation";
+import { revokeEmployeeSessions } from "@/lib/employee-session";
 import { clientIp, jsonError, jsonOk, readJson, userAgent } from "@/lib/http";
 import { hashPassword } from "@/lib/password";
 import { prisma } from "@/lib/prisma";
@@ -108,6 +114,9 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
     parsed.data.permissions ??
     (parsed.data.staffPreset ? presetPermissions(parsed.data.staffPreset) : undefined);
 
+  const resendInvitation = parsed.data.invitationStatus === "PENDING";
+  const invitationToken = resendInvitation ? createInvitationToken() : null;
+
   await prisma.user.update({
     where: { id: membership.userId },
     data: {
@@ -127,10 +136,20 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
       ...(permissions ? { permissions } : {}),
       ...(parsed.data.invitationStatus ? { invitationStatus: parsed.data.invitationStatus } : {}),
       ...(parsed.data.inviteMessage !== undefined ? { inviteMessage: parsed.data.inviteMessage } : {}),
-      ...(parsed.data.invitationStatus === "PENDING" ? { invitedAt: new Date() } : {}),
+      ...(resendInvitation
+        ? {
+            invitedAt: new Date(),
+            invitationTokenHash: hashInvitationToken(invitationToken!),
+            invitationExpiresAt: invitationExpiryDate(),
+          }
+        : {}),
     },
     include: { user: true },
   });
+
+  if (parsed.data.isActive === false) {
+    await revokeEmployeeSessions(membership.userId);
+  }
 
   await writeAudit({
     actorId: staff.user.id,
@@ -141,7 +160,11 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
     userAgent: userAgent(req),
   });
 
-  return jsonOk({ ok: true, employee: mapEmployee(updated) });
+  return jsonOk({
+    ok: true,
+    employee: mapEmployee(updated),
+    ...(invitationToken ? { invitationUrl: buildInvitationLink(invitationToken) } : {}),
+  });
 }
 
 export async function DELETE(req: Request, context: { params: Promise<{ id: string }> }) {
@@ -158,8 +181,10 @@ export async function DELETE(req: Request, context: { params: Promise<{ id: stri
 
   await prisma.merchantMembership.update({
     where: { id: membership.id },
-    data: { isActive: false, invitationStatus: "CANCELLED" },
+    data: { isActive: false, invitationStatus: "CANCELLED", invitationTokenHash: null, invitationExpiresAt: null },
   });
+
+  await revokeEmployeeSessions(membership.userId);
 
   await writeAudit({
     actorId: staff.user.id,

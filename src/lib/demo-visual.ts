@@ -1,4 +1,5 @@
 import { PREVIEW_CARDS, PREVIEW_HISTORY, PREVIEW_PROFILE, PREVIEW_PREFERENCES } from "@/components/fife-life/preview-data";
+import { presetPermissions } from "@/lib/staff-permissions";
 
 export const DEMO_FIRST_NAME = "Irène";
 export const DEMO_POINTS = 180;
@@ -30,7 +31,7 @@ export function demoWalletProps(searchParams?: { sheet?: string; toast?: string 
 
 export function demoUniversalDetailProps() {
   return {
-    firstName: DEMO_FIRST_NAME,
+    customerName: DEMO_FIRST_NAME,
     fifeLifePoints: DEMO_POINTS,
     history: PREVIEW_HISTORY,
     preview: true,
@@ -55,4 +56,10 @@ export const DEMO_MERCHANT = {
     rewards: 16,
     employees: 3,
   },
+};
+
+export const DEMO_EMPLOYEE = {
+  firstName: "Hugo",
+  merchantName: DEMO_MERCHANT.merchantName,
+  permissions: presetPermissions("CASHIER"),
 };

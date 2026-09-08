@@ -51,6 +51,11 @@ enum InvitationStatus {
   CANCELLED
 }
 
+enum SessionKind {
+  STANDARD
+  EMPLOYEE
+}
+
 enum RewardType {
   FREE_PRODUCT
   FREE_SERVICE
@@ -140,17 +145,21 @@ model CustomerPreferences {
 }
 
 model Session {
-  id        String   @id @default(cuid())
-  userId    String
-  tokenHash String   @unique
-  expiresAt DateTime
-  userAgent String?
-  ip        String?
-  createdAt DateTime @default(now())
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                   String       @id @default(cuid())
+  userId               String
+  tokenHash            String       @unique
+  kind                 SessionKind  @default(STANDARD)
+  merchantMembershipId String?
+  expiresAt            DateTime
+  userAgent            String?
+  ip                   String?
+  createdAt            DateTime     @default(now())
+  user                 User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  merchantMembership   MerchantMembership? @relation(fields: [merchantMembershipId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([expiresAt])
+  @@index([merchantMembershipId])
 }
 
 model Merchant {
@@ -180,15 +189,19 @@ model MerchantMembership {
   role             MerchantRole
   staffPreset      StaffPreset      @default(CASHIER)
   permissions      Json?
-  invitationStatus InvitationStatus @default(NONE)
-  inviteMessage    String?
-  invitedAt        DateTime?
-  lastActivityAt   DateTime?
-  isActive         Boolean          @default(true)
-  createdAt        DateTime         @default(now())
-  updatedAt        DateTime         @updatedAt
-  user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  merchant         Merchant         @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  invitationStatus     InvitationStatus @default(NONE)
+  invitationTokenHash  String?          @unique
+  invitationExpiresAt  DateTime?
+  invitationAcceptedAt DateTime?
+  inviteMessage        String?
+  invitedAt            DateTime?
+  lastActivityAt       DateTime?
+  isActive             Boolean          @default(true)
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
+  user                 User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  merchant             Merchant         @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  employeeSessions     Session[]
 
   @@unique([userId, merchantId])
   @@index([merchantId, role, isActive])

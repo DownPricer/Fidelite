@@ -1,3 +1,5 @@
+import { QrInputError, extractFifeLifeQrToken } from "./qr-input";
+
 export const INSTANT_DUPLICATE_MS = 1_500;
 
 export const SCANNER_STATE = {
@@ -105,5 +107,12 @@ export async function postCaisseScan(token: string) {
 }
 
 export function readManualToken(raw: string) {
-  return raw.trim();
+  try {
+    return extractFifeLifeQrToken(raw);
+  } catch (error) {
+    if (error instanceof QrInputError) {
+      throw error;
+    }
+    throw new QrInputError("Ce lien n'est pas un QR Fife Life valide.");
+  }
 }

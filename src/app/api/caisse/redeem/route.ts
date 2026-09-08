@@ -1,4 +1,4 @@
-import { requireCaisse, requireMutatingRequest } from "@/lib/api-guard";
+import { requireCaisse, requireCaissePermission, requireMutatingRequest } from "@/lib/api-guard";
 import { clientIp, jsonError, jsonOk, readJson, userAgent } from "@/lib/http";
 import { LoyaltyError } from "@/lib/loyalty";
 import { applyLoyaltyAction } from "@/lib/loyalty-service";
@@ -10,6 +10,9 @@ export async function POST(req: Request) {
   if (csrf.error) return csrf.error;
   const staff = await requireCaisse(req);
   if (staff.error || !staff.user || !staff.membership) return staff.error ?? jsonError("Accès refusé.", 403);
+
+  const permissionError = requireCaissePermission(staff.membership, "redeemReward");
+  if (permissionError) return permissionError;
 
   const parsed = caisseActionSchema.safeParse(await readJson(req));
   if (!parsed.success) return jsonError(zodErrorMessage(parsed.error));

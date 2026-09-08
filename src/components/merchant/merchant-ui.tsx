@@ -171,12 +171,25 @@ export function CompactListShell({
   children,
   className,
   columns = 3,
+  layout = "auto",
 }: {
   children: ReactNode;
   className?: string;
   columns?: 3 | 4;
+  layout?: "auto" | "stack";
 }) {
-  return <div className={cn("compact-list-shell", columns === 4 && "compact-list-shell-4col", className)}>{children}</div>;
+  return (
+    <div
+      className={cn(
+        "compact-list-shell",
+        columns === 4 && "compact-list-shell-4col",
+        layout === "stack" && "compact-list-shell-stacked",
+        className,
+      )}
+    >
+      {children}
+    </div>
+  );
 }
 
 export function ListToolbar({
