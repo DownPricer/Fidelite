@@ -3,6 +3,7 @@ import { publicScanPayload } from "@/lib/caisse-program";
 import type { CardTemplateConfig } from "@/lib/card-template-schema";
 import { prisma } from "@/lib/prisma";
 import { QrError, verifyQrToken } from "@/lib/qr";
+import { logWalletUnlock } from "@/lib/wallet-unlock-log";
 
 async function buildScanResult(input: {
   user: { id: string; firstName: string };
@@ -53,12 +54,17 @@ async function buildScanResult(input: {
     }
 
     if (cardJustCreated) {
-      await tx.walletEvent.create({
+      logWalletUnlock("carte créée ou réactivée", {
+        merchantId: input.merchantId,
+        membershipId: membership.id,
+        userId: input.user.id,
+      });
+      const walletEvent = await tx.walletEvent.create({
         data: {
           userId: input.user.id,
           merchantId: input.merchantId,
           customerMembershipId: membership.id,
-          type: "CARD_CREATED",
+          type: "CARD_UNLOCKED",
           payload: {
             merchantName: membership.merchant.name,
             slug: membership.merchant.slug,
@@ -70,6 +76,13 @@ async function buildScanResult(input: {
             loyaltyMode: membership.merchant.program!.mode,
           },
         },
+      });
+      logWalletUnlock("événement créé", {
+        eventId: walletEvent.id,
+        eventType: walletEvent.type,
+        merchantId: input.merchantId,
+        membershipId: membership.id,
+        userId: input.user.id,
       });
     }
 
@@ -134,6 +147,7 @@ export async function processCaisseScan(input: {
   merchantId: string;
   actorUserId: string;
 }) {
+  logWalletUnlock("scan validé", { merchantId: input.merchantId });
   const payload = await verifyQrToken(input.token.trim());
 
   const global = await prisma.fifeLifeQrToken.findUnique({
@@ -157,6 +171,7 @@ export async function processCaisseScanByClientNumber(input: {
   merchantId: string;
   actorUserId: string;
 }) {
+  logWalletUnlock("scan validé", { merchantId: input.merchantId });
   const normalized = normalizeClientNumber(input.clientNumber);
   if (normalized.length < 4) {
     throw new QrError("Numéro client invalide.");

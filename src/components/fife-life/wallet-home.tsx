@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
 import { CardDeck } from "./card-deck";
@@ -11,12 +10,10 @@ import { WalletCardsList } from "./wallet-cards-list";
 import { NewCardToast } from "./new-card-toast";
 import { resolveTier } from "./tier";
 import type { MerchantCardData, WalletEventPayload } from "./types";
-import {
-  markCardAnimated,
-  markWalletEventSeen,
-  shouldPlayNewCardAnimation,
-} from "@/lib/wallet-event-dedup";
+import { markWalletEventSeen } from "@/lib/wallet-event-dedup";
+import { isUnlockEventType } from "@/lib/wallet-unlock";
 import { useWalletEvents } from "./use-wallet-events";
+import { useWalletUnlockAnimation } from "./use-wallet-unlock-animation";
 
 const ACTIVITY = [
   { label: "Brasserie Nova · 3 cocktails", delta: "+ 480 pts" },
@@ -45,7 +42,6 @@ export function WalletHome({
   initialSheetOpen?: boolean;
   initialNewCard?: string | null;
 }) {
-  const router = useRouter();
   const displayName = customerName ?? (lastName ? `${firstName} ${lastName}` : firstName);
   const profileHref = preview ? "/compte?demo=1" : "/compte";
   const settingsHref = preview ? "/compte/parametres?demo=1" : "/compte/parametres";
@@ -53,9 +49,13 @@ export function WalletHome({
   const [points, setPoints] = useState(fifeLifePoints);
   const [cards, setCards] = useState(initialCards);
   const [sheetOpen, setSheetOpen] = useState(initialSheetOpen);
-  const [newCardName, setNewCardName] = useState<string | null>(initialNewCard ?? null);
-  const [newCard, setNewCard] = useState<MerchantCardData | null>(null);
   const [enlargedCard, setEnlargedCard] = useState<MerchantCardData | null>(null);
+  const {
+    newCardName,
+    newCard,
+    enqueueUnlock,
+    onAnimationDone,
+  } = useWalletUnlockAnimation(!preview, setCards);
 
   const tier = resolveTier(points);
 
@@ -70,12 +70,6 @@ export function WalletHome({
   useEffect(() => {
     setSheetOpen(initialSheetOpen);
   }, [initialSheetOpen]);
-
-  useEffect(() => {
-    if (initialNewCard && !preview) {
-      setNewCardName(initialNewCard);
-    }
-  }, [initialNewCard, preview]);
 
   const onEvent = useCallback(
     (event: WalletEventPayload) => {
@@ -108,41 +102,11 @@ export function WalletHome({
         );
         return;
       }
-      if (event.type === "CARD_CREATED") {
-        markWalletEventSeen(event.id);
-        const name = typeof event.payload.merchantName === "string" ? event.payload.merchantName : "Nouveau commerce";
-        const created: MerchantCardData = {
-          id: event.customerMembershipId ?? `tmp-${event.id}`,
-          merchantId: event.merchantId ?? "",
-          slug: typeof event.payload.slug === "string" ? event.payload.slug : "",
-          name,
-          logoUrl: typeof event.payload.logoUrl === "string" ? event.payload.logoUrl : null,
-          primaryColor: typeof event.payload.primaryColor === "string" ? event.payload.primaryColor : "#8557ff",
-          points: typeof event.payload.points === "number" ? event.payload.points : 0,
-          visitsRequired: typeof event.payload.visitsRequired === "number" ? event.payload.visitsRequired : 10,
-          rewardLabel: typeof event.payload.rewardLabel === "string" ? event.payload.rewardLabel : "Récompense",
-        };
-        setCards((prev) => {
-          const alreadyInWallet =
-            Boolean(event.customerMembershipId) &&
-            prev.some((card) => card.id === event.customerMembershipId);
-          const playAnimation = shouldPlayNewCardAnimation(
-            event.id,
-            event.customerMembershipId,
-            alreadyInWallet,
-          );
-          if (playAnimation) {
-            setNewCardName(name);
-            setNewCard(created);
-            if (event.customerMembershipId) markCardAnimated(event.customerMembershipId);
-            router.refresh();
-          }
-          if (alreadyInWallet) return prev;
-          return [created, ...prev];
-        });
+      if (isUnlockEventType(event.type)) {
+        enqueueUnlock(event);
       }
     },
-    [router],
+    [enqueueUnlock],
   );
 
   useWalletEvents(!preview, onEvent);
@@ -294,12 +258,9 @@ export function WalletHome({
 
       <CardsSheet open={sheetOpen} cards={cards} onClose={() => setSheetOpen(false)} onOpenCard={openCard} />
       <NewCardToast
-        name={newCardName}
+        name={newCardName ?? (initialNewCard && !preview ? initialNewCard : null)}
         card={newCard ?? cards.find((c) => c.name === newCardName) ?? null}
-        onDone={() => {
-          setNewCardName(null);
-          setNewCard(null);
-        }}
+        onDone={onAnimationDone}
       />
 
       {enlargedCard ? (

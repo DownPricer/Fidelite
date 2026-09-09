@@ -202,7 +202,7 @@ describe("cycle wallet — déduplication animation", () => {
     ).toBe(false);
   });
 
-  it("ne joue pas l’animation si la carte est déjà dans le wallet", () => {
+  it("ne joue pas l’animation si la carte est déjà dans le wallet (legacy client)", () => {
     expect(
       shouldPlayNewCardAnimation("evt-new", "membership-2", true),
     ).toBe(false);

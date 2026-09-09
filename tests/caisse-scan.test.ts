@@ -102,6 +102,10 @@ describe("processCaisseScan — QR global Fife Life", () => {
         id: "grant_2",
         expiresAt: new Date("2026-08-30T12:03:00.000Z"),
       });
+    walletEventCreate.mockResolvedValue({
+      id: "wallet_evt_1",
+      type: "CARD_UNLOCKED",
+    });
   });
 
   it("accepte deux scans successifs avec exactement le même QR et le même commerce", async () => {
@@ -141,7 +145,7 @@ describe("processCaisseScan — QR global Fife Life", () => {
     expect(walletEventCreate).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
-          type: "CARD_CREATED",
+          type: "CARD_UNLOCKED",
         }),
       }),
     );

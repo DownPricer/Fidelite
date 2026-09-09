@@ -81,7 +81,7 @@ export function NewCardToast({
               />
               <div className="pointer-events-none absolute inset-x-0 bottom-4 px-5 text-center">
                 <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-[var(--violet-bright)] drop-shadow">
-                  Nouvelle carte obtenue
+                  Nouvelle carte débloquée
                 </p>
                 <p className="mt-2 text-xs text-white/80 drop-shadow">La carte rejoint votre portefeuille Fife Life.</p>
               </div>

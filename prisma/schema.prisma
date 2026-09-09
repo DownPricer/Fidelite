@@ -129,6 +129,7 @@ enum AccountDeletionStatus {
 
 enum WalletEventType {
   CARD_CREATED
+  CARD_UNLOCKED
   CARD_REMOVED
   MERCHANT_POINTS_UPDATED
   REWARD_REDEEMED
@@ -594,12 +595,14 @@ model WalletEvent {
   type                 WalletEventType
   payload              Json
   createdAt            DateTime        @default(now())
+  acknowledgedAt       DateTime?
 
   user       User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   merchant   Merchant?           @relation(fields: [merchantId], references: [id], onDelete: SetNull)
   membership CustomerMembership? @relation(fields: [customerMembershipId], references: [id], onDelete: SetNull)
 
   @@index([userId, createdAt])
+  @@index([userId, acknowledgedAt])
 }
 
 /// QR global et universel Fife Life, un par utilisateur.

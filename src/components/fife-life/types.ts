@@ -34,9 +34,17 @@ export type CardHistoryItem = {
 
 export type WalletEventPayload = {
   id: string;
-  type: "CARD_CREATED" | "MERCHANT_POINTS_UPDATED" | "REWARD_REDEEMED" | "FIFE_LIFE_POINTS_UPDATED" | string;
+  type:
+    | "CARD_UNLOCKED"
+    | "CARD_CREATED"
+    | "CARD_REMOVED"
+    | "MERCHANT_POINTS_UPDATED"
+    | "REWARD_REDEEMED"
+    | "FIFE_LIFE_POINTS_UPDATED"
+    | string;
   createdAt: string;
   merchantId: string | null;
   customerMembershipId: string | null;
   payload: Record<string, unknown>;
+  acknowledgedAt?: string | null;
 };
