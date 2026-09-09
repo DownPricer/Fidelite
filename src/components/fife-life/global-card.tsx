@@ -46,12 +46,10 @@ export function GlobalCard({
   const showQrOnCard = mode === "wallet" && large;
 
   const [qr, setQr] = useState<string | null>(() =>
-    showQrOnCard ? (preview ? PREVIEW_QR : getCachedQr()) : null,
+    showQrOnCard ? (preview ? PREVIEW_QR : getCachedQr("fife-life")) : null,
   );
-
   useEffect(() => {
     if (!showQrOnCard || preview) return;
-    if (qr) return;
 
     let cancelled = false;
     void loadUniversalQr("fife-life").then((next) => {
@@ -61,7 +59,7 @@ export function GlobalCard({
     return () => {
       cancelled = true;
     };
-  }, [showQrOnCard, preview, qr]);
+  }, [showQrOnCard, preview]);
 
   const name = customerName.trim() || "Membre";
   const effectiveClientNumber = clientNumber ?? (preview ? DEMO_CLIENT_NUMBER : null);

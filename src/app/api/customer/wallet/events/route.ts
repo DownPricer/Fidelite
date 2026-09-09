@@ -4,6 +4,7 @@ import { requireUser } from "@/lib/api-guard";
 import { jsonError } from "@/lib/http";
 import { prisma } from "@/lib/prisma";
 import { logWalletUnlock } from "@/lib/wallet-unlock-log";
+import { shouldSendSseEvent } from "@/lib/wallet-unlock-client";
 import { serializeWalletEvent, UNLOCK_EVENT_TYPES } from "@/lib/wallet-unlock";
 
 export const runtime = "nodejs";
@@ -70,7 +71,7 @@ export async function GET(req: Request) {
         if (events.length === 0) return;
 
         for (const event of events) {
-          if (sentIds.has(event.id)) continue;
+          if (!shouldSendSseEvent(event.id, sentIds)) continue;
           sentIds.add(event.id);
           sseChunk(encoder, controller, event);
           if (!sinceCreatedAt || event.createdAt > sinceCreatedAt) {

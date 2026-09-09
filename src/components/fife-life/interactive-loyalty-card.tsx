@@ -69,7 +69,7 @@ export function InteractiveLoyaltyCard({
   const [autoQr, setAutoQr] = useState<string | null>(() => {
     if (!showQr) return null;
     if (qrSrc) return qrSrc;
-    return getCachedQr();
+    return getCachedQr("fife-life");
   });
 
   useEffect(() => {
@@ -78,7 +78,6 @@ export function InteractiveLoyaltyCard({
 
   useEffect(() => {
     if (!showQr || qrSrc) return;
-    if (autoQr) return;
     let cancelled = false;
     void loadUniversalQr("fife-life").then((next) => {
       if (!cancelled && next) setAutoQr(next);
@@ -86,7 +85,7 @@ export function InteractiveLoyaltyCard({
     return () => {
       cancelled = true;
     };
-  }, [showQr, qrSrc, autoQr]);
+  }, [showQr, qrSrc]);
 
   useEffect(() => {
     setQrFailed(false);
@@ -134,6 +133,8 @@ export function InteractiveLoyaltyCard({
                   src={effectiveQrSrc}
                   alt={`QR code de ${model.name}`}
                   className="loyalty-card__qr-image"
+                  loading="eager"
+                  decoding="async"
                   onError={() => setQrFailed(true)}
                 />
               ) : (

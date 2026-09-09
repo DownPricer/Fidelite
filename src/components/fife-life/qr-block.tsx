@@ -20,7 +20,7 @@ export function QrBlock({
   variant?: "standalone" | "embedded";
 }) {
 
-  const [image, setImage] = useState<string | null>(preview ? PREVIEW_QR : getCachedQr());
+  const [image, setImage] = useState<string | null>(preview ? PREVIEW_QR : getCachedQr(slug));
 
   const [error, setError] = useState<string | null>(null);
 

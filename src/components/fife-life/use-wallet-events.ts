@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { getStoredLastEventId, storeLastEventId } from "@/lib/wallet-event-dedup";
+import { logWalletUnlockClient } from "@/lib/wallet-unlock-client-log";
 import type { WalletEventPayload } from "./types";
 
 export function useWalletEvents(
@@ -35,6 +36,7 @@ export function useWalletEvents(
         ? `/api/customer/wallet/events?lastEventId=${encodeURIComponent(lastEventId)}`
         : "/api/customer/wallet/events";
       source = new EventSource(url);
+      logWalletUnlockClient("SSE connecté");
       source.addEventListener("wallet", (raw) => {
         const ev = raw as MessageEvent<string>;
         if (ev.lastEventId) {
@@ -46,6 +48,7 @@ export function useWalletEvents(
           if (parsed.id) {
             lastEventId = parsed.id;
             storeLastEventId(parsed.id);
+            logWalletUnlockClient("événement reçu", { eventId: parsed.id });
           }
           onEventRef.current(parsed);
         } catch {

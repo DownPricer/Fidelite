@@ -214,7 +214,14 @@ function ElementView({
         <div style={style} className="rounded-xl bg-white p-[6%] shadow-sm">
           {qrSrc ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={qrSrc} alt="" className="h-full w-full object-contain" draggable={false} />
+            <img
+              src={qrSrc}
+              alt=""
+              className="h-full w-full object-contain"
+              draggable={false}
+              loading="eager"
+              decoding="async"
+            />
           ) : (
             <div className="grid h-full w-full place-items-center text-[10px] font-bold text-black/40">QR</div>
           )}
@@ -373,22 +380,24 @@ export function MerchantCardRenderer({
   };
 
   const usesRealQr = displayMode === "personalized";
-  const [qr, setQr] = useState<string | null>(() => (usesRealQr ? getCachedQr() : null));
+  const [qr, setQr] = useState<string | null>(() =>
+    usesRealQr && showQr ? getCachedQr(slug) : null,
+  );
 
   useEffect(() => {
-    if (!usesRealQr) {
+    if (!usesRealQr || !showQr) {
       setQr(null);
       return;
     }
-    if (qr) return;
     let cancelled = false;
     void loadUniversalQr(slug).then((next) => {
-      if (!cancelled && next) setQr(next);
+      if (cancelled) return;
+      if (next) setQr(next);
     });
     return () => {
       cancelled = true;
     };
-  }, [usesRealQr, slug, qr]);
+  }, [usesRealQr, showQr, slug]);
 
   const qrSrc = useMemo(
     () => resolveDisplayQrSrc(displayMode, showQr, usesRealQr ? qr : null),

@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  canEnqueueUnlockEvent,
+  shouldDeferUnlockPlayback,
+  shouldSendSseEvent,
+} from "@/lib/wallet-unlock-client";
+import {
   cardFromUnlockEvent,
   isUnlockEventType,
   serializeWalletEvent,
@@ -73,5 +78,49 @@ describe("wallet unlock — événements persistants", () => {
     expect(
       shouldPlayUnlockAnimation({ ...baseEvent, type: "CARD_CREATED" }, new Set()),
     ).toBe(true);
+  });
+});
+
+describe("wallet unlock — client", () => {
+  const event = { id: "evt-42", acknowledgedAt: null as string | null };
+
+  it("autorise l’animation pour un événement serveur non acquitté même si la carte SSR existe", () => {
+    expect(canEnqueueUnlockEvent(event, new Set())).toBe(true);
+  });
+
+  it("ne met pas deux fois le même événement en file", () => {
+    const queued = new Set(["evt-42"]);
+    expect(canEnqueueUnlockEvent(event, queued)).toBe(false);
+  });
+
+  it("reporte le déblocage quand l’onglet est caché", () => {
+    expect(shouldDeferUnlockPlayback(false)).toBe(true);
+    expect(shouldDeferUnlockPlayback(true)).toBe(false);
+  });
+
+  it("n’envoie qu’une fois un événement par connexion SSE", () => {
+    const sent = new Set<string>();
+    expect(shouldSendSseEvent("evt-1", sent)).toBe(true);
+    sent.add("evt-1");
+    expect(shouldSendSseEvent("evt-1", sent)).toBe(false);
+  });
+
+  it("peut renvoyer un événement non acquitté sur une nouvelle connexion SSE", () => {
+    const firstConnection = new Set<string>(["evt-1"]);
+    const secondConnection = new Set<string>();
+    expect(shouldSendSseEvent("evt-1", firstConnection)).toBe(false);
+    expect(shouldSendSseEvent("evt-1", secondConnection)).toBe(true);
+  });
+});
+
+describe("wallet unlock — QR preload", () => {
+  it("expose preloadWalletQr pour le chargement immédiat", async () => {
+    const { preloadWalletQr, getCachedQr, resetQrCache } = await import(
+      "@/components/fife-life/qr-cache"
+    );
+    resetQrCache();
+    expect(getCachedQr("fife-life")).toBeNull();
+    preloadWalletQr("fife-life");
+    expect(typeof preloadWalletQr).toBe("function");
   });
 });

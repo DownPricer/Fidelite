@@ -13,6 +13,7 @@ import type { MerchantCardData, WalletEventPayload } from "./types";
 import { markWalletEventSeen } from "@/lib/wallet-event-dedup";
 import { isUnlockEventType } from "@/lib/wallet-unlock";
 import { useWalletEvents } from "./use-wallet-events";
+import { preloadWalletQr } from "./qr-cache";
 import { useWalletUnlockAnimation } from "./use-wallet-unlock-animation";
 
 const ACTIVITY = [
@@ -53,7 +54,9 @@ export function WalletHome({
   const {
     newCardName,
     newCard,
+    activeEventId,
     enqueueUnlock,
+    onOverlayDisplayed,
     onAnimationDone,
   } = useWalletUnlockAnimation(!preview, setCards);
 
@@ -70,6 +73,11 @@ export function WalletHome({
   useEffect(() => {
     setSheetOpen(initialSheetOpen);
   }, [initialSheetOpen]);
+
+  useEffect(() => {
+    if (preview) return;
+    preloadWalletQr("fife-life");
+  }, [preview]);
 
   const onEvent = useCallback(
     (event: WalletEventPayload) => {
@@ -260,6 +268,8 @@ export function WalletHome({
       <NewCardToast
         name={newCardName ?? (initialNewCard && !preview ? initialNewCard : null)}
         card={newCard ?? cards.find((c) => c.name === newCardName) ?? null}
+        eventId={activeEventId}
+        onDisplayed={onOverlayDisplayed}
         onDone={onAnimationDone}
       />
 

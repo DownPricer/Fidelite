@@ -5,6 +5,7 @@ import { motion, useMotionValue, useReducedMotion } from "motion/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { DEMO_TIER_DECK_ORDER } from "@/lib/demo-tier-card-images";
 import { GlobalCard } from "./global-card";
+import { preloadWalletQr } from "./qr-cache";
 import { MerchantCardRenderer } from "./merchant-card-renderer";
 import { resolveTier } from "./tier";
 import type { MerchantCardData, WalletTier } from "./types";
@@ -93,6 +94,17 @@ export function CardDeck({
     };
   }, []);
 
+  useEffect(() => {
+    if (demoVisual) return;
+    const item = deck[index];
+    if (!item) return;
+    if (item.kind === "global" || item.kind === "global-tier") {
+      preloadWalletQr("fife-life");
+      return;
+    }
+    if (item.card.slug) preloadWalletQr(item.card.slug);
+  }, [deck, index, demoVisual]);
+
   function snapTo(next: number) {
     const wrapped = ((next % deck.length) + deck.length) % deck.length;
     setIndex(wrapped);
@@ -140,7 +152,13 @@ export function CardDeck({
     return (
       <div ref={sceneRef} className="deck-scene fife-deck-scene deck-scene-solo relative mx-auto w-full select-none overflow-visible">
         <Link href="/carte/identite" className="absolute inset-x-0 top-1/2 z-20 mx-auto block w-[var(--wallet-card-width)] max-w-full -translate-y-1/2">
-          <GlobalCard points={points} customerName={customerName} large />
+          <GlobalCard
+            points={points}
+            customerName={customerName}
+            clientNumber={clientNumber}
+            large
+            mode="wallet"
+          />
         </Link>
       </div>
     );

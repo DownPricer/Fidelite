@@ -43,7 +43,7 @@ export function CardEnlargedView({
   const effectiveClientNumber = clientNumber ?? (preview ? DEMO_CLIENT_NUMBER : null);
 
   const [mounted, setMounted] = useState(false);
-  const [qr, setQr] = useState<string | null>(() => (preview ? PREVIEW_QR : getCachedQr()));
+  const [qr, setQr] = useState<string | null>(() => (preview ? PREVIEW_QR : getCachedQr("fife-life")));
 
   useEffect(() => {
     setMounted(true);

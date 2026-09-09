@@ -47,7 +47,7 @@ export function MerchantInteractiveCard({
     : `Encore ${remaining} · ${card.rewardLabel}`;
 
   const [mounted, setMounted] = useState(false);
-  const [qr, setQr] = useState<string | null>(() => (preview ? PREVIEW_QR : getCachedQr()));
+  const [qr, setQr] = useState<string | null>(() => (preview ? PREVIEW_QR : getCachedQr(slug)));
   const [qrError, setQrError] = useState(false);
   const [qrEnlarged, setQrEnlarged] = useState(false);
 

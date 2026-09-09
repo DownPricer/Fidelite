@@ -1,22 +1,48 @@
 "use client";
 
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { MerchantCardRenderer } from "./merchant-card-renderer";
 import type { MerchantCardData } from "./types";
 
 export function NewCardToast({
   name,
   card,
+  eventId,
+  onDisplayed,
   onDone,
 }: {
   name: string | null;
   card?: MerchantCardData | null;
+  eventId?: string | null;
+  onDisplayed?: (eventId: string) => void;
   onDone: () => void;
 }) {
   const reduced = useReducedMotion();
   const onDoneRef = useRef(onDone);
+  const onDisplayedRef = useRef(onDisplayed);
+  const overlayRef = useRef<HTMLDivElement>(null);
+  const displayedRef = useRef<string | null>(null);
+  const [mounted, setMounted] = useState(false);
+
   onDoneRef.current = onDone;
+  onDisplayedRef.current = onDisplayed;
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!name || !eventId) return;
+    if (displayedRef.current === eventId) return;
+    const frame = requestAnimationFrame(() => {
+      if (!overlayRef.current) return;
+      displayedRef.current = eventId;
+      onDisplayedRef.current?.(eventId);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [name, eventId]);
 
   useEffect(() => {
     if (!name) return;
@@ -37,15 +63,19 @@ export function NewCardToast({
       rewardLabel: "Récompense",
     };
 
-  return (
+  if (!mounted || !name) return null;
+
+  return createPortal(
     <AnimatePresence>
       {name ? (
         <motion.div
-          className="fixed inset-0 z-[60] grid place-items-center px-6"
+          ref={overlayRef}
+          className="fixed inset-0 z-[9999] grid place-items-center px-6"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={reduced ? { duration: 0 } : { duration: 0.25 }}
+          onClick={() => onDoneRef.current()}
         >
           <div className="absolute inset-0 bg-black/60 backdrop-blur-[3px]" aria-hidden />
           <motion.div
@@ -58,6 +88,7 @@ export function NewCardToast({
                 ? { duration: 0 }
                 : { type: "spring", stiffness: 300, damping: 22, mass: 0.85 }
             }
+            onClick={(event) => event.stopPropagation()}
           >
             <motion.div
               className="deck-halo absolute left-1/2 top-1/2 h-64 w-64 -translate-x-1/2 -translate-y-1/2"
@@ -89,6 +120,7 @@ export function NewCardToast({
           </motion.div>
         </motion.div>
       ) : null}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body,
   );
 }

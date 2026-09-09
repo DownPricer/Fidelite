@@ -12,11 +12,16 @@ import {
 import {
   cardFromUnlockEvent,
   isUnlockEventType,
-  shouldPlayUnlockAnimation,
 } from "@/lib/wallet-unlock";
-import { logWalletUnlock } from "@/lib/wallet-unlock-log";
+import { canEnqueueUnlockEvent, shouldDeferUnlockPlayback } from "@/lib/wallet-unlock-client";
+import { logWalletUnlockClient } from "@/lib/wallet-unlock-client-log";
 import { markWalletEventSeen } from "@/lib/wallet-event-dedup";
 import type { MerchantCardData, WalletEventPayload } from "./types";
+
+function isDocumentVisible() {
+  if (typeof document === "undefined") return true;
+  return document.visibilityState === "visible";
+}
 
 export function useWalletUnlockAnimation(
   enabled: boolean,
@@ -24,26 +29,37 @@ export function useWalletUnlockAnimation(
 ) {
   const [newCardName, setNewCardName] = useState<string | null>(null);
   const [newCard, setNewCard] = useState<MerchantCardData | null>(null);
-  const [pendingAckEventId, setPendingAckEventId] = useState<string | null>(null);
+  const [activeEventId, setActiveEventId] = useState<string | null>(null);
 
-  const processedIdsRef = useRef(new Set<string>());
+  const queuedOrPlayingIdsRef = useRef(new Set<string>());
   const queueRef = useRef<WalletEventPayload[]>([]);
   const playingRef = useRef(false);
+  const ackSentRef = useRef(new Set<string>());
 
   const ackEvent = useCallback(async (eventId: string) => {
+    if (ackSentRef.current.has(eventId)) return;
+    ackSentRef.current.add(eventId);
+    logWalletUnlockClient("acquittement envoyé", { eventId });
     try {
-      await fetch(`/api/customer/wallet/events/${encodeURIComponent(eventId)}/ack`, {
-        method: "POST",
-      });
-      markWalletEventSeen(eventId);
-      logWalletUnlock("événement acquitté", { eventId });
+      const response = await fetch(
+        `/api/customer/wallet/events/${encodeURIComponent(eventId)}/ack`,
+        { method: "POST" },
+      );
+      if (response.ok) {
+        markWalletEventSeen(eventId);
+        logWalletUnlockClient("acquittement réussi", { eventId });
+      } else {
+        ackSentRef.current.delete(eventId);
+      }
     } catch {
-      /* l’acquittement sera retenté à la prochaine ouverture */
+      ackSentRef.current.delete(eventId);
     }
   }, []);
 
   const startNextUnlock = useCallback(() => {
     if (playingRef.current) return;
+    if (shouldDeferUnlockPlayback(isDocumentVisible())) return;
+
     const event = queueRef.current.shift();
     if (!event) return;
 
@@ -58,46 +74,64 @@ export function useWalletUnlockAnimation(
     });
     setNewCardName(created.name);
     setNewCard(created);
-    setPendingAckEventId(event.id);
-    logWalletUnlock("animation démarrée", {
-      eventId: event.id,
-      merchantId: event.merchantId ?? undefined,
-      membershipId: event.customerMembershipId ?? undefined,
-    });
+    setActiveEventId(event.id);
   }, [setCards]);
 
   const enqueueUnlock = useCallback(
     (event: WalletEventPayload) => {
       if (!isUnlockEventType(event.type)) return;
-      if (!shouldPlayUnlockAnimation(event, processedIdsRef.current)) return;
+      if (!canEnqueueUnlockEvent(event, queuedOrPlayingIdsRef.current)) return;
 
-      processedIdsRef.current.add(event.id);
-      logWalletUnlock("événement reçu", {
-        eventId: event.id,
-        eventType: event.type,
-        merchantId: event.merchantId ?? undefined,
-        membershipId: event.customerMembershipId ?? undefined,
-      });
+      queuedOrPlayingIdsRef.current.add(event.id);
+      logWalletUnlockClient("événement reçu", { eventId: event.id });
+
+      if (shouldDeferUnlockPlayback(isDocumentVisible())) {
+        logWalletUnlockClient("événement mis en attente", { eventId: event.id });
+        queueRef.current.push(event);
+        return;
+      }
+
       queueRef.current.push(event);
       startNextUnlock();
     },
     [startNextUnlock],
   );
 
-  const onAnimationDone = useCallback(async () => {
-    const eventId = pendingAckEventId;
+  const onOverlayDisplayed = useCallback(
+    (eventId: string) => {
+      if (activeEventId !== eventId) return;
+      if (!isDocumentVisible()) return;
+      logWalletUnlockClient("overlay monté", { eventId });
+      logWalletUnlockClient("animation démarrée", { eventId });
+      markWalletEventSeen(eventId);
+      void ackEvent(eventId);
+    },
+    [activeEventId, ackEvent],
+  );
+
+  const onAnimationDone = useCallback(() => {
     setNewCardName(null);
     setNewCard(null);
-    setPendingAckEventId(null);
+    setActiveEventId(null);
     playingRef.current = false;
-    if (eventId) {
-      await ackEvent(eventId);
-    }
     startNextUnlock();
-  }, [ackEvent, pendingAckEventId, startNextUnlock]);
+  }, [startNextUnlock]);
 
   useEffect(() => {
     if (!enabled) return;
+
+    function flushWhenVisible() {
+      if (shouldDeferUnlockPlayback(isDocumentVisible())) return;
+      startNextUnlock();
+    }
+
+    document.addEventListener("visibilitychange", flushWhenVisible);
+    return () => document.removeEventListener("visibilitychange", flushWhenVisible);
+  }, [enabled, startNextUnlock]);
+
+  useEffect(() => {
+    if (!enabled) return;
+    if (shouldDeferUnlockPlayback(isDocumentVisible())) return;
 
     let cancelled = false;
     fetch("/api/customer/wallet/pending-unlocks")
@@ -120,7 +154,9 @@ export function useWalletUnlockAnimation(
   return {
     newCardName,
     newCard,
+    activeEventId,
     enqueueUnlock,
+    onOverlayDisplayed,
     onAnimationDone,
   };
 }
