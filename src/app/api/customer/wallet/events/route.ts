@@ -3,14 +3,11 @@ import { jsonError } from "@/lib/http";
 import { prisma } from "@/lib/prisma";
 
 // SSE léger pour synchroniser le portefeuille client.
-// Le flux reste ouvert au maximum ~30s puis se ferme ; le client peut se reconnecter
-// uniquement lorsque l’application est visible.
+// Sans lastEventId, seuls les événements émis après l’ouverture du flux sont renvoyés.
 
 export async function GET(req: Request) {
   const auth = await requireUser(req);
   if (auth.error || !auth.user) {
-    // SSE attend toujours un 200, mais on préfère renvoyer une réponse JSON standard
-    // si l’utilisateur n’est pas connecté.
     return auth.error ?? jsonError("Connexion requise.", 401);
   }
 
@@ -31,6 +28,8 @@ export async function GET(req: Request) {
         if (existing) {
           sinceCreatedAt = existing.createdAt;
         }
+      } else {
+        sinceCreatedAt = new Date();
       }
 
       const startedAt = Date.now();
@@ -66,16 +65,13 @@ export async function GET(req: Request) {
       }
 
       try {
-        // Première livraison immédiate.
         await sendEventsOnce();
 
-        // Rafraîchis toutes les 3 secondes pendant ~30 secondes maximum.
         while (Date.now() - startedAt < maxDurationMs) {
           await new Promise((resolve) => setTimeout(resolve, 3_000));
           await sendEventsOnce();
         }
       } catch (error) {
-        // En cas d’erreur inattendue, on ferme simplement le flux côté serveur.
         console.error("[wallet events] stream error", error);
       } finally {
         controller.close();
@@ -91,4 +87,3 @@ export async function GET(req: Request) {
     },
   });
 }
-

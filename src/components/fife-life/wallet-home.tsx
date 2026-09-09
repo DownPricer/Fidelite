@@ -11,6 +11,11 @@ import { WalletCardsList } from "./wallet-cards-list";
 import { NewCardToast } from "./new-card-toast";
 import { resolveTier } from "./tier";
 import type { MerchantCardData, WalletEventPayload } from "./types";
+import {
+  markCardAnimated,
+  markWalletEventSeen,
+  shouldPlayNewCardAnimation,
+} from "@/lib/wallet-event-dedup";
 import { useWalletEvents } from "./use-wallet-events";
 
 const ACTIVITY = [
@@ -67,8 +72,10 @@ export function WalletHome({
   }, [initialSheetOpen]);
 
   useEffect(() => {
-    setNewCardName(initialNewCard ?? null);
-  }, [initialNewCard]);
+    if (initialNewCard && !preview) {
+      setNewCardName(initialNewCard);
+    }
+  }, [initialNewCard, preview]);
 
   const onEvent = useCallback(
     (event: WalletEventPayload) => {
@@ -90,28 +97,49 @@ export function WalletHome({
           }),
         );
       }
+      if (event.type === "CARD_REMOVED") {
+        markWalletEventSeen(event.id);
+        setCards((prev) =>
+          prev.filter(
+            (card) =>
+              (event.customerMembershipId ? card.id !== event.customerMembershipId : true) &&
+              (event.merchantId ? card.merchantId !== event.merchantId : true),
+          ),
+        );
+        return;
+      }
       if (event.type === "CARD_CREATED") {
+        markWalletEventSeen(event.id);
         const name = typeof event.payload.merchantName === "string" ? event.payload.merchantName : "Nouveau commerce";
-        setNewCardName(name);
         const created: MerchantCardData = {
           id: event.customerMembershipId ?? `tmp-${event.id}`,
           merchantId: event.merchantId ?? "",
           slug: typeof event.payload.slug === "string" ? event.payload.slug : "",
           name,
-          logoUrl: null,
-          primaryColor: "#8557ff",
-          points: 0,
-          visitsRequired: 10,
-          rewardLabel: "Récompense",
+          logoUrl: typeof event.payload.logoUrl === "string" ? event.payload.logoUrl : null,
+          primaryColor: typeof event.payload.primaryColor === "string" ? event.payload.primaryColor : "#8557ff",
+          points: typeof event.payload.points === "number" ? event.payload.points : 0,
+          visitsRequired: typeof event.payload.visitsRequired === "number" ? event.payload.visitsRequired : 10,
+          rewardLabel: typeof event.payload.rewardLabel === "string" ? event.payload.rewardLabel : "Récompense",
         };
-        setNewCard(created);
         setCards((prev) => {
-          if (event.customerMembershipId && prev.some((card) => card.id === event.customerMembershipId)) {
-            return prev;
+          const alreadyInWallet =
+            Boolean(event.customerMembershipId) &&
+            prev.some((card) => card.id === event.customerMembershipId);
+          const playAnimation = shouldPlayNewCardAnimation(
+            event.id,
+            event.customerMembershipId,
+            alreadyInWallet,
+          );
+          if (playAnimation) {
+            setNewCardName(name);
+            setNewCard(created);
+            if (event.customerMembershipId) markCardAnimated(event.customerMembershipId);
+            router.refresh();
           }
+          if (alreadyInWallet) return prev;
           return [created, ...prev];
         });
-        router.refresh();
       }
     },
     [router],

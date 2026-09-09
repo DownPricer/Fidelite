@@ -35,7 +35,7 @@ export default async function CardPage({
   }
 
   const membership = await prisma.customerMembership.findFirst({
-    where: { userId: user.id, merchant: { slug, isActive: true } },
+    where: { userId: user.id, removedAt: null, merchant: { slug, isActive: true } },
     include: { merchant: { include: { program: true } } },
   });
   if (!membership || !membership.merchant.program) redirect(`/c/${slug}`);

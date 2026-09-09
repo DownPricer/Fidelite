@@ -1,8 +1,7 @@
 import { z } from "zod";
+import { CARD_ASPECT_RATIO, CARD_SCHEMA_VERSION, QR_MIN_SIZE } from "./card-template-constants";
 
-export const CARD_ASPECT_RATIO = 1.586;
-export const CARD_SCHEMA_VERSION = 1;
-export const QR_MIN_SIZE = 0.12;
+export { CARD_ASPECT_RATIO, CARD_SCHEMA_VERSION, QR_MIN_SIZE };
 
 const normalized = z.number().min(0).max(1);
 
@@ -182,8 +181,8 @@ export const defaultCardTemplateConfig = (backgroundUrl: string): CardTemplateCo
       type: "qr",
       x: 0.72,
       y: 0.12,
-      width: 0.22,
-      height: 0.22,
+      width: 0.18,
+      height: 0.18 * CARD_ASPECT_RATIO,
       zIndex: 3,
       locked: false,
       hidden: false,

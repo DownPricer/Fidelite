@@ -172,7 +172,7 @@ describe("stockage uploads", () => {
 describe("éditeur de cartes — contraintes et normalisation", () => {
   it("bloque le QR sous la taille minimale lors du redimensionnement", async () => {
     const { enforceElementRect } = await import("../src/lib/card-template-editor-resize");
-    const { QR_MIN_SIZE } = await import("../src/lib/card-template-schema");
+    const { QR_MIN_WIDTH } = await import("../src/lib/card-template-qr-geometry");
     const qr = {
       id: "qr-1",
       type: "qr" as const,
@@ -186,39 +186,7 @@ describe("éditeur de cartes — contraintes et normalisation", () => {
       anchor: "top-left" as const,
     };
     const enforced = enforceElementRect(qr, { x: 0.1, y: 0.1, width: 0.05, height: 0.05 });
-    expect(enforced.width).toBeGreaterThanOrEqual(QR_MIN_SIZE);
-    expect(enforced.height).toBe(enforced.width);
-  });
-
-  it("maintient le QR carré lors d'un redimensionnement", async () => {
-    const { enforceElementRect } = await import("../src/lib/card-template-editor-resize");
-    const qr = {
-      id: "qr-1",
-      type: "qr" as const,
-      x: 0.1,
-      y: 0.1,
-      width: 0.2,
-      height: 0.2,
-      zIndex: 1,
-      locked: false,
-      hidden: false,
-      anchor: "top-left" as const,
-    };
-    const enforced = enforceElementRect(qr, { x: 0.1, y: 0.1, width: 0.25, height: 0.18 }, "se");
-    expect(enforced.width).toBe(enforced.height);
-    expect(enforced.width).toBeGreaterThanOrEqual(0.12);
-  });
-
-  it("valide la publication avec un QR à 12 % minimum", () => {
-    const config = defaultCardTemplateConfig("/bg.png");
-    const validQr = {
-      ...config,
-      elements: config.elements.map((el) =>
-        el.type === "qr" ? { ...el, width: 0.12, height: 0.12 } : el,
-      ),
-    };
-    const result = validateCardTemplateForPublishDetailed(validQr, "VISITS");
-    expect(result.errors.some((e) => e.message.includes("QR") && e.message.includes("12"))).toBe(false);
+    expect(enforced.width).toBeGreaterThanOrEqual(QR_MIN_WIDTH);
   });
 
   it("conserve les proportions du logo quand elles sont verrouillées", async () => {

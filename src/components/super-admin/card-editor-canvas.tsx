@@ -2,7 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CardElement, CardTemplateConfig } from "@/lib/card-template-schema";
-import { CARD_ASPECT_RATIO, QR_MIN_SIZE } from "@/lib/card-template-schema";
+import { CARD_ASPECT_RATIO } from "@/lib/card-template-schema";
+import { elementTypeLabel } from "@/lib/card-template-i18n";
+import { QR_MIN_WIDTH } from "@/lib/card-template-qr-geometry";
 import { MerchantCardRenderer } from "@/components/fife-life/merchant-card-renderer";
 import type { MerchantCardData } from "@/components/fife-life/types";
 import type { LoyaltyMode } from "@prisma/client";
@@ -38,22 +40,7 @@ function snapValue(value: number, targets: number[], threshold: number, enabled:
 }
 
 function elementLabel(type: CardElement["type"]) {
-  const labels: Record<CardElement["type"], string> = {
-    logo: "Logo",
-    merchantName: "Nom commerce",
-    clientName: "Identité client",
-    qr: "QR Fife Life",
-    pointsBalance: "Solde points",
-    visitsCount: "Passages",
-    progressText: "Texte progression",
-    progressBar: "Barre progression",
-    nextReward: "Prochain avantage",
-    unlockedReward: "Récompense",
-    tierLevel: "Palier",
-    expiryDate: "Expiration",
-    staticText: "Texte statique",
-  };
-  return labels[type];
+  return elementTypeLabel(type);
 }
 
 function handlesForElement(el: CardElement) {
@@ -334,7 +321,7 @@ export function CardEditorCanvas({
       </div>
       {selectedId ? (
         <p className="mt-2 text-center text-[10px] text-[var(--muted-text)]">
-          Flèches = déplacement fin · Shift+flèches = pas large · QR min. {QR_MIN_SIZE * 100}%
+          Flèches = déplacement fin · Maj+flèches = pas large · QR min. {QR_MIN_WIDTH * 100} % de largeur
         </p>
       ) : null}
     </div>

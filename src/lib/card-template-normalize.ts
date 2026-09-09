@@ -1,5 +1,6 @@
 import type { CardElement, CardTemplateConfig } from "./card-template-schema";
 import { defaultDataKey } from "./card-template-data-keys";
+import { normalizeQrElementRect } from "./card-template-qr-geometry";
 
 export const CARD_EDITOR_REFERENCE_WIDTH = 920;
 
@@ -96,9 +97,10 @@ export function normalizeCardElement(el: CardElement): CardElement {
   }
 
   if (el.type === "qr") {
-    const size = Math.max(el.width, el.height);
-    normalized.width = size;
-    normalized.height = size;
+    const fixed = normalizeQrElementRect(el.width, el.height);
+    normalized.width = fixed.width;
+    normalized.height = fixed.height;
+    normalized.lockAspectRatio = true;
   }
 
   return normalized;

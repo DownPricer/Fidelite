@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { getStoredLastEventId, storeLastEventId } from "@/lib/wallet-event-dedup";
 import type { WalletEventPayload } from "./types";
 
 export function useWalletEvents(
@@ -15,7 +16,7 @@ export function useWalletEvents(
 
     let stopped = false;
     let source: EventSource | null = null;
-    let lastEventId: string | undefined;
+    let lastEventId: string | undefined = getStoredLastEventId();
     let retryTimer: ReturnType<typeof setTimeout> | null = null;
 
     function disconnect() {
@@ -36,10 +37,16 @@ export function useWalletEvents(
       source = new EventSource(url);
       source.addEventListener("wallet", (raw) => {
         const ev = raw as MessageEvent<string>;
-        if (ev.lastEventId) lastEventId = ev.lastEventId;
+        if (ev.lastEventId) {
+          lastEventId = ev.lastEventId;
+          storeLastEventId(ev.lastEventId);
+        }
         try {
           const parsed = JSON.parse(ev.data) as WalletEventPayload;
-          if (parsed.id) lastEventId = parsed.id;
+          if (parsed.id) {
+            lastEventId = parsed.id;
+            storeLastEventId(parsed.id);
+          }
           onEventRef.current(parsed);
         } catch {
           /* flux malformé ignoré */

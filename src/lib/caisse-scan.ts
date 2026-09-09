@@ -40,7 +40,19 @@ async function buildScanResult(input: {
         },
       });
       cardJustCreated = true;
+    } else if (membership.removedAt) {
+      membership = await tx.customerMembership.update({
+        where: { id: membership.id },
+        data: { removedAt: null },
+        include: {
+          user: true,
+          merchant: { include: { program: true } },
+        },
+      });
+      cardJustCreated = true;
+    }
 
+    if (cardJustCreated) {
       await tx.walletEvent.create({
         data: {
           userId: input.user.id,
@@ -49,6 +61,13 @@ async function buildScanResult(input: {
           type: "CARD_CREATED",
           payload: {
             merchantName: membership.merchant.name,
+            slug: membership.merchant.slug,
+            logoUrl: membership.merchant.logoUrl,
+            primaryColor: membership.merchant.primaryColor,
+            points: membership.points,
+            visitsRequired: membership.merchant.program!.visitsRequired,
+            rewardLabel: membership.merchant.program!.rewardLabel,
+            loyaltyMode: membership.merchant.program!.mode,
           },
         },
       });

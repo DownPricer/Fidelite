@@ -421,6 +421,7 @@ Le commerçant se réserve le droit de modifier ou d'annuler le programme de fid
 
           {/* Delete section */}
           <section className="delete-zone mt-8 p-5">
+            {error ? <p className="mb-3 text-center text-sm text-red-300">{error}</p> : null}
             {!showDeleteConfirm ? (
               <button
                 type="button"

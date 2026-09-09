@@ -129,6 +129,7 @@ enum AccountDeletionStatus {
 
 enum WalletEventType {
   CARD_CREATED
+  CARD_REMOVED
   MERCHANT_POINTS_UPDATED
   REWARD_REDEEMED
   FIFE_LIFE_POINTS_UPDATED
@@ -377,6 +378,7 @@ model CustomerMembership {
   googleWalletClassId  String?
   createdAt            DateTime             @default(now())
   updatedAt            DateTime             @updatedAt
+  removedAt            DateTime?
   user                 User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
   merchant             Merchant             @relation(fields: [merchantId], references: [id], onDelete: Cascade)
   transactions         LoyaltyTransaction[]

@@ -1,5 +1,14 @@
-import { QR_MIN_SIZE, type CardElement } from "./card-template-schema";
+import { CARD_ASPECT_RATIO, type CardElement } from "./card-template-schema";
+import {
+  qrMinWidthValid,
+  qrNormalizedHeight,
+  qrRecommendedRect,
+  qrSizeValid,
+  QR_MIN_WIDTH,
+} from "./card-template-qr-geometry";
 import { clampRect, type NormalizedRect } from "./merchant-card-layout";
+
+export { qrSizeValid, QR_MIN_WIDTH as QR_MIN_SIZE_WIDTH } from "./card-template-qr-geometry";
 
 export function logoAspectLocked(el: CardElement) {
   return el.type === "logo" && (el.logoStyle?.lockAspectRatio ?? true);
@@ -10,7 +19,7 @@ export function elementRequiresSquare(el: CardElement) {
 }
 
 export function qrRecommendedSize() {
-  return 0.18;
+  return qrRecommendedRect().width;
 }
 
 /** Verrouille le ratio largeur/hauteur lors d'un redimensionnement. */
@@ -34,11 +43,14 @@ export function enforceElementRect(el: CardElement, rect: NormalizedRect, handle
   let r = clampRect(rect);
 
   if (el.type === "qr") {
-    const size = Math.max(r.width, r.height, QR_MIN_SIZE);
-    r = { width: size, height: size, x: r.x, y: r.y };
-    r.width = Math.max(r.width, QR_MIN_SIZE);
-    r.height = r.width;
-    return clampRect(r);
+    let w = Math.max(r.width, QR_MIN_WIDTH);
+    if (handle === "n" || handle === "s") {
+      w = Math.max(r.height / CARD_ASPECT_RATIO, QR_MIN_WIDTH);
+    } else {
+      w = Math.max(r.width, QR_MIN_WIDTH);
+    }
+    const h = qrNormalizedHeight(w);
+    return clampRect({ x: r.x, y: r.y, width: w, height: h });
   }
 
   if (el.type === "logo") {
@@ -56,10 +68,6 @@ export function enforceElementRect(el: CardElement, rect: NormalizedRect, handle
   }
 
   return r;
-}
-
-export function qrSizeValid(rect: NormalizedRect) {
-  return rect.width >= QR_MIN_SIZE && rect.height >= QR_MIN_SIZE && Math.abs(rect.width - rect.height) < 0.005;
 }
 
 export function qrOverlapsOthers(
@@ -92,3 +100,5 @@ export function qrOverlapsOthers(
     );
   });
 }
+
+export { qrMinWidthValid };

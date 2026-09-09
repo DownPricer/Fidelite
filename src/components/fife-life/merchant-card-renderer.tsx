@@ -15,6 +15,7 @@ import {
   resolveElementRect,
 } from "@/lib/merchant-card-layout";
 import type { LoyaltyMode } from "@prisma/client";
+import { CardTemplateBackground } from "./card-template-background";
 import { MerchantInteractiveCard } from "./merchant-interactive-card";
 import { getCachedQr, loadUniversalQr } from "./qr-cache";
 import type { MerchantCardData } from "./types";
@@ -448,13 +449,9 @@ export function MerchantCardRenderer({
         className={cn("merchant-card-renderer relative h-full w-full overflow-hidden rounded-[18px]", className)}
         style={{ pointerEvents: onClick ? "auto" : "none", containerType: "inline-size" }}
       >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={template!.backgroundUrl!}
-          alt=""
-          className="absolute inset-0 h-full w-full object-cover"
-          style={{ pointerEvents: "none" }}
-          draggable={false}
+        <CardTemplateBackground
+          backgroundUrl={template!.backgroundUrl!}
+          background={template!.config.background}
         />
         <div className="absolute inset-0" style={{ pointerEvents: "none", containerType: "inline-size" }}>
           {sorted.map((element) => (

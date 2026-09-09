@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { SuperAdminShell } from "@/components/super-admin/layout-shell";
+import { CardEditorBackgroundCrop } from "@/components/super-admin/card-editor-background-crop";
 import { CardEditorCanvas, elementLabel } from "@/components/super-admin/card-editor-canvas";
 import { CardEditorProperties } from "@/components/super-admin/card-editor-properties";
 import { useEditorHistory } from "@/hooks/use-editor-history";
@@ -13,24 +14,15 @@ import {
 import { defaultDataKey } from "@/lib/card-template-data-keys";
 import { normalizeCardElement, normalizeCardTemplateConfig } from "@/lib/card-template-normalize";
 import { CARD_EDITOR_REFERENCE_WIDTH } from "@/lib/card-template-normalize";
+import { ELEMENT_TYPE_LABELS, elementTypeLabel, loyaltyModeLabel } from "@/lib/card-template-i18n";
+import { qrNormalizedHeight } from "@/lib/card-template-qr-geometry";
 import { validateCardTemplateForPublishDetailed } from "@/lib/card-template-validation";
 import { Alert, Button, Card, Field, Input } from "@/components/ui";
 import type { LoyaltyMode } from "@prisma/client";
 
-const ELEMENT_CATALOG: { type: CardElement["type"]; label: string }[] = [
-  { type: "logo", label: "Logo" },
-  { type: "merchantName", label: "Nom commerce" },
-  { type: "clientName", label: "Identité client" },
-  { type: "qr", label: "QR Fife Life" },
-  { type: "pointsBalance", label: "Solde points" },
-  { type: "visitsCount", label: "Passages" },
-  { type: "progressText", label: "Texte progression" },
-  { type: "progressBar", label: "Barre progression" },
-  { type: "nextReward", label: "Prochain avantage" },
-  { type: "unlockedReward", label: "Récompense débloquée" },
-  { type: "tierLevel", label: "Palier" },
-  { type: "staticText", label: "Texte statique" },
-];
+const ELEMENT_CATALOG: { type: CardElement["type"]; label: string }[] = (
+  Object.entries(ELEMENT_TYPE_LABELS) as [CardElement["type"], string][]
+).map(([type, label]) => ({ type, label }));
 
 type PreviewScenario = "shortName" | "longName" | "noPoints" | "midProgress" | "rewardReached";
 
@@ -61,6 +53,7 @@ export function CardEditorPage({ firstName, merchantId }: { firstName: string; m
   const [progressTestPct, setProgressTestPct] = useState(50);
   const [recentColors, setRecentColors] = useState<string[]>([]);
   const [mobilePropsOpen, setMobilePropsOpen] = useState(false);
+  const [cropBackgroundMode, setCropBackgroundMode] = useState(false);
 
   const canvasViewportRef = useRef<HTMLDivElement>(null);
 
@@ -195,7 +188,7 @@ export function CardEditorPage({ firstName, merchantId }: { firstName: string; m
       x: 0.1,
       y: 0.1,
       width: type === "qr" ? 0.18 : 0.3,
-      height: type === "qr" ? 0.18 : 0.08,
+      height: type === "qr" ? qrNormalizedHeight(0.18) : 0.08,
       zIndex: (config?.elements.length ?? 0) + 1,
       locked: false,
       hidden: false,
@@ -243,6 +236,17 @@ export function CardEditorPage({ firstName, merchantId }: { firstName: string; m
 
   function trackColor(color: string) {
     setRecentColors((prev) => [color, ...prev.filter((c) => c !== color)].slice(0, 8));
+  }
+
+  function updateBackground(patch: Partial<CardTemplateConfig["background"]>) {
+    if (!config) return;
+    history.set(
+      normalizeCardTemplateConfig({
+        ...config,
+        background: { ...config.background, url: backgroundUrl, ...patch },
+      }),
+    );
+    setMessage(null);
   }
 
   async function uploadBackground(file: File) {
@@ -367,7 +371,7 @@ export function CardEditorPage({ firstName, merchantId }: { firstName: string; m
           <div>
             <h1 className="text-2xl font-black text-[var(--ink)]">Éditeur de carte</h1>
             <p className="text-sm text-[var(--muted-text)]">
-              {merchant?.name ?? "…"} · {loyaltyMode}
+              {merchant?.name ?? "…"} · {loyaltyModeLabel(loyaltyMode)}
               {templateMeta ? ` · v${templateMeta.version} · ${templateMeta.status}` : ""}
             </p>
             {history.dirty ? <p className="text-xs text-amber-300">Modifications non enregistrées</p> : savedAt ? <p className="text-xs text-green-300">Brouillon enregistré</p> : null}
@@ -409,6 +413,14 @@ export function CardEditorPage({ firstName, merchantId }: { firstName: string; m
               <input type="checkbox" checked={snapEnabled} onChange={(e) => setSnapEnabled(e.target.checked)} />
               Aimantation
             </label>
+            <Button
+              variant="secondary"
+              className="w-full text-xs"
+              disabled={!backgroundUrl}
+              onClick={() => { setCropBackgroundMode((v) => !v); setSelectedId(null); }}
+            >
+              {cropBackgroundMode ? "Retour à l’édition" : "Recadrer le fond de la carte"}
+            </Button>
           </Card>
 
           <div className="min-w-0 space-y-3">
@@ -475,7 +487,14 @@ export function CardEditorPage({ firstName, merchantId }: { firstName: string; m
               </div>
 
               <div ref={canvasViewportRef} className="overflow-x-auto overflow-y-visible py-2">
-                {config && backgroundUrl && previewCard && merchant ? (
+                {cropBackgroundMode && config && backgroundUrl ? (
+                  <CardEditorBackgroundCrop
+                    backgroundUrl={backgroundUrl}
+                    background={config.background}
+                    onChange={updateBackground}
+                  />
+                ) : null}
+                {!cropBackgroundMode && config && backgroundUrl && previewCard && merchant ? (
                   <CardEditorCanvas
                     config={config}
                     backgroundUrl={backgroundUrl}
@@ -496,9 +515,9 @@ export function CardEditorPage({ firstName, merchantId }: { firstName: string; m
                     previewClientName={previewClientName}
                     progressPercentOverride={progressTestPct}
                   />
-                ) : (
+                ) : !cropBackgroundMode ? (
                   <p className="py-20 text-center text-sm text-[var(--muted-text)]">Importez un fond pour commencer.</p>
-                )}
+                ) : null}
               </div>
             </Card>
           </div>
@@ -510,7 +529,7 @@ export function CardEditorPage({ firstName, merchantId }: { firstName: string; m
                 {[...(config?.elements ?? [])].sort((a, b) => b.zIndex - a.zIndex).map((el) => (
                   <div key={el.id} className={`flex items-center gap-1 rounded-lg px-2 py-1 text-xs ${selectedId === el.id ? "bg-white/10" : ""}`}>
                     <button type="button" className="flex-1 truncate text-left" onClick={() => setSelectedId(el.id)}>
-                      {el.label ?? elementLabel(el.type)}
+                      {el.label?.trim() || elementTypeLabel(el.type)}
                     </button>
                     <button type="button" title="Verrouiller" onClick={() => updateElements(config!.elements.map((e) => e.id === el.id ? { ...e, locked: !e.locked } : e))}>{el.locked ? "🔒" : "🔓"}</button>
                     <button type="button" title="Monter" onClick={() => updateElements(config!.elements.map((e) => e.id === el.id ? { ...e, zIndex: e.zIndex + 1 } : e))}>↑</button>

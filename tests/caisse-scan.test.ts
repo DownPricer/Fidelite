@@ -6,6 +6,7 @@ const fifeLifeQrTokenUpdate = vi.fn();
 const merchantFindFirst = vi.fn();
 const customerMembershipFindFirst = vi.fn();
 const customerMembershipCreate = vi.fn();
+const customerMembershipUpdate = vi.fn();
 const caisseGrantCreate = vi.fn();
 const walletEventCreate = vi.fn();
 const merchantCardTemplateFindFirst = vi.fn();
@@ -22,6 +23,7 @@ vi.mock("../src/lib/prisma", () => {
     customerMembership: {
       findFirst: (...args: unknown[]) => customerMembershipFindFirst(...args),
       create: (...args: unknown[]) => customerMembershipCreate(...args),
+      update: (...args: unknown[]) => customerMembershipUpdate(...args),
     },
     caisseGrant: {
       create: (...args: unknown[]) => caisseGrantCreate(...args),
@@ -90,6 +92,7 @@ describe("processCaisseScan — QR global Fife Life", () => {
     merchantCardTemplateFindFirst.mockResolvedValue(null);
     customerMembershipFindFirst.mockResolvedValue(membership);
     customerMembershipCreate.mockResolvedValue(membership);
+    customerMembershipUpdate.mockResolvedValue(membership);
     caisseGrantCreate
       .mockResolvedValueOnce({
         id: "grant_1",

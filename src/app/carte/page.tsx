@@ -23,7 +23,7 @@ export default async function CarteIndexPage({
   }
 
   const memberships = await prisma.customerMembership.findMany({
-    where: { userId: user.id, merchant: { isActive: true } },
+    where: { userId: user.id, removedAt: null, merchant: { isActive: true } },
     include: { merchant: { include: { program: true } } },
     orderBy: { updatedAt: "desc" },
   });

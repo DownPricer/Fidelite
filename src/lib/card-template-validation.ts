@@ -1,10 +1,11 @@
 import type { LoyaltyMode } from "@prisma/client";
 import {
   CARD_ASPECT_RATIO,
-  QR_MIN_SIZE,
   type CardElement,
   type CardTemplateConfig,
 } from "./card-template-schema";
+import { elementTypeLabel, validationMessage } from "./card-template-i18n";
+import { qrMinWidthValid, qrVisuallySquare } from "./card-template-qr-geometry";
 import { clampRect, rectsOverlap, resolveElementRect, type NormalizedRect } from "./merchant-card-layout";
 
 const LOYALTY_REQUIRED: Record<LoyaltyMode, CardElement["type"][]> = {
@@ -56,48 +57,56 @@ export function validateCardTemplateForPublishDetailed(
   const required = LOYALTY_REQUIRED[loyaltyMode];
   for (const type of required) {
     if (!config.elements.some((el) => el.type === type)) {
-      errors.push({ message: `Champ obligatoire manquant pour ${loyaltyMode} : ${type}.` });
+      errors.push({ message: validationMessage(type) });
     }
   }
 
   if (loyaltyMode !== "VISITS" && config.elements.some((el) => el.type === "visitsCount")) {
-    errors.push({ message: "Le champ « passages » ne doit pas être utilisé sur une carte à points." });
+    errors.push({ message: "Le champ « nombre de passages » ne doit pas être utilisé sur une carte à points." });
   }
 
   const qrEl = config.elements.find((el) => el.type === "qr");
   if (!qrEl) {
-    errors.push({ message: "Un élément QR est obligatoire.", elementId: undefined });
+    errors.push({ message: "Un QR code est obligatoire.", elementId: undefined });
   } else {
     const qr = resolveElementRect(qrEl);
-    if (qr.width < QR_MIN_SIZE || qr.height < QR_MIN_SIZE) {
+    if (!qrMinWidthValid(qr)) {
       errors.push({
-        message: `Le QR doit mesurer au moins ${Math.round(QR_MIN_SIZE * 100)} % de la carte.`,
+        message: "Le QR code doit mesurer au moins 12 % de la largeur de la carte.",
+        elementId: qrEl.id,
+      });
+    }
+    if (!qrVisuallySquare(qr)) {
+      errors.push({
+        message: "Le QR code doit être visuellement carré sur la carte.",
         elementId: qrEl.id,
       });
     }
     if (qr.x < 0 || qr.y < 0 || qr.x + qr.width > 1 || qr.y + qr.height > 1) {
-      errors.push({ message: "Le QR dépasse les limites de la carte.", elementId: qrEl.id });
+      errors.push({ message: "Le QR code dépasse les limites de la carte.", elementId: qrEl.id });
     }
     if (!inSafeZone(qr, config.safeZone)) {
-      errors.push({ message: "Le QR doit rester dans la zone sûre.", elementId: qrEl.id });
+      errors.push({ message: "Le QR code doit rester dans la zone sûre.", elementId: qrEl.id });
     }
     const silence = qrSilenceZone(qr);
     const overlap = config.elements.some(
       (el) => el.id !== qrEl.id && el.zIndex >= qrEl.zIndex && rectsOverlap(silence, resolveElementRect(el)),
     );
     if (overlap) {
-      errors.push({ message: "Un élément recouvre la zone de silence du QR.", elementId: qrEl.id });
-    }
-    const aspect = qr.width / Math.max(qr.height, 0.001);
-    if (aspect < 0.85 || aspect > 1.15) {
-      errors.push({ message: "Le QR ne doit pas être déformé.", elementId: qrEl.id });
+      errors.push({
+        message: "Un élément recouvre la zone de silence autour du QR code.",
+        elementId: qrEl.id,
+      });
     }
   }
 
   for (const el of config.elements) {
     const rect = resolveElementRect(el);
     if (rect.x + rect.width > 1.001 || rect.y + rect.height > 1.001) {
-      errors.push({ message: `L'élément ${el.type} dépasse la carte.`, elementId: el.id });
+      errors.push({
+        message: `L’élément « ${elementTypeLabel(el.type)} » dépasse la carte.`,
+        elementId: el.id,
+      });
     }
   }
 

@@ -3,23 +3,29 @@
 import { useMemo, useState } from "react";
 import type { LoyaltyMode } from "@prisma/client";
 import { Button, Field, Input } from "@/components/ui";
-import {
-  QR_MIN_SIZE,
-  type CardElement,
-  type CardTemplateConfig,
-  type CardTextStyle,
-} from "@/lib/card-template-schema";
-import { ELEMENT_DATA_KEYS } from "@/lib/card-template-data-keys";
+import type { CardElement, CardTemplateConfig, CardTextStyle } from "@/lib/card-template-schema";
 import { CARD_FONT_OPTIONS } from "@/lib/card-template-fonts";
+import {
+  dataKeyLabel,
+  elementTypeLabel,
+  FIT_MODE_LABELS,
+  FONT_WEIGHT_LABELS,
+  LOGO_FIT_LABELS,
+  loyaltyModeLabel,
+  PROGRESS_ORIENTATION_LABELS,
+  QR_OVERLAP_MESSAGE,
+  QR_SIZE_INVALID_MESSAGE,
+  QR_SIZE_VALID_MESSAGE,
+  TEXT_ALIGN_LABELS,
+  VERTICAL_ALIGN_LABELS,
+} from "@/lib/card-template-i18n";
 import {
   enforceElementRect,
   qrOverlapsOthers,
-  qrRecommendedSize,
   qrSizeValid,
 } from "@/lib/card-template-editor-resize";
+import { QR_MIN_WIDTH, qrRecommendedRect } from "@/lib/card-template-qr-geometry";
 import { resolveElementRect } from "@/lib/merchant-card-layout";
-import { elementLabel } from "./card-editor-canvas";
-
 const REQUIRED_BY_MODE: Record<LoyaltyMode, CardElement["type"][]> = {
   VISITS: ["clientName", "qr", "visitsCount", "progressBar", "nextReward"],
   POINTS_BY_AMOUNT: ["clientName", "qr", "pointsBalance", "progressBar", "nextReward"],
@@ -62,16 +68,6 @@ function Section({
   );
 }
 
-function pct(v: number) {
-  return `${Math.round(v * 1000) / 10}%`;
-}
-
-function fromPct(raw: string) {
-  const n = Number(raw);
-  if (Number.isNaN(n)) return null;
-  return Math.min(1, Math.max(0, n / 100));
-}
-
 export function CardEditorProperties({
   element,
   config,
@@ -92,9 +88,8 @@ export function CardEditorProperties({
   onColorUsed: (color: string) => void;
 }) {
   const [open, setOpen] = useState({
-    position: true,
+    colors: true,
     typo: true,
-    colors: false,
     appearance: false,
     data: false,
     layer: false,
@@ -107,6 +102,7 @@ export function CardEditorProperties({
   const isRequired = REQUIRED_BY_MODE[loyaltyMode].includes(element.type);
   const isText = TEXT_TYPES.has(element.type);
   const style = element.style;
+  const dataKey = element.dataKey ?? element.type;
 
   const qrStatus = useMemo(() => {
     if (element.type !== "qr") return null;
@@ -115,8 +111,8 @@ export function CardEditorProperties({
     return { valid, overlap, pctWidth: rect.width * 100 };
   }, [element, rect, config.elements]);
 
-  function patchRect(patch: Partial<typeof rect>) {
-    const next = enforceElementRect(element, { ...rect, ...patch });
+  function patchRect(nextRect: ReturnType<typeof resolveElementRect>) {
+    const next = enforceElementRect(element, nextRect);
     onUpdate({
       x: next.x,
       y: next.y,
@@ -130,15 +126,17 @@ export function CardEditorProperties({
     onUpdate({ style: { ...style, ...patch } as CardElement["style"] });
   }
 
+  const displayName = element.label?.trim() || elementTypeLabel(element.type);
+
   return (
     <div className="space-y-3">
       <div className="flex items-start justify-between gap-2">
         <div>
-          <p className="text-sm font-bold text-[var(--ink)]">{element.label ?? elementLabel(element.type)}</p>
-          <p className="text-[10px] uppercase tracking-widest text-[var(--muted-text)]">{element.type}</p>
+          <p className="text-sm font-bold text-[var(--ink)]">{displayName}</p>
+          <p className="text-[10px] text-[var(--muted-text)]">{elementTypeLabel(element.type)}</p>
         </div>
         <div className="flex gap-1">
-          <button type="button" title="Verrouiller" className="rounded px-2 py-1 text-xs hover:bg-white/10" onClick={() => onUpdate({ locked: !element.locked })}>
+          <button type="button" title={element.locked ? "Déverrouiller" : "Verrouiller"} className="rounded px-2 py-1 text-xs hover:bg-white/10" onClick={() => onUpdate({ locked: !element.locked })}>
             {element.locked ? "🔒" : "🔓"}
           </button>
           <button type="button" title="Dupliquer" className="rounded px-2 py-1 text-xs hover:bg-white/10" onClick={onDuplicate}>⧉</button>
@@ -153,40 +151,52 @@ export function CardEditorProperties({
           </button>
         </div>
       </div>
-      {isRequired ? <p className="text-[10px] text-amber-200">Élément obligatoire pour {loyaltyMode}.</p> : null}
+      {isRequired ? (
+        <p className="text-[10px] text-amber-200">
+          Élément obligatoire pour le mode {loyaltyModeLabel(loyaltyMode)}.
+        </p>
+      ) : null}
 
-      <Section title="Position et dimensions" open={open.position} onToggle={() => setOpen((s) => ({ ...s, position: !s.position }))}>
-        <div className="grid grid-cols-2 gap-2">
-          <Field label="X (%)">
-            <Input type="number" step="0.1" value={pct(rect.x).replace("%", "")} onChange={(e) => { const v = fromPct(e.target.value); if (v != null) patchRect({ x: v }); }} />
-          </Field>
-          <Field label="Y (%)">
-            <Input type="number" step="0.1" value={pct(rect.y).replace("%", "")} onChange={(e) => { const v = fromPct(e.target.value); if (v != null) patchRect({ y: v }); }} />
-          </Field>
-          <Field label="Largeur (%)">
-            <Input type="number" step="0.1" value={pct(rect.width).replace("%", "")} onChange={(e) => { const v = fromPct(e.target.value); if (v != null) patchRect({ width: v }); }} />
-          </Field>
-          <Field label="Hauteur (%)">
-            <Input type="number" step="0.1" value={pct(rect.height).replace("%", "")} onChange={(e) => { const v = fromPct(e.target.value); if (v != null) patchRect({ height: v }); }} />
-          </Field>
-        </div>
-        <Field label="Rotation (°)">
-          <Input type="number" min={-180} max={180} value={element.rotation ?? 0} onChange={(e) => onUpdate({ rotation: Number(e.target.value) })} />
-        </Field>
-        <Field label="Opacité">
-          <input type="range" min={0} max={1} step={0.05} value={element.opacity ?? 1} onChange={(e) => onUpdate({ opacity: Number(e.target.value) })} className="w-full" />
-        </Field>
-        {element.type === "qr" ? (
-          <p className="text-[10px] text-[var(--muted-text)]">QR : ratio 1:1 verrouillé.</p>
-        ) : element.type === "logo" ? (
-          <p className="text-[10px] text-[var(--muted-text)]">Proportions du logo : section Logo.</p>
-        ) : (
-          <label className="flex items-center gap-2 text-xs">
-            <input type="checkbox" checked={element.lockAspectRatio ?? false} onChange={(e) => onUpdate({ lockAspectRatio: e.target.checked })} />
-            Conserver les proportions
-          </label>
-        )}
-      </Section>
+      {(isText || element.type === "progressBar") ? (
+        <Section title="Couleurs" open={open.colors} onToggle={() => setOpen((s) => ({ ...s, colors: !s.colors }))}>
+          {isText ? (
+            <>
+              <Field label="Couleur du texte">
+                <div className="flex gap-2">
+                  <input type="color" value={style?.color ?? "#FFFFFF"} onChange={(e) => { patchStyle({ color: e.target.value }); onColorUsed(e.target.value); }} />
+                  <Input value={style?.color ?? "#FFFFFF"} onChange={(e) => patchStyle({ color: e.target.value })} />
+                </div>
+              </Field>
+              {recentColors.length ? (
+                <div className="flex flex-wrap gap-1">
+                  {recentColors.map((c) => (
+                    <button key={c} type="button" className="h-5 w-5 rounded border border-white/20" style={{ backgroundColor: c }} onClick={() => patchStyle({ color: c })} aria-label={`Couleur ${c}`} />
+                  ))}
+                </div>
+              ) : null}
+            </>
+          ) : null}
+          {element.type === "progressBar" && element.progressColors ? (
+            <>
+              <Field label="Couleur de progression">
+                <input type="color" value={element.progressColors.fill} onChange={(e) => onUpdate({ progressColors: { ...element.progressColors!, fill: e.target.value } })} />
+              </Field>
+              <Field label="Couleur de fond">
+                <input type="color" value={element.progressColors.track} onChange={(e) => onUpdate({ progressColors: { ...element.progressColors!, track: e.target.value } })} />
+              </Field>
+              <Field label="Couleur de bordure">
+                <input type="color" value={element.progressColors.borderColor ?? "#FFFFFF"} onChange={(e) => onUpdate({ progressColors: { ...element.progressColors!, borderColor: e.target.value } })} />
+              </Field>
+            </>
+          ) : null}
+          <Button variant="secondary" className="w-full text-xs" onClick={() => {
+            if (isText) patchStyle({ color: "#FFFFFF", opacity: 1 });
+            if (element.type === "progressBar") onUpdate({ progressColors: { fill: "#875BFF", track: "#FFFFFF", radius: 8 } });
+          }}>
+            Réinitialiser les couleurs
+          </Button>
+        </Section>
+      ) : null}
 
       {isText ? (
         <Section title="Typographie" open={open.typo} onToggle={() => setOpen((s) => ({ ...s, typo: !s.typo }))}>
@@ -203,7 +213,7 @@ export function CardEditorProperties({
           </Field>
           <Field label="Graisse">
             <select className="w-full rounded-lg border border-white/10 bg-transparent px-2 py-1.5 text-xs" value={style?.fontWeight ?? "600"} onChange={(e) => patchStyle({ fontWeight: e.target.value as NonNullable<typeof style>["fontWeight"] })}>
-              {["400", "500", "600", "700", "800"].map((w) => <option key={w} value={w}>{w}</option>)}
+              {Object.entries(FONT_WEIGHT_LABELS).map(([w, label]) => <option key={w} value={w}>{label}</option>)}
             </select>
           </Field>
           <div className="grid grid-cols-2 gap-2">
@@ -213,32 +223,26 @@ export function CardEditorProperties({
                 <option value="italic">Italique</option>
               </select>
             </Field>
-            <Field label="Alignement H">
+            <Field label="Alignement horizontal">
               <select className="w-full rounded-lg border border-white/10 bg-transparent px-2 py-1 text-xs" value={style?.textAlign ?? "left"} onChange={(e) => patchStyle({ textAlign: e.target.value as "left" | "center" | "right" })}>
-                <option value="left">Gauche</option>
-                <option value="center">Centre</option>
-                <option value="right">Droite</option>
+                {Object.entries(TEXT_ALIGN_LABELS).map(([k, label]) => <option key={k} value={k}>{label}</option>)}
               </select>
             </Field>
-            <Field label="Alignement V">
+            <Field label="Alignement vertical">
               <select className="w-full rounded-lg border border-white/10 bg-transparent px-2 py-1 text-xs" value={style?.verticalAlign ?? "center"} onChange={(e) => patchStyle({ verticalAlign: e.target.value as "top" | "center" | "bottom" })}>
-                <option value="top">Haut</option>
-                <option value="center">Centre</option>
-                <option value="bottom">Bas</option>
+                {Object.entries(VERTICAL_ALIGN_LABELS).map(([k, label]) => <option key={k} value={k}>{label}</option>)}
               </select>
             </Field>
           </div>
           <Field label="Interligne">
             <Input type="number" step="0.1" min={0.8} max={2} value={style?.lineHeight ?? 1.2} onChange={(e) => patchStyle({ lineHeight: Number(e.target.value) })} />
           </Field>
-          <Field label="Espacement lettres (px)">
+          <Field label="Espacement des lettres (px)">
             <Input type="number" step="0.5" value={style?.letterSpacing ?? 0} onChange={(e) => patchStyle({ letterSpacing: Number(e.target.value) })} />
           </Field>
-          <Field label="Ajustement texte">
+          <Field label="Ajustement du texte">
             <select className="w-full rounded-lg border border-white/10 bg-transparent px-2 py-1.5 text-xs" value={style?.fitMode ?? "manual"} onChange={(e) => patchStyle({ fitMode: e.target.value as "manual" | "autoShrink" | "multiline" })}>
-              <option value="manual">Taille manuelle</option>
-              <option value="autoShrink">Réduction automatique</option>
-              <option value="multiline">Plusieurs lignes</option>
+              {Object.entries(FIT_MODE_LABELS).map(([k, label]) => <option key={k} value={k}>{label}</option>)}
             </select>
           </Field>
           {(style?.fitMode === "autoShrink" || style?.fitMode === "multiline") ? (
@@ -247,7 +251,7 @@ export function CardEditorProperties({
             </Field>
           ) : null}
           {style?.fitMode === "multiline" ? (
-            <Field label="Lignes max">
+            <Field label="Nombre de lignes maximum">
               <Input type="number" min={1} max={5} value={style?.maxLines ?? 2} onChange={(e) => patchStyle({ maxLines: Number(e.target.value) })} />
             </Field>
           ) : null}
@@ -266,46 +270,25 @@ export function CardEditorProperties({
         </Section>
       ) : null}
 
-      {(isText || element.type === "progressBar") ? (
-        <Section title="Couleurs" open={open.colors} onToggle={() => setOpen((s) => ({ ...s, colors: !s.colors }))}>
-          {isText ? (
-            <>
-              <Field label="Couleur texte">
-                <div className="flex gap-2">
-                  <input type="color" value={style?.color ?? "#FFFFFF"} onChange={(e) => { patchStyle({ color: e.target.value }); onColorUsed(e.target.value); }} />
-                  <Input value={style?.color ?? "#FFFFFF"} onChange={(e) => patchStyle({ color: e.target.value })} />
-                </div>
-              </Field>
-              {recentColors.length ? (
-                <div className="flex flex-wrap gap-1">
-                  {recentColors.map((c) => (
-                    <button key={c} type="button" className="h-5 w-5 rounded border border-white/20" style={{ backgroundColor: c }} onClick={() => patchStyle({ color: c })} />
-                  ))}
-                </div>
-              ) : null}
-            </>
-          ) : null}
-          {element.type === "progressBar" && element.progressColors ? (
-            <>
-              <Field label="Couleur progression">
-                <input type="color" value={element.progressColors.fill} onChange={(e) => onUpdate({ progressColors: { ...element.progressColors!, fill: e.target.value } })} />
-              </Field>
-              <Field label="Couleur fond">
-                <input type="color" value={element.progressColors.track} onChange={(e) => onUpdate({ progressColors: { ...element.progressColors!, track: e.target.value } })} />
-              </Field>
-              <Field label="Couleur bordure">
-                <input type="color" value={element.progressColors.borderColor ?? "#FFFFFF"} onChange={(e) => onUpdate({ progressColors: { ...element.progressColors!, borderColor: e.target.value } })} />
-              </Field>
-            </>
-          ) : null}
-          <Button variant="secondary" className="w-full text-xs" onClick={() => {
-            if (isText) patchStyle({ color: "#FFFFFF", opacity: 1 });
-            if (element.type === "progressBar") onUpdate({ progressColors: { fill: "#875BFF", track: "#FFFFFF", radius: 8 } });
-          }}>
-            Réinitialiser couleurs
-          </Button>
-        </Section>
-      ) : null}
+      <Section title="Apparence" open={open.appearance} onToggle={() => setOpen((s) => ({ ...s, appearance: !s.appearance }))}>
+        <Field label="Rotation (°)">
+          <Input type="number" min={-180} max={180} value={element.rotation ?? 0} onChange={(e) => onUpdate({ rotation: Number(e.target.value) })} />
+        </Field>
+        <Field label="Opacité">
+          <input type="range" min={0} max={1} step={0.05} value={element.opacity ?? 1} onChange={(e) => onUpdate({ opacity: Number(e.target.value) })} className="w-full" />
+        </Field>
+        {element.type === "qr" ? (
+          <p className="text-[10px] text-[var(--muted-text)]">Le QR code reste toujours carré. Redimensionnez-le directement sur la carte.</p>
+        ) : element.type === "logo" ? (
+          <p className="text-[10px] text-[var(--muted-text)]">Les proportions du logo se règlent dans la section Logo.</p>
+        ) : element.type !== "progressBar" ? (
+          <label className="flex items-center gap-2 text-xs">
+            <input type="checkbox" checked={element.lockAspectRatio ?? false} onChange={(e) => onUpdate({ lockAspectRatio: e.target.checked })} />
+            Conserver les proportions
+          </label>
+        ) : null}
+        <p className="text-[10px] text-[var(--muted-text)]">Positionnez et redimensionnez l’élément directement sur la carte.</p>
+      </Section>
 
       {element.type === "logo" ? (
         <Section title="Logo" open={open.logo} onToggle={() => setOpen((s) => ({ ...s, logo: !s.logo }))}>
@@ -322,10 +305,9 @@ export function CardEditorProperties({
             />
             Conserver les proportions
           </label>
-          <Field label="Mode">
+          <Field label="Mode d’affichage">
             <select className="w-full rounded-lg border border-white/10 bg-transparent px-2 py-1.5 text-xs" value={element.logoStyle?.objectFit ?? "contain"} onChange={(e) => onUpdate({ logoStyle: { ...element.logoStyle, objectFit: e.target.value as "contain" | "cover" } })}>
-              <option value="contain">Contenir</option>
-              <option value="cover">Couvrir</option>
+              {Object.entries(LOGO_FIT_LABELS).map(([k, label]) => <option key={k} value={k}>{label}</option>)}
             </select>
           </Field>
           <Field label="Couleur de fond">
@@ -355,14 +337,10 @@ export function CardEditorProperties({
               />
             </div>
           </Field>
-          <Button
-            variant="secondary"
-            className="w-full text-xs"
-            onClick={() => onUpdate({ logoStyle: { ...element.logoStyle, backgroundColor: undefined } })}
-          >
+          <Button variant="secondary" className="w-full text-xs" onClick={() => onUpdate({ logoStyle: { ...element.logoStyle, backgroundColor: undefined } })}>
             Fond transparent
           </Button>
-          <Field label="Rayon angles (px)">
+          <Field label="Rayon des angles (px)">
             <Input type="number" min={0} max={32} value={element.logoStyle?.borderRadius ?? 12} onChange={(e) => onUpdate({ logoStyle: { ...element.logoStyle, borderRadius: Number(e.target.value) } })} />
           </Field>
           <Field label="Marge interne (px)">
@@ -370,23 +348,19 @@ export function CardEditorProperties({
           </Field>
           <label className="flex items-center gap-2 text-xs">
             <input type="checkbox" checked={element.logoStyle?.shadow ?? false} onChange={(e) => onUpdate({ logoStyle: { ...element.logoStyle, shadow: e.target.checked } })} />
-            Ombre
+            Ombre portée
           </label>
-          <p className="text-[10px] text-[var(--muted-text)]">Image dynamique : merchant.logo</p>
         </Section>
       ) : null}
 
       {element.type === "qr" && qrStatus ? (
         <Section title="QR code" open={open.qr} onToggle={() => setOpen((s) => ({ ...s, qr: !s.qr }))}>
-          <p className="text-xs">Taille : {qrStatus.pctWidth.toFixed(1)} % (min. {QR_MIN_SIZE * 100} %)</p>
+          <p className="text-xs">Taille : {qrStatus.pctWidth.toFixed(1)} % de la largeur (minimum {QR_MIN_WIDTH * 100} %)</p>
           <p className={`text-xs ${qrStatus.valid ? "text-green-300" : "text-amber-300"}`}>
-            {qrStatus.valid ? "Taille valide" : "Taille insuffisante — bloquée au minimum"}
+            {qrStatus.valid ? QR_SIZE_VALID_MESSAGE : QR_SIZE_INVALID_MESSAGE}
           </p>
-          {qrStatus.overlap ? <p className="text-xs text-amber-300">Un élément recouvre la zone du QR.</p> : null}
-          <Button variant="secondary" className="w-full text-xs" onClick={() => {
-            const size = qrRecommendedSize();
-            patchRect({ width: size, height: size });
-          }}>
+          {qrStatus.overlap ? <p className="text-xs text-amber-300">{QR_OVERLAP_MESSAGE}</p> : null}
+          <Button variant="secondary" className="w-full text-xs" onClick={() => patchRect(qrRecommendedRect(rect.x, rect.y))}>
             Taille recommandée
           </Button>
         </Section>
@@ -400,14 +374,13 @@ export function CardEditorProperties({
               value={element.progressColors?.orientation ?? "horizontal"}
               onChange={(e) => onUpdate({ progressColors: { ...element.progressColors!, orientation: e.target.value as "horizontal" | "vertical" } })}
             >
-              <option value="horizontal">Horizontale</option>
-              <option value="vertical">Verticale</option>
+              {Object.entries(PROGRESS_ORIENTATION_LABELS).map(([k, label]) => <option key={k} value={k}>{label}</option>)}
             </select>
           </Field>
-          <Field label="Rayon (px)">
+          <Field label="Rayon des angles (px)">
             <Input type="number" min={0} max={32} value={element.progressColors?.radius ?? 8} onChange={(e) => onUpdate({ progressColors: { ...element.progressColors!, radius: Number(e.target.value) } })} />
           </Field>
-          <Field label="Épaisseur bordure">
+          <Field label="Épaisseur de bordure">
             <Input type="number" min={0} max={8} value={element.progressColors?.borderWidth ?? 0} onChange={(e) => onUpdate({ progressColors: { ...element.progressColors!, borderWidth: Number(e.target.value) } })} />
           </Field>
           <label className="flex items-center gap-2 text-xs">
@@ -421,26 +394,26 @@ export function CardEditorProperties({
         </Section>
       ) : null}
 
-      <Section title="Données dynamiques" open={open.data} onToggle={() => setOpen((s) => ({ ...s, data: !s.data }))}>
-        <p className="font-mono text-[11px] text-[var(--violet-bright)]">{element.dataKey ?? ELEMENT_DATA_KEYS[element.type]}</p>
-        <p className="text-[10px] text-[var(--muted-text)]">Valeur fictive uniquement dans l&apos;aperçu éditeur.</p>
+      <Section title="Donnée dynamique" open={open.data} onToggle={() => setOpen((s) => ({ ...s, data: !s.data }))}>
+        <p className="text-sm text-[var(--violet-bright)]">{dataKeyLabel(dataKey)}</p>
+        <p className="text-[10px] text-[var(--muted-text)]">Les valeurs d’aperçu sont fictives et ne sont pas enregistrées dans le gabarit.</p>
         {element.type === "staticText" ? (
-          <Field label="Texte statique">
+          <Field label="Texte personnalisé">
             <Input value={element.text ?? ""} onChange={(e) => onUpdate({ text: e.target.value })} />
           </Field>
         ) : null}
       </Section>
 
       <Section title="Calque" open={open.layer} onToggle={() => setOpen((s) => ({ ...s, layer: !s.layer }))}>
-        <Field label="Ordre (z-index)">
+        <Field label="Ordre d’affichage">
           <Input type="number" min={0} max={999} value={element.zIndex} onChange={(e) => onUpdate({ zIndex: Number(e.target.value) })} />
         </Field>
-        <Field label="Nom interne">
-          <Input value={element.label ?? ""} onChange={(e) => onUpdate({ label: e.target.value })} />
+        <Field label="Nom du calque">
+          <Input value={element.label ?? ""} placeholder={elementTypeLabel(element.type)} onChange={(e) => onUpdate({ label: e.target.value })} />
         </Field>
         <label className="flex items-center gap-2 text-xs">
           <input type="checkbox" checked={element.hidden} onChange={(e) => onUpdate({ hidden: e.target.checked })} />
-          Masquer dans l&apos;éditeur
+          Masquer dans l’éditeur
         </label>
       </Section>
     </div>
