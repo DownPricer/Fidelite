@@ -169,6 +169,188 @@ describe("stockage uploads", () => {
   });
 });
 
+describe("éditeur de cartes — contraintes et normalisation", () => {
+  it("bloque le QR sous la taille minimale lors du redimensionnement", async () => {
+    const { enforceElementRect } = await import("../src/lib/card-template-editor-resize");
+    const { QR_MIN_SIZE } = await import("../src/lib/card-template-schema");
+    const qr = {
+      id: "qr-1",
+      type: "qr" as const,
+      x: 0.1,
+      y: 0.1,
+      width: 0.05,
+      height: 0.05,
+      zIndex: 1,
+      locked: false,
+      hidden: false,
+      anchor: "top-left" as const,
+    };
+    const enforced = enforceElementRect(qr, { x: 0.1, y: 0.1, width: 0.05, height: 0.05 });
+    expect(enforced.width).toBeGreaterThanOrEqual(QR_MIN_SIZE);
+    expect(enforced.height).toBe(enforced.width);
+  });
+
+  it("maintient le QR carré lors d'un redimensionnement", async () => {
+    const { enforceElementRect } = await import("../src/lib/card-template-editor-resize");
+    const qr = {
+      id: "qr-1",
+      type: "qr" as const,
+      x: 0.1,
+      y: 0.1,
+      width: 0.2,
+      height: 0.2,
+      zIndex: 1,
+      locked: false,
+      hidden: false,
+      anchor: "top-left" as const,
+    };
+    const enforced = enforceElementRect(qr, { x: 0.1, y: 0.1, width: 0.25, height: 0.18 }, "se");
+    expect(enforced.width).toBe(enforced.height);
+    expect(enforced.width).toBeGreaterThanOrEqual(0.12);
+  });
+
+  it("valide la publication avec un QR à 12 % minimum", () => {
+    const config = defaultCardTemplateConfig("/bg.png");
+    const validQr = {
+      ...config,
+      elements: config.elements.map((el) =>
+        el.type === "qr" ? { ...el, width: 0.12, height: 0.12 } : el,
+      ),
+    };
+    const result = validateCardTemplateForPublishDetailed(validQr, "VISITS");
+    expect(result.errors.some((e) => e.message.includes("QR") && e.message.includes("12"))).toBe(false);
+  });
+
+  it("conserve les proportions du logo quand elles sont verrouillées", async () => {
+    const { enforceElementRect } = await import("../src/lib/card-template-editor-resize");
+    const logo = {
+      id: "logo-1",
+      type: "logo" as const,
+      x: 0.05,
+      y: 0.05,
+      width: 0.2,
+      height: 0.1,
+      zIndex: 1,
+      locked: false,
+      hidden: false,
+      anchor: "top-left" as const,
+      logoStyle: { lockAspectRatio: true, objectFit: "contain" as const },
+    };
+    const enforced = enforceElementRect(logo, { x: 0.05, y: 0.05, width: 0.3, height: 0.1 }, "e");
+    expect(enforced.width / enforced.height).toBeCloseTo(2, 1);
+  });
+
+  it("autorise largeur et hauteur indépendantes pour le logo sans verrou", async () => {
+    const { enforceElementRect } = await import("../src/lib/card-template-editor-resize");
+    const logo = {
+      id: "logo-1",
+      type: "logo" as const,
+      x: 0.05,
+      y: 0.05,
+      width: 0.2,
+      height: 0.1,
+      zIndex: 1,
+      locked: false,
+      hidden: false,
+      anchor: "top-left" as const,
+      logoStyle: { lockAspectRatio: false, objectFit: "contain" as const },
+    };
+    const enforced = enforceElementRect(logo, { x: 0.05, y: 0.05, width: 0.3, height: 0.08 }, "se");
+    expect(enforced.width).toBeCloseTo(0.3, 2);
+    expect(enforced.height).toBeCloseTo(0.08, 2);
+  });
+
+  it("normalise un ancien gabarit sans nouvelles propriétés", async () => {
+    const { normalizeCardTemplateConfig } = await import("../src/lib/card-template-normalize");
+    const config = defaultCardTemplateConfig("/bg.png");
+    const legacy = {
+      ...config,
+      elements: config.elements.map((el) => {
+        const { opacity, lockAspectRatio, dataKey, rotation, ...rest } = el as Record<string, unknown>;
+        return rest;
+      }),
+    };
+    const normalized = normalizeCardTemplateConfig(legacy as typeof config);
+    expect(normalized.elements.every((el) => el.opacity != null)).toBe(true);
+    expect(normalized.elements.find((el) => el.type === "qr")?.lockAspectRatio).toBe(true);
+  });
+
+  it("calcule une taille cqw cohérente avec la largeur de référence", async () => {
+    const { cardFontSizeCss } = await import("../src/lib/card-template-element-style");
+    const { CARD_EDITOR_REFERENCE_WIDTH } = await import("../src/lib/card-template-normalize");
+    const css = cardFontSizeCss(16);
+    const pct = parseFloat(css);
+    expect(pct).toBeCloseTo((16 / CARD_EDITOR_REFERENCE_WIDTH) * 100, 2);
+  });
+
+  it("préserve positions, typo, couleurs et progression via le schéma Zod", async () => {
+    const { cardTemplateConfigSchema } = await import("../src/lib/card-template-schema");
+    const config = defaultCardTemplateConfig("/bg.png");
+    const customized = {
+      ...config,
+      elements: config.elements.map((el) => {
+        if (el.type === "merchantName" && el.style) {
+          return {
+            ...el,
+            x: 0.15,
+            y: 0.12,
+            width: 0.55,
+            height: 0.09,
+            style: {
+              ...el.style,
+              fontFamily: "card" as const,
+              fontSize: 28,
+              color: "#FFAA00",
+              fontWeight: "800" as const,
+            },
+          };
+        }
+        if (el.type === "progressBar") {
+          return {
+            ...el,
+            x: 0.08,
+            y: 0.75,
+            width: 0.84,
+            height: 0.08,
+            progressColors: {
+              fill: "#00FFAA",
+              track: "#333333",
+              radius: 12,
+              borderColor: "#FFFFFF",
+              borderWidth: 2,
+            },
+          };
+        }
+        if (el.type === "logo") {
+          return {
+            ...el,
+            logoStyle: {
+              objectFit: "cover" as const,
+              backgroundColor: "#112233",
+              lockAspectRatio: false,
+              borderRadius: 8,
+              padding: 4,
+            },
+          };
+        }
+        return el;
+      }),
+    };
+    const parsed = cardTemplateConfigSchema.parse(customized);
+    const name = parsed.elements.find((e) => e.type === "merchantName");
+    const bar = parsed.elements.find((e) => e.type === "progressBar");
+    const logo = parsed.elements.find((e) => e.type === "logo");
+    expect(name?.x).toBeCloseTo(0.15);
+    expect(name?.style?.fontSize).toBe(28);
+    expect(name?.style?.color).toBe("#FFAA00");
+    expect(bar?.width).toBeCloseTo(0.84);
+    expect(bar?.height).toBeCloseTo(0.08);
+    expect(bar?.progressColors?.fill).toBe("#00FFAA");
+    expect(logo?.logoStyle?.backgroundColor).toBe("#112233");
+    expect(logo?.logoStyle?.lockAspectRatio).toBe(false);
+  });
+});
+
 describe("fallback renderer", () => {
   it("considère qu'un gabarit publié nécessite fond et éléments", () => {
     const config = defaultCardTemplateConfig("/bg.png");

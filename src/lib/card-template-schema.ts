@@ -7,18 +7,53 @@ export const QR_MIN_SIZE = 0.12;
 const normalized = z.number().min(0).max(1);
 
 const textStyleSchema = z.object({
-  fontFamily: z.enum(["system", "serif", "mono", "display"]).default("system"),
-  fontSize: z.number().min(8).max(72).default(16),
+  fontFamily: z.enum(["system", "card", "serif", "mono", "display"]).default("system"), // display = legacy alias
+  fontSize: z.number().min(8).max(96).default(16),
   fontWeight: z.enum(["400", "500", "600", "700", "800"]).default("600"),
+  fontStyle: z.enum(["normal", "italic"]).optional(),
   color: z.string().regex(/^#([0-9a-fA-F]{6})$/).default("#FFFFFF"),
   textAlign: z.enum(["left", "center", "right"]).default("left"),
+  verticalAlign: z.enum(["top", "center", "bottom"]).optional(),
   opacity: z.number().min(0).max(1).default(1),
   lineHeight: z.number().min(0.8).max(2).default(1.2),
+  letterSpacing: z.number().min(-2).max(10).optional(),
+  textTransform: z.enum(["none", "uppercase"]).optional(),
+  maxLines: z.number().int().min(1).max(5).optional(),
   shadow: z.boolean().default(false),
+  textStroke: z.boolean().optional(),
+  fitMode: z.enum(["manual", "autoShrink", "multiline"]).optional(),
+  minFontSize: z.number().min(8).max(96).optional(),
   maxWidth: normalized.optional(),
   backgroundColor: z.string().regex(/^#([0-9a-fA-F]{6})$/).optional(),
   borderRadius: z.number().min(0).max(32).default(0),
 });
+
+const logoStyleSchema = z
+  .object({
+    objectFit: z.enum(["contain", "cover"]).optional(),
+    borderRadius: z.number().min(0).max(32).optional(),
+    padding: z.number().min(0).max(24).optional(),
+    backgroundColor: z.string().regex(/^#([0-9a-fA-F]{6})$/).optional(),
+    shadow: z.boolean().optional(),
+    lockAspectRatio: z.boolean().optional(),
+  })
+  .optional();
+
+const progressColorsSchema = z
+  .object({
+    fill: z.string().regex(/^#([0-9a-fA-F]{6})$/),
+    track: z.string().regex(/^#([0-9a-fA-F]{6})$/),
+    radius: z.number().min(0).max(32).default(8),
+    borderColor: z.string().regex(/^#([0-9a-fA-F]{6})$/).optional(),
+    borderWidth: z.number().min(0).max(8).optional(),
+    shadow: z.boolean().optional(),
+    glow: z.boolean().optional(),
+    orientation: z.enum(["horizontal", "vertical"]).optional(),
+    showLabel: z.boolean().optional(),
+    labelColor: z.string().regex(/^#([0-9a-fA-F]{6})$/).optional(),
+    labelFontSize: z.number().min(8).max(32).optional(),
+  })
+  .optional();
 
 const elementTypes = z.enum([
   "logo",
@@ -58,15 +93,14 @@ export const cardElementSchema = z.object({
     .default("top-left"),
   label: z.string().max(40).optional(),
   hidden: z.boolean().default(false),
+  opacity: z.number().min(0).max(1).optional(),
+  rotation: z.number().min(-180).max(180).optional(),
+  lockAspectRatio: z.boolean().optional(),
+  dataKey: z.string().max(64).optional(),
   style: textStyleSchema.optional(),
+  logoStyle: logoStyleSchema,
   text: z.string().max(200).optional(),
-  progressColors: z
-    .object({
-      fill: z.string().regex(/^#([0-9a-fA-F]{6})$/),
-      track: z.string().regex(/^#([0-9a-fA-F]{6})$/),
-      radius: z.number().min(0).max(32).default(8),
-    })
-    .optional(),
+  progressColors: progressColorsSchema,
 });
 
 export const cardTemplateConfigSchema = z.object({
@@ -91,6 +125,9 @@ export const cardTemplateConfigSchema = z.object({
 
 export type CardTemplateConfig = z.infer<typeof cardTemplateConfigSchema>;
 export type CardElement = z.infer<typeof cardElementSchema>;
+export type CardTextStyle = z.infer<typeof textStyleSchema>;
+export type CardLogoStyle = NonNullable<z.infer<typeof logoStyleSchema>>;
+export type CardProgressColors = NonNullable<z.infer<typeof progressColorsSchema>>;
 
 export { validateCardTemplateForPublish, validateCardTemplateForPublishDetailed } from "./card-template-validation";
 
@@ -111,6 +148,8 @@ export const defaultCardTemplateConfig = (backgroundUrl: string): CardTemplateCo
       locked: false,
       hidden: false,
       anchor: "top-left",
+      lockAspectRatio: true,
+      logoStyle: { objectFit: "contain", borderRadius: 12, lockAspectRatio: true },
     },
     {
       id: "name-1",
@@ -133,6 +172,9 @@ export const defaultCardTemplateConfig = (backgroundUrl: string): CardTemplateCo
         lineHeight: 1.2,
         shadow: true,
         borderRadius: 0,
+        fitMode: "autoShrink",
+        maxLines: 2,
+        minFontSize: 12,
       },
     },
     {
@@ -146,6 +188,7 @@ export const defaultCardTemplateConfig = (backgroundUrl: string): CardTemplateCo
       locked: false,
       hidden: false,
       anchor: "top-left",
+      lockAspectRatio: true,
     },
     {
       id: "progress-1",
@@ -158,7 +201,13 @@ export const defaultCardTemplateConfig = (backgroundUrl: string): CardTemplateCo
       locked: false,
       hidden: false,
       anchor: "top-left",
-      progressColors: { fill: "#875BFF", track: "#FFFFFF", radius: 8 },
+      progressColors: {
+        fill: "#875BFF",
+        track: "#FFFFFF",
+        radius: 8,
+        borderWidth: 0,
+        orientation: "horizontal",
+      },
     },
   ],
 });

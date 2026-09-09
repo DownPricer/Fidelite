@@ -4,6 +4,12 @@ import { useEffect, useMemo, useState } from "react";
 import { cn } from "@/components/ui";
 import type { CardElement, CardTemplateConfig } from "@/lib/card-template-schema";
 import {
+  buildTextContainerStyle,
+  cardFontSizeCss,
+  multilineClampStyle,
+  resolveAutoFitFontSize,
+} from "@/lib/card-template-element-style";
+import {
   DECORATIVE_QR_SRC,
   rectStyle,
   resolveElementRect,
@@ -40,6 +46,8 @@ export type MerchantCardRendererProps = {
     unlockedReward?: string | null;
     tierLabel?: string | null;
   };
+  /** Force une valeur de progression (0–100 %) pour l'aperçu éditeur. */
+  progressPercentOverride?: number;
   displayMode?: MerchantCardDisplayMode;
   showQr?: boolean;
   interactive?: boolean;
@@ -51,7 +59,7 @@ export type MerchantCardRendererProps = {
 
 function displayClientName(mode: MerchantCardDisplayMode, name?: string) {
   if (mode === "personalized") return name ?? "Membre";
-  if (mode === "adminPreview") return "Aperçu client";
+  if (mode === "adminPreview") return name ?? "Aperçu client";
   if (mode === "publicPreview") return "Membre Fife Life";
   return name ?? "Membre";
 }
@@ -78,6 +86,56 @@ export function resolveDisplayQrSrc(
   return null;
 }
 
+function elementShellStyle(element: CardElement, rect: ReturnType<typeof resolveElementRect>) {
+  return {
+    ...rectStyle(rect),
+    zIndex: element.zIndex,
+    opacity: element.opacity ?? 1,
+    transform: element.rotation ? `rotate(${element.rotation}deg)` : undefined,
+    transformOrigin: "center center",
+  };
+}
+
+function TextBlock({
+  element,
+  text,
+  cardWidthPx = 920,
+}: {
+  element: CardElement;
+  text: string;
+  cardWidthPx?: number;
+}) {
+  const style = element.style;
+  if (!style) return <span>{text}</span>;
+
+  const rect = resolveElementRect(element);
+  const containerWidthPx = rect.width * cardWidthPx;
+  const fontSize =
+    style.fitMode === "autoShrink"
+      ? resolveAutoFitFontSize(text, style, containerWidthPx)
+      : style.fontSize;
+
+  const textStyle = buildTextContainerStyle(element, {
+    fontSize: cardFontSizeCss(fontSize),
+    display: "flex",
+    width: "100%",
+    height: "100%",
+  });
+
+  const clamp =
+    style.fitMode === "multiline" && style.maxLines
+      ? multilineClampStyle(style.maxLines)
+      : style.fitMode === "autoShrink"
+        ? { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const }
+        : undefined;
+
+  return (
+    <div style={textStyle}>
+      <span style={clamp}>{text}</span>
+    </div>
+  );
+}
+
 function ElementView({
   element,
   merchant,
@@ -86,6 +144,7 @@ function ElementView({
   qrSrc,
   showQr,
   displayMode,
+  progressPercentOverride,
 }: {
   element: CardElement;
   merchant: MerchantCardRendererProps["merchant"];
@@ -94,53 +153,58 @@ function ElementView({
   qrSrc: string | null;
   showQr: boolean;
   displayMode: MerchantCardDisplayMode;
+  progressPercentOverride?: number;
 }) {
   if (element.hidden || shouldHideElement(element.type, displayMode)) return null;
 
   const rect = resolveElementRect(element);
-  const style = { ...rectStyle(rect), zIndex: element.zIndex };
+  const style = elementShellStyle(element, rect);
   const textStyle = element.style;
   const masked = shouldMaskProgress(displayMode);
 
   switch (element.type) {
-    case "logo":
+    case "logo": {
+      const ls = element.logoStyle;
       return (
-        <div style={style} className="flex items-center justify-center overflow-hidden rounded-xl">
+        <div
+          style={{
+            ...style,
+            borderRadius: ls?.borderRadius ? `${ls.borderRadius}px` : undefined,
+            backgroundColor: ls?.backgroundColor,
+            boxShadow: ls?.shadow ? "0 4px 16px rgba(0,0,0,0.35)" : undefined,
+            padding: ls?.padding ? `${ls.padding}px` : undefined,
+          }}
+          className="flex items-center justify-center overflow-hidden"
+        >
           {merchant.logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={merchant.logoUrl} alt="" className="h-full w-full object-contain" />
+            <img
+              src={merchant.logoUrl}
+              alt=""
+              className="h-full w-full"
+              style={{ objectFit: ls?.objectFit ?? "contain" }}
+            />
           ) : (
             <div
-              className="flex h-full w-full items-center justify-center rounded-xl text-lg font-black text-white"
-              style={{ backgroundColor: merchant.primaryColor }}
+              className="flex h-full w-full items-center justify-center text-lg font-black text-white"
+              style={{ backgroundColor: merchant.primaryColor, borderRadius: ls?.borderRadius }}
             >
               {merchant.name.slice(0, 1)}
             </div>
           )}
         </div>
       );
+    }
     case "merchantName":
       return (
-        <div
-          style={{
-            ...style,
-            color: textStyle?.color,
-            fontSize: textStyle?.fontSize,
-            fontWeight: Number(textStyle?.fontWeight ?? 700),
-            textAlign: textStyle?.textAlign,
-            opacity: textStyle?.opacity,
-            lineHeight: textStyle?.lineHeight,
-            textShadow: textStyle?.shadow ? "0 2px 8px rgba(0,0,0,0.45)" : undefined,
-          }}
-          className="flex items-center overflow-hidden"
-        >
-          {merchant.name}
+        <div style={style}>
+          <TextBlock element={element} text={merchant.name} />
         </div>
       );
     case "clientName":
       return (
-        <div style={{ ...style, color: textStyle?.color, fontSize: textStyle?.fontSize }} className="flex items-center">
-          {clientName}
+        <div style={style}>
+          <TextBlock element={element} text={clientName} />
         </div>
       );
     case "qr":
@@ -159,69 +223,120 @@ function ElementView({
     case "visitsCount":
       if (masked) {
         return (
-          <div style={{ ...style, color: textStyle?.color, fontSize: textStyle?.fontSize }} className="flex items-end font-black opacity-60">
-            •••
+          <div style={style} className="font-black opacity-60">
+            <TextBlock element={element} text="•••" />
           </div>
         );
       }
       return (
-        <div style={{ ...style, color: textStyle?.color, fontSize: textStyle?.fontSize }} className="flex items-end font-black">
-          {progress.current}
-          <span className="ml-1 text-[0.65em] opacity-70">/{progress.target}</span>
+        <div style={style} className="font-black">
+          <TextBlock
+            element={element}
+            text={`${progress.current}/${progress.target}`}
+          />
         </div>
       );
     case "progressText":
       return (
-        <div style={{ ...style, color: textStyle?.color, fontSize: textStyle?.fontSize }} className="flex items-center">
-          {masked ? "Progression fidélité" : progress.label}
+        <div style={style}>
+          <TextBlock element={element} text={masked ? "Progression fidélité" : progress.label} />
         </div>
       );
     case "nextReward":
       return (
-        <div style={{ ...style, color: textStyle?.color, fontSize: textStyle?.fontSize }} className="flex items-center">
-          {masked ? "Récompense membre" : progress.nextReward ?? progress.label}
+        <div style={style}>
+          <TextBlock element={element} text={masked ? "Récompense membre" : progress.nextReward ?? progress.label} />
         </div>
       );
     case "unlockedReward":
       return (
-        <div style={{ ...style, color: textStyle?.color, fontSize: textStyle?.fontSize }} className="flex items-center">
-          {masked ? "—" : progress.unlockedReward ?? "—"}
+        <div style={style}>
+          <TextBlock element={element} text={masked ? "—" : progress.unlockedReward ?? "—"} />
         </div>
       );
     case "tierLevel":
       return (
-        <div style={{ ...style, color: textStyle?.color, fontSize: textStyle?.fontSize }} className="flex items-center">
-          {masked ? "Palier" : progress.tierLabel ?? "—"}
+        <div style={style}>
+          <TextBlock element={element} text={masked ? "Palier" : progress.tierLabel ?? "—"} />
         </div>
       );
     case "expiryDate":
       return (
-        <div style={{ ...style, color: textStyle?.color, fontSize: textStyle?.fontSize }} className="flex items-center opacity-80">
-          {masked ? "" : "Validité carte"}
+        <div style={{ ...style, opacity: (element.opacity ?? 1) * 0.8 }}>
+          <TextBlock element={element} text={masked ? "" : "Validité carte"} />
         </div>
       );
     case "progressBar": {
-      const pct = masked ? 35 : Math.min(100, Math.max(0, (progress.current / Math.max(1, progress.target)) * 100));
+      const pct =
+        progressPercentOverride != null
+          ? progressPercentOverride
+          : masked
+            ? 35
+            : Math.min(100, Math.max(0, (progress.current / Math.max(1, progress.target)) * 100));
+      const pc = element.progressColors;
+      const isVertical = pc?.orientation === "vertical";
+      const radius = pc?.radius ?? 8;
+      const glowStyle = pc?.glow
+        ? { boxShadow: `0 0 12px ${pc.fill}88` }
+        : pc?.shadow
+          ? { boxShadow: "0 2px 8px rgba(0,0,0,0.35)" }
+          : undefined;
+
       return (
-        <div style={style} className="relative overflow-hidden rounded-full" aria-hidden>
+        <div
+          style={{
+            ...style,
+            borderRadius: radius,
+            border: pc?.borderWidth ? `${pc.borderWidth}px solid ${pc.borderColor ?? "#FFFFFF44"}` : undefined,
+            ...glowStyle,
+          }}
+          className="relative overflow-hidden"
+          aria-hidden
+        >
           <div
-            className="absolute inset-0 rounded-full"
-            style={{ background: element.progressColors?.track ?? "#FFFFFF44" }}
+            className="absolute inset-0"
+            style={{ background: pc?.track ?? "#FFFFFF44", borderRadius: radius }}
           />
           <div
-            className="absolute inset-y-0 left-0 rounded-full"
-            style={{
-              width: `${pct}%`,
-              background: element.progressColors?.fill ?? merchant.primaryColor,
-            }}
+            className="absolute"
+            style={
+              isVertical
+                ? {
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    height: `${pct}%`,
+                    background: pc?.fill ?? merchant.primaryColor,
+                    borderRadius: radius,
+                  }
+                : {
+                    top: 0,
+                    bottom: 0,
+                    left: 0,
+                    width: `${pct}%`,
+                    background: pc?.fill ?? merchant.primaryColor,
+                    borderRadius: radius,
+                  }
+            }
           />
+          {pc?.showLabel ? (
+            <div
+              className="absolute inset-0 flex items-center justify-center font-bold"
+              style={{
+                color: pc.labelColor ?? "#FFFFFF",
+                fontSize: cardFontSizeCss(pc.labelFontSize ?? 12),
+              }}
+            >
+              {Math.round(pct)}%
+            </div>
+          ) : null}
         </div>
       );
     }
     case "staticText":
       return (
-        <div style={{ ...style, color: textStyle?.color, fontSize: textStyle?.fontSize }} className="flex items-center">
-          {element.text ?? ""}
+        <div style={style}>
+          <TextBlock element={element} text={element.text ?? ""} />
         </div>
       );
     default:
@@ -237,6 +352,7 @@ export function MerchantCardRenderer({
   clientName,
   clientNumber,
   progress,
+  progressPercentOverride,
   displayMode = "personalized",
   showQr = true,
   interactive = true,
@@ -311,7 +427,7 @@ export function MerchantCardRenderer({
         shellClassName,
         interactive && onClick && "cursor-pointer",
       )}
-      style={{ aspectRatio: `${ratio} / 1` }}
+      style={{ aspectRatio: `${ratio} / 1`, containerType: "inline-size" }}
       onClick={onClick}
       role={onClick ? "button" : undefined}
       tabIndex={onClick ? 0 : undefined}
@@ -330,7 +446,7 @@ export function MerchantCardRenderer({
         data-merchant-card
         data-display-mode={displayMode}
         className={cn("merchant-card-renderer relative h-full w-full overflow-hidden rounded-[18px]", className)}
-        style={{ pointerEvents: onClick ? "auto" : "none" }}
+        style={{ pointerEvents: onClick ? "auto" : "none", containerType: "inline-size" }}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
@@ -340,7 +456,7 @@ export function MerchantCardRenderer({
           style={{ pointerEvents: "none" }}
           draggable={false}
         />
-        <div className="absolute inset-0" style={{ pointerEvents: "none" }}>
+        <div className="absolute inset-0" style={{ pointerEvents: "none", containerType: "inline-size" }}>
           {sorted.map((element) => (
             <ElementView
               key={element.id}
@@ -351,6 +467,7 @@ export function MerchantCardRenderer({
               qrSrc={qrSrc}
               showQr={showQr}
               displayMode={displayMode}
+              progressPercentOverride={progressPercentOverride}
             />
           ))}
         </div>

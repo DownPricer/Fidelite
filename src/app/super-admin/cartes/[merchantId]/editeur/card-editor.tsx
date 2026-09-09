@@ -2,15 +2,17 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { SuperAdminShell } from "@/components/super-admin/layout-shell";
-import { MerchantCardRenderer } from "@/components/fife-life/merchant-card-renderer";
 import { CardEditorCanvas, elementLabel } from "@/components/super-admin/card-editor-canvas";
+import { CardEditorProperties } from "@/components/super-admin/card-editor-properties";
 import { useEditorHistory } from "@/hooks/use-editor-history";
 import {
-  CARD_SCHEMA_VERSION,
   defaultCardTemplateConfig,
   type CardElement,
   type CardTemplateConfig,
 } from "@/lib/card-template-schema";
+import { defaultDataKey } from "@/lib/card-template-data-keys";
+import { normalizeCardElement, normalizeCardTemplateConfig } from "@/lib/card-template-normalize";
+import { CARD_EDITOR_REFERENCE_WIDTH } from "@/lib/card-template-normalize";
 import { validateCardTemplateForPublishDetailed } from "@/lib/card-template-validation";
 import { Alert, Button, Card, Field, Input } from "@/components/ui";
 import type { LoyaltyMode } from "@prisma/client";
@@ -30,6 +32,18 @@ const ELEMENT_CATALOG: { type: CardElement["type"]; label: string }[] = [
   { type: "staticText", label: "Texte statique" },
 ];
 
+type PreviewScenario = "shortName" | "longName" | "noPoints" | "midProgress" | "rewardReached";
+
+const SCENARIO_LABELS: Record<PreviewScenario, string> = {
+  shortName: "Nom client court",
+  longName: "Nom client long",
+  noPoints: "Aucun point",
+  midProgress: "Progression moyenne",
+  rewardReached: "Récompense atteinte",
+};
+
+const PROGRESS_STEPS = [0, 25, 50, 75, 100];
+
 export function CardEditorPage({ firstName, merchantId }: { firstName: string; merchantId: string }) {
   const [merchant, setMerchant] = useState<any>(null);
   const [templateId, setTemplateId] = useState<string | null>(null);
@@ -42,7 +56,13 @@ export function CardEditorPage({ firstName, merchantId }: { firstName: string; m
   const [guides, setGuides] = useState<{ orientation: "h" | "v"; pos: number }[]>([]);
   const [saving, setSaving] = useState(false);
   const [savedAt, setSavedAt] = useState<string | null>(null);
-  const [serverVersion, setServerVersion] = useState<number | null>(null);
+  const [zoom, setZoom] = useState(100);
+  const [previewScenario, setPreviewScenario] = useState<PreviewScenario>("midProgress");
+  const [progressTestPct, setProgressTestPct] = useState(50);
+  const [recentColors, setRecentColors] = useState<string[]>([]);
+  const [mobilePropsOpen, setMobilePropsOpen] = useState(false);
+
+  const canvasViewportRef = useRef<HTMLDivElement>(null);
 
   const history = useEditorHistory<CardTemplateConfig | null>(null);
   const historySetRef = useRef(history.set);
@@ -60,9 +80,8 @@ export function CardEditorPage({ firstName, merchantId }: { firstName: string; m
     if (tpl) {
       setTemplateId(tpl.id);
       setTemplateMeta({ version: tpl.version, status: tpl.status, updatedAt: tpl.updatedAt });
-      setServerVersion(tpl.version);
       setBackgroundUrl(tpl.backgroundUrl ?? "");
-      historySetRef.current(tpl.config as CardTemplateConfig, true);
+      historySetRef.current(normalizeCardTemplateConfig(tpl.config as CardTemplateConfig), true);
     }
   }, [merchantId]);
 
@@ -93,6 +112,49 @@ export function CardEditorPage({ firstName, merchantId }: { firstName: string; m
     [config, loyaltyMode],
   );
 
+  const visitsRequired = merchant?.program?.visitsRequired ?? 10;
+
+  const previewClientName = useMemo(() => {
+    switch (previewScenario) {
+      case "shortName":
+        return "Léa M.";
+      case "longName":
+        return "Jean-Baptiste de la Fontaine-Montclair";
+      default:
+        return "Marie Dupont";
+    }
+  }, [previewScenario]);
+
+  const previewProgress = useMemo(() => {
+    const target = loyaltyMode === "VISITS" ? visitsRequired : 200;
+    let current: number;
+    switch (previewScenario) {
+      case "noPoints":
+        current = 0;
+        break;
+      case "rewardReached":
+        current = target;
+        break;
+      case "midProgress":
+        current = Math.round(target * 0.5);
+        break;
+      default:
+        current = Math.round(target * (progressTestPct / 100));
+    }
+    if (previewScenario !== "noPoints" && previewScenario !== "midProgress" && previewScenario !== "rewardReached") {
+      current = Math.round(target * (progressTestPct / 100));
+    }
+    return {
+      current,
+      target,
+      label:
+        current >= target
+          ? `${merchant?.program?.rewardLabel ?? "Récompense"} disponible`
+          : `Encore ${Math.max(0, target - current)} · ${merchant?.program?.rewardLabel ?? "Récompense"}`,
+      nextReward: merchant?.program?.rewardLabel ?? "Récompense",
+    };
+  }, [previewScenario, progressTestPct, loyaltyMode, visitsRequired, merchant?.program?.rewardLabel]);
+
   const previewCard = useMemo(() => {
     if (!merchant) return null;
     return {
@@ -102,24 +164,31 @@ export function CardEditorPage({ firstName, merchantId }: { firstName: string; m
       name: merchant.name,
       logoUrl: merchant.logoUrl,
       primaryColor: merchant.primaryColor,
-      points: loyaltyMode === "VISITS" ? 3 : 120,
-      visitsRequired: merchant.program?.visitsRequired ?? 10,
+      points: previewProgress.current,
+      visitsRequired: previewProgress.target,
       rewardLabel: merchant.program?.rewardLabel ?? "Récompense",
       loyaltyMode,
     };
-  }, [merchant, merchantId, loyaltyMode]);
+  }, [merchant, merchantId, loyaltyMode, previewProgress]);
 
   const selected = config?.elements.find((el) => el.id === selectedId) ?? null;
 
   function updateElements(elements: CardElement[]) {
     if (!config) return;
-    history.set({ ...config, elements });
+    history.set({ ...config, elements: elements.map(normalizeCardElement) });
     setMessage(null);
+  }
+
+  function updateElement(id: string, patch: Partial<CardElement>) {
+    if (!config) return;
+    updateElements(
+      config.elements.map((el) => (el.id === id ? normalizeCardElement({ ...el, ...patch }) : el)),
+    );
   }
 
   function addElement(type: CardElement["type"]) {
     const id = `${type}-${Date.now()}`;
-    const element: CardElement = {
+    const element = normalizeCardElement({
       id,
       type,
       label: elementLabel(type),
@@ -131,6 +200,8 @@ export function CardEditorPage({ firstName, merchantId }: { firstName: string; m
       locked: false,
       hidden: false,
       anchor: "top-left",
+      lockAspectRatio: type === "qr" || type === "logo",
+      dataKey: defaultDataKey(type),
       style: {
         fontFamily: "system",
         fontSize: 16,
@@ -141,12 +212,37 @@ export function CardEditorPage({ firstName, merchantId }: { firstName: string; m
         lineHeight: 1.2,
         shadow: true,
         borderRadius: 0,
+        fitMode: "manual",
+        minFontSize: 10,
+        maxLines: 2,
       },
       text: type === "staticText" ? "Texte" : undefined,
       progressColors: type === "progressBar" ? { fill: "#875BFF", track: "#FFFFFF", radius: 8 } : undefined,
-    };
+      logoStyle: type === "logo" ? { objectFit: "contain", borderRadius: 12, lockAspectRatio: true } : undefined,
+    });
     updateElements([...(config?.elements ?? []), element]);
     setSelectedId(id);
+  }
+
+  function fitToScreen() {
+    const viewport = canvasViewportRef.current;
+    if (!viewport) return;
+    const available = viewport.clientWidth - 32;
+    const fitZoom = Math.min(200, Math.max(50, Math.round((available / CARD_EDITOR_REFERENCE_WIDTH) * 100)));
+    setZoom(fitZoom);
+  }
+
+  useEffect(() => {
+    fitToScreen();
+    function onResize() {
+      fitToScreen();
+    }
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, [config, backgroundUrl]);
+
+  function trackColor(color: string) {
+    setRecentColors((prev) => [color, ...prev.filter((c) => c !== color)].slice(0, 8));
   }
 
   async function uploadBackground(file: File) {
@@ -165,10 +261,12 @@ export function CardEditorPage({ firstName, merchantId }: { firstName: string; m
       }
       setBackgroundUrl(data.url);
       if (config) {
-        history.set({
-          ...config,
-          background: { ...config.background, url: data.url },
-        });
+        history.set(
+          normalizeCardTemplateConfig({
+            ...config,
+            background: { ...config.background, url: data.url },
+          }),
+        );
       } else {
         history.set(defaultCardTemplateConfig(data.url), true);
       }
@@ -181,11 +279,15 @@ export function CardEditorPage({ firstName, merchantId }: { firstName: string; m
     if (!config) return;
     setSaving(true);
     setError(null);
+    const normalized = normalizeCardTemplateConfig({
+      ...config,
+      background: { ...config.background, url: backgroundUrl },
+    });
     const payload = {
       merchantId,
       loyaltyMode,
       backgroundUrl,
-      config: { ...config, background: { ...config.background, url: backgroundUrl } },
+      config: normalized,
     };
     const response = await fetch(templateId ? `/api/super-admin/card-templates/${templateId}` : "/api/super-admin/card-templates", {
       method: templateId ? "PATCH" : "POST",
@@ -196,13 +298,14 @@ export function CardEditorPage({ firstName, merchantId }: { firstName: string; m
     setSaving(false);
     if (!response.ok) {
       setError(data.error ?? "Enregistrement impossible.");
+      setMessage(null);
       return;
     }
     setTemplateId(data.template.id);
-    setServerVersion(data.template.version);
+    setTemplateMeta({ version: data.template.version, status: data.template.status ?? "DRAFT" });
     setSavedAt(new Date().toISOString());
     setMessage("Brouillon enregistré.");
-    history.set(data.template.config as CardTemplateConfig, true);
+    history.set(normalizeCardTemplateConfig(data.template.config as CardTemplateConfig), true);
   }
 
   async function publish() {
@@ -229,9 +332,37 @@ export function CardEditorPage({ firstName, merchantId }: { firstName: string; m
     setError(null);
   }
 
+  const propertiesPanel = selected && config ? (
+    <CardEditorProperties
+      element={selected}
+      config={config}
+      loyaltyMode={loyaltyMode}
+      onUpdate={(patch) => updateElement(selected.id, patch)}
+      onDuplicate={() => {
+        const copy = normalizeCardElement({
+          ...selected,
+          id: `${selected.type}-copy-${Date.now()}`,
+          x: Math.min(0.95, selected.x + 0.02),
+          y: Math.min(0.95, selected.y + 0.02),
+          zIndex: selected.zIndex + 1,
+        });
+        updateElements([...config.elements, copy]);
+        setSelectedId(copy.id);
+      }}
+      onDelete={() => {
+        updateElements(config.elements.filter((e) => e.id !== selected.id));
+        setSelectedId(null);
+      }}
+      recentColors={recentColors}
+      onColorUsed={trackColor}
+    />
+  ) : (
+    <p className="text-xs text-[var(--muted-text)]">Sélectionnez un élément sur la carte.</p>
+  );
+
   return (
     <SuperAdminShell firstName={firstName}>
-      <div className="mx-auto max-w-[1600px] space-y-4">
+      <div className="mx-auto max-w-[1800px] space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h1 className="text-2xl font-black text-[var(--ink)]">Éditeur de carte</h1>
@@ -263,8 +394,8 @@ export function CardEditorPage({ firstName, merchantId }: { firstName: string; m
           </div>
         ) : null}
 
-        <div className="grid gap-4 xl:grid-cols-[240px_minmax(0,1fr)_280px_280px]">
-          <Card className="space-y-2 p-3">
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px] xl:grid-cols-[200px_minmax(0,1fr)_360px]">
+          <Card className="hidden space-y-2 p-3 xl:block">
             <h2 className="text-xs font-bold uppercase tracking-widest text-[var(--muted-text)]">Éléments</h2>
             {ELEMENT_CATALOG.map((item) => (
               <Button key={item.type} variant="secondary" className="w-full justify-start text-xs" onClick={() => addElement(item.type)}>
@@ -280,78 +411,134 @@ export function CardEditorPage({ firstName, merchantId }: { firstName: string; m
             </label>
           </Card>
 
-          <Card className="overflow-auto p-4">
-            {config && backgroundUrl ? (
-              <CardEditorCanvas
-                config={config}
-                backgroundUrl={backgroundUrl}
-                selectedId={selectedId}
-                onSelect={setSelectedId}
-                onChangeElements={updateElements}
-                snapEnabled={snapEnabled}
-                guides={guides}
-                onGuidesChange={setGuides}
-              />
-            ) : (
-              <p className="py-20 text-center text-sm text-[var(--muted-text)]">Importez un fond pour commencer.</p>
-            )}
-          </Card>
-
-          <Card className="space-y-2 p-3">
-            <h2 className="text-xs font-bold uppercase tracking-widest text-[var(--muted-text)]">Calques</h2>
-            <div className="max-h-80 space-y-1 overflow-y-auto">
-              {[...(config?.elements ?? [])].sort((a, b) => b.zIndex - a.zIndex).map((el) => (
-                <div key={el.id} className={`flex items-center gap-1 rounded-lg px-2 py-1 text-xs ${selectedId === el.id ? "bg-white/10" : ""}`}>
-                  <button type="button" className="flex-1 text-left" onClick={() => setSelectedId(el.id)}>
-                    {el.label ?? elementLabel(el.type)}
-                  </button>
-                  <button type="button" title="Verrouiller" onClick={() => updateElements(config!.elements.map((e) => e.id === el.id ? { ...e, locked: !e.locked } : e))}>{el.locked ? "🔒" : "🔓"}</button>
-                  <button type="button" title="Monter" onClick={() => updateElements(config!.elements.map((e) => e.id === el.id ? { ...e, zIndex: e.zIndex + 1 } : e))}>↑</button>
-                  <button type="button" title="Descendre" onClick={() => updateElements(config!.elements.map((e) => e.id === el.id ? { ...e, zIndex: Math.max(0, e.zIndex - 1) } : e))}>↓</button>
-                  <button type="button" title="Supprimer" onClick={() => { updateElements(config!.elements.filter((e) => e.id !== el.id)); if (selectedId === el.id) setSelectedId(null); }}>×</button>
+          <div className="min-w-0 space-y-3">
+            <Card className="space-y-3 p-3 xl:hidden">
+              <details>
+                <summary className="cursor-pointer text-xs font-bold uppercase tracking-widest text-[var(--muted-text)]">Éléments & fond</summary>
+                <div className="mt-2 space-y-2">
+                  {ELEMENT_CATALOG.map((item) => (
+                    <Button key={item.type} variant="secondary" className="w-full justify-start text-xs" onClick={() => addElement(item.type)}>
+                      + {item.label}
+                    </Button>
+                  ))}
+                  <Field label="Fond">
+                    <Input type="file" accept="image/png,image/jpeg,image/webp" onChange={(e) => { const f = e.target.files?.[0]; if (f) void uploadBackground(f); }} />
+                  </Field>
                 </div>
-              ))}
-            </div>
-          </Card>
+              </details>
+            </Card>
+
+            <Card className="p-3">
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                <div className="flex flex-wrap items-center gap-1">
+                  <Button variant="secondary" className="text-xs" onClick={fitToScreen}>Ajuster à l&apos;écran</Button>
+                  <Button variant="secondary" className="px-2 text-xs" onClick={() => setZoom((z) => Math.max(50, z - 10))}>−</Button>
+                  <span className="min-w-[3rem] text-center text-xs font-bold">{zoom} %</span>
+                  <Button variant="secondary" className="px-2 text-xs" onClick={() => setZoom((z) => Math.min(200, z + 10))}>+</Button>
+                  <Button variant="secondary" className="text-xs" onClick={() => setZoom(100)}>100 %</Button>
+                </div>
+                <div className="min-w-[180px]">
+                  <Field label="Scénario aperçu">
+                    <select
+                      className="w-full rounded-lg border border-white/10 bg-transparent px-2 py-1 text-xs"
+                      value={previewScenario}
+                      onChange={(e) => setPreviewScenario(e.target.value as PreviewScenario)}
+                    >
+                      {(Object.keys(SCENARIO_LABELS) as PreviewScenario[]).map((key) => (
+                        <option key={key} value={key}>{SCENARIO_LABELS[key]}</option>
+                      ))}
+                    </select>
+                  </Field>
+                </div>
+              </div>
+
+              <div className="mb-3 flex flex-wrap items-center gap-2">
+                <span className="text-[10px] uppercase tracking-widest text-[var(--muted-text)]">Progression test</span>
+                {PROGRESS_STEPS.map((pct) => (
+                  <button
+                    key={pct}
+                    type="button"
+                    className={`rounded px-2 py-0.5 text-xs ${progressTestPct === pct ? "bg-[var(--violet-bright)] text-white" : "bg-white/10"}`}
+                    onClick={() => setProgressTestPct(pct)}
+                  >
+                    {pct} %
+                  </button>
+                ))}
+                <input
+                  type="range"
+                  min={0}
+                  max={100}
+                  value={progressTestPct}
+                  onChange={(e) => setProgressTestPct(Number(e.target.value))}
+                  className="min-w-[120px] flex-1"
+                />
+              </div>
+
+              <div ref={canvasViewportRef} className="overflow-x-auto overflow-y-visible py-2">
+                {config && backgroundUrl && previewCard && merchant ? (
+                  <CardEditorCanvas
+                    config={config}
+                    backgroundUrl={backgroundUrl}
+                    selectedId={selectedId}
+                    onSelect={setSelectedId}
+                    onChangeElements={updateElements}
+                    snapEnabled={snapEnabled}
+                    guides={guides}
+                    onGuidesChange={setGuides}
+                    zoom={zoom}
+                    loyaltyMode={loyaltyMode}
+                    previewCard={previewCard}
+                    previewMerchant={{
+                      name: merchant.name,
+                      logoUrl: merchant.logoUrl,
+                      primaryColor: merchant.primaryColor,
+                    }}
+                    previewClientName={previewClientName}
+                    progressPercentOverride={progressTestPct}
+                  />
+                ) : (
+                  <p className="py-20 text-center text-sm text-[var(--muted-text)]">Importez un fond pour commencer.</p>
+                )}
+              </div>
+            </Card>
+          </div>
 
           <div className="space-y-3">
             <Card className="space-y-2 p-3">
-              <h2 className="text-xs font-bold uppercase tracking-widest text-[var(--muted-text)]">Propriétés</h2>
-              {!selected ? <p className="text-xs text-[var(--muted-text)]">Sélectionnez un élément sur la carte.</p> : (
-                <>
-                  <Field label="Ancrage">
-                    <select className="w-full rounded-lg border border-white/10 bg-transparent px-2 py-1 text-xs" value={selected.anchor} onChange={(e) => updateElements(config!.elements.map((el) => el.id === selected.id ? { ...el, anchor: e.target.value as CardElement["anchor"] } : el))}>
-                      <option value="top-left">Haut gauche</option>
-                      <option value="top-center">Haut centre</option>
-                      <option value="top-right">Haut droite</option>
-                      <option value="center">Centre</option>
-                      <option value="bottom-left">Bas gauche</option>
-                      <option value="bottom-center">Bas centre</option>
-                      <option value="bottom-right">Bas droite</option>
-                    </select>
-                  </Field>
-                  <Button variant="secondary" className="w-full text-xs" onClick={() => {
-                    const copy = { ...selected, id: `${selected.type}-copy-${Date.now()}`, x: selected.x + 0.02, y: selected.y + 0.02, zIndex: selected.zIndex + 1 };
-                    updateElements([...(config?.elements ?? []), copy]);
-                  }}>Dupliquer</Button>
-                </>
-              )}
+              <h2 className="text-xs font-bold uppercase tracking-widest text-[var(--muted-text)]">Calques</h2>
+              <div className="max-h-48 space-y-1 overflow-y-auto xl:max-h-64">
+                {[...(config?.elements ?? [])].sort((a, b) => b.zIndex - a.zIndex).map((el) => (
+                  <div key={el.id} className={`flex items-center gap-1 rounded-lg px-2 py-1 text-xs ${selectedId === el.id ? "bg-white/10" : ""}`}>
+                    <button type="button" className="flex-1 truncate text-left" onClick={() => setSelectedId(el.id)}>
+                      {el.label ?? elementLabel(el.type)}
+                    </button>
+                    <button type="button" title="Verrouiller" onClick={() => updateElements(config!.elements.map((e) => e.id === el.id ? { ...e, locked: !e.locked } : e))}>{el.locked ? "🔒" : "🔓"}</button>
+                    <button type="button" title="Monter" onClick={() => updateElements(config!.elements.map((e) => e.id === el.id ? { ...e, zIndex: e.zIndex + 1 } : e))}>↑</button>
+                    <button type="button" title="Descendre" onClick={() => updateElements(config!.elements.map((e) => e.id === el.id ? { ...e, zIndex: Math.max(0, e.zIndex - 1) } : e))}>↓</button>
+                  </div>
+                ))}
+              </div>
             </Card>
-            {previewCard && config && backgroundUrl ? (
-              <Card className="p-3">
-                <h2 className="mb-2 text-xs font-bold uppercase tracking-widest text-[var(--muted-text)]">Aperçu client</h2>
-                <MerchantCardRenderer
-                  template={{ backgroundUrl, config, loyaltyMode }}
-                  merchant={{ name: merchant.name, logoUrl: merchant.logoUrl, primaryColor: merchant.primaryColor }}
-                  card={previewCard}
-                  slug={merchant.slug}
-                  clientName="Aperçu Client"
-                  displayMode="adminPreview"
-                  showQr
-                  interactive={false}
-                />
-              </Card>
-            ) : null}
+
+            <Card className="hidden p-3 lg:block">
+              <h2 className="mb-2 text-xs font-bold uppercase tracking-widest text-[var(--muted-text)]">Propriétés</h2>
+              {propertiesPanel}
+            </Card>
+
+            <div className="lg:hidden">
+              <Button variant="secondary" className="w-full" onClick={() => setMobilePropsOpen(true)}>
+                Propriétés {selected ? `· ${selected.label ?? elementLabel(selected.type)}` : ""}
+              </Button>
+              {mobilePropsOpen ? (
+                <div className="fixed inset-x-0 bottom-0 z-50 max-h-[70vh] overflow-y-auto rounded-t-2xl border border-white/15 bg-[var(--surface)] p-4 shadow-2xl">
+                  <div className="mb-3 flex items-center justify-between">
+                    <h2 className="text-sm font-bold">Propriétés</h2>
+                    <button type="button" className="text-xs" onClick={() => setMobilePropsOpen(false)}>Fermer</button>
+                  </div>
+                  {propertiesPanel}
+                </div>
+              ) : null}
+            </div>
           </div>
         </div>
       </div>
