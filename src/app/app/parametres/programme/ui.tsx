@@ -5,6 +5,7 @@ import { Alert, Button, Field, Input, cn } from "@/components/ui";
 import { MerchantPageHeader } from "@/components/merchant/merchant-ui";
 import { ProgramPreviewCard } from "@/components/merchant/program-preview-card";
 import type { LoyaltyMode } from "@prisma/client";
+import type { MerchantCardData } from "@/components/fife-life/types";
 import type { ProgramConfig, RewardConfig, ProgramRules } from "@/lib/loyalty-program";
 import { DEFAULT_RULES } from "@/lib/loyalty-program";
 
@@ -39,6 +40,12 @@ export function ProgramConfigurator({ demo = false }: { demo?: boolean }) {
   const [simBalance, setSimBalance] = useState("480");
   const [simResult, setSimResult] = useState<string | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [cardTemplate, setCardTemplate] = useState<MerchantCardData["cardTemplate"]>(null);
+  const [merchantMeta, setMerchantMeta] = useState<{ name: string; logoUrl: string | null; primaryColor: string }>({
+    name: "Mon commerce",
+    logoUrl: null,
+    primaryColor: "#8557ff",
+  });
 
   const load = useCallback(async () => {
     if (demo) {
@@ -47,14 +54,39 @@ export function ProgramConfigurator({ demo = false }: { demo?: boolean }) {
       setRewards(DEMO_CONFIG.rewards);
       return;
     }
-    const res = await fetch("/api/merchant/program");
-    const data = await res.json();
-    if (!res.ok) return;
+    const [programRes, templateRes, dashboardRes] = await Promise.all([
+      fetch("/api/merchant/program"),
+      fetch("/api/merchant/card-template"),
+      fetch("/api/merchant/dashboard"),
+    ]);
+    const data = await programRes.json();
+    if (!programRes.ok) return;
     const src = data.draft ?? data.active;
     setMode(src.mode);
     setRules(src.rules);
     setRewards(src.rewards);
     setStatus(data.status);
+    if (templateRes.ok) {
+      const templateData = await templateRes.json();
+      const tpl = templateData.template;
+      setCardTemplate(
+        tpl
+          ? {
+              backgroundUrl: tpl.backgroundUrl,
+              config: tpl.config,
+              loyaltyMode: tpl.loyaltyMode,
+            }
+          : null,
+      );
+    }
+    if (dashboardRes.ok) {
+      const dashboardData = await dashboardRes.json();
+      setMerchantMeta({
+        name: dashboardData.merchant?.name ?? "Mon commerce",
+        logoUrl: dashboardData.merchant?.logoUrl ?? null,
+        primaryColor: dashboardData.merchant?.primaryColor ?? "#8557ff",
+      });
+    }
   }, [demo]);
 
   useEffect(() => {
@@ -333,11 +365,13 @@ export function ProgramConfigurator({ demo = false }: { demo?: boolean }) {
             <div className="mt-4 flex flex-col items-center">
               <div className="w-full max-w-sm">
                 <ProgramPreviewCard
-                  merchantName="Mon commerce"
-                  primaryColor="#8557ff"
+                  merchantName={merchantMeta.name}
+                  logoUrl={merchantMeta.logoUrl}
+                  primaryColor={merchantMeta.primaryColor}
                   points={Number(simBalance) || 320}
                   visitsRequired={rewards.find((r) => r.isActive)?.threshold ?? 500}
                   rewardLabel={rewards.find((r) => r.isActive)?.name ?? "Récompense"}
+                  cardTemplate={cardTemplate}
                 />
               </div>
               <p className="mt-3 text-sm font-bold text-[var(--ink)]">

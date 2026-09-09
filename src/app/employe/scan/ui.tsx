@@ -2,8 +2,12 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
+import { MerchantCardScanResult } from "@/components/fife-life/merchant-card-scan-result";
 import { GlassBottomSheet } from "@/components/fife-life/profile/glass-bottom-sheet";
 import { QrScanner } from "@/components/qr-scanner";
+import { scanResultToMerchantCard } from "@/lib/scan-result-card";
+import type { CardTemplateConfig } from "@/lib/card-template-schema";
+import type { LoyaltyMode } from "@prisma/client";
 import { Button, Field, Input } from "@/components/ui";
 import {
   postCaisseScan,
@@ -28,6 +32,17 @@ type ScanResult = {
   earnPreviewLabel?: string;
   nextRewardLabel?: string | null;
   unitLabel?: string;
+  merchant?: {
+    name: string;
+    slug: string;
+    logoUrl: string | null;
+    primaryColor: string;
+  };
+  cardTemplate?: {
+    backgroundUrl?: string | null;
+    config: CardTemplateConfig;
+    loyaltyMode: LoyaltyMode;
+  } | null;
 };
 
 type EmployeeProfile = {
@@ -318,19 +333,32 @@ export function EmployeeScanScreen({
         <AnimatePresence mode="wait">
           {phase === "result" && result ? (
             <motion.div key="result" className="flex min-h-0 flex-1 flex-col gap-3" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
-              <div className="metric-card p-4">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted)]">Client</p>
-                <h2 className="text-3xl font-black text-[var(--ink)]">{result.firstName}</h2>
-                <p className="mt-2 text-lg font-bold text-[var(--violet-bright)]">{result.progressLabel}</p>
-                {result.nextRewardLabel ? (
-                  <p className="mt-1 text-sm text-[var(--muted-strong)]">{result.nextRewardLabel}</p>
-                ) : null}
-                {result.rewardAvailable ? (
-                  <p className="mt-2 text-sm font-semibold text-[var(--positive)]">
-                    Récompense disponible : {result.rewardLabel}
-                  </p>
-                ) : null}
-              </div>
+              {(() => {
+                const cardPayload = scanResultToMerchantCard(result);
+                if (cardPayload) {
+                  return (
+                    <MerchantCardScanResult
+                      card={cardPayload.card}
+                      clientName={result.firstName}
+                      merchant={cardPayload.merchant}
+                    />
+                  );
+                }
+                return (
+                  <div className="metric-card p-4">
+                    <h2 className="text-3xl font-black text-[var(--ink)]">{result.firstName}</h2>
+                    <p className="mt-2 text-lg font-bold text-[var(--violet-bright)]">{result.progressLabel}</p>
+                  </div>
+                );
+              })()}
+              {result.nextRewardLabel ? (
+                <p className="text-sm text-[var(--muted-strong)]">{result.nextRewardLabel}</p>
+              ) : null}
+              {result.rewardAvailable ? (
+                <p className="text-sm font-semibold text-[var(--positive)]">
+                  Récompense disponible : {result.rewardLabel}
+                </p>
+              ) : null}
 
               {profile.permissions.addPoints ? (
                 <button

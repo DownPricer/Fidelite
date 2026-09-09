@@ -29,6 +29,7 @@ export function rateLimit(key: string, limit: number, windowMs: number) {
 
 export const LIMITS = {
   login: { limit: 8, windowMs: 15 * 60 * 1000 },
+  superAdminLogin: { limit: 5, windowMs: 15 * 60 * 1000 },
   register: { limit: 5, windowMs: 15 * 60 * 1000 },
   scan: { limit: 40, windowMs: 60 * 1000 },
   qr: { limit: 40, windowMs: 60 * 1000 },

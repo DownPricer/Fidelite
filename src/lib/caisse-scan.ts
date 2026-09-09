@@ -1,5 +1,6 @@
 import { normalizeClientNumber } from "@/lib/client-number";
 import { publicScanPayload } from "@/lib/caisse-program";
+import type { CardTemplateConfig } from "@/lib/card-template-schema";
 import { prisma } from "@/lib/prisma";
 import { QrError, verifyQrToken } from "@/lib/qr";
 
@@ -74,14 +75,38 @@ async function buildScanResult(input: {
       },
     });
 
-    return publicScanPayload({
-      grantId: grant.id,
-      firstName: membership.user.firstName,
-      program: membership.merchant.program,
-      points: membership.points,
-      expiresAt: grant.expiresAt.toISOString(),
-      cardJustCreated,
+    const publishedTemplate = await tx.merchantCardTemplate.findFirst({
+      where: {
+        merchantId: input.merchantId,
+        status: "PUBLISHED",
+        loyaltyMode: membership.merchant.program.mode,
+      },
+      orderBy: [{ isDefault: "desc" }, { publishedAt: "desc" }],
     });
+
+    return {
+      ...publicScanPayload({
+        grantId: grant.id,
+        firstName: membership.user.firstName,
+        program: membership.merchant.program,
+        points: membership.points,
+        expiresAt: grant.expiresAt.toISOString(),
+        cardJustCreated,
+      }),
+      merchant: {
+        name: merchant.name,
+        slug: merchant.slug,
+        logoUrl: merchant.logoUrl,
+        primaryColor: merchant.primaryColor,
+      },
+      cardTemplate: publishedTemplate
+        ? {
+            backgroundUrl: publishedTemplate.backgroundUrl,
+            config: publishedTemplate.config as CardTemplateConfig,
+            loyaltyMode: publishedTemplate.loyaltyMode,
+          }
+        : null,
+    };
   });
 }
 

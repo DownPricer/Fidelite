@@ -3,8 +3,12 @@
 import Link from "next/link";
 import { useCallback, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
+import { MerchantCardScanResult } from "@/components/fife-life/merchant-card-scan-result";
 import { QrScanner, ClientNumberField } from "@/components/qr-scanner";
 import { Button } from "@/components/ui";
+import { scanResultToMerchantCard } from "@/lib/scan-result-card";
+import type { CardTemplateConfig } from "@/lib/card-template-schema";
+import type { LoyaltyMode } from "@prisma/client";
 import { DEMO_CLIENT_NUMBER } from "@/lib/demo-visual";
 import {
   postCaisseScan,
@@ -23,6 +27,17 @@ type ScanResult = {
   rewardLabel: string;
   rewardAvailable: boolean;
   progressLabel: string;
+  merchant?: {
+    name: string;
+    slug: string;
+    logoUrl: string | null;
+    primaryColor: string;
+  };
+  cardTemplate?: {
+    backgroundUrl?: string | null;
+    config: CardTemplateConfig;
+    loyaltyMode: LoyaltyMode;
+  } | null;
 };
 
 export function CaisseScreen({
@@ -291,29 +306,21 @@ export function CaisseScreen({
               exit={{ opacity: 0, y: -16 }}
               transition={{ type: "spring", duration: 0.45, bounce: 0.15 }}
             >
-              <motion.div
-                layout
-                className="metric-card shrink-0 p-4 text-[var(--ink)]"
-              >
-                <div className="flex items-center justify-between gap-4">
-                  <div>
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted)]">
-                      Client
-                    </p>
-                    <h3 className="text-3xl font-black tracking-tight text-[var(--ink)]">
-                      {result.firstName}
-                    </h3>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted)]">
-                      Statut
-                    </p>
-                    <p className="text-xl font-black text-[var(--violet-bright)]">
-                      {result.progressLabel}
-                    </p>
-                  </div>
-                </div>
-              </motion.div>
+              {(() => {
+                const cardPayload = scanResultToMerchantCard(result);
+                return cardPayload ? (
+                  <MerchantCardScanResult
+                    card={cardPayload.card}
+                    clientName={result.firstName}
+                    merchant={cardPayload.merchant}
+                  />
+                ) : (
+                  <motion.div layout className="metric-card shrink-0 p-4 text-[var(--ink)]">
+                    <h3 className="text-3xl font-black">{result.firstName}</h3>
+                    <p className="text-xl font-black text-[var(--violet-bright)]">{result.progressLabel}</p>
+                  </motion.div>
+                );
+              })()}
 
               <motion.button
                 whileTap={{ scale: 0.97 }}

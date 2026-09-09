@@ -2,7 +2,7 @@
 
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useEffect, useRef } from "react";
-import { MerchantInteractiveCard } from "./merchant-interactive-card";
+import { MerchantCardRenderer } from "./merchant-card-renderer";
 import type { MerchantCardData } from "./types";
 
 export function NewCardToast({
@@ -66,12 +66,17 @@ export function NewCardToast({
               transition={reduced ? { duration: 0 } : { duration: 0.6, delay: 0.1, ease: "easeOut" }}
             />
             <div className="relative">
-              <MerchantInteractiveCard
-                card={{ ...previewCard, name }}
+              <MerchantCardRenderer
+                template={previewCard.cardTemplate}
+                merchant={{
+                  name: name ?? previewCard.name,
+                  logoUrl: previewCard.logoUrl,
+                  primaryColor: previewCard.primaryColor,
+                }}
+                card={{ ...previewCard, name: name ?? previewCard.name }}
                 slug={previewCard.slug}
-                preview
+                displayMode="personalized"
                 showQr={false}
-                entrance
                 interactive
               />
               <div className="pointer-events-none absolute inset-x-0 bottom-4 px-5 text-center">

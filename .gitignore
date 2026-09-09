@@ -17,3 +17,4 @@ prisma/dev.db-journal
 google-wallet-key.json
 .idea
 .vscode
+data/uploads/

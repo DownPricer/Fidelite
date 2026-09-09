@@ -9,6 +9,16 @@
 #
 # Ne pas joindre fifelite-postgres au réseau du reverse proxy.
 # Ne pas modifier les autres stacks du VPS.
+#
+# Uploads persistants (fonds de cartes) — bind mount explicite :
+#   Dossier hôte VPS : /opt/fifelite/data/uploads
+#   Dossier conteneur : /var/lib/fifelite/uploads
+#   Variable conteneur : UPLOADS_DIR=/var/lib/fifelite/uploads
+#
+# Avant le premier déploiement sur le VPS (utilisateur conteneur nextjs = UID/GID 1001) :
+#   sudo install -d -o 1001 -g 1001 -m 750 /opt/fifelite/data/uploads
+#
+# Sauvegarde recommandée : inclure /opt/fifelite/data/uploads dans la routine backup VPS.
 
 name: fifelite
 
@@ -45,6 +55,9 @@ services:
       NODE_ENV: production
       HOSTNAME: 0.0.0.0
       PORT: "3000"
+      UPLOADS_DIR: /var/lib/fifelite/uploads
+    volumes:
+      - /opt/fifelite/data/uploads:/var/lib/fifelite/uploads
     depends_on:
       postgres:
         condition: service_healthy

@@ -7,7 +7,7 @@ import { DEMO_CLIENT_NUMBER } from "@/lib/demo-visual";
 import { getCachedQr, loadUniversalQr } from "./qr-cache";
 import { PREVIEW_QR } from "./preview-data";
 import { InteractiveLoyaltyCard } from "./interactive-loyalty-card";
-import { MerchantInteractiveCard } from "./merchant-interactive-card";
+import { MerchantCardRenderer } from "./merchant-card-renderer";
 import { resolveTier } from "./tier";
 import type { MerchantCardData, WalletTier } from "./types";
 
@@ -119,13 +119,20 @@ export function CardEnlargedView({
                 />
               </div>
             ) : (
-              <MerchantInteractiveCard
+              <MerchantCardRenderer
                 as="div"
+                template={card.cardTemplate}
+                merchant={{
+                  name: card.name,
+                  logoUrl: card.logoUrl,
+                  primaryColor: card.primaryColor,
+                }}
                 card={card}
                 slug={slug}
-                preview={preview}
+                clientName={customerName}
                 clientNumber={effectiveClientNumber}
-                qrZoomEnabled
+                displayMode={preview ? "adminPreview" : "personalized"}
+                showQr
                 interactive={false}
                 className="card-enlarged-merchant-card w-full"
                 shellClassName="card-enlarged-merchant-shell"

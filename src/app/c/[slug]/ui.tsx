@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { MerchantCardPublicPreview } from "@/components/fife-life/merchant-card-public-preview";
+import type { MerchantCardData } from "@/components/fife-life/types";
 import { Alert, Button, Field, Input } from "@/components/ui";
 
 type Merchant = {
@@ -11,6 +13,7 @@ type Merchant = {
   primaryColor: string;
   rewardLabel: string;
   visitsRequired: number;
+  cardTemplate?: MerchantCardData["cardTemplate"];
 };
 
 export function MerchantPublic({
@@ -24,6 +27,18 @@ export function MerchantPublic({
   signedIn: boolean;
   firstName: string | null;
 }) {
+  const previewCard: MerchantCardData = {
+    id: "public-preview",
+    merchantId: merchant.slug,
+    slug: merchant.slug,
+    name: merchant.name,
+    logoUrl: merchant.logoUrl,
+    primaryColor: merchant.primaryColor,
+    points: 0,
+    visitsRequired: merchant.visitsRequired,
+    rewardLabel: merchant.rewardLabel,
+    cardTemplate: merchant.cardTemplate,
+  };
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
@@ -58,6 +73,17 @@ export function MerchantPublic({
       <div className="mx-auto max-w-6xl px-6 py-12 lg:py-24">
         <div className="grid gap-16 lg:grid-cols-2 lg:items-center">
           <div className="flex flex-col items-center text-center lg:items-start lg:text-left">
+            <div className="mb-8 w-full max-w-sm lg:max-w-md">
+              <MerchantCardPublicPreview
+                card={previewCard}
+                merchant={{
+                  name: merchant.name,
+                  logoUrl: merchant.logoUrl,
+                  primaryColor: merchant.primaryColor,
+                }}
+                className="mx-auto w-full shadow-2xl"
+              />
+            </div>
             <header className="mb-8">
               {merchant.logoUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element

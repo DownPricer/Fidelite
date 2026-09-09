@@ -54,6 +54,55 @@ enum InvitationStatus {
 enum SessionKind {
   STANDARD
   EMPLOYEE
+  SUPER_ADMIN
+}
+
+enum MerchantStatus {
+  DRAFT
+  TRIAL
+  ACTIVE
+  SUSPENDED
+  ARCHIVED
+}
+
+enum CardTemplateStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum SubscriptionPlan {
+  STARTER
+  PRO
+  ENTERPRISE
+}
+
+enum SubscriptionStatus {
+  DRAFT
+  TRIAL
+  ACTIVE
+  PAST_DUE
+  CANCELLED
+  EXPIRED
+}
+
+enum SubscriptionFrequency {
+  MONTHLY
+  YEARLY
+}
+
+enum ContractStatus {
+  DRAFT
+  ACTIVE
+  EXPIRED
+  TERMINATED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
 }
 
 enum RewardType {
@@ -147,16 +196,16 @@ model CustomerPreferences {
 }
 
 model Session {
-  id                   String       @id @default(cuid())
+  id                   String              @id @default(cuid())
   userId               String
-  tokenHash            String       @unique
-  kind                 SessionKind  @default(STANDARD)
+  tokenHash            String              @unique
+  kind                 SessionKind         @default(STANDARD)
   merchantMembershipId String?
   expiresAt            DateTime
   userAgent            String?
   ip                   String?
-  createdAt            DateTime     @default(now())
-  user                 User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt            DateTime            @default(now())
+  user                 User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   merchantMembership   MerchantMembership? @relation(fields: [merchantMembershipId], references: [id], onDelete: Cascade)
 
   @@index([userId])
@@ -165,14 +214,45 @@ model Session {
 }
 
 model Merchant {
-  id           String   @id @default(cuid())
-  name         String
-  slug         String   @unique
-  logoUrl      String?
-  primaryColor String   @default("#0F766E")
-  isActive     Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id                  String         @id @default(cuid())
+  name                String
+  slug                String         @unique
+  logoUrl             String?
+  coverUrl            String?
+  primaryColor        String         @default("#0F766E")
+  isActive            Boolean        @default(true)
+  status              MerchantStatus @default(ACTIVE)
+  category            String?
+  shortDescription    String?
+  description         String?
+  website             String?
+  socialLinks         Json?
+  publicPhone         String?
+  publicEmail         String?
+  legalName           String?
+  ownerName           String?
+  ownerPhone          String?
+  adminEmail          String?
+  addressLine1        String?
+  addressLine2        String?
+  postalCode          String?
+  city                String?
+  country             String?        @default("FR")
+  siret               String?
+  vatNumber           String?
+  billingAddressLine1 String?
+  billingAddressLine2 String?
+  billingPostalCode   String?
+  billingCity         String?
+  billingCountry      String?
+  timezone            String         @default("Europe/Paris")
+  openingHours        Json?
+  closedDays          Json?
+  exceptionalClosures Json?
+  visibleInSearch     Boolean        @default(true)
+  slugLocked          Boolean        @default(false)
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
 
   program             LoyaltyProgram?
   memberships         MerchantMembership[]
@@ -182,27 +262,31 @@ model Merchant {
   qrTokens            QrToken[]
   caisseGrants        CaisseGrant[]
   walletEvents        WalletEvent[]
+  cardTemplates       MerchantCardTemplate[]
+  subscription        MerchantSubscription?
+  contracts           MerchantContract[]
+  payments            MerchantPayment[]
 }
 
 model MerchantMembership {
-  id               String           @id @default(cuid())
-  userId           String
-  merchantId       String
-  role             MerchantRole
-  staffPreset      StaffPreset      @default(CASHIER)
-  permissions      Json?
-  invitationStatus     InvitationStatus @default(NONE)
-  invitationTokenHash  String?          @unique
+  id                   String               @id @default(cuid())
+  userId               String
+  merchantId           String
+  role                 MerchantRole
+  staffPreset          StaffPreset          @default(CASHIER)
+  permissions          Json?
+  invitationStatus     InvitationStatus     @default(NONE)
+  invitationTokenHash  String?              @unique
   invitationExpiresAt  DateTime?
   invitationAcceptedAt DateTime?
   inviteMessage        String?
   invitedAt            DateTime?
   lastActivityAt       DateTime?
-  isActive             Boolean          @default(true)
-  createdAt            DateTime         @default(now())
-  updatedAt            DateTime         @updatedAt
-  user                 User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  merchant             Merchant         @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  isActive             Boolean              @default(true)
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+  user                 User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  merchant             Merchant             @relation(fields: [merchantId], references: [id], onDelete: Cascade)
   employeeSessions     Session[]
   invitations          EmployeeInvitation[]
 
@@ -224,60 +308,60 @@ model EmployeeInvitation {
 }
 
 model LoyaltyProgram {
-  id             String        @id @default(cuid())
-  merchantId     String        @unique
-  mode           LoyaltyMode   @default(VISITS)
-  status         ProgramStatus @default(ACTIVE)
-  visitsRequired Int           @default(10)
+  id             String                  @id @default(cuid())
+  merchantId     String                  @unique
+  mode           LoyaltyMode             @default(VISITS)
+  status         ProgramStatus           @default(ACTIVE)
+  visitsRequired Int                     @default(10)
   rewardLabel    String
-  config         Json          @default("{}")
+  config         Json                    @default("{}")
   draftConfig    Json?
-  version        Int           @default(1)
+  version        Int                     @default(1)
   publishedAt    DateTime?
   scheduledAt    DateTime?
-  merchant       Merchant      @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  merchant       Merchant                @relation(fields: [merchantId], references: [id], onDelete: Cascade)
   rewards        LoyaltyReward[]
   versions       LoyaltyProgramVersion[]
-  updatedAt      DateTime      @updatedAt
-  createdAt      DateTime      @default(now())
+  updatedAt      DateTime                @updatedAt
+  createdAt      DateTime                @default(now())
 }
 
 model LoyaltyReward {
-  id                 String     @id @default(cuid())
+  id                 String               @id @default(cuid())
   programId          String
   name               String
   description        String?
   iconUrl            String?
-  rewardType         RewardType @default(CUSTOM)
+  rewardType         RewardType           @default(CUSTOM)
   threshold          Int
-  thresholdUnit      String     @default("visits")
+  thresholdUnit      String               @default("visits")
   value              Float?
   minPurchase        Float?
   maxDiscount        Float?
-  isActive           Boolean    @default(true)
-  sortOrder          Int        @default(0)
+  isActive           Boolean              @default(true)
+  sortOrder          Int                  @default(0)
   validFrom          DateTime?
   validUntil         DateTime?
   maxUsesPerCustomer Int?
   reuseDelayDays     Int?
   globalLimit        Int?
   conditions         Json?
-  program            LoyaltyProgram @relation(fields: [programId], references: [id], onDelete: Cascade)
+  program            LoyaltyProgram       @relation(fields: [programId], references: [id], onDelete: Cascade)
   transactions       LoyaltyTransaction[]
-  createdAt          DateTime   @default(now())
-  updatedAt          DateTime   @updatedAt
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
 
   @@index([programId, sortOrder])
 }
 
 model LoyaltyProgramVersion {
-  id          String   @id @default(cuid())
+  id          String         @id @default(cuid())
   programId   String
   version     Int
   mode        LoyaltyMode
   config      Json
   rewards     Json
-  publishedAt DateTime @default(now())
+  publishedAt DateTime       @default(now())
   publishedBy String?
   program     LoyaltyProgram @relation(fields: [programId], references: [id], onDelete: Cascade)
 
@@ -285,16 +369,16 @@ model LoyaltyProgramVersion {
 }
 
 model CustomerMembership {
-  id                   String   @id @default(cuid())
+  id                   String               @id @default(cuid())
   userId               String
   merchantId           String
-  points               Int      @default(0)
+  points               Int                  @default(0)
   googleWalletObjectId String?
   googleWalletClassId  String?
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
-  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  merchant             Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+  user                 User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  merchant             Merchant             @relation(fields: [merchantId], references: [id], onDelete: Cascade)
   transactions         LoyaltyTransaction[]
   qrTokens             QrToken[]
   caisseGrants         CaisseGrant[]
@@ -305,11 +389,11 @@ model CustomerMembership {
 }
 
 model LoyaltyTransaction {
-  id                   String           @id @default(cuid())
+  id                   String                @id @default(cuid())
   customerMembershipId String
   merchantId           String
   type                 LoyaltyTxType
-  status               LoyaltyTxStatus  @default(COMPLETED)
+  status               LoyaltyTxStatus       @default(COMPLETED)
   pointsDelta          Int
   purchaseAmount       Float?
   reason               String?
@@ -318,11 +402,11 @@ model LoyaltyTransaction {
   programVersion       Int?
   metadata             Json?
   performedByUserId    String
-  createdAt            DateTime         @default(now())
-  membership           CustomerMembership @relation(fields: [customerMembershipId], references: [id], onDelete: Cascade)
-  merchant             Merchant         @relation(fields: [merchantId], references: [id], onDelete: Restrict)
-  performedBy          User             @relation("PerformedBy", fields: [performedByUserId], references: [id], onDelete: Restrict)
-  reward               LoyaltyReward?   @relation(fields: [rewardId], references: [id], onDelete: SetNull)
+  createdAt            DateTime              @default(now())
+  membership           CustomerMembership    @relation(fields: [customerMembershipId], references: [id], onDelete: Cascade)
+  merchant             Merchant              @relation(fields: [merchantId], references: [id], onDelete: Restrict)
+  performedBy          User                  @relation("PerformedBy", fields: [performedByUserId], references: [id], onDelete: Restrict)
+  reward               LoyaltyReward?        @relation(fields: [rewardId], references: [id], onDelete: SetNull)
   fifeLifeLedgerEntry  FifeLifePointsLedger?
 
   @@index([customerMembershipId, createdAt])
@@ -332,22 +416,22 @@ model LoyaltyTransaction {
 
 /// QR fixe du client. `usedAt` horodate le dernier scan ; il n'empêche jamais un nouveau passage.
 model QrToken {
-  id                   String    @id @default(cuid())
-  jti                  String    @unique
+  id                   String             @id @default(cuid())
+  jti                  String             @unique
   customerMembershipId String
   merchantId           String
   expiresAt            DateTime
   usedAt               DateTime?
-  createdAt            DateTime  @default(now())
+  createdAt            DateTime           @default(now())
   membership           CustomerMembership @relation(fields: [customerMembershipId], references: [id], onDelete: Cascade)
-  merchant             Merchant  @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  merchant             Merchant           @relation(fields: [merchantId], references: [id], onDelete: Cascade)
 
   @@index([expiresAt])
 }
 
 /// Un grant par scan volontaire. Plusieurs grants peuvent partager le même `qrTokenId`.
 model CaisseGrant {
-  id                   String    @id @default(cuid())
+  id                   String             @id @default(cuid())
   qrTokenId            String
   fifeLifeQrTokenId    String?
   customerMembershipId String
@@ -355,9 +439,9 @@ model CaisseGrant {
   actorUserId          String
   expiresAt            DateTime
   consumedAt           DateTime?
-  createdAt            DateTime  @default(now())
+  createdAt            DateTime           @default(now())
   membership           CustomerMembership @relation(fields: [customerMembershipId], references: [id], onDelete: Cascade)
-  merchant             Merchant  @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  merchant             Merchant           @relation(fields: [merchantId], references: [id], onDelete: Cascade)
   fifeLifeQrToken      FifeLifeQrToken?   @relation(fields: [fifeLifeQrTokenId], references: [id], onDelete: SetNull)
 
   @@index([qrTokenId])
@@ -378,15 +462,110 @@ model AuditLog {
 
   @@index([merchantId, createdAt])
   @@index([actorId, createdAt])
+  @@index([action, createdAt])
+}
+
+model MerchantCardTemplate {
+  id            String                        @id @default(cuid())
+  merchantId    String
+  loyaltyMode   LoyaltyMode
+  name          String                        @default("Gabarit principal")
+  backgroundUrl String?
+  config        Json
+  schemaVersion Int                           @default(1)
+  status        CardTemplateStatus            @default(DRAFT)
+  version       Int                           @default(1)
+  isDefault     Boolean                       @default(false)
+  publishedAt   DateTime?
+  authorId      String?
+  createdAt     DateTime                      @default(now())
+  updatedAt     DateTime                      @updatedAt
+  merchant      Merchant                      @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  versions      MerchantCardTemplateVersion[]
+
+  @@index([merchantId, status])
+  @@index([merchantId, loyaltyMode])
+}
+
+model MerchantCardTemplateVersion {
+  id            String               @id @default(cuid())
+  templateId    String
+  version       Int
+  config        Json
+  backgroundUrl String?
+  authorId      String?
+  createdAt     DateTime             @default(now())
+  template      MerchantCardTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  @@unique([templateId, version])
+  @@index([templateId, createdAt])
+}
+
+model MerchantSubscription {
+  id            String                @id @default(cuid())
+  merchantId    String                @unique
+  plan          SubscriptionPlan      @default(STARTER)
+  amount        Float                 @default(0)
+  currency      String                @default("EUR")
+  frequency     SubscriptionFrequency @default(MONTHLY)
+  status        SubscriptionStatus    @default(DRAFT)
+  trialEndsAt   DateTime?
+  startsAt      DateTime?
+  endsAt        DateTime?
+  nextBillingAt DateTime?
+  cancelledAt   DateTime?
+  autoRenew     Boolean               @default(true)
+  notes         String?
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
+  merchant      Merchant              @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+}
+
+model MerchantContract {
+  id           String         @id @default(cuid())
+  merchantId   String
+  reference    String
+  contractType String         @default("subscription")
+  status       ContractStatus @default(DRAFT)
+  amount       Float          @default(0)
+  currency     String         @default("EUR")
+  startsAt     DateTime?
+  endsAt       DateTime?
+  documentUrl  String?
+  notes        String?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  merchant     Merchant       @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+
+  @@index([merchantId, status])
+}
+
+model MerchantPayment {
+  id         String        @id @default(cuid())
+  merchantId String
+  amount     Float
+  currency   String        @default("EUR")
+  status     PaymentStatus @default(PENDING)
+  paidAt     DateTime?
+  dueAt      DateTime?
+  reference  String?
+  notes      String?
+  isManual   Boolean       @default(true)
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+  merchant   Merchant      @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+
+  @@index([merchantId, status])
+  @@index([paidAt])
 }
 
 model AccountDeletionRequest {
-  id        String                 @id @default(cuid())
+  id        String                @id @default(cuid())
   userId    String
-  status    AccountDeletionStatus  @default(PENDING)
+  status    AccountDeletionStatus @default(PENDING)
   message   String?
-  createdAt DateTime               @default(now())
-  user      User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime              @default(now())
+  user      User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 /// Ledger des points Fife Life globaux.
@@ -397,8 +576,8 @@ model FifeLifePointsLedger {
   reason    String
   createdAt DateTime @default(now())
 
-  user                 User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  loyaltyTransactionId String?           @unique
+  user                 User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  loyaltyTransactionId String?             @unique
   loyaltyTransaction   LoyaltyTransaction? @relation(fields: [loyaltyTransactionId], references: [id], onDelete: SetNull)
 
   @@index([userId, createdAt])
@@ -423,10 +602,10 @@ model WalletEvent {
 
 /// QR global et universel Fife Life, un par utilisateur.
 model FifeLifeQrToken {
-  id            String   @id @default(cuid())
-  userId        String   @unique
-  jti           String   @unique
-  createdAt     DateTime @default(now())
+  id            String    @id @default(cuid())
+  userId        String    @unique
+  jti           String    @unique
+  createdAt     DateTime  @default(now())
   lastScannedAt DateTime?
 
   user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)

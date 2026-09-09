@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { MerchantInteractiveCard } from "./merchant-interactive-card";
+import { MerchantCardRenderer } from "./merchant-card-renderer";
 import { CardEnlargedView } from "./card-enlarged-view";
 import type { CardHistoryItem, MerchantCardData, WalletEventPayload } from "./types";
 import { useWalletEvents } from "./use-wallet-events";
@@ -210,12 +210,18 @@ Le commerçant se réserve le droit de modifier ou d'annuler le programme de fid
               className="card-preview-btn group relative w-full"
               aria-label="Agrandir la carte pour le scan"
             >
-              <MerchantInteractiveCard
+              <MerchantCardRenderer
                 as="div"
+                template={card.cardTemplate}
+                merchant={{
+                  name: card.name,
+                  logoUrl: card.logoUrl,
+                  primaryColor: card.primaryColor,
+                }}
                 card={card}
                 slug={slug}
-                preview={preview}
-                compactQr
+                displayMode={preview ? "adminPreview" : "personalized"}
+                showQr
                 className="h-auto aspect-[1.586/1] w-full"
               />
 

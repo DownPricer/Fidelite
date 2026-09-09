@@ -5,6 +5,7 @@ import { isClientDemoPage } from "@/lib/demo-visual-server";
 import { resolveClientNumber } from "@/lib/client-number";
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/session";
+import { attachPublishedTemplates } from "@/lib/wallet-cards";
 
 export default async function CarteIndexPage({
   searchParams,
@@ -27,6 +28,23 @@ export default async function CarteIndexPage({
     orderBy: { updatedAt: "desc" },
   });
 
+  const baseCards = memberships
+    .filter((item) => item.merchant.program)
+    .map((item) => ({
+      id: item.id,
+      merchantId: item.merchantId,
+      slug: item.merchant.slug,
+      name: item.merchant.name,
+      logoUrl: item.merchant.logoUrl,
+      primaryColor: item.merchant.primaryColor,
+      points: item.points,
+      visitsRequired: item.merchant.program!.visitsRequired,
+      rewardLabel: item.merchant.program!.rewardLabel,
+      loyaltyMode: item.merchant.program!.mode,
+    }));
+
+  const cards = await attachPublishedTemplates(baseCards);
+
   return (
     <WalletHome
       firstName={user.firstName}
@@ -36,19 +54,7 @@ export default async function CarteIndexPage({
       fifeLifePoints={user.fifeLifePoints}
       initialSheetOpen={params.sheet === "1"}
       initialNewCard={params.toast ?? null}
-      cards={memberships
-        .filter((item) => item.merchant.program)
-        .map((item) => ({
-          id: item.id,
-          merchantId: item.merchantId,
-          slug: item.merchant.slug,
-          name: item.merchant.name,
-          logoUrl: item.merchant.logoUrl,
-          primaryColor: item.merchant.primaryColor,
-          points: item.points,
-          visitsRequired: item.merchant.program!.visitsRequired,
-          rewardLabel: item.merchant.program!.rewardLabel,
-        }))}
+      cards={cards}
     />
   );
 }

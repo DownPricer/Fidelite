@@ -1,5 +1,8 @@
 export type WalletTier = "Bronze" | "Silver" | "Gold" | "Diamond";
 
+import type { CardTemplateConfig } from "@/lib/card-template-schema";
+import type { LoyaltyMode } from "@prisma/client";
+
 export type MerchantCardData = {
   id: string;
   merchantId: string;
@@ -10,6 +13,13 @@ export type MerchantCardData = {
   points: number;
   visitsRequired: number;
   rewardLabel: string;
+  loyaltyMode?: LoyaltyMode;
+  /** Gabarit publié super-admin, s'il existe. */
+  cardTemplate?: {
+    backgroundUrl?: string | null;
+    config: CardTemplateConfig;
+    loyaltyMode: LoyaltyMode;
+  } | null;
   /** Niveau Fife Life pour l’image statique en mode démo. */
   demoTier?: WalletTier;
 };

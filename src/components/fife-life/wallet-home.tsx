@@ -49,6 +49,7 @@ export function WalletHome({
   const [cards, setCards] = useState(initialCards);
   const [sheetOpen, setSheetOpen] = useState(initialSheetOpen);
   const [newCardName, setNewCardName] = useState<string | null>(initialNewCard ?? null);
+  const [newCard, setNewCard] = useState<MerchantCardData | null>(null);
   const [enlargedCard, setEnlargedCard] = useState<MerchantCardData | null>(null);
 
   const tier = resolveTier(points);
@@ -92,24 +93,23 @@ export function WalletHome({
       if (event.type === "CARD_CREATED") {
         const name = typeof event.payload.merchantName === "string" ? event.payload.merchantName : "Nouveau commerce";
         setNewCardName(name);
+        const created: MerchantCardData = {
+          id: event.customerMembershipId ?? `tmp-${event.id}`,
+          merchantId: event.merchantId ?? "",
+          slug: typeof event.payload.slug === "string" ? event.payload.slug : "",
+          name,
+          logoUrl: null,
+          primaryColor: "#8557ff",
+          points: 0,
+          visitsRequired: 10,
+          rewardLabel: "Récompense",
+        };
+        setNewCard(created);
         setCards((prev) => {
           if (event.customerMembershipId && prev.some((card) => card.id === event.customerMembershipId)) {
             return prev;
           }
-          return [
-            {
-              id: event.customerMembershipId ?? `tmp-${event.id}`,
-              merchantId: event.merchantId ?? "",
-              slug: "",
-              name,
-              logoUrl: null,
-              primaryColor: "#8557ff",
-              points: 0,
-              visitsRequired: 10,
-              rewardLabel: "Récompense",
-            },
-            ...prev,
-          ];
+          return [created, ...prev];
         });
         router.refresh();
       }
@@ -265,7 +265,14 @@ export function WalletHome({
       </div>
 
       <CardsSheet open={sheetOpen} cards={cards} onClose={() => setSheetOpen(false)} onOpenCard={openCard} />
-      <NewCardToast name={newCardName} onDone={() => setNewCardName(null)} />
+      <NewCardToast
+        name={newCardName}
+        card={newCard ?? cards.find((c) => c.name === newCardName) ?? null}
+        onDone={() => {
+          setNewCardName(null);
+          setNewCard(null);
+        }}
+      />
 
       {enlargedCard ? (
         <CardEnlargedView

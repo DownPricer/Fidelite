@@ -1,11 +1,19 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { hasEmployeeCookie } from "./lib/employee-cookie";
+import { env } from "./lib/env";
 import { isAdminHost, isAppHost, isEmployeeHost } from "./lib/hosts";
+import { hasSuperAdminEntryCookie, SUPER_ADMIN_ENTRY_COOKIE, superAdminEntryCookieOptions } from "./lib/super-admin-entry";
+
+function superAdminPublicPrefix() {
+  const path = env.superAdminPath.replace(/^\/+|\/+$/g, "");
+  return path ? `/${path}` : "";
+}
 
 const MERCHANT_BLOCKED_PREFIXES = [
   "/app",
   "/api/merchant",
   "/api/admin",
+  "/api/super-admin",
   "/api/auth/login",
   "/api/auth/register",
   "/api/auth/me",
@@ -54,10 +62,42 @@ export function middleware(req: NextRequest) {
     return NextResponse.rewrite(url);
   }
 
-  if (isAdminHost(host) && !pathname.startsWith("/admin")) {
+  const secretPrefix = superAdminPublicPrefix();
+  if (secretPrefix && (pathname === secretPrefix || pathname.startsWith(`${secretPrefix}/`))) {
+    const suffix = pathname.slice(secretPrefix.length) || "";
     const url = req.nextUrl.clone();
-    url.pathname = `/admin${pathname === "/" ? "" : pathname}`;
-    return NextResponse.rewrite(url);
+    url.pathname = `/super-admin${suffix || ""}`;
+    const response = NextResponse.rewrite(url);
+    response.headers.set("x-robots-tag", "noindex, nofollow");
+    response.cookies.set(SUPER_ADMIN_ENTRY_COOKIE, "1", superAdminEntryCookieOptions(env.superAdminSessionHours * 3600));
+    return response;
+  }
+
+  if (pathname.startsWith("/super-admin")) {
+    if (!hasSuperAdminEntryCookie(req)) {
+      return new NextResponse(null, { status: 404 });
+    }
+    const response = NextResponse.next();
+    response.headers.set("x-robots-tag", "noindex, nofollow");
+    return response;
+  }
+
+  if (isAdminHost(host) && !pathname.startsWith("/admin") && !pathname.startsWith("/super-admin")) {
+    const url = req.nextUrl.clone();
+    url.pathname = `/super-admin${pathname === "/" ? "" : pathname}`;
+    const response = NextResponse.rewrite(url);
+    response.headers.set("x-robots-tag", "noindex, nofollow");
+    response.cookies.set(SUPER_ADMIN_ENTRY_COOKIE, "1", superAdminEntryCookieOptions(env.superAdminSessionHours * 3600));
+    return response;
+  }
+
+  if (pathname.startsWith("/admin")) {
+    if (!secretPrefix) {
+      return new NextResponse(null, { status: 404 });
+    }
+    const url = req.nextUrl.clone();
+    url.pathname = `${secretPrefix}${pathname.replace(/^\/admin/, "") || ""}`;
+    return NextResponse.redirect(url);
   }
 
   if (isAppHost(host) && !pathname.startsWith("/app")) {

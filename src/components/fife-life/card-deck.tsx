@@ -5,7 +5,7 @@ import { motion, useMotionValue, useReducedMotion } from "motion/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { DEMO_TIER_DECK_ORDER } from "@/lib/demo-tier-card-images";
 import { GlobalCard } from "./global-card";
-import { MerchantInteractiveCard } from "./merchant-interactive-card";
+import { MerchantCardRenderer } from "./merchant-card-renderer";
 import { resolveTier } from "./tier";
 import type { MerchantCardData, WalletTier } from "./types";
 
@@ -240,14 +240,20 @@ export function CardDeck({
                     else if (!active) setIndex(i);
                   }}
                 >
-                  <MerchantInteractiveCard
+                  <MerchantCardRenderer
                     as="div"
+                    template={item.card.cardTemplate}
+                    merchant={{
+                      name: item.card.name,
+                      logoUrl: item.card.logoUrl,
+                      primaryColor: item.card.primaryColor,
+                    }}
                     card={item.card}
                     slug={item.card.slug}
-                    preview={demoVisual || !item.card.slug}
+                    clientName={customerName}
                     clientNumber={clientNumber}
+                    displayMode={demoVisual ? "adminPreview" : "personalized"}
                     showQr
-                    qrZoomEnabled={false}
                     interactive={active && !isDesktop}
                   />
                 </div>

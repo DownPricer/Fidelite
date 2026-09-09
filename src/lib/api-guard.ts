@@ -3,6 +3,7 @@ import { CsrfError, assertSameOrigin } from "./csrf";
 import { employeeTokenFromRequest, getRequestEmployee } from "./employee-session";
 import { jsonError } from "./http";
 import { canOpenCaisse, firstActiveStaffMembership, isSuperAdmin, staffHasPermission } from "./rbac";
+import { getRequestSuperAdminUser } from "./super-admin-session";
 import { getRequestUser, type SessionUser } from "./session";
 
 export async function requireMutatingRequest(req: Request) {
@@ -33,12 +34,25 @@ export async function requireStandardUser(req: Request) {
 }
 
 export async function requireSuperAdmin(req: Request) {
-  const auth = await requireStandardUser(req);
-  if (auth.error || !auth.user) return { error: auth.error ?? jsonError("Connexion requise.", 401), user: null };
-  if (!isSuperAdmin(auth.user.platformRole)) {
+  const user = await getRequestSuperAdminUser(req);
+  if (!user) {
+    return { error: jsonError("Connexion super-admin requise.", 401), user: null };
+  }
+  if (!isSuperAdmin(user.platformRole)) {
     return { error: jsonError("Accès refusé.", 403), user: null };
   }
-  return { error: null, user: auth.user };
+  return { error: null, user };
+}
+
+export async function requireSuperAdminReauth(req: Request, password: string) {
+  const auth = await requireSuperAdmin(req);
+  if (auth.error || !auth.user) return auth;
+  const { verifyPassword } = await import("./password");
+  const valid = await verifyPassword(password, auth.user.passwordHash);
+  if (!valid) {
+    return { error: jsonError("Mot de passe incorrect.", 401), user: null };
+  }
+  return auth;
 }
 
 export function staffContext(user: SessionUser, merchantId?: string) {

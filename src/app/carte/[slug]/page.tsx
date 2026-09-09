@@ -5,6 +5,7 @@ import { isClientDemoPage } from "@/lib/demo-visual-server";
 import { isGoogleWalletConfigured } from "@/lib/google-wallet";
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/session";
+import { attachPublishedTemplates } from "@/lib/wallet-cards";
 
 export default async function CardPage({
   params,
@@ -52,21 +53,26 @@ export default async function CardPage({
     },
   });
 
+  const [merchantCard] = await attachPublishedTemplates([
+    {
+      id: membership.id,
+      merchantId: membership.merchantId,
+      slug: membership.merchant.slug,
+      name: membership.merchant.name,
+      logoUrl: membership.merchant.logoUrl,
+      primaryColor: membership.merchant.primaryColor,
+      points: membership.points,
+      visitsRequired: membership.merchant.program.visitsRequired,
+      rewardLabel: membership.merchant.program.rewardLabel,
+      loyaltyMode: membership.merchant.program.mode,
+    },
+  ]);
+
   return (
     <MerchantCardDetail
       slug={slug}
       walletEnabled={isGoogleWalletConfigured()}
-      merchant={{
-        id: membership.id,
-        merchantId: membership.merchantId,
-        slug: membership.merchant.slug,
-        name: membership.merchant.name,
-        logoUrl: membership.merchant.logoUrl,
-        primaryColor: membership.merchant.primaryColor,
-        points: membership.points,
-        visitsRequired: membership.merchant.program.visitsRequired,
-        rewardLabel: membership.merchant.program.rewardLabel,
-      }}
+      merchant={merchantCard}
       history={history.map((row) => ({
         id: row.id,
         type: row.type,

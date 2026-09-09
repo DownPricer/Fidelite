@@ -1,5 +1,8 @@
-import { StaffLogin } from "@/components/staff-login";
+import { notFound, redirect } from "next/navigation";
+import { env } from "@/lib/env";
 
 export default function AdminLoginPage() {
-  return <StaffLogin title="Super-admin Fife Life" nextPath="/admin" />;
+  const prefix = env.superAdminPath.replace(/^\/+|\/+$/g, "");
+  if (!prefix) notFound();
+  redirect(`/${prefix}/connexion`);
 }
