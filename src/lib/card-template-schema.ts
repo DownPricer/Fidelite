@@ -54,6 +54,42 @@ const progressColorsSchema = z
   })
   .optional();
 
+const loyaltyWidgetConfigSchema = z
+  .object({
+    loyaltyMode: z.enum(["VISITS", "POINTS_BY_AMOUNT", "FIXED_POINTS", "AMOUNT_TIERS"]),
+    styleVariant: z.string().min(1).max(40),
+    colors: z.object({
+      fill: z.string().regex(/^#([0-9a-fA-F]{6})$/),
+      track: z.string().regex(/^#([0-9a-fA-F]{6})$/),
+      radius: z.number().min(0).max(32).optional(),
+      borderColor: z.string().regex(/^#([0-9a-fA-F]{6})$/).optional(),
+      borderWidth: z.number().min(0).max(8).optional(),
+      glow: z.boolean().optional(),
+      shadow: z.boolean().optional(),
+    }),
+    showCounter: z.boolean().optional(),
+    cellShape: z.enum(["circle", "square", "rounded"]).optional(),
+    spacing: z.number().min(0).max(32).optional(),
+    icon: z.string().max(8).optional(),
+    animateProgress: z.boolean().optional(),
+    labelPosition: z.enum(["inside", "below", "none"]).optional(),
+    fontSize: z.number().min(8).max(96).optional(),
+    showNextReward: z.boolean().optional(),
+    showRemainingPoints: z.boolean().optional(),
+  })
+  .optional();
+
+const decorativeStyleSchema = z
+  .object({
+    backgroundColor: z.string().regex(/^#([0-9a-fA-F]{6})$/).default("#FFFFFF22"),
+    borderColor: z.string().regex(/^#([0-9a-fA-F]{6})$/).optional(),
+    borderWidth: z.number().min(0).max(8).optional(),
+    borderRadius: z.number().min(0).max(64).optional(),
+    shape: z.enum(["rectangle", "circle", "pill"]).optional(),
+    shadow: z.boolean().optional(),
+  })
+  .optional();
+
 const elementTypes = z.enum([
   "logo",
   "merchantName",
@@ -68,6 +104,8 @@ const elementTypes = z.enum([
   "tierLevel",
   "expiryDate",
   "staticText",
+  "loyaltyWidget",
+  "decorative",
 ]);
 
 export const cardElementSchema = z.object({
@@ -100,6 +138,8 @@ export const cardElementSchema = z.object({
   logoStyle: logoStyleSchema,
   text: z.string().max(200).optional(),
   progressColors: progressColorsSchema,
+  loyaltyWidget: loyaltyWidgetConfigSchema,
+  decorativeStyle: decorativeStyleSchema,
 });
 
 export const cardTemplateConfigSchema = z.object({
@@ -127,6 +167,8 @@ export type CardElement = z.infer<typeof cardElementSchema>;
 export type CardTextStyle = z.infer<typeof textStyleSchema>;
 export type CardLogoStyle = NonNullable<z.infer<typeof logoStyleSchema>>;
 export type CardProgressColors = NonNullable<z.infer<typeof progressColorsSchema>>;
+export type CardLoyaltyWidgetConfig = NonNullable<z.infer<typeof loyaltyWidgetConfigSchema>>;
+export type CardDecorativeStyle = NonNullable<z.infer<typeof decorativeStyleSchema>>;
 
 export { validateCardTemplateForPublish, validateCardTemplateForPublishDetailed } from "./card-template-validation";
 
@@ -190,22 +232,25 @@ export const defaultCardTemplateConfig = (backgroundUrl: string): CardTemplateCo
       lockAspectRatio: true,
     },
     {
-      id: "progress-1",
-      type: "progressBar",
+      id: "loyalty-1",
+      type: "loyaltyWidget",
+      label: "Progression par passages",
       x: 0.06,
-      y: 0.78,
+      y: 0.62,
       width: 0.88,
-      height: 0.06,
+      height: 0.22,
       zIndex: 2,
       locked: false,
       hidden: false,
       anchor: "top-left",
-      progressColors: {
-        fill: "#875BFF",
-        track: "#FFFFFF",
-        radius: 8,
-        borderWidth: 0,
-        orientation: "horizontal",
+      loyaltyWidget: {
+        loyaltyMode: "VISITS",
+        styleVariant: "stampGrid",
+        colors: { fill: "#875BFF", track: "#FFFFFF", radius: 8 },
+        showCounter: true,
+        cellShape: "circle",
+        spacing: 6,
+        labelPosition: "below",
       },
     },
   ],

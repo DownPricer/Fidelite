@@ -14,6 +14,8 @@ export const ELEMENT_DATA_KEYS: Record<CardElement["type"], string> = {
   tierLevel: "loyalty.tier",
   expiryDate: "loyalty.expiry",
   staticText: "static.text",
+  loyaltyWidget: "loyalty.progress",
+  decorative: "static.decorative",
 };
 
 export function defaultDataKey(type: CardElement["type"]) {

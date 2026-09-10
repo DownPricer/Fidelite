@@ -174,6 +174,11 @@ export async function PATCH(
     existing.cardSlot,
     previewMode,
   );
+  const { validateLoyaltyWidgetsForSlot } = await import("@/lib/loyalty-widget");
+  const widgetValidation = validateLoyaltyWidgetsForSlot(normalizedConfig, existing.cardSlot);
+  if (widgetValidation.length > 0) {
+    return jsonError(widgetValidation.map((e) => e.message).join(" "), 400);
+  }
 
   const updated = await prisma.merchantCardTemplate.update({
     where: { id },

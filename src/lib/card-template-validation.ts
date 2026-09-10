@@ -5,15 +5,21 @@ import {
   type CardTemplateConfig,
 } from "./card-template-schema";
 import { elementTypeLabel, validationMessage } from "./card-template-i18n";
+import {
+  LOYALTY_WIDGET_LABELS,
+  loyaltyWidgetLabelForSlot,
+  loyaltyWidgetModeForCardSlot,
+  validateLoyaltyWidgetsForSlot,
+} from "./loyalty-widget";
 import { qrMinWidthValid, qrVisuallySquare } from "./card-template-qr-geometry";
 import { clampRect, rectsOverlap, resolveElementRect, type NormalizedRect } from "./merchant-card-layout";
 
 const SLOT_REQUIRED: Record<MerchantCardSlot, CardElement["type"][]> = {
   GENERAL: ["clientName", "qr", "merchantName"],
-  VISITS: ["clientName", "qr", "visitsCount", "progressBar", "nextReward"],
-  POINTS_BY_AMOUNT: ["clientName", "qr", "pointsBalance", "progressBar", "nextReward"],
-  FIXED_POINTS: ["clientName", "qr", "pointsBalance", "progressBar", "nextReward"],
-  AMOUNT_TIERS: ["clientName", "qr", "pointsBalance", "progressBar", "nextReward"],
+  VISITS: ["clientName", "qr", "loyaltyWidget"],
+  POINTS_BY_AMOUNT: ["clientName", "qr", "loyaltyWidget"],
+  FIXED_POINTS: ["clientName", "qr", "loyaltyWidget"],
+  AMOUNT_TIERS: ["clientName", "qr", "loyaltyWidget"],
 };
 
 const QR_SILENCE_MARGIN = 0.02;
@@ -58,20 +64,20 @@ export function validateCardTemplateForPublishDetailed(
 
   const required = SLOT_REQUIRED[slot];
   for (const type of required) {
+    if (type === "loyaltyWidget") {
+      const mode = loyaltyWidgetModeForCardSlot(slot);
+      const hasWidget = config.elements.some((el) => el.type === "loyaltyWidget");
+      if (!hasWidget && mode) {
+        errors.push({ message: `Bloc obligatoire manquant : ${LOYALTY_WIDGET_LABELS[mode]}.` });
+      }
+      continue;
+    }
     if (!config.elements.some((el) => el.type === type)) {
       errors.push({ message: validationMessage(type) });
     }
   }
 
-  if (slot !== "VISITS" && slot !== "GENERAL" && config.elements.some((el) => el.type === "visitsCount")) {
-    errors.push({ message: "Le champ « nombre de passages » ne doit pas être utilisé sur une carte à points." });
-  }
-
-  if (slot === "GENERAL" && config.elements.some((el) => el.type === "visitsCount" || el.type === "pointsBalance")) {
-    errors.push({
-      message: "La carte générale ne doit pas afficher de solde ou de passages — utilisez une présentation neutre.",
-    });
-  }
+  errors.push(...validateLoyaltyWidgetsForSlot(config, slot));
 
   const qrEl = config.elements.find((el) => el.type === "qr");
   if (!qrEl) {
@@ -120,6 +126,10 @@ export function validateCardTemplateForPublishDetailed(
 
   if (config.aspectRatio !== CARD_ASPECT_RATIO) {
     errors.push({ message: "Ratio de carte invalide." });
+  }
+
+  if (slot === "GENERAL" && loyaltyWidgetLabelForSlot(slot) === null) {
+    // noop — slot général validé via validateLoyaltyWidgetsForSlot
   }
 
   return { ok: errors.length === 0, errors };

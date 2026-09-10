@@ -16,6 +16,8 @@ export const ELEMENT_TYPE_LABELS: Record<CardElement["type"], string> = {
   tierLevel: "Palier de fidélité",
   expiryDate: "Date d’expiration",
   staticText: "Texte personnalisé",
+  loyaltyWidget: "Bloc de fidélité",
+  decorative: "Élément décoratif",
 };
 
 /** Traduction des clés de données dynamiques. */

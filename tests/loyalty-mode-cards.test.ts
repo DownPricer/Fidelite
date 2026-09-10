@@ -131,29 +131,17 @@ describe("cartes par mode de fidélité", () => {
     expect(resolved?.loyaltyMode).toBe("AMOUNT_TIERS");
   });
 
-  it("adapte les éléments dynamiques selon le mode sans figer de valeurs", () => {
+  it("adapte les blocs de fidélité selon le mode sans figer de valeurs", () => {
     const base = defaultCardTemplateConfig("/bg.png");
     const config = {
       ...base,
       elements: [
-        ...base.elements,
+        ...base.elements.filter((el) => el.type !== "loyaltyWidget"),
         {
-          id: "visits-1",
+          id: "visits-legacy",
           type: "visitsCount" as const,
           x: 0.1,
           y: 0.5,
-          width: 0.2,
-          height: 0.08,
-          zIndex: 2,
-          locked: false,
-          hidden: false,
-          anchor: "top-left" as const,
-        },
-        {
-          id: "points-1",
-          type: "pointsBalance" as const,
-          x: 0.1,
-          y: 0.6,
           width: 0.2,
           height: 0.08,
           zIndex: 2,
@@ -166,15 +154,13 @@ describe("cartes par mode de fidélité", () => {
     const visitsConfig = adaptTemplateConfigForLoyaltyMode(config, "VISITS");
     const pointsConfig = adaptTemplateConfigForLoyaltyMode(config, "POINTS_BY_AMOUNT");
 
-    expect(visitsConfig.elements.find((element) => element.type === "visitsCount")?.hidden).toBe(
-      false,
+    expect(visitsConfig.elements.find((element) => element.type === "loyaltyWidget")?.loyaltyWidget?.loyaltyMode).toBe(
+      "VISITS",
     );
-    expect(pointsConfig.elements.find((element) => element.type === "pointsBalance")?.hidden).toBe(
-      false,
+    expect(pointsConfig.elements.find((element) => element.type === "loyaltyWidget")?.loyaltyWidget?.loyaltyMode).toBe(
+      "POINTS_BY_AMOUNT",
     );
-    expect(pointsConfig.elements.find((element) => element.type === "visitsCount")?.hidden).toBe(
-      true,
-    );
+    expect(visitsConfig.elements.some((element) => element.type === "visitsCount")).toBe(false);
   });
 
   it("ne déclenche pas d’animation de déblocage lors d’une mise à jour de carte", () => {

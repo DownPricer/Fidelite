@@ -3,6 +3,11 @@ import type { CardTemplateStatus, LoyaltyMode, MerchantCardSlot, Prisma } from "
 import type { CardTemplateConfig } from "./card-template-schema";
 import { defaultCardTemplateConfig } from "./card-template-schema";
 import {
+  convertConfigForTargetSlot,
+  createDefaultLoyaltyWidgetElement,
+  sanitizeLoyaltyWidgetsForSlot,
+} from "./loyalty-widget";
+import {
   ALL_MERCHANT_CARD_SLOTS,
   CARD_SLOT_TITLES,
   cardSlotForLoyaltyMode,
@@ -55,51 +60,24 @@ export type ResolvedPublishedCardTemplate = {
   usedFallback: boolean;
 };
 
-function isPointsMode(mode: LoyaltyMode) {
-  return mode !== "VISITS";
-}
-
 export function adaptTemplateConfigForLoyaltyMode(
   config: CardTemplateConfig,
   mode: LoyaltyMode,
 ): CardTemplateConfig {
-  const pointsMode = isPointsMode(mode);
-  return {
-    ...config,
-    elements: config.elements.map((element) => {
-      if (element.type === "visitsCount") {
-        return { ...element, hidden: pointsMode };
-      }
-      if (element.type === "pointsBalance") {
-        return { ...element, hidden: !pointsMode };
-      }
-      return element;
-    }),
-  };
+  return sanitizeLoyaltyWidgetsForSlot(config, mode);
 }
 
 /** Présentation neutre pour la carte générale. */
 export function adaptTemplateConfigForGeneralSlot(config: CardTemplateConfig): CardTemplateConfig {
-  return {
-    ...config,
-    elements: config.elements.map((element) => {
-      if (element.type === "visitsCount" || element.type === "pointsBalance") {
-        return { ...element, hidden: true };
-      }
-      return element;
-    }),
-  };
+  return sanitizeLoyaltyWidgetsForSlot(config, "GENERAL");
 }
 
 export function adaptTemplateConfigForCardSlot(
   config: CardTemplateConfig,
   cardSlot: MerchantCardSlot,
-  activeLoyaltyMode: LoyaltyMode,
+  _activeLoyaltyMode: LoyaltyMode,
 ): CardTemplateConfig {
-  if (cardSlot === "GENERAL") {
-    return adaptTemplateConfigForGeneralSlot(config);
-  }
-  return adaptTemplateConfigForLoyaltyMode(config, cardSlot);
+  return sanitizeLoyaltyWidgetsForSlot(config, cardSlot);
 }
 
 export function defaultTemplateConfigForSlot(
@@ -108,9 +86,20 @@ export function defaultTemplateConfigForSlot(
 ): CardTemplateConfig {
   const base = defaultCardTemplateConfig(backgroundUrl);
   if (cardSlot === "GENERAL") {
-    return adaptTemplateConfigForGeneralSlot(base);
+    const withoutWidget = {
+      ...base,
+      elements: base.elements.filter((el) => el.type !== "loyaltyWidget"),
+    };
+    return sanitizeLoyaltyWidgetsForSlot(withoutWidget, "GENERAL");
   }
-  return adaptTemplateConfigForLoyaltyMode(base, cardSlot);
+  const widget = createDefaultLoyaltyWidgetElement(cardSlot, 3);
+  const elements = widget
+    ? [
+        ...base.elements.filter((el) => el.type !== "loyaltyWidget"),
+        widget,
+      ]
+    : base.elements;
+  return sanitizeLoyaltyWidgetsForSlot({ ...base, elements }, cardSlot);
 }
 
 function templateRank(status: CardTemplateStatus) {
@@ -378,12 +367,13 @@ export async function duplicateTemplateToSlots(
       );
     }
 
+    const converted = convertConfigForTargetSlot(source.config as CardTemplateConfig, cardSlot);
     const draft = await ensureDraftTemplateForSlot(
       source.merchantId,
       cardSlot,
       {
         backgroundUrl: source.backgroundUrl,
-        config: source.config as CardTemplateConfig,
+        config: converted,
       },
       authorId,
     );

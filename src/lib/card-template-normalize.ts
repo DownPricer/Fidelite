@@ -1,5 +1,6 @@
 import type { CardElement, CardTemplateConfig } from "./card-template-schema";
 import { defaultDataKey } from "./card-template-data-keys";
+import { defaultLoyaltyWidgetConfig } from "./loyalty-widget";
 import { normalizeQrElementRect } from "./card-template-qr-geometry";
 
 export const CARD_EDITOR_REFERENCE_WIDTH = 920;
@@ -101,6 +102,29 @@ export function normalizeCardElement(el: CardElement): CardElement {
     normalized.width = fixed.width;
     normalized.height = fixed.height;
     normalized.lockAspectRatio = true;
+  }
+
+  if (el.type === "loyaltyWidget") {
+    const mode = el.loyaltyWidget?.loyaltyMode ?? "VISITS";
+    normalized.loyaltyWidget = {
+      ...defaultLoyaltyWidgetConfig(mode),
+      ...el.loyaltyWidget,
+      colors: {
+        ...defaultLoyaltyWidgetConfig(mode).colors,
+        ...el.loyaltyWidget?.colors,
+      },
+    };
+  }
+
+  if (el.type === "decorative") {
+    normalized.decorativeStyle = {
+      backgroundColor: "#FFFFFF22",
+      borderWidth: 0,
+      borderRadius: 12,
+      shape: "rectangle",
+      shadow: false,
+      ...el.decorativeStyle,
+    };
   }
 
   return normalized;

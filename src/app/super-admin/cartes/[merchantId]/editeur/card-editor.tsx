@@ -16,6 +16,11 @@ import { defaultDataKey } from "@/lib/card-template-data-keys";
 import { normalizeCardElement, normalizeCardTemplateConfig } from "@/lib/card-template-normalize";
 import { CARD_EDITOR_REFERENCE_WIDTH } from "@/lib/card-template-normalize";
 import { ELEMENT_TYPE_LABELS, elementTypeLabel } from "@/lib/card-template-i18n";
+import {
+  allowedElementTypesForSlot,
+  createDefaultLoyaltyWidgetElement,
+  loyaltyWidgetLabelForSlot,
+} from "@/lib/loyalty-widget";
 import { pickCanonicalTemplate } from "@/lib/merchant-card-template-service";
 import { CARD_SLOT_TITLES, isLoyaltyProgramSlot } from "@/lib/merchant-card-slots";
 import { qrNormalizedHeight } from "@/lib/card-template-qr-geometry";
@@ -23,9 +28,16 @@ import { validateCardTemplateForPublishDetailed } from "@/lib/card-template-vali
 import { Alert, Button, Card, Field, Input } from "@/components/ui";
 import type { CardTemplateStatus, LoyaltyMode, MerchantCardSlot } from "@prisma/client";
 
-const ELEMENT_CATALOG: { type: CardElement["type"]; label: string }[] = (
-  Object.entries(ELEMENT_TYPE_LABELS) as [CardElement["type"], string][]
-).map(([type, label]) => ({ type, label }));
+function buildElementCatalog(cardSlot: MerchantCardSlot): { type: CardElement["type"]; label: string }[] {
+  const allowed = new Set(allowedElementTypesForSlot(cardSlot));
+  const loyaltyLabel = loyaltyWidgetLabelForSlot(cardSlot);
+  return (Object.entries(ELEMENT_TYPE_LABELS) as [CardElement["type"], string][])
+    .filter(([type]) => allowed.has(type))
+    .map(([type, label]) => ({
+      type,
+      label: type === "loyaltyWidget" && loyaltyLabel ? loyaltyLabel : label,
+    }));
+}
 
 type PreviewScenario = "shortName" | "longName" | "noPoints" | "midProgress" | "rewardReached";
 
@@ -140,6 +152,7 @@ export function CardEditorPage({
   const previewLoyaltyMode = (merchant?.program?.mode ?? "VISITS") as LoyaltyMode;
   const editorLoyaltyMode = isLoyaltyProgramSlot(cardSlot) ? cardSlot : previewLoyaltyMode;
   const config = history.value;
+  const elementCatalog = useMemo(() => buildElementCatalog(cardSlot), [cardSlot]);
 
   const validation = useMemo(
     () => (config ? validateCardTemplateForPublishDetailed(config, cardSlot) : { ok: false, errors: [] }),
@@ -221,6 +234,21 @@ export function CardEditorPage({
   }
 
   function addElement(type: CardElement["type"]) {
+    if (!config) return;
+    if (type === "loyaltyWidget") {
+      const existing = config.elements.some((el) => el.type === "loyaltyWidget");
+      if (existing) {
+        setError("Un seul bloc de fidélité est autorisé par carte.");
+        return;
+      }
+      const widget = createDefaultLoyaltyWidgetElement(cardSlot, config.elements.length + 1);
+      if (!widget) return;
+      const normalized = normalizeCardElement(widget);
+      updateElements([...config.elements, normalized]);
+      setSelectedId(normalized.id);
+      return;
+    }
+
     const id = `${type}-${Date.now()}`;
     const element = normalizeCardElement({
       id,
@@ -228,9 +256,9 @@ export function CardEditorPage({
       label: elementLabel(type),
       x: 0.1,
       y: 0.1,
-      width: type === "qr" ? 0.18 : 0.3,
-      height: type === "qr" ? qrNormalizedHeight(0.18) : 0.08,
-      zIndex: (config?.elements.length ?? 0) + 1,
+      width: type === "qr" ? 0.18 : type === "decorative" ? 0.2 : 0.3,
+      height: type === "qr" ? qrNormalizedHeight(0.18) : type === "decorative" ? 0.12 : 0.08,
+      zIndex: config.elements.length + 1,
       locked: false,
       hidden: false,
       anchor: "top-left",
@@ -251,10 +279,13 @@ export function CardEditorPage({
         maxLines: 2,
       },
       text: type === "staticText" ? "Texte" : undefined,
-      progressColors: type === "progressBar" ? { fill: "#875BFF", track: "#FFFFFF", radius: 8 } : undefined,
+      decorativeStyle:
+        type === "decorative"
+          ? { backgroundColor: "#FFFFFF22", borderRadius: 12, shape: "rectangle" }
+          : undefined,
       logoStyle: type === "logo" ? { objectFit: "contain", borderRadius: 12, lockAspectRatio: true } : undefined,
     });
-    updateElements([...(config?.elements ?? []), element]);
+    updateElements([...config.elements, element]);
     setSelectedId(id);
   }
 
@@ -390,6 +421,7 @@ export function CardEditorPage({
       element={selected}
       config={config}
       loyaltyMode={editorLoyaltyMode}
+      cardSlot={cardSlot}
       onUpdate={(patch) => updateElement(selected.id, patch)}
       onDuplicate={() => {
         const copy = normalizeCardElement({
@@ -456,7 +488,8 @@ export function CardEditorPage({
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px] xl:grid-cols-[200px_minmax(0,1fr)_360px]">
           <Card className="hidden space-y-2 p-3 xl:block">
             <h2 className="text-xs font-bold uppercase tracking-widest text-[var(--muted-text)]">Éléments</h2>
-            {ELEMENT_CATALOG.map((item) => (
+            <p className="text-[10px] text-[var(--muted-text)]">Ajouter un élément</p>
+            {elementCatalog.map((item) => (
               <Button key={item.type} variant="secondary" className="w-full justify-start text-xs" onClick={() => addElement(item.type)}>
                 + {item.label}
               </Button>
@@ -483,7 +516,7 @@ export function CardEditorPage({
               <details>
                 <summary className="cursor-pointer text-xs font-bold uppercase tracking-widest text-[var(--muted-text)]">Éléments & fond</summary>
                 <div className="mt-2 space-y-2">
-                  {ELEMENT_CATALOG.map((item) => (
+                  {elementCatalog.map((item) => (
                     <Button key={item.type} variant="secondary" className="w-full justify-start text-xs" onClick={() => addElement(item.type)}>
                       + {item.label}
                     </Button>

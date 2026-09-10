@@ -28,6 +28,7 @@ import { logMerchantCardQr } from "@/lib/merchant-card-qr-log";
 import { normalizePublishedWalletTemplate } from "@/lib/wallet-card-template";
 import { getPersonalizedQr, loadPersonalizedQr } from "./qr-cache";
 import type { MerchantCardData } from "./types";
+import { LoyaltyWidgetView, type LoyaltyWidgetProgress } from "./loyalty-widget-view";
 
 export type MerchantCardDisplayMode = "personalized" | "publicPreview" | "adminPreview" | "compact";
 
@@ -48,14 +49,7 @@ export type MerchantCardRendererProps = {
   slug: string;
   clientName?: string;
   clientNumber?: string | null;
-  progress?: {
-    current: number;
-    target: number;
-    label: string;
-    nextReward?: string | null;
-    unlockedReward?: string | null;
-    tierLabel?: string | null;
-  };
+  progress?: LoyaltyWidgetProgress;
   /** Force une valeur de progression (0–100 %) pour l'aperçu éditeur. */
   progressPercentOverride?: number;
   displayMode?: MerchantCardDisplayMode;
@@ -376,6 +370,35 @@ function ElementView({
       return (
         <div style={style}>
           <TextBlock element={element} text={element.text ?? ""} />
+        </div>
+      );
+    case "decorative": {
+      const ds = element.decorativeStyle;
+      const shapeRadius =
+        ds?.shape === "circle" ? "9999px" : ds?.shape === "pill" ? "9999px" : `${ds?.borderRadius ?? 12}px`;
+      return (
+        <div
+          style={{
+            ...style,
+            borderRadius: shapeRadius,
+            backgroundColor: ds?.backgroundColor ?? "#FFFFFF22",
+            border: ds?.borderWidth ? `${ds.borderWidth}px solid ${ds.borderColor ?? "#FFFFFF44"}` : undefined,
+            boxShadow: ds?.shadow ? "0 4px 16px rgba(0,0,0,0.25)" : undefined,
+          }}
+        />
+      );
+    }
+    case "loyaltyWidget":
+      if (!element.loyaltyWidget) return null;
+      return (
+        <div style={style}>
+          <LoyaltyWidgetView
+            config={element.loyaltyWidget}
+            progress={progress}
+            primaryColor={merchant.primaryColor}
+            masked={masked}
+            progressPercentOverride={progressPercentOverride}
+          />
         </div>
       );
     default:

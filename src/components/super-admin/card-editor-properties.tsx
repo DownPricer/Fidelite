@@ -1,7 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { LoyaltyMode } from "@prisma/client";
+import type { LoyaltyMode, MerchantCardSlot } from "@prisma/client";
+import { LoyaltyWidgetStylePicker } from "@/components/super-admin/loyalty-widget-style-picker";
 import { Button, Field, Input } from "@/components/ui";
 import type { CardElement, CardTemplateConfig, CardTextStyle } from "@/lib/card-template-schema";
 import { CARD_FONT_OPTIONS } from "@/lib/card-template-fonts";
@@ -26,11 +27,12 @@ import {
 } from "@/lib/card-template-editor-resize";
 import { QR_MIN_WIDTH, qrRecommendedRect } from "@/lib/card-template-qr-geometry";
 import { resolveElementRect } from "@/lib/merchant-card-layout";
-const REQUIRED_BY_MODE: Record<LoyaltyMode, CardElement["type"][]> = {
-  VISITS: ["clientName", "qr", "visitsCount", "progressBar", "nextReward"],
-  POINTS_BY_AMOUNT: ["clientName", "qr", "pointsBalance", "progressBar", "nextReward"],
-  FIXED_POINTS: ["clientName", "qr", "pointsBalance", "progressBar", "nextReward"],
-  AMOUNT_TIERS: ["clientName", "qr", "pointsBalance", "progressBar", "nextReward"],
+const REQUIRED_BY_SLOT: Record<MerchantCardSlot, CardElement["type"][]> = {
+  GENERAL: ["clientName", "qr", "merchantName"],
+  VISITS: ["clientName", "qr", "loyaltyWidget"],
+  POINTS_BY_AMOUNT: ["clientName", "qr", "loyaltyWidget"],
+  FIXED_POINTS: ["clientName", "qr", "loyaltyWidget"],
+  AMOUNT_TIERS: ["clientName", "qr", "loyaltyWidget"],
 };
 
 const TEXT_TYPES = new Set<CardElement["type"]>([
@@ -72,6 +74,7 @@ export function CardEditorProperties({
   element,
   config,
   loyaltyMode,
+  cardSlot,
   onUpdate,
   onDuplicate,
   onDelete,
@@ -81,6 +84,7 @@ export function CardEditorProperties({
   element: CardElement;
   config: CardTemplateConfig;
   loyaltyMode: LoyaltyMode;
+  cardSlot: MerchantCardSlot;
   onUpdate: (patch: Partial<CardElement>) => void;
   onDuplicate: () => void;
   onDelete: () => void;
@@ -96,10 +100,11 @@ export function CardEditorProperties({
     qr: element.type === "qr",
     progress: element.type === "progressBar",
     logo: element.type === "logo",
+    widget: element.type === "loyaltyWidget",
   });
 
   const rect = resolveElementRect(element);
-  const isRequired = REQUIRED_BY_MODE[loyaltyMode].includes(element.type);
+  const isRequired = REQUIRED_BY_SLOT[cardSlot].includes(element.type);
   const isText = TEXT_TYPES.has(element.type);
   const style = element.style;
   const dataKey = element.dataKey ?? element.type;
@@ -363,6 +368,181 @@ export function CardEditorProperties({
           <Button variant="secondary" className="w-full text-xs" onClick={() => patchRect(qrRecommendedRect(rect.x, rect.y))}>
             Taille recommandée
           </Button>
+        </Section>
+      ) : null}
+
+      {element.type === "loyaltyWidget" && element.loyaltyWidget ? (
+        <>
+          <LoyaltyWidgetStylePicker
+            config={element.loyaltyWidget}
+            onChange={(next) => onUpdate({ loyaltyWidget: next })}
+          />
+          <Section title="Personnalisation" open={open.widget} onToggle={() => setOpen((s) => ({ ...s, widget: !s.widget }))}>
+            <Field label="Couleur obtenue / principale">
+              <input
+                type="color"
+                value={element.loyaltyWidget.colors.fill}
+                onChange={(e) =>
+                  onUpdate({
+                    loyaltyWidget: {
+                      ...element.loyaltyWidget!,
+                      colors: { ...element.loyaltyWidget!.colors, fill: e.target.value },
+                    },
+                  })
+                }
+              />
+            </Field>
+            <Field label="Couleur manquante / restante">
+              <input
+                type="color"
+                value={element.loyaltyWidget.colors.track}
+                onChange={(e) =>
+                  onUpdate({
+                    loyaltyWidget: {
+                      ...element.loyaltyWidget!,
+                      colors: { ...element.loyaltyWidget!.colors, track: e.target.value },
+                    },
+                  })
+                }
+              />
+            </Field>
+            <Field label="Taille du texte">
+              <Input
+                type="number"
+                min={8}
+                max={96}
+                value={element.loyaltyWidget.fontSize ?? 16}
+                onChange={(e) =>
+                  onUpdate({
+                    loyaltyWidget: { ...element.loyaltyWidget!, fontSize: Number(e.target.value) },
+                  })
+                }
+              />
+            </Field>
+            <Field label="Forme des cases">
+              <select
+                className="w-full rounded-lg border border-white/10 bg-transparent px-2 py-1.5 text-xs"
+                value={element.loyaltyWidget.cellShape ?? "circle"}
+                onChange={(e) =>
+                  onUpdate({
+                    loyaltyWidget: {
+                      ...element.loyaltyWidget!,
+                      cellShape: e.target.value as "circle" | "square" | "rounded",
+                    },
+                  })
+                }
+              >
+                <option value="circle">Cercle</option>
+                <option value="square">Carré</option>
+                <option value="rounded">Arrondi</option>
+              </select>
+            </Field>
+            <Field label="Espacement">
+              <Input
+                type="number"
+                min={0}
+                max={32}
+                value={element.loyaltyWidget.spacing ?? 6}
+                onChange={(e) =>
+                  onUpdate({
+                    loyaltyWidget: { ...element.loyaltyWidget!, spacing: Number(e.target.value) },
+                  })
+                }
+              />
+            </Field>
+            <Field label="Icône validée">
+              <Input
+                maxLength={2}
+                value={element.loyaltyWidget.icon ?? "✓"}
+                onChange={(e) =>
+                  onUpdate({ loyaltyWidget: { ...element.loyaltyWidget!, icon: e.target.value } })
+                }
+              />
+            </Field>
+            <label className="flex items-center gap-2 text-xs">
+              <input
+                type="checkbox"
+                checked={element.loyaltyWidget.showCounter !== false}
+                onChange={(e) =>
+                  onUpdate({ loyaltyWidget: { ...element.loyaltyWidget!, showCounter: e.target.checked } })
+                }
+              />
+              Afficher le compteur (ex. 6 / 10)
+            </label>
+            <label className="flex items-center gap-2 text-xs">
+              <input
+                type="checkbox"
+                checked={element.loyaltyWidget.showNextReward !== false}
+                onChange={(e) =>
+                  onUpdate({ loyaltyWidget: { ...element.loyaltyWidget!, showNextReward: e.target.checked } })
+                }
+              />
+              Afficher le prochain avantage
+            </label>
+            <label className="flex items-center gap-2 text-xs">
+              <input
+                type="checkbox"
+                checked={element.loyaltyWidget.colors.glow ?? false}
+                onChange={(e) =>
+                  onUpdate({
+                    loyaltyWidget: {
+                      ...element.loyaltyWidget!,
+                      colors: { ...element.loyaltyWidget!.colors, glow: e.target.checked },
+                    },
+                  })
+                }
+              />
+              Effet lumineux
+            </label>
+            <label className="flex items-center gap-2 text-xs">
+              <input
+                type="checkbox"
+                checked={element.loyaltyWidget.animateProgress ?? false}
+                onChange={(e) =>
+                  onUpdate({ loyaltyWidget: { ...element.loyaltyWidget!, animateProgress: e.target.checked } })
+                }
+              />
+              Animation légère
+            </label>
+            <p className="text-[10px] text-[var(--muted-text)]">
+              Type verrouillé : {loyaltyModeLabel(element.loyaltyWidget.loyaltyMode)} — les valeurs viennent du programme actif.
+            </p>
+          </Section>
+        </>
+      ) : null}
+
+      {element.type === "decorative" ? (
+        <Section title="Décoratif" open={open.appearance} onToggle={() => setOpen((s) => ({ ...s, appearance: !s.appearance }))}>
+          <Field label="Couleur de fond">
+            <input
+              type="color"
+              value={element.decorativeStyle?.backgroundColor ?? "#FFFFFF"}
+              onChange={(e) =>
+                onUpdate({
+                  decorativeStyle: { ...element.decorativeStyle, backgroundColor: e.target.value },
+                })
+              }
+            />
+          </Field>
+          <Field label="Forme">
+            <select
+              className="w-full rounded-lg border border-white/10 bg-transparent px-2 py-1.5 text-xs"
+              value={element.decorativeStyle?.shape ?? "rectangle"}
+              onChange={(e) =>
+                onUpdate({
+                  decorativeStyle: {
+                    backgroundColor: element.decorativeStyle?.backgroundColor ?? "#FFFFFF22",
+                    ...element.decorativeStyle,
+                    shape: e.target.value as "rectangle" | "circle" | "pill",
+                  },
+                })
+              }
+            >
+              <option value="rectangle">Rectangle</option>
+              <option value="circle">Cercle</option>
+              <option value="pill">Pilule</option>
+            </select>
+          </Field>
         </Section>
       ) : null}
 

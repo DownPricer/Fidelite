@@ -54,13 +54,13 @@ describe("QR et confidentialité publique", () => {
 });
 
 describe("validation publication par mode fidélité", () => {
-  it("exige visitsCount pour VISITS", () => {
+  it("exige le bloc de fidélité pour VISITS", () => {
     const config = defaultCardTemplateConfig("/bg.png");
-    const withoutVisits = {
+    const withoutWidget = {
       ...config,
-      elements: config.elements.filter((el) => el.type !== "visitsCount"),
+      elements: config.elements.filter((el) => el.type !== "loyaltyWidget"),
     };
-    const result = validateCardTemplateForPublishDetailed(withoutVisits, "VISITS");
+    const result = validateCardTemplateForPublishDetailed(withoutWidget, "VISITS");
     expect(result.ok).toBe(false);
   });
 
@@ -71,15 +71,21 @@ describe("validation publication par mode fidélité", () => {
       elements: [
         ...config.elements,
         {
-          ...config.elements[0],
           id: "visits-extra",
           type: "visitsCount" as const,
+          x: 0.1,
+          y: 0.5,
+          width: 0.2,
+          height: 0.08,
+          zIndex: 2,
+          locked: false,
+          hidden: false,
+          anchor: "top-left" as const,
         },
       ],
     };
     const result = validateCardTemplateForPublishDetailed(withVisits, "POINTS_BY_AMOUNT");
     expect(result.ok).toBe(false);
-    expect(result.errors.some((e) => e.message.includes("passages"))).toBe(true);
   });
 
   it("bloque un QR trop petit", () => {
@@ -273,19 +279,23 @@ describe("éditeur de cartes — contraintes et normalisation", () => {
             },
           };
         }
-        if (el.type === "progressBar") {
+        if (el.type === "loyaltyWidget" && el.loyaltyWidget) {
           return {
             ...el,
             x: 0.08,
-            y: 0.75,
+            y: 0.65,
             width: 0.84,
-            height: 0.08,
-            progressColors: {
-              fill: "#00FFAA",
-              track: "#333333",
-              radius: 12,
-              borderColor: "#FFFFFF",
-              borderWidth: 2,
+            height: 0.2,
+            loyaltyWidget: {
+              ...el.loyaltyWidget,
+              colors: {
+                ...el.loyaltyWidget.colors,
+                fill: "#00FFAA",
+                track: "#333333",
+                radius: 12,
+                borderColor: "#FFFFFF",
+                borderWidth: 2,
+              },
             },
           };
         }
@@ -306,14 +316,14 @@ describe("éditeur de cartes — contraintes et normalisation", () => {
     };
     const parsed = cardTemplateConfigSchema.parse(customized);
     const name = parsed.elements.find((e) => e.type === "merchantName");
-    const bar = parsed.elements.find((e) => e.type === "progressBar");
+    const bar = parsed.elements.find((e) => e.type === "loyaltyWidget");
     const logo = parsed.elements.find((e) => e.type === "logo");
     expect(name?.x).toBeCloseTo(0.15);
     expect(name?.style?.fontSize).toBe(28);
     expect(name?.style?.color).toBe("#FFAA00");
     expect(bar?.width).toBeCloseTo(0.84);
-    expect(bar?.height).toBeCloseTo(0.08);
-    expect(bar?.progressColors?.fill).toBe("#00FFAA");
+    expect(bar?.height).toBeCloseTo(0.2);
+    expect(bar?.loyaltyWidget?.colors.fill).toBe("#00FFAA");
     expect(logo?.logoStyle?.backgroundColor).toBe("#112233");
     expect(logo?.logoStyle?.lockAspectRatio).toBe(false);
   });
