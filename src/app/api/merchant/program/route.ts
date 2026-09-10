@@ -3,7 +3,6 @@ import { writeAudit } from "@/lib/audit";
 import { clientIp, jsonError, jsonOk, readJson, userAgent } from "@/lib/http";
 import { programToConfig, rewardFromDb, validateTiers } from "@/lib/loyalty-program";
 import {
-  hasPublishedTemplateForMode,
   normalizeResolvedPublishedTemplate,
   resolvePublishedMerchantCardTemplate,
 } from "@/lib/merchant-card-template-service";
@@ -144,13 +143,6 @@ export async function POST(req: Request) {
   } | null;
 
   if (!draft) return jsonError("Aucun brouillon à publier.", 400);
-
-  if (!(await hasPublishedTemplateForMode(staff.membership.merchantId, draft.mode))) {
-    return jsonError(
-      "La carte correspondant à ce mode de fidélité doit d'abord être configurée par le super-administrateur.",
-      400,
-    );
-  }
 
   const body = await readJson(req).catch(() => ({}));
   const confirmImpact = (body as { confirmImpact?: boolean }).confirmImpact;

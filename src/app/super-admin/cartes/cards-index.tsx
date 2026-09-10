@@ -23,8 +23,8 @@ export function CardsIndexPage({ firstName }: { firstName: string }) {
             <Card key={merchant.id} className="p-4">
               <h2 className="font-bold">{merchant.name}</h2>
               <p className="text-xs text-[var(--muted-text)]">{merchant.loyaltyMode ?? "VISITS"}</p>
-              <Link href={`/super-admin/cartes/${merchant.id}/editeur`} className="mt-3 inline-block text-sm font-semibold text-[var(--violet-bright)]">
-                Ouvrir l&apos;éditeur
+              <Link href={`/super-admin/commerces/${merchant.id}/cartes`} className="mt-3 inline-block text-sm font-semibold text-[var(--violet-bright)]">
+                Gérer les 5 cartes
               </Link>
             </Card>
           ))}

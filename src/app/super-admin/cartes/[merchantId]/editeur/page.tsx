@@ -1,19 +1,28 @@
-import { Suspense } from "react";
 import { redirect } from "next/navigation";
-import { getSuperAdminSessionUser } from "@/lib/super-admin-session";
-import { CardEditorPage } from "./card-editor";
 
-export default async function CardEditorRoute({
+import { cardSlotEditorPath, cardSlotForLoyaltyMode } from "@/lib/merchant-card-slots";
+import { prisma } from "@/lib/prisma";
+
+export default async function LegacyCardEditorRedirect({
   params,
+  searchParams,
 }: {
   params: Promise<{ merchantId: string }>;
+  searchParams: Promise<{ mode?: string }>;
 }) {
-  const user = await getSuperAdminSessionUser();
-  if (!user) redirect("/super-admin/connexion");
   const { merchantId } = await params;
-  return (
-    <Suspense fallback={<p className="p-6 text-sm text-[var(--muted-text)]">Chargement de l’éditeur…</p>}>
-      <CardEditorPage firstName={user.firstName} merchantId={merchantId} />
-    </Suspense>
-  );
+  const query = await searchParams;
+  const fromMode = query.mode?.trim().toUpperCase();
+  const validModes = ["VISITS", "POINTS_BY_AMOUNT", "FIXED_POINTS", "AMOUNT_TIERS"] as const;
+
+  if (fromMode && validModes.includes(fromMode as (typeof validModes)[number])) {
+    redirect(cardSlotEditorPath(merchantId, cardSlotForLoyaltyMode(fromMode as (typeof validModes)[number])));
+  }
+
+  const program = await prisma.loyaltyProgram.findUnique({
+    where: { merchantId },
+    select: { mode: true },
+  });
+  const slot = program?.mode ? cardSlotForLoyaltyMode(program.mode) : "GENERAL";
+  redirect(cardSlotEditorPath(merchantId, slot));
 }

@@ -71,6 +71,14 @@ enum CardTemplateStatus {
   ARCHIVED
 }
 
+enum MerchantCardSlot {
+  GENERAL
+  VISITS
+  POINTS_BY_AMOUNT
+  FIXED_POINTS
+  AMOUNT_TIERS
+}
+
 enum SubscriptionPlan {
   STARTER
   PRO
@@ -472,7 +480,8 @@ model AuditLog {
 model MerchantCardTemplate {
   id            String                        @id @default(cuid())
   merchantId    String
-  loyaltyMode   LoyaltyMode
+  cardSlot      MerchantCardSlot              @default(VISITS)
+  loyaltyMode   LoyaltyMode?
   name          String                        @default("Gabarit principal")
   backgroundUrl String?
   config        Json
@@ -488,6 +497,7 @@ model MerchantCardTemplate {
   versions      MerchantCardTemplateVersion[]
 
   @@index([merchantId, status])
+  @@index([merchantId, cardSlot])
   @@index([merchantId, loyaltyMode])
 }
 

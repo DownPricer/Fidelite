@@ -3,12 +3,13 @@ import { writeAudit } from "@/lib/audit";
 import { cardTemplateConfigSchema } from "@/lib/card-template-schema";
 import { clientIp, jsonError, jsonOk, readJson, userAgent } from "@/lib/http";
 import {
-  ALL_LOYALTY_MODES,
-  adaptTemplateConfigForLoyaltyMode,
+  ALL_MERCHANT_CARD_SLOTS,
+  adaptTemplateConfigForCardSlot,
   applySharedBackgroundToModeTemplates,
-  summarizeTemplateForMode,
+  summarizeTemplateForSlot,
 } from "@/lib/merchant-card-template-service";
-import type { LoyaltyMode } from "@prisma/client";
+import { loyaltyModeForCardSlot } from "@/lib/merchant-card-slots";
+import type { LoyaltyMode, MerchantCardSlot } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { cardTemplateSaveSchema, zodErrorMessage } from "@/lib/super-admin-validation";
 
@@ -28,8 +29,8 @@ export async function GET(req: Request) {
     prisma.loyaltyProgram.findUnique({ where: { merchantId }, select: { mode: true } }),
   ]);
 
-  const summaries = ALL_LOYALTY_MODES.map((loyaltyMode) =>
-    summarizeTemplateForMode(templates, loyaltyMode, program?.mode ?? null),
+  const summaries = ALL_MERCHANT_CARD_SLOTS.map((cardSlot) =>
+    summarizeTemplateForSlot(templates, cardSlot, program?.mode ?? null),
   );
 
   return jsonOk({ templates, summaries });
@@ -67,20 +68,26 @@ export async function POST(req: Request) {
   const configParsed = cardTemplateConfigSchema.safeParse(parsed.data.config);
   if (!configParsed.success) return jsonError(zodErrorMessage(configParsed.error));
 
+  const cardSlot = parsed.data.cardSlot as MerchantCardSlot;
+  const previewMode =
+    (await prisma.loyaltyProgram.findUnique({ where: { merchantId }, select: { mode: true } }))?.mode ??
+    "VISITS";
+
   const existingDraft = await prisma.merchantCardTemplate.findFirst({
-    where: { merchantId, loyaltyMode: parsed.data.loyaltyMode, status: "DRAFT" },
+    where: { merchantId, cardSlot, status: "DRAFT" },
   });
 
   if (parsed.data.isDefault) {
     await prisma.merchantCardTemplate.updateMany({
-      where: { merchantId, loyaltyMode: parsed.data.loyaltyMode },
+      where: { merchantId, cardSlot },
       data: { isDefault: false },
     });
   }
 
-  const normalizedConfig = adaptTemplateConfigForLoyaltyMode(
+  const normalizedConfig = adaptTemplateConfigForCardSlot(
     configParsed.data,
-    parsed.data.loyaltyMode,
+    cardSlot,
+    previewMode,
   );
 
   const template = existingDraft
@@ -96,8 +103,9 @@ export async function POST(req: Request) {
     : await prisma.merchantCardTemplate.create({
         data: {
           merchantId,
+          cardSlot,
+          loyaltyMode: loyaltyModeForCardSlot(cardSlot),
           name: parsed.data.name ?? "Gabarit principal",
-          loyaltyMode: parsed.data.loyaltyMode,
           backgroundUrl: parsed.data.backgroundUrl ?? null,
           config: normalizedConfig,
           status: "DRAFT",
@@ -110,7 +118,7 @@ export async function POST(req: Request) {
     actorId: admin.user.id,
     merchantId,
     action: "CARD_TEMPLATE_DRAFT",
-    metadata: { templateId: template.id, version: template.version },
+    metadata: { templateId: template.id, cardSlot, version: template.version },
     ip: clientIp(req),
     userAgent: userAgent(req),
   });

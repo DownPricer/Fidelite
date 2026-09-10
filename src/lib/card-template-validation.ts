@@ -1,4 +1,4 @@
-import type { LoyaltyMode } from "@prisma/client";
+import type { LoyaltyMode, MerchantCardSlot } from "@prisma/client";
 import {
   CARD_ASPECT_RATIO,
   type CardElement,
@@ -8,7 +8,8 @@ import { elementTypeLabel, validationMessage } from "./card-template-i18n";
 import { qrMinWidthValid, qrVisuallySquare } from "./card-template-qr-geometry";
 import { clampRect, rectsOverlap, resolveElementRect, type NormalizedRect } from "./merchant-card-layout";
 
-const LOYALTY_REQUIRED: Record<LoyaltyMode, CardElement["type"][]> = {
+const SLOT_REQUIRED: Record<MerchantCardSlot, CardElement["type"][]> = {
+  GENERAL: ["clientName", "qr", "merchantName"],
   VISITS: ["clientName", "qr", "visitsCount", "progressBar", "nextReward"],
   POINTS_BY_AMOUNT: ["clientName", "qr", "pointsBalance", "progressBar", "nextReward"],
   FIXED_POINTS: ["clientName", "qr", "pointsBalance", "progressBar", "nextReward"],
@@ -42,8 +43,9 @@ function qrSilenceZone(qr: NormalizedRect): NormalizedRect {
 
 export function validateCardTemplateForPublishDetailed(
   config: CardTemplateConfig,
-  loyaltyMode: LoyaltyMode,
+  cardSlot: MerchantCardSlot | LoyaltyMode,
 ): PublishValidationResult {
+  const slot = cardSlot as MerchantCardSlot;
   const errors: PublishValidationResult["errors"] = [];
 
   if (!config.background?.url) {
@@ -54,15 +56,21 @@ export function validateCardTemplateForPublishDetailed(
     errors.push({ message: "Ajoutez au moins un élément dynamique." });
   }
 
-  const required = LOYALTY_REQUIRED[loyaltyMode];
+  const required = SLOT_REQUIRED[slot];
   for (const type of required) {
     if (!config.elements.some((el) => el.type === type)) {
       errors.push({ message: validationMessage(type) });
     }
   }
 
-  if (loyaltyMode !== "VISITS" && config.elements.some((el) => el.type === "visitsCount")) {
+  if (slot !== "VISITS" && slot !== "GENERAL" && config.elements.some((el) => el.type === "visitsCount")) {
     errors.push({ message: "Le champ « nombre de passages » ne doit pas être utilisé sur une carte à points." });
+  }
+
+  if (slot === "GENERAL" && config.elements.some((el) => el.type === "visitsCount" || el.type === "pointsBalance")) {
+    errors.push({
+      message: "La carte générale ne doit pas afficher de solde ou de passages — utilisez une présentation neutre.",
+    });
   }
 
   const qrEl = config.elements.find((el) => el.type === "qr");

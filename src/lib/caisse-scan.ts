@@ -1,6 +1,7 @@
 import { normalizeClientNumber } from "@/lib/client-number";
 import { publicScanPayload } from "@/lib/caisse-program";
 import type { CardTemplateConfig } from "@/lib/card-template-schema";
+import { cardSlotForLoyaltyMode } from "@/lib/merchant-card-slots";
 import { prisma } from "@/lib/prisma";
 import { QrError, verifyQrToken } from "@/lib/qr";
 import { logWalletUnlock } from "@/lib/wallet-unlock-log";
@@ -53,14 +54,25 @@ async function buildScanResult(input: {
       cardJustCreated = true;
     }
 
-    const publishedTemplate = await tx.merchantCardTemplate.findFirst({
+    const activeMode = membership.merchant.program!.mode;
+    let publishedTemplate = await tx.merchantCardTemplate.findFirst({
       where: {
         merchantId: input.merchantId,
         status: "PUBLISHED",
-        loyaltyMode: membership.merchant.program!.mode,
+        cardSlot: cardSlotForLoyaltyMode(activeMode),
       },
       orderBy: [{ isDefault: "desc" }, { publishedAt: "desc" }],
     });
+    if (!publishedTemplate) {
+      publishedTemplate = await tx.merchantCardTemplate.findFirst({
+        where: {
+          merchantId: input.merchantId,
+          status: "PUBLISHED",
+          cardSlot: "GENERAL",
+        },
+        orderBy: [{ isDefault: "desc" }, { publishedAt: "desc" }],
+      });
+    }
 
     if (cardJustCreated) {
       logWalletUnlock("carte créée ou réactivée", {
@@ -82,12 +94,12 @@ async function buildScanResult(input: {
             points: membership.points,
             visitsRequired: membership.merchant.program!.visitsRequired,
             rewardLabel: membership.merchant.program!.rewardLabel,
-            loyaltyMode: membership.merchant.program!.mode,
+            loyaltyMode: activeMode,
             cardTemplate: publishedTemplate
               ? {
                   backgroundUrl: publishedTemplate.backgroundUrl,
                   config: publishedTemplate.config as CardTemplateConfig,
-                  loyaltyMode: publishedTemplate.loyaltyMode,
+                  loyaltyMode: activeMode,
                 }
               : null,
           },

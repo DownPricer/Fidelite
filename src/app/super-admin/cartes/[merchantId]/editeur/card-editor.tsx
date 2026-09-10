@@ -1,7 +1,7 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useSearchParams } from "next/navigation";
 import { SuperAdminShell } from "@/components/super-admin/layout-shell";
 import { CardEditorBackgroundCrop } from "@/components/super-admin/card-editor-background-crop";
 import { CardEditorCanvas, elementLabel } from "@/components/super-admin/card-editor-canvas";
@@ -16,15 +16,12 @@ import { defaultDataKey } from "@/lib/card-template-data-keys";
 import { normalizeCardElement, normalizeCardTemplateConfig } from "@/lib/card-template-normalize";
 import { CARD_EDITOR_REFERENCE_WIDTH } from "@/lib/card-template-normalize";
 import { ELEMENT_TYPE_LABELS, elementTypeLabel } from "@/lib/card-template-i18n";
-import {
-  ALL_LOYALTY_MODES,
-  LOYALTY_MODE_CARD_TITLES,
-  pickCanonicalTemplate,
-} from "@/lib/merchant-card-template-service";
+import { pickCanonicalTemplate } from "@/lib/merchant-card-template-service";
+import { CARD_SLOT_TITLES, isLoyaltyProgramSlot } from "@/lib/merchant-card-slots";
 import { qrNormalizedHeight } from "@/lib/card-template-qr-geometry";
 import { validateCardTemplateForPublishDetailed } from "@/lib/card-template-validation";
 import { Alert, Button, Card, Field, Input } from "@/components/ui";
-import type { CardTemplateStatus, LoyaltyMode } from "@prisma/client";
+import type { CardTemplateStatus, LoyaltyMode, MerchantCardSlot } from "@prisma/client";
 
 const ELEMENT_CATALOG: { type: CardElement["type"]; label: string }[] = (
   Object.entries(ELEMENT_TYPE_LABELS) as [CardElement["type"], string][]
@@ -42,20 +39,24 @@ const SCENARIO_LABELS: Record<PreviewScenario, string> = {
 
 const PROGRESS_STEPS = [0, 25, 50, 75, 100];
 
-export function CardEditorPage({ firstName, merchantId }: { firstName: string; merchantId: string }) {
-  const searchParams = useSearchParams();
-  const lockedModeParam = searchParams.get("mode");
-  const lockedMode = ALL_LOYALTY_MODES.includes(lockedModeParam as LoyaltyMode)
-    ? (lockedModeParam as LoyaltyMode)
-    : null;
-
+export function CardEditorPage({
+  firstName,
+  merchantId,
+  cardSlot,
+  galleryHref,
+}: {
+  firstName: string;
+  merchantId: string;
+  cardSlot: MerchantCardSlot;
+  galleryHref: string;
+}) {
   const [merchant, setMerchant] = useState<any>(null);
   const [templateId, setTemplateId] = useState<string | null>(null);
   const [templateMeta, setTemplateMeta] = useState<{
     version: number;
     status: string;
     updatedAt?: string;
-    loyaltyMode: LoyaltyMode;
+    cardSlot: MerchantCardSlot;
   } | null>(null);
   const [backgroundUrl, setBackgroundUrl] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -86,11 +87,9 @@ export function CardEditorPage({ firstName, merchantId }: { firstName: string; m
     const merchantData = await merchantRes.json();
     const templatesData = await templatesRes.json();
     setMerchant(merchantData.merchant);
-    const targetMode =
-      lockedMode ?? (merchantData.merchant?.program?.mode as LoyaltyMode | undefined) ?? "VISITS";
     const templates = (templatesData.templates ?? []) as Array<{
       id: string;
-      loyaltyMode: LoyaltyMode;
+      cardSlot: MerchantCardSlot;
       status: CardTemplateStatus;
       version: number;
       updatedAt: string;
@@ -99,25 +98,25 @@ export function CardEditorPage({ firstName, merchantId }: { firstName: string; m
       isDefault: boolean;
     }>;
     const tpl =
-      templates.find((template) => template.loyaltyMode === targetMode && template.status === "DRAFT") ??
-      pickCanonicalTemplate(templates, targetMode);
+      templates.find((template) => template.cardSlot === cardSlot && template.status === "DRAFT") ??
+      pickCanonicalTemplate(templates, cardSlot);
     if (tpl) {
       setTemplateId(tpl.id);
       setTemplateMeta({
         version: tpl.version,
         status: tpl.status,
         updatedAt: tpl.updatedAt,
-        loyaltyMode: tpl.loyaltyMode,
+        cardSlot: tpl.cardSlot,
       });
       setBackgroundUrl(tpl.backgroundUrl ?? "");
       historySetRef.current(normalizeCardTemplateConfig(tpl.config as CardTemplateConfig), true);
     } else {
       setTemplateId(null);
-      setTemplateMeta({ version: 1, status: "DRAFT", loyaltyMode: targetMode });
+      setTemplateMeta({ version: 1, status: "DRAFT", cardSlot });
       setBackgroundUrl("");
       historySetRef.current(null, true);
     }
-  }, [lockedMode, merchantId]);
+  }, [cardSlot, merchantId]);
 
   useEffect(() => {
     void load();
@@ -138,12 +137,13 @@ export function CardEditorPage({ firstName, merchantId }: { firstName: string; m
     return () => window.removeEventListener("keydown", onKey);
   }, [history]);
 
-  const loyaltyMode = (templateMeta?.loyaltyMode ?? lockedMode ?? merchant?.program?.mode ?? "VISITS") as LoyaltyMode;
+  const previewLoyaltyMode = (merchant?.program?.mode ?? "VISITS") as LoyaltyMode;
+  const editorLoyaltyMode = isLoyaltyProgramSlot(cardSlot) ? cardSlot : previewLoyaltyMode;
   const config = history.value;
 
   const validation = useMemo(
-    () => (config ? validateCardTemplateForPublishDetailed(config, loyaltyMode) : { ok: false, errors: [] }),
-    [config, loyaltyMode],
+    () => (config ? validateCardTemplateForPublishDetailed(config, cardSlot) : { ok: false, errors: [] }),
+    [config, cardSlot],
   );
 
   const visitsRequired = merchant?.program?.visitsRequired ?? 10;
@@ -160,7 +160,7 @@ export function CardEditorPage({ firstName, merchantId }: { firstName: string; m
   }, [previewScenario]);
 
   const previewProgress = useMemo(() => {
-    const target = loyaltyMode === "VISITS" ? visitsRequired : 200;
+    const target = editorLoyaltyMode === "VISITS" ? visitsRequired : 200;
     let current: number;
     switch (previewScenario) {
       case "noPoints":
@@ -187,7 +187,7 @@ export function CardEditorPage({ firstName, merchantId }: { firstName: string; m
           : `Encore ${Math.max(0, target - current)} · ${merchant?.program?.rewardLabel ?? "Récompense"}`,
       nextReward: merchant?.program?.rewardLabel ?? "Récompense",
     };
-  }, [previewScenario, progressTestPct, loyaltyMode, visitsRequired, merchant?.program?.rewardLabel]);
+  }, [previewScenario, progressTestPct, editorLoyaltyMode, visitsRequired, merchant?.program?.rewardLabel]);
 
   const previewCard = useMemo(() => {
     if (!merchant) return null;
@@ -201,9 +201,9 @@ export function CardEditorPage({ firstName, merchantId }: { firstName: string; m
       points: previewProgress.current,
       visitsRequired: previewProgress.target,
       rewardLabel: merchant.program?.rewardLabel ?? "Récompense",
-      loyaltyMode,
+      loyaltyMode: editorLoyaltyMode,
     };
-  }, [merchant, merchantId, loyaltyMode, previewProgress]);
+  }, [merchant, merchantId, editorLoyaltyMode, previewProgress]);
 
   const selected = config?.elements.find((el) => el.id === selectedId) ?? null;
 
@@ -330,7 +330,7 @@ export function CardEditorPage({ firstName, merchantId }: { firstName: string; m
     });
     const payload = {
       merchantId,
-      loyaltyMode,
+      cardSlot,
       backgroundUrl,
       config: normalized,
     };
@@ -350,7 +350,7 @@ export function CardEditorPage({ firstName, merchantId }: { firstName: string; m
     setTemplateMeta({
       version: data.template.version,
       status: data.template.status ?? "DRAFT",
-      loyaltyMode: data.template.loyaltyMode ?? loyaltyMode,
+      cardSlot: data.template.cardSlot ?? cardSlot,
     });
     setSavedAt(new Date().toISOString());
     setMessage("Brouillon enregistré.");
@@ -379,7 +379,7 @@ export function CardEditorPage({ firstName, merchantId }: { firstName: string; m
     setTemplateMeta({
       version: data.template.version,
       status: "PUBLISHED",
-      loyaltyMode: data.template.loyaltyMode ?? loyaltyMode,
+      cardSlot: data.template.cardSlot ?? cardSlot,
     });
     setMessage(`Version ${data.template.version} publiée.`);
     setError(null);
@@ -389,7 +389,7 @@ export function CardEditorPage({ firstName, merchantId }: { firstName: string; m
     <CardEditorProperties
       element={selected}
       config={config}
-      loyaltyMode={loyaltyMode}
+      loyaltyMode={editorLoyaltyMode}
       onUpdate={(patch) => updateElement(selected.id, patch)}
       onDuplicate={() => {
         const copy = normalizeCardElement({
@@ -418,13 +418,16 @@ export function CardEditorPage({ firstName, merchantId }: { firstName: string; m
       <div className="mx-auto max-w-[1800px] space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-black text-[var(--ink)]">{merchant?.name ?? "…"}</h1>
+            <Link href={galleryHref} className="text-xs font-semibold text-[var(--violet-bright)] hover:underline">
+              ← Retour aux cartes du commerce
+            </Link>
+            <h1 className="mt-1 text-2xl font-black text-[var(--ink)]">Commerce : {merchant?.name ?? "…"}</h1>
             <p className="text-sm text-[var(--muted-text)]">
-              Carte : {LOYALTY_MODE_CARD_TITLES[loyaltyMode]}
+              Carte : {CARD_SLOT_TITLES[cardSlot]}
               {templateMeta ? ` · v${templateMeta.version} · ${templateMeta.status}` : ""}
             </p>
             <p className="text-xs text-[var(--muted-text)]">
-              Le mode associé à ce gabarit est verrouillé. Revenez à la fiche commerce pour changer de variante.
+              L’emplacement de cette carte est verrouillé. Pour éditer une autre variante, revenez à la galerie.
             </p>
             {history.dirty ? <p className="text-xs text-amber-300">Modifications non enregistrées</p> : savedAt ? <p className="text-xs text-green-300">Brouillon enregistré</p> : null}
           </div>
@@ -557,7 +560,7 @@ export function CardEditorPage({ firstName, merchantId }: { firstName: string; m
                     guides={guides}
                     onGuidesChange={setGuides}
                     zoom={zoom}
-                    loyaltyMode={loyaltyMode}
+                    loyaltyMode={editorLoyaltyMode}
                     previewCard={previewCard}
                     previewMerchant={{
                       name: merchant.name,

@@ -1,50 +1,64 @@
-import type { CardTemplateStatus, LoyaltyMode, Prisma } from "@prisma/client";
+import type { CardTemplateStatus, LoyaltyMode, MerchantCardSlot, Prisma } from "@prisma/client";
 
 import type { CardTemplateConfig } from "./card-template-schema";
 import { defaultCardTemplateConfig } from "./card-template-schema";
+import {
+  ALL_MERCHANT_CARD_SLOTS,
+  CARD_SLOT_TITLES,
+  cardSlotForLoyaltyMode,
+  isLoyaltyProgramSlot,
+  loyaltyModeForCardSlot,
+} from "./merchant-card-slots";
 import { prisma } from "./prisma";
 import { normalizePublishedWalletTemplate, type PublishedWalletTemplate } from "./wallet-card-template";
 
-export const ALL_LOYALTY_MODES: LoyaltyMode[] = [
-  "VISITS",
-  "POINTS_BY_AMOUNT",
-  "FIXED_POINTS",
-  "AMOUNT_TIERS",
-];
+export {
+  ALL_MERCHANT_CARD_SLOTS,
+  CARD_SLOT_TITLES,
+  cardSlotEditorPath,
+  merchantCardsGalleryPath,
+} from "./merchant-card-slots";
 
-/** Titres affichés dans le super-admin et l’éditeur. */
+/** @deprecated Utiliser ALL_MERCHANT_CARD_SLOTS (sans GENERAL) pour les modes programme */
+export const ALL_LOYALTY_MODES = ALL_MERCHANT_CARD_SLOTS.filter(
+  (slot): slot is LoyaltyMode => slot !== "GENERAL",
+);
+
+/** @deprecated Utiliser CARD_SLOT_TITLES */
 export const LOYALTY_MODE_CARD_TITLES: Record<LoyaltyMode, string> = {
-  VISITS: "Carte par passages",
-  POINTS_BY_AMOUNT: "Carte points selon le montant",
-  FIXED_POINTS: "Carte points fixes par achat",
-  AMOUNT_TIERS: "Carte par paliers de montant",
+  VISITS: CARD_SLOT_TITLES.VISITS,
+  POINTS_BY_AMOUNT: CARD_SLOT_TITLES.POINTS_BY_AMOUNT,
+  FIXED_POINTS: CARD_SLOT_TITLES.FIXED_POINTS,
+  AMOUNT_TIERS: CARD_SLOT_TITLES.AMOUNT_TIERS,
 };
 
-export type MerchantCardTemplateSummary = {
-  loyaltyMode: LoyaltyMode;
+export type MerchantCardSlotSummary = {
+  cardSlot: MerchantCardSlot;
   title: string;
   templateId: string | null;
   status: "unconfigured" | "DRAFT" | "PUBLISHED" | "ARCHIVED";
+  displayStatus: "Carte à créer" | "Brouillon" | "Publiée" | "Actuellement utilisée";
   version: number | null;
   backgroundUrl: string | null;
   updatedAt: string | null;
   publishedAt: string | null;
-  isActiveProgramMode: boolean;
+  isCurrentlyUsed: boolean;
 };
 
 export type ResolvedPublishedCardTemplate = {
   id: string;
   backgroundUrl: string | null;
   config: CardTemplateConfig;
+  cardSlot: MerchantCardSlot;
   loyaltyMode: LoyaltyMode;
   version: number;
+  usedFallback: boolean;
 };
 
 function isPointsMode(mode: LoyaltyMode) {
   return mode !== "VISITS";
 }
 
-/** Adapte les éléments dynamiques au mode sans figer de valeurs fictives. */
 export function adaptTemplateConfigForLoyaltyMode(
   config: CardTemplateConfig,
   mode: LoyaltyMode,
@@ -64,11 +78,39 @@ export function adaptTemplateConfigForLoyaltyMode(
   };
 }
 
-export function defaultTemplateConfigForMode(
-  backgroundUrl: string,
-  mode: LoyaltyMode,
+/** Présentation neutre pour la carte générale. */
+export function adaptTemplateConfigForGeneralSlot(config: CardTemplateConfig): CardTemplateConfig {
+  return {
+    ...config,
+    elements: config.elements.map((element) => {
+      if (element.type === "visitsCount" || element.type === "pointsBalance") {
+        return { ...element, hidden: true };
+      }
+      return element;
+    }),
+  };
+}
+
+export function adaptTemplateConfigForCardSlot(
+  config: CardTemplateConfig,
+  cardSlot: MerchantCardSlot,
+  activeLoyaltyMode: LoyaltyMode,
 ): CardTemplateConfig {
-  return adaptTemplateConfigForLoyaltyMode(defaultCardTemplateConfig(backgroundUrl), mode);
+  if (cardSlot === "GENERAL") {
+    return adaptTemplateConfigForGeneralSlot(config);
+  }
+  return adaptTemplateConfigForLoyaltyMode(config, cardSlot);
+}
+
+export function defaultTemplateConfigForSlot(
+  backgroundUrl: string,
+  cardSlot: MerchantCardSlot,
+): CardTemplateConfig {
+  const base = defaultCardTemplateConfig(backgroundUrl);
+  if (cardSlot === "GENERAL") {
+    return adaptTemplateConfigForGeneralSlot(base);
+  }
+  return adaptTemplateConfigForLoyaltyMode(base, cardSlot);
 }
 
 function templateRank(status: CardTemplateStatus) {
@@ -79,13 +121,13 @@ function templateRank(status: CardTemplateStatus) {
 
 export function pickCanonicalTemplate<
   T extends {
-    loyaltyMode: LoyaltyMode;
+    cardSlot: MerchantCardSlot;
     status: CardTemplateStatus;
     isDefault: boolean;
     updatedAt: Date | string;
   },
->(templates: T[], loyaltyMode: LoyaltyMode): T | null {
-  const matches = templates.filter((template) => template.loyaltyMode === loyaltyMode);
+>(templates: T[], cardSlot: MerchantCardSlot): T | null {
+  const matches = templates.filter((template) => template.cardSlot === cardSlot);
   if (matches.length === 0) return null;
   const updatedAtMs = (value: Date | string) => new Date(value).getTime();
   return [...matches].sort((a, b) => {
@@ -96,10 +138,60 @@ export function pickCanonicalTemplate<
   })[0]!;
 }
 
-export function summarizeTemplateForMode(
+/** @deprecated */
+export function pickCanonicalTemplateByMode<
+  T extends {
+    loyaltyMode: LoyaltyMode | null;
+    cardSlot?: MerchantCardSlot;
+    status: CardTemplateStatus;
+    isDefault: boolean;
+    updatedAt: Date | string;
+  },
+>(templates: T[], loyaltyMode: LoyaltyMode): T | null {
+  return pickCanonicalTemplate(
+    templates.map((t) => ({
+      ...t,
+      cardSlot: t.cardSlot ?? cardSlotForLoyaltyMode(loyaltyMode),
+    })),
+    cardSlotForLoyaltyMode(loyaltyMode),
+  );
+}
+
+function resolveCurrentlyUsedSlot(
+  templates: Array<{
+    cardSlot: MerchantCardSlot;
+    status: CardTemplateStatus;
+    isDefault: boolean;
+    updatedAt: Date | string;
+  }>,
+  activeProgramMode: LoyaltyMode | null,
+): MerchantCardSlot | null {
+  if (!activeProgramMode) {
+    const general = pickCanonicalTemplate(templates, "GENERAL");
+    return general?.status === "PUBLISHED" ? "GENERAL" : null;
+  }
+  const programSlot = cardSlotForLoyaltyMode(activeProgramMode);
+  const specific = pickCanonicalTemplate(templates, programSlot);
+  if (specific?.status === "PUBLISHED") return programSlot;
+  const general = pickCanonicalTemplate(templates, "GENERAL");
+  if (general?.status === "PUBLISHED") return "GENERAL";
+  return null;
+}
+
+function displayStatusForSlot(
+  summary: Omit<MerchantCardSlotSummary, "displayStatus">,
+): MerchantCardSlotSummary["displayStatus"] {
+  if (summary.isCurrentlyUsed) return "Actuellement utilisée";
+  if (summary.status === "unconfigured") return "Carte à créer";
+  if (summary.status === "DRAFT") return "Brouillon";
+  if (summary.status === "PUBLISHED") return "Publiée";
+  return "Carte à créer";
+}
+
+export function summarizeTemplateForSlot(
   templates: Array<{
     id: string;
-    loyaltyMode: LoyaltyMode;
+    cardSlot: MerchantCardSlot;
     status: CardTemplateStatus;
     version: number;
     backgroundUrl: string | null;
@@ -107,109 +199,156 @@ export function summarizeTemplateForMode(
     publishedAt: Date | null;
     isDefault: boolean;
   }>,
-  loyaltyMode: LoyaltyMode,
+  cardSlot: MerchantCardSlot,
   activeProgramMode: LoyaltyMode | null,
-): MerchantCardTemplateSummary {
-  const canonical = pickCanonicalTemplate(templates, loyaltyMode);
+): MerchantCardSlotSummary {
+  const currentlyUsed = resolveCurrentlyUsedSlot(templates, activeProgramMode);
+  const canonical = pickCanonicalTemplate(templates, cardSlot);
   if (!canonical) {
-    return {
-      loyaltyMode,
-      title: LOYALTY_MODE_CARD_TITLES[loyaltyMode],
+    const base = {
+      cardSlot,
+      title: CARD_SLOT_TITLES[cardSlot],
       templateId: null,
-      status: "unconfigured",
+      status: "unconfigured" as const,
       version: null,
       backgroundUrl: null,
       updatedAt: null,
       publishedAt: null,
-      isActiveProgramMode: activeProgramMode === loyaltyMode,
+      isCurrentlyUsed: currentlyUsed === cardSlot,
     };
+    return { ...base, displayStatus: displayStatusForSlot(base) };
   }
-  return {
-    loyaltyMode,
-    title: LOYALTY_MODE_CARD_TITLES[loyaltyMode],
+  const base = {
+    cardSlot,
+    title: CARD_SLOT_TITLES[cardSlot],
     templateId: canonical.id,
     status: canonical.status,
     version: canonical.version,
     backgroundUrl: canonical.backgroundUrl,
     updatedAt: canonical.updatedAt.toISOString(),
     publishedAt: canonical.publishedAt?.toISOString() ?? null,
-    isActiveProgramMode: activeProgramMode === loyaltyMode,
+    isCurrentlyUsed: currentlyUsed === cardSlot,
+  };
+  return { ...base, displayStatus: displayStatusForSlot(base) };
+}
+
+/** @deprecated */
+export function summarizeTemplateForMode(
+  templates: Parameters<typeof summarizeTemplateForSlot>[0],
+  loyaltyMode: LoyaltyMode,
+  activeProgramMode: LoyaltyMode | null,
+) {
+  const summary = summarizeTemplateForSlot(templates, cardSlotForLoyaltyMode(loyaltyMode), activeProgramMode);
+  return {
+    loyaltyMode,
+    title: summary.title,
+    templateId: summary.templateId,
+    status: summary.status,
+    version: summary.version,
+    backgroundUrl: summary.backgroundUrl,
+    updatedAt: summary.updatedAt,
+    publishedAt: summary.publishedAt,
+    isActiveProgramMode: summary.isCurrentlyUsed,
   };
 }
 
-/** Sélection canonique du gabarit publié pour un commerce et un mode actif. */
+async function findPublishedForSlot(merchantId: string, cardSlot: MerchantCardSlot) {
+  return prisma.merchantCardTemplate.findFirst({
+    where: { merchantId, cardSlot, status: "PUBLISHED" },
+    orderBy: [{ isDefault: "desc" }, { publishedAt: "desc" }],
+  });
+}
+
+/** Sélection canonique : variante du programme actif, sinon carte générale publiée. */
 export async function resolvePublishedMerchantCardTemplate(
   merchantId: string,
   activeLoyaltyMode: LoyaltyMode,
 ): Promise<ResolvedPublishedCardTemplate | null> {
-  const template = await prisma.merchantCardTemplate.findFirst({
-    where: {
-      merchantId,
+  const programSlot = cardSlotForLoyaltyMode(activeLoyaltyMode);
+  const specific = await findPublishedForSlot(merchantId, programSlot);
+  if (specific) {
+    return {
+      id: specific.id,
+      backgroundUrl: specific.backgroundUrl,
+      config: specific.config as CardTemplateConfig,
+      cardSlot: specific.cardSlot,
       loyaltyMode: activeLoyaltyMode,
-      status: "PUBLISHED",
-    },
-    orderBy: [{ isDefault: "desc" }, { publishedAt: "desc" }],
-  });
-  if (!template) return null;
+      version: specific.version,
+      usedFallback: false,
+    };
+  }
+
+  const general = await findPublishedForSlot(merchantId, "GENERAL");
+  if (!general) return null;
+
   return {
-    id: template.id,
-    backgroundUrl: template.backgroundUrl,
-    config: template.config as CardTemplateConfig,
-    loyaltyMode: template.loyaltyMode,
-    version: template.version,
+    id: general.id,
+    backgroundUrl: general.backgroundUrl,
+    config: general.config as CardTemplateConfig,
+    cardSlot: "GENERAL",
+    loyaltyMode: activeLoyaltyMode,
+    version: general.version,
+    usedFallback: true,
   };
 }
 
-export async function hasPublishedTemplateForMode(merchantId: string, loyaltyMode: LoyaltyMode) {
-  const count = await prisma.merchantCardTemplate.count({
-    where: { merchantId, loyaltyMode, status: "PUBLISHED" },
-  });
-  return count > 0;
+export async function hasPublishedTemplateForMode(_merchantId: string, _loyaltyMode: LoyaltyMode) {
+  return true;
 }
 
 export function normalizeResolvedPublishedTemplate(
   template: ResolvedPublishedCardTemplate | null,
 ): PublishedWalletTemplate | null {
   if (!template) return null;
+  const config =
+    template.cardSlot === "GENERAL"
+      ? adaptTemplateConfigForGeneralSlot(template.config)
+      : adaptTemplateConfigForCardSlot(template.config, template.cardSlot, template.loyaltyMode);
+
   return normalizePublishedWalletTemplate({
     backgroundUrl: template.backgroundUrl,
-    config: adaptTemplateConfigForLoyaltyMode(template.config, template.loyaltyMode),
+    config,
     loyaltyMode: template.loyaltyMode,
   });
 }
 
-export async function getEditableTemplateForMode(merchantId: string, loyaltyMode: LoyaltyMode) {
+export async function getEditableTemplateForSlot(merchantId: string, cardSlot: MerchantCardSlot) {
   const templates = await prisma.merchantCardTemplate.findMany({
-    where: { merchantId, loyaltyMode },
+    where: { merchantId, cardSlot },
     orderBy: [{ status: "asc" }, { updatedAt: "desc" }],
   });
   return (
     templates.find((template) => template.status === "DRAFT") ??
-    pickCanonicalTemplate(templates, loyaltyMode)
+    pickCanonicalTemplate(templates, cardSlot)
   );
 }
 
-export async function ensureDraftTemplateForMode(
+export async function ensureDraftTemplateForSlot(
   merchantId: string,
-  loyaltyMode: LoyaltyMode,
+  cardSlot: MerchantCardSlot,
   source?: { backgroundUrl?: string | null; config: CardTemplateConfig },
   authorId?: string | null,
 ) {
   const existingDraft = await prisma.merchantCardTemplate.findFirst({
-    where: { merchantId, loyaltyMode, status: "DRAFT" },
+    where: { merchantId, cardSlot, status: "DRAFT" },
   });
   if (existingDraft) return existingDraft;
 
   const backgroundUrl = source?.backgroundUrl ?? null;
   const config = source
-    ? adaptTemplateConfigForLoyaltyMode(source.config, loyaltyMode)
-    : defaultTemplateConfigForMode(backgroundUrl ?? "", loyaltyMode);
+    ? adaptTemplateConfigForCardSlot(
+        source.config,
+        cardSlot,
+        isLoyaltyProgramSlot(cardSlot) ? cardSlot : "VISITS",
+      )
+    : defaultTemplateConfigForSlot(backgroundUrl ?? "", cardSlot);
 
   return prisma.merchantCardTemplate.create({
     data: {
       merchantId,
-      loyaltyMode,
-      name: LOYALTY_MODE_CARD_TITLES[loyaltyMode],
+      cardSlot,
+      loyaltyMode: loyaltyModeForCardSlot(cardSlot),
+      name: CARD_SLOT_TITLES[cardSlot],
       backgroundUrl,
       config: config as Prisma.InputJsonValue,
       status: "DRAFT",
@@ -218,24 +357,52 @@ export async function ensureDraftTemplateForMode(
   });
 }
 
-export async function duplicateTemplateToModes(
+export async function duplicateTemplateToSlots(
   sourceTemplateId: string,
-  targetModes: LoyaltyMode[],
+  targetSlots: MerchantCardSlot[],
   authorId: string,
 ) {
   const source = await prisma.merchantCardTemplate.findUnique({ where: { id: sourceTemplateId } });
   if (!source) throw new Error("Gabarit source introuvable.");
 
   const created = [];
-  for (const loyaltyMode of targetModes) {
-    if (loyaltyMode === source.loyaltyMode) continue;
-    const draft = await ensureDraftTemplateForMode(source.merchantId, loyaltyMode, {
-      backgroundUrl: source.backgroundUrl,
-      config: source.config as CardTemplateConfig,
-    }, authorId);
+  for (const cardSlot of targetSlots) {
+    if (cardSlot === source.cardSlot) continue;
+
+    const publishedTarget = await prisma.merchantCardTemplate.findFirst({
+      where: { merchantId: source.merchantId, cardSlot, status: "PUBLISHED" },
+    });
+    if (publishedTarget) {
+      throw new Error(
+        `La carte « ${CARD_SLOT_TITLES[cardSlot]} » possède déjà une version publiée. Archivez-la avant de dupliquer.`,
+      );
+    }
+
+    const draft = await ensureDraftTemplateForSlot(
+      source.merchantId,
+      cardSlot,
+      {
+        backgroundUrl: source.backgroundUrl,
+        config: source.config as CardTemplateConfig,
+      },
+      authorId,
+    );
     created.push(draft);
   }
   return created;
+}
+
+/** @deprecated */
+export async function duplicateTemplateToModes(
+  sourceTemplateId: string,
+  targetModes: LoyaltyMode[],
+  authorId: string,
+) {
+  return duplicateTemplateToSlots(
+    sourceTemplateId,
+    targetModes.map((mode) => cardSlotForLoyaltyMode(mode)),
+    authorId,
+  );
 }
 
 export async function applySharedBackgroundToModeTemplates(input: {
@@ -245,17 +412,16 @@ export async function applySharedBackgroundToModeTemplates(input: {
   duplicateToAll: boolean;
   authorId?: string | null;
 }) {
-  const baseConfig = defaultTemplateConfigForMode(input.backgroundUrl, input.activeMode);
+  const slots: MerchantCardSlot[] = input.duplicateToAll
+    ? [...ALL_MERCHANT_CARD_SLOTS]
+    : ["GENERAL", cardSlotForLoyaltyMode(input.activeMode)];
+
   const results = [];
-
-  for (const loyaltyMode of ALL_LOYALTY_MODES) {
-    const duplicateDesign = input.duplicateToAll || loyaltyMode === input.activeMode;
-    if (!duplicateDesign) continue;
-
-    const config = adaptTemplateConfigForLoyaltyMode(baseConfig, loyaltyMode);
-    const draft = await ensureDraftTemplateForMode(
+  for (const cardSlot of slots) {
+    const config = defaultTemplateConfigForSlot(input.backgroundUrl, cardSlot);
+    const draft = await ensureDraftTemplateForSlot(
       input.merchantId,
-      loyaltyMode,
+      cardSlot,
       { backgroundUrl: input.backgroundUrl, config },
       input.authorId ?? null,
     );
@@ -264,12 +430,11 @@ export async function applySharedBackgroundToModeTemplates(input: {
       data: {
         backgroundUrl: input.backgroundUrl,
         config: config as Prisma.InputJsonValue,
-        name: LOYALTY_MODE_CARD_TITLES[loyaltyMode],
+        name: CARD_SLOT_TITLES[cardSlot],
       },
     });
     results.push(updated);
   }
-
   return results;
 }
 
@@ -281,38 +446,55 @@ export async function createAllModeTemplatesForMerchant(input: {
   duplicateToAll?: boolean;
 }) {
   const backgroundUrl = input.backgroundUrl ?? null;
-  const baseConfig = backgroundUrl
-    ? defaultTemplateConfigForMode(backgroundUrl, input.activeMode)
-    : defaultTemplateConfigForMode("", input.activeMode);
-
   const results = [];
-  for (const loyaltyMode of ALL_LOYALTY_MODES) {
+
+  for (const cardSlot of ALL_MERCHANT_CARD_SLOTS) {
     const existing = await prisma.merchantCardTemplate.findFirst({
-      where: { merchantId: input.merchantId, loyaltyMode },
+      where: { merchantId: input.merchantId, cardSlot },
     });
     if (existing) {
       results.push(existing);
       continue;
     }
 
-    const duplicateDesign = Boolean(backgroundUrl) && (input.duplicateToAll || loyaltyMode === input.activeMode);
+    const duplicateDesign =
+      Boolean(backgroundUrl) &&
+      (input.duplicateToAll || cardSlot === "GENERAL" || cardSlot === cardSlotForLoyaltyMode(input.activeMode));
     const config = duplicateDesign
-      ? adaptTemplateConfigForLoyaltyMode(baseConfig, loyaltyMode)
-      : defaultTemplateConfigForMode(backgroundUrl ?? "", loyaltyMode);
+      ? defaultTemplateConfigForSlot(backgroundUrl!, cardSlot)
+      : defaultTemplateConfigForSlot("", cardSlot);
 
     const created = await prisma.merchantCardTemplate.create({
       data: {
         merchantId: input.merchantId,
-        loyaltyMode,
-        name: LOYALTY_MODE_CARD_TITLES[loyaltyMode],
+        cardSlot,
+        loyaltyMode: loyaltyModeForCardSlot(cardSlot),
+        name: CARD_SLOT_TITLES[cardSlot],
         backgroundUrl: duplicateDesign ? backgroundUrl : null,
         config: config as Prisma.InputJsonValue,
         status: "DRAFT",
-        isDefault: loyaltyMode === input.activeMode,
+        isDefault: cardSlot === cardSlotForLoyaltyMode(input.activeMode),
         authorId: input.authorId ?? null,
       },
     });
     results.push(created);
   }
   return results;
+}
+
+export async function resetDraftForSlot(merchantId: string, cardSlot: MerchantCardSlot) {
+  const draft = await prisma.merchantCardTemplate.findFirst({
+    where: { merchantId, cardSlot, status: "DRAFT" },
+  });
+  if (!draft) return null;
+
+  const emptyConfig = defaultTemplateConfigForSlot("", cardSlot);
+  return prisma.merchantCardTemplate.update({
+    where: { id: draft.id },
+    data: {
+      backgroundUrl: null,
+      config: emptyConfig as Prisma.InputJsonValue,
+      version: { increment: 1 },
+    },
+  });
 }

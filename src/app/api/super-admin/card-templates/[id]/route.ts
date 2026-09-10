@@ -1,4 +1,4 @@
-import type { LoyaltyMode } from "@prisma/client";
+import type { MerchantCardSlot } from "@prisma/client";
 
 import { requireMutatingRequest, requireSuperAdmin } from "@/lib/api-guard";
 import { writeAudit } from "@/lib/audit";
@@ -6,8 +6,9 @@ import { cardTemplateConfigSchema } from "@/lib/card-template-schema";
 import { validateCardTemplateForPublishDetailed } from "@/lib/card-template-validation";
 import { clientIp, jsonError, jsonOk, readJson, userAgent } from "@/lib/http";
 import {
-  adaptTemplateConfigForLoyaltyMode,
-  duplicateTemplateToModes,
+  adaptTemplateConfigForCardSlot,
+  duplicateTemplateToSlots,
+  resetDraftForSlot,
 } from "@/lib/merchant-card-template-service";
 import { prisma } from "@/lib/prisma";
 import { cardTemplateSaveSchema, zodErrorMessage } from "@/lib/super-admin-validation";
@@ -28,12 +29,18 @@ export async function PATCH(
   const existing = await prisma.merchantCardTemplate.findUnique({ where: { id } });
   if (!existing) return jsonError("Gabarit introuvable.", 404);
 
+  const program = await prisma.loyaltyProgram.findUnique({
+    where: { merchantId: existing.merchantId },
+    select: { mode: true },
+  });
+  const previewMode = program?.mode ?? "VISITS";
+
   if (action === "publish") {
     const configParsed = cardTemplateConfigSchema.safeParse(existing.config);
     if (!configParsed.success) return jsonError("Configuration invalide.");
     const publishValidation = validateCardTemplateForPublishDetailed(
       configParsed.data,
-      existing.loyaltyMode,
+      existing.cardSlot,
     );
     if (!publishValidation.ok) {
       return jsonError(publishValidation.errors.map((e) => e.message).join(" "));
@@ -43,7 +50,7 @@ export async function PATCH(
       await tx.merchantCardTemplate.updateMany({
         where: {
           merchantId: existing.merchantId,
-          loyaltyMode: existing.loyaltyMode,
+          cardSlot: existing.cardSlot,
           status: "PUBLISHED",
         },
         data: { status: "ARCHIVED" },
@@ -72,7 +79,7 @@ export async function PATCH(
       actorId: admin.user.id,
       merchantId: existing.merchantId,
       action: "CARD_TEMPLATE_PUBLISH",
-      metadata: { templateId: id, version: updated.version },
+      metadata: { templateId: id, cardSlot: existing.cardSlot, version: updated.version },
       ip: clientIp(req),
       userAgent: userAgent(req),
     });
@@ -118,10 +125,17 @@ export async function PATCH(
     return jsonOk({ template: updated });
   }
 
+  if (action === "reset-draft") {
+    const updated = await resetDraftForSlot(existing.merchantId, existing.cardSlot);
+    if (!updated) return jsonError("Aucun brouillon à réinitialiser.", 404);
+    return jsonOk({ template: updated });
+  }
+
   if (action === "duplicate") {
     const duplicate = await prisma.merchantCardTemplate.create({
       data: {
         merchantId: existing.merchantId,
+        cardSlot: existing.cardSlot,
         loyaltyMode: existing.loyaltyMode,
         name: `${existing.name} (copie)`,
         backgroundUrl: existing.backgroundUrl,
@@ -133,13 +147,17 @@ export async function PATCH(
     return jsonOk({ template: duplicate }, 201);
   }
 
-  if (action === "duplicate-to-modes") {
-    const targetModes = body.targetModes as LoyaltyMode[] | undefined;
-    if (!Array.isArray(targetModes) || targetModes.length === 0) {
-      return jsonError("Sélectionnez au moins un mode cible.", 400);
+  if (action === "duplicate-to-slots" || action === "duplicate-to-modes") {
+    const targetSlots = (body.targetSlots ?? body.targetModes) as MerchantCardSlot[] | undefined;
+    if (!Array.isArray(targetSlots) || targetSlots.length === 0) {
+      return jsonError("Sélectionnez au moins un emplacement cible.", 400);
     }
-    const created = await duplicateTemplateToModes(id, targetModes, admin.user.id);
-    return jsonOk({ templates: created }, 201);
+    try {
+      const created = await duplicateTemplateToSlots(id, targetSlots, admin.user.id);
+      return jsonOk({ templates: created }, 201);
+    } catch (error) {
+      return jsonError(error instanceof Error ? error.message : "Duplication impossible.", 409);
+    }
   }
 
   const parsed = cardTemplateSaveSchema.safeParse(body);
@@ -147,13 +165,14 @@ export async function PATCH(
   const configParsed = cardTemplateConfigSchema.safeParse(parsed.data.config);
   if (!configParsed.success) return jsonError(zodErrorMessage(configParsed.error));
 
-  if (parsed.data.loyaltyMode !== existing.loyaltyMode) {
-    return jsonError("Le mode de fidélité du gabarit ne peut pas être modifié depuis l’éditeur.", 400);
+  if (parsed.data.cardSlot !== existing.cardSlot) {
+    return jsonError("L’emplacement de la carte ne peut pas être modifié depuis l’éditeur.", 400);
   }
 
-  const normalizedConfig = adaptTemplateConfigForLoyaltyMode(
+  const normalizedConfig = adaptTemplateConfigForCardSlot(
     configParsed.data,
-    existing.loyaltyMode,
+    existing.cardSlot,
+    previewMode,
   );
 
   const updated = await prisma.merchantCardTemplate.update({
@@ -170,7 +189,7 @@ export async function PATCH(
     actorId: admin.user.id,
     merchantId: existing.merchantId,
     action: "CARD_TEMPLATE_UPDATE",
-    metadata: { templateId: id },
+    metadata: { templateId: id, cardSlot: existing.cardSlot },
     ip: clientIp(req),
     userAgent: userAgent(req),
   });

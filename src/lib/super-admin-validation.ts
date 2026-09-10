@@ -106,7 +106,8 @@ export const merchantDeleteSchema = z.object({
 
 export const cardTemplateSaveSchema = z.object({
   name: z.string().trim().min(1).max(80).optional(),
-  loyaltyMode: z.enum(["VISITS", "POINTS_BY_AMOUNT", "FIXED_POINTS", "AMOUNT_TIERS"]),
+  cardSlot: z.enum(["GENERAL", "VISITS", "POINTS_BY_AMOUNT", "FIXED_POINTS", "AMOUNT_TIERS"]),
+  loyaltyMode: z.enum(["VISITS", "POINTS_BY_AMOUNT", "FIXED_POINTS", "AMOUNT_TIERS"]).optional(),
   backgroundUrl: z.string().trim().max(500).optional().nullable(),
   config: z.record(z.unknown()),
   isDefault: z.boolean().optional(),

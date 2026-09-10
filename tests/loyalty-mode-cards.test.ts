@@ -51,6 +51,7 @@ describe("cartes par mode de fidélité", () => {
   it("permet de résumer quatre variantes indépendantes", () => {
     const templates = ALL_LOYALTY_MODES.map((loyaltyMode, index) => ({
       id: `tpl-${loyaltyMode}`,
+      cardSlot: loyaltyMode,
       loyaltyMode,
       status: index === 0 ? ("PUBLISHED" as const) : ("DRAFT" as const),
       version: index + 1,
@@ -77,6 +78,7 @@ describe("cartes par mode de fidélité", () => {
       id: "visits-published",
       backgroundUrl: "/visits.png",
       config: defaultCardTemplateConfig("/visits.png"),
+      cardSlot: "VISITS",
       loyaltyMode: "VISITS",
       version: 2,
     });
@@ -85,7 +87,7 @@ describe("cartes par mode de fidélité", () => {
     expect(resolved?.loyaltyMode).toBe("VISITS");
     expect(merchantCardTemplateFindFirst).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { merchantId: "merchant-1", loyaltyMode: "VISITS", status: "PUBLISHED" },
+        where: { merchantId: "merchant-1", cardSlot: "VISITS", status: "PUBLISHED" },
       }),
     );
   });
@@ -180,11 +182,7 @@ describe("cartes par mode de fidélité", () => {
     expect(isUnlockEventType("CARD_UNLOCKED")).toBe(true);
   });
 
-  it("bloque la publication si aucune carte publiée n’existe pour le mode cible", async () => {
-    merchantCardTemplateCount.mockResolvedValue(0);
-    await expect(hasPublishedTemplateForMode("merchant-1", "FIXED_POINTS")).resolves.toBe(false);
-
-    merchantCardTemplateCount.mockResolvedValue(1);
+  it("n’empêche plus la publication du programme si une variante manque", async () => {
     await expect(hasPublishedTemplateForMode("merchant-1", "FIXED_POINTS")).resolves.toBe(true);
   });
 
@@ -192,6 +190,7 @@ describe("cartes par mode de fidélité", () => {
     const templates = [
       {
         id: "old-published",
+        cardSlot: "VISITS" as const,
         loyaltyMode: "VISITS" as const,
         status: "ARCHIVED" as const,
         isDefault: false,
@@ -199,6 +198,7 @@ describe("cartes par mode de fidélité", () => {
       },
       {
         id: "current-published",
+        cardSlot: "VISITS" as const,
         loyaltyMode: "VISITS" as const,
         status: "PUBLISHED" as const,
         isDefault: true,
@@ -206,6 +206,7 @@ describe("cartes par mode de fidélité", () => {
       },
       {
         id: "draft-visits",
+        cardSlot: "VISITS" as const,
         loyaltyMode: "VISITS" as const,
         status: "DRAFT" as const,
         isDefault: false,
@@ -220,16 +221,23 @@ describe("cartes par mode de fidélité", () => {
     merchantCardTemplateFindUnique.mockResolvedValue({
       id: "source",
       merchantId: "merchant-1",
-      loyaltyMode: "VISITS",
+      cardSlot: "GENERAL",
+      loyaltyMode: null,
       backgroundUrl: "/bg.png",
       config: defaultCardTemplateConfig("/bg.png"),
     });
     merchantCardTemplateFindFirst.mockImplementation(({ where }) => {
       if (where?.status === "DRAFT") return Promise.resolve(null);
-      return Promise.resolve({ id: "existing-published", status: "PUBLISHED" });
+      if (where?.status === "PUBLISHED") return Promise.resolve(null);
+      return Promise.resolve(null);
     });
 
-    const createdDraft = { id: "new-draft", loyaltyMode: "POINTS_BY_AMOUNT", status: "DRAFT" };
+    const createdDraft = {
+      id: "new-draft",
+      cardSlot: "POINTS_BY_AMOUNT",
+      loyaltyMode: "POINTS_BY_AMOUNT",
+      status: "DRAFT",
+    };
     merchantCardTemplateCreate.mockResolvedValue(createdDraft);
 
     const result = await duplicateTemplateToModes("source", ["POINTS_BY_AMOUNT"], "admin-1");
@@ -253,8 +261,8 @@ describe("cartes par mode de fidélité", () => {
       duplicateToAll: true,
     });
 
-    expect(created).toHaveLength(4);
-    expect(merchantCardTemplateCreate).toHaveBeenCalledTimes(4);
+    expect(created).toHaveLength(5);
+    expect(merchantCardTemplateCreate).toHaveBeenCalledTimes(5);
   });
 
   it("conserve le QR réel en mode personnalisé", () => {
@@ -273,7 +281,7 @@ describe("cartes par mode de fidélité", () => {
     await resolvePublishedMerchantCardTemplate("merchant-a", "VISITS");
     expect(merchantCardTemplateFindFirst).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: expect.objectContaining({ merchantId: "merchant-a", loyaltyMode: "VISITS" }),
+        where: expect.objectContaining({ merchantId: "merchant-a", cardSlot: "VISITS" }),
       }),
     );
   });
