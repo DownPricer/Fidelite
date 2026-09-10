@@ -39,6 +39,7 @@ export function CardDeck({
   customerName,
   clientNumber,
   cards,
+  personalizedQr = null,
   onOpenMerchant,
   onEnlargeCard,
   demoVisual = false,
@@ -47,6 +48,7 @@ export function CardDeck({
   customerName: string;
   clientNumber?: string | null;
   cards: MerchantCardData[];
+  personalizedQr?: string | null;
   onOpenMerchant: (card: MerchantCardData) => void;
   onEnlargeCard?: (card: MerchantCardData) => void;
   demoVisual?: boolean;
@@ -156,6 +158,7 @@ export function CardDeck({
             points={points}
             customerName={customerName}
             clientNumber={clientNumber}
+            qrSrc={personalizedQr}
             large
             mode="wallet"
           />
@@ -233,6 +236,7 @@ export function CardDeck({
                     points={points}
                     customerName={customerName}
                     clientNumber={clientNumber}
+                    qrSrc={personalizedQr}
                     large
                     mode="wallet"
                     preview={demoVisual}
@@ -240,6 +244,7 @@ export function CardDeck({
                     demoTierPreview={demoVisual && item.kind === "global-tier"}
                     interactive={active && !isDesktop}
                     qrZoomEnabled={false}
+                    qrFetchPriority={active ? "high" : "auto"}
                   />
                 </button>
               ) : (
@@ -272,6 +277,8 @@ export function CardDeck({
                     clientNumber={clientNumber}
                     displayMode={demoVisual ? "adminPreview" : "personalized"}
                     showQr
+                    qrSrc={personalizedQr}
+                    qrFetchPriority={active ? "high" : "auto"}
                     interactive={active && !isDesktop}
                   />
                 </div>

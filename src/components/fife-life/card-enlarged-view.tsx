@@ -4,7 +4,7 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { DEMO_CLIENT_NUMBER } from "@/lib/demo-visual";
-import { getCachedQr, loadUniversalQr } from "./qr-cache";
+import { getPersonalizedQr, loadPersonalizedQr } from "./qr-cache";
 import { PREVIEW_QR } from "./preview-data";
 import { InteractiveLoyaltyCard } from "./interactive-loyalty-card";
 import { MerchantCardRenderer } from "./merchant-card-renderer";
@@ -18,6 +18,7 @@ type CardEnlargedViewProps = {
   customerName?: string;
   clientNumber?: string | null;
   fifeLifePoints?: number;
+  personalizedQr?: string | null;
   preview?: boolean;
   onClose: () => void;
 };
@@ -33,6 +34,7 @@ export function CardEnlargedView({
   customerName = "Membre",
   clientNumber = null,
   fifeLifePoints,
+  personalizedQr = null,
   preview = false,
   onClose,
 }: CardEnlargedViewProps) {
@@ -43,7 +45,9 @@ export function CardEnlargedView({
   const effectiveClientNumber = clientNumber ?? (preview ? DEMO_CLIENT_NUMBER : null);
 
   const [mounted, setMounted] = useState(false);
-  const [qr, setQr] = useState<string | null>(() => (preview ? PREVIEW_QR : getCachedQr("fife-life")));
+  const [qr, setQr] = useState<string | null>(() =>
+    preview ? PREVIEW_QR : personalizedQr ?? getPersonalizedQr(),
+  );
 
   useEffect(() => {
     setMounted(true);
@@ -72,15 +76,18 @@ export function CardEnlargedView({
       setQr(PREVIEW_QR);
       return;
     }
-    if (qr) return;
+    if (personalizedQr) {
+      setQr(personalizedQr);
+      return;
+    }
     let cancelled = false;
-    void loadUniversalQr("fife-life").then((next) => {
+    void loadPersonalizedQr("fife-life").then((next) => {
       if (!cancelled && next) setQr(next);
     });
     return () => {
       cancelled = true;
     };
-  }, [open, fifeLife, preview, qr]);
+  }, [open, fifeLife, preview, personalizedQr]);
 
   if (!mounted) return null;
 
@@ -110,10 +117,11 @@ export function CardEnlargedView({
                   name={customerName}
                   points={fifeLifePoints ?? card.points}
                   showQr
-                  qrSrc={qr}
+                  qrSrc={personalizedQr ?? qr}
                   qrMode="standard"
                   clientNumber={effectiveClientNumber}
                   qrZoomEnabled
+                  qrFetchPriority="high"
                   layout="enlarged"
                   className="card-enlarged-loyalty-card"
                 />
@@ -133,6 +141,8 @@ export function CardEnlargedView({
                 clientNumber={effectiveClientNumber}
                 displayMode={preview ? "adminPreview" : "personalized"}
                 showQr
+                qrSrc={personalizedQr ?? qr}
+                qrFetchPriority="high"
                 interactive={false}
                 className="card-enlarged-merchant-card w-full"
                 shellClassName="card-enlarged-merchant-shell"

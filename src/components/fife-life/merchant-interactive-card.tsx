@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "@/components/ui";
-import { getCachedQr, loadUniversalQr } from "./qr-cache";
+import { getPersonalizedQr, loadPersonalizedQr } from "./qr-cache";
 import { PREVIEW_QR } from "./preview-data";
 import { QrEnlargedView } from "./qr-enlarged-view";
 import { InteractiveCardShell } from "./interactive-card-shell";
@@ -14,6 +14,7 @@ type MerchantInteractiveCardProps = {
   slug: string;
   preview?: boolean;
   showQr?: boolean;
+  qrSrc?: string | null;
   compactQr?: boolean;
   clientNumber?: string | null;
   qrZoomEnabled?: boolean;
@@ -29,6 +30,7 @@ export function MerchantInteractiveCard({
   slug,
   preview = false,
   showQr = true,
+  qrSrc: qrSrcProp = null,
   compactQr = false,
   clientNumber = null,
   qrZoomEnabled = false,
@@ -47,7 +49,9 @@ export function MerchantInteractiveCard({
     : `Encore ${remaining} · ${card.rewardLabel}`;
 
   const [mounted, setMounted] = useState(false);
-  const [qr, setQr] = useState<string | null>(() => (preview ? PREVIEW_QR : getCachedQr(slug)));
+  const [qr, setQr] = useState<string | null>(() =>
+    preview ? PREVIEW_QR : qrSrcProp ?? getPersonalizedQr(),
+  );
   const [qrError, setQrError] = useState(false);
   const [qrEnlarged, setQrEnlarged] = useState(false);
 
@@ -60,9 +64,12 @@ export function MerchantInteractiveCard({
       setQr(PREVIEW_QR);
       return;
     }
-    if (qr) return;
+    if (qrSrcProp) {
+      setQr(qrSrcProp);
+      return;
+    }
     let cancelled = false;
-    void loadUniversalQr(slug).then((next) => {
+    void loadPersonalizedQr(slug).then((next) => {
       if (cancelled) return;
       if (next) setQr(next);
       else setQrError(true);
@@ -70,7 +77,7 @@ export function MerchantInteractiveCard({
     return () => {
       cancelled = true;
     };
-  }, [preview, slug, qr]);
+  }, [preview, slug, qrSrcProp]);
 
   const Element = as;
 

@@ -9,14 +9,18 @@ import {
   type SetStateAction,
 } from "react";
 
+import { isUnlockEventType } from "@/lib/wallet-unlock";
 import {
-  cardFromUnlockEvent,
-  isUnlockEventType,
-} from "@/lib/wallet-unlock";
+  fetchUnlockCardDetail,
+  isUnlockCardReadyForReveal,
+} from "@/lib/wallet-unlock-card";
 import { canEnqueueUnlockEvent, shouldDeferUnlockPlayback } from "@/lib/wallet-unlock-client";
 import { logWalletUnlockClient } from "@/lib/wallet-unlock-client-log";
 import { markWalletEventSeen } from "@/lib/wallet-event-dedup";
+import { loadPersonalizedQr } from "./qr-cache";
 import type { MerchantCardData, WalletEventPayload } from "./types";
+
+export type UnlockRevealPhase = "idle" | "loading" | "revealed";
 
 function isDocumentVisible() {
   if (typeof document === "undefined") return true;
@@ -27,8 +31,8 @@ export function useWalletUnlockAnimation(
   enabled: boolean,
   setCards: Dispatch<SetStateAction<MerchantCardData[]>>,
 ) {
-  const [newCardName, setNewCardName] = useState<string | null>(null);
-  const [newCard, setNewCard] = useState<MerchantCardData | null>(null);
+  const [unlockPhase, setUnlockPhase] = useState<UnlockRevealPhase>("idle");
+  const [unlockCard, setUnlockCard] = useState<MerchantCardData | null>(null);
   const [activeEventId, setActiveEventId] = useState<string | null>(null);
 
   const queuedOrPlayingIdsRef = useRef(new Set<string>());
@@ -56,7 +60,7 @@ export function useWalletUnlockAnimation(
     }
   }, []);
 
-  const startNextUnlock = useCallback(() => {
+  const startNextUnlock = useCallback(async () => {
     if (playingRef.current) return;
     if (shouldDeferUnlockPlayback(isDocumentVisible())) return;
 
@@ -64,17 +68,38 @@ export function useWalletUnlockAnimation(
     if (!event) return;
 
     playingRef.current = true;
-    const created = cardFromUnlockEvent(event);
+    setUnlockPhase("loading");
+    setUnlockCard(null);
+    setActiveEventId(event.id);
+
+    const slug = typeof event.payload.slug === "string" ? event.payload.slug : "fife-life";
+    const [resolvedCard] = await Promise.all([
+      fetchUnlockCardDetail(event),
+      loadPersonalizedQr(slug),
+    ]);
+
+    if (!resolvedCard || !isUnlockCardReadyForReveal(resolvedCard)) {
+      playingRef.current = false;
+      setUnlockPhase("idle");
+      setActiveEventId(null);
+      void startNextUnlock();
+      return;
+    }
+
     setCards((prev) => {
       const exists =
         Boolean(event.customerMembershipId) &&
         prev.some((card) => card.id === event.customerMembershipId);
-      if (exists) return prev;
-      return [created, ...prev];
+      if (exists) {
+        return prev.map((card) =>
+          card.id === event.customerMembershipId ? { ...card, ...resolvedCard } : card,
+        );
+      }
+      return [resolvedCard, ...prev];
     });
-    setNewCardName(created.name);
-    setNewCard(created);
-    setActiveEventId(event.id);
+
+    setUnlockCard(resolvedCard);
+    setUnlockPhase("revealed");
   }, [setCards]);
 
   const enqueueUnlock = useCallback(
@@ -92,7 +117,7 @@ export function useWalletUnlockAnimation(
       }
 
       queueRef.current.push(event);
-      startNextUnlock();
+      void startNextUnlock();
     },
     [startNextUnlock],
   );
@@ -110,11 +135,11 @@ export function useWalletUnlockAnimation(
   );
 
   const onAnimationDone = useCallback(() => {
-    setNewCardName(null);
-    setNewCard(null);
+    setUnlockPhase("idle");
+    setUnlockCard(null);
     setActiveEventId(null);
     playingRef.current = false;
-    startNextUnlock();
+    void startNextUnlock();
   }, [startNextUnlock]);
 
   useEffect(() => {
@@ -122,7 +147,7 @@ export function useWalletUnlockAnimation(
 
     function flushWhenVisible() {
       if (shouldDeferUnlockPlayback(isDocumentVisible())) return;
-      startNextUnlock();
+      void startNextUnlock();
     }
 
     document.addEventListener("visibilitychange", flushWhenVisible);
@@ -134,7 +159,7 @@ export function useWalletUnlockAnimation(
     if (shouldDeferUnlockPlayback(isDocumentVisible())) return;
 
     let cancelled = false;
-    fetch("/api/customer/wallet/pending-unlocks")
+    fetch("/api/customer/wallet/pending-unlocks", { cache: "no-store" })
       .then((res) => (res.ok ? res.json() : null))
       .then((data: { events?: WalletEventPayload[] } | null) => {
         if (cancelled || !data?.events?.length) return;
@@ -152,8 +177,8 @@ export function useWalletUnlockAnimation(
   }, [enabled, enqueueUnlock]);
 
   return {
-    newCardName,
-    newCard,
+    unlockPhase,
+    unlockCard,
     activeEventId,
     enqueueUnlock,
     onOverlayDisplayed,

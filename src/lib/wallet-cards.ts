@@ -1,4 +1,5 @@
 import type { CardTemplateConfig } from "./card-template-schema";
+import { normalizePublishedWalletTemplate } from "./wallet-card-template";
 import { prisma } from "./prisma";
 
 export async function attachPublishedTemplates<T extends { merchantId: string; loyaltyMode?: string }>(
@@ -21,11 +22,11 @@ export async function attachPublishedTemplates<T extends { merchantId: string; l
     if (!template) return { ...card, cardTemplate: null };
     return {
       ...card,
-      cardTemplate: {
+      cardTemplate: normalizePublishedWalletTemplate({
         backgroundUrl: template.backgroundUrl,
         config: template.config as CardTemplateConfig,
         loyaltyMode: template.loyaltyMode,
-      },
+      }),
     };
   });
 }

@@ -17,7 +17,8 @@ import {
 import type { LoyaltyMode } from "@prisma/client";
 import { CardTemplateBackground } from "./card-template-background";
 import { MerchantInteractiveCard } from "./merchant-interactive-card";
-import { getCachedQr, loadUniversalQr } from "./qr-cache";
+import { normalizePublishedWalletTemplate } from "@/lib/wallet-card-template";
+import { getPersonalizedQr, loadPersonalizedQr } from "./qr-cache";
 import type { MerchantCardData } from "./types";
 
 export type MerchantCardDisplayMode = "personalized" | "publicPreview" | "adminPreview" | "compact";
@@ -51,6 +52,9 @@ export type MerchantCardRendererProps = {
   progressPercentOverride?: number;
   displayMode?: MerchantCardDisplayMode;
   showQr?: boolean;
+  /** QR client déjà chargé (source unique du wallet). */
+  qrSrc?: string | null;
+  qrFetchPriority?: "high" | "low" | "auto";
   interactive?: boolean;
   className?: string;
   shellClassName?: string;
@@ -146,6 +150,7 @@ function ElementView({
   showQr,
   displayMode,
   progressPercentOverride,
+  qrFetchPriority,
 }: {
   element: CardElement;
   merchant: MerchantCardRendererProps["merchant"];
@@ -155,6 +160,7 @@ function ElementView({
   showQr: boolean;
   displayMode: MerchantCardDisplayMode;
   progressPercentOverride?: number;
+  qrFetchPriority?: "high" | "low" | "auto";
 }) {
   if (element.hidden || shouldHideElement(element.type, displayMode)) return null;
 
@@ -221,6 +227,7 @@ function ElementView({
               draggable={false}
               loading="eager"
               decoding="async"
+              fetchPriority={qrFetchPriority ?? "auto"}
             />
           ) : (
             <div className="grid h-full w-full place-items-center text-[10px] font-bold text-black/40">QR</div>
@@ -363,6 +370,8 @@ export function MerchantCardRenderer({
   progressPercentOverride,
   displayMode = "personalized",
   showQr = true,
+  qrSrc: qrSrcProp = null,
+  qrFetchPriority = "auto",
   interactive = true,
   className,
   shellClassName,
@@ -381,7 +390,7 @@ export function MerchantCardRenderer({
 
   const usesRealQr = displayMode === "personalized";
   const [qr, setQr] = useState<string | null>(() =>
-    usesRealQr && showQr ? getCachedQr(slug) : null,
+    usesRealQr && showQr ? qrSrcProp ?? getPersonalizedQr() : null,
   );
 
   useEffect(() => {
@@ -389,23 +398,33 @@ export function MerchantCardRenderer({
       setQr(null);
       return;
     }
+    if (qrSrcProp) {
+      setQr(qrSrcProp);
+      return;
+    }
     let cancelled = false;
-    void loadUniversalQr(slug).then((next) => {
+    void loadPersonalizedQr(slug).then((next) => {
       if (cancelled) return;
       if (next) setQr(next);
     });
     return () => {
       cancelled = true;
     };
-  }, [usesRealQr, showQr, slug]);
+  }, [usesRealQr, showQr, slug, qrSrcProp]);
 
   const qrSrc = useMemo(
-    () => resolveDisplayQrSrc(displayMode, showQr, usesRealQr ? qr : null),
-    [displayMode, showQr, usesRealQr, qr],
+    () => resolveDisplayQrSrc(displayMode, showQr, usesRealQr ? qrSrcProp ?? qr : null),
+    [displayMode, showQr, usesRealQr, qrSrcProp, qr],
+  );
+
+  const normalizedTemplate = useMemo(
+    () => normalizePublishedWalletTemplate(template ?? null),
+    [template],
   );
 
   const hasPublishedTemplate =
-    Boolean(template?.backgroundUrl) && Boolean(template?.config?.elements?.length);
+    Boolean(normalizedTemplate?.backgroundUrl) &&
+    Boolean(normalizedTemplate?.config?.elements?.length);
 
   if (!hasPublishedTemplate) {
     return (
@@ -414,6 +433,7 @@ export function MerchantCardRenderer({
         slug={slug}
         preview={!usesRealQr}
         showQr={showQr && usesRealQr}
+        qrSrc={qrSrcProp ?? qr}
         clientNumber={clientNumber}
         interactive={interactive}
         className={className}
@@ -424,8 +444,8 @@ export function MerchantCardRenderer({
     );
   }
 
-  const ratio = template!.config.aspectRatio ?? 1.586;
-  const sorted = [...template!.config.elements].sort((a, b) => a.zIndex - b.zIndex);
+  const ratio = normalizedTemplate!.config.aspectRatio ?? 1.586;
+  const sorted = [...normalizedTemplate!.config.elements].sort((a, b) => a.zIndex - b.zIndex);
   const name = displayClientName(displayMode, clientName);
   const Wrapper = as;
 
@@ -459,8 +479,8 @@ export function MerchantCardRenderer({
         style={{ pointerEvents: onClick ? "auto" : "none", containerType: "inline-size" }}
       >
         <CardTemplateBackground
-          backgroundUrl={template!.backgroundUrl!}
-          background={template!.config.background}
+          backgroundUrl={normalizedTemplate!.backgroundUrl!}
+          background={normalizedTemplate!.config.background}
         />
         <div className="absolute inset-0" style={{ pointerEvents: "none", containerType: "inline-size" }}>
           {sorted.map((element) => (
@@ -474,6 +494,7 @@ export function MerchantCardRenderer({
               showQr={showQr}
               displayMode={displayMode}
               progressPercentOverride={progressPercentOverride}
+              qrFetchPriority={qrFetchPriority}
             />
           ))}
         </div>

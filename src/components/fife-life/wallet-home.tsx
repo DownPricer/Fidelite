@@ -14,6 +14,7 @@ import { markWalletEventSeen } from "@/lib/wallet-event-dedup";
 import { isUnlockEventType } from "@/lib/wallet-unlock";
 import { useWalletEvents } from "./use-wallet-events";
 import { preloadWalletQr } from "./qr-cache";
+import { usePersonalizedQr } from "./use-personalized-qr";
 import { useWalletUnlockAnimation } from "./use-wallet-unlock-animation";
 
 const ACTIVITY = [
@@ -51,9 +52,10 @@ export function WalletHome({
   const [cards, setCards] = useState(initialCards);
   const [sheetOpen, setSheetOpen] = useState(initialSheetOpen);
   const [enlargedCard, setEnlargedCard] = useState<MerchantCardData | null>(null);
+  const { qrSrc: personalizedQr } = usePersonalizedQr(!preview);
   const {
-    newCardName,
-    newCard,
+    unlockPhase,
+    unlockCard,
     activeEventId,
     enqueueUnlock,
     onOverlayDisplayed,
@@ -172,6 +174,7 @@ export function WalletHome({
               customerName={displayName}
               clientNumber={clientNumber}
               cards={cards}
+              personalizedQr={personalizedQr}
               onOpenMerchant={openCard}
               onEnlargeCard={setEnlargedCard}
               demoVisual={preview}
@@ -266,8 +269,11 @@ export function WalletHome({
 
       <CardsSheet open={sheetOpen} cards={cards} onClose={() => setSheetOpen(false)} onOpenCard={openCard} />
       <NewCardToast
-        name={newCardName ?? (initialNewCard && !preview ? initialNewCard : null)}
-        card={newCard ?? cards.find((c) => c.name === newCardName) ?? null}
+        phase={unlockPhase}
+        card={unlockCard}
+        clientName={displayName}
+        clientNumber={clientNumber}
+        qrSrc={personalizedQr}
         eventId={activeEventId}
         onDisplayed={onOverlayDisplayed}
         onDone={onAnimationDone}
@@ -281,6 +287,7 @@ export function WalletHome({
           customerName={displayName}
           clientNumber={clientNumber}
           fifeLifePoints={points}
+          personalizedQr={personalizedQr}
           preview={preview}
           onClose={() => setEnlargedCard(null)}
         />

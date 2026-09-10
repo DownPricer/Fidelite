@@ -53,6 +53,15 @@ async function buildScanResult(input: {
       cardJustCreated = true;
     }
 
+    const publishedTemplate = await tx.merchantCardTemplate.findFirst({
+      where: {
+        merchantId: input.merchantId,
+        status: "PUBLISHED",
+        loyaltyMode: membership.merchant.program!.mode,
+      },
+      orderBy: [{ isDefault: "desc" }, { publishedAt: "desc" }],
+    });
+
     if (cardJustCreated) {
       logWalletUnlock("carte créée ou réactivée", {
         merchantId: input.merchantId,
@@ -74,6 +83,13 @@ async function buildScanResult(input: {
             visitsRequired: membership.merchant.program!.visitsRequired,
             rewardLabel: membership.merchant.program!.rewardLabel,
             loyaltyMode: membership.merchant.program!.mode,
+            cardTemplate: publishedTemplate
+              ? {
+                  backgroundUrl: publishedTemplate.backgroundUrl,
+                  config: publishedTemplate.config as CardTemplateConfig,
+                  loyaltyMode: publishedTemplate.loyaltyMode,
+                }
+              : null,
           },
         },
       });
@@ -105,15 +121,6 @@ async function buildScanResult(input: {
         actorUserId: input.actorUserId,
         expiresAt: new Date(now.getTime() + 90_000),
       },
-    });
-
-    const publishedTemplate = await tx.merchantCardTemplate.findFirst({
-      where: {
-        merchantId: input.merchantId,
-        status: "PUBLISHED",
-        loyaltyMode: membership.merchant.program.mode,
-      },
-      orderBy: [{ isDefault: "desc" }, { publishedAt: "desc" }],
     });
 
     return {

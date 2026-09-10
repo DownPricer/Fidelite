@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { DEMO_CLIENT_NUMBER } from "@/lib/demo-visual";
-import { getCachedQr, loadUniversalQr } from "./qr-cache";
+import { getPersonalizedQr, loadPersonalizedQr } from "./qr-cache";
 import { PREVIEW_QR } from "./preview-data";
 import { InteractiveLoyaltyCard } from "./interactive-loyalty-card";
 import { resolveTier } from "./tier";
@@ -28,6 +28,8 @@ export function GlobalCard({
   demoTierPreview = false,
   preview = false,
   qrZoomEnabled = false,
+  qrSrc: qrSrcProp = null,
+  qrFetchPriority = "auto",
 }: {
   points: number;
   customerName: string;
@@ -39,6 +41,8 @@ export function GlobalCard({
   demoTierPreview?: boolean;
   preview?: boolean;
   qrZoomEnabled?: boolean;
+  qrSrc?: string | null;
+  qrFetchPriority?: "high" | "low" | "auto";
 }) {
   const tier = resolveTier(points);
   const tierName = tierOverride ?? tier.name;
@@ -46,20 +50,24 @@ export function GlobalCard({
   const showQrOnCard = mode === "wallet" && large;
 
   const [qr, setQr] = useState<string | null>(() =>
-    showQrOnCard ? (preview ? PREVIEW_QR : getCachedQr("fife-life")) : null,
+    showQrOnCard ? (preview ? PREVIEW_QR : qrSrcProp ?? getPersonalizedQr()) : null,
   );
   useEffect(() => {
     if (!showQrOnCard || preview) return;
+    if (qrSrcProp) {
+      setQr(qrSrcProp);
+      return;
+    }
 
     let cancelled = false;
-    void loadUniversalQr("fife-life").then((next) => {
+    void loadPersonalizedQr("fife-life").then((next) => {
       if (cancelled) return;
       if (next) setQr(next);
     });
     return () => {
       cancelled = true;
     };
-  }, [showQrOnCard, preview]);
+  }, [showQrOnCard, preview, qrSrcProp]);
 
   const name = customerName.trim() || "Membre";
   const effectiveClientNumber = clientNumber ?? (preview ? DEMO_CLIENT_NUMBER : null);
@@ -70,10 +78,16 @@ export function GlobalCard({
       name={name}
       points={displayPoints}
       showQr={showQrOnCard}
-      qrSrc={showQrOnCard ? (preview ? PREVIEW_QR : qr) : null}
+      qrSrc={showQrOnCard ? (preview ? PREVIEW_QR : qrSrcProp ?? qr) : null}
       qrMode="standard"
       clientNumber={showQrOnCard ? effectiveClientNumber : null}
       qrZoomEnabled={showQrOnCard && qrZoomEnabled}
+      qrFetchPriority={qrFetchPriority}
+      onQrRetry={() => {
+        void loadPersonalizedQr("fife-life", { force: true }).then((next) => {
+          if (next) setQr(next);
+        });
+      }}
       interactive={interactive}
       className={large ? "loyalty-card--large" : undefined}
       shellClassName="w-full"

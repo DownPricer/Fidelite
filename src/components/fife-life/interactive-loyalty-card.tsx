@@ -6,7 +6,7 @@ import { cn } from "@/components/ui";
 import { formatClientNumberDisplay } from "@/lib/client-number";
 import { buildLoyaltyCardViewModel, type LoyaltyCardQrMode } from "@/lib/loyalty-card-view-model";
 import { getLoyaltyCardBackground } from "@/lib/loyalty-card-assets";
-import { getCachedQr, loadUniversalQr } from "./qr-cache";
+import { getPersonalizedQr, loadPersonalizedQr } from "./qr-cache";
 import { PREVIEW_QR } from "./preview-data";
 import { QrEnlargedView } from "./qr-enlarged-view";
 import type { WalletTier } from "./types";
@@ -21,6 +21,8 @@ type InteractiveLoyaltyCardProps = {
   showQr?: boolean;
   clientNumber?: string | null;
   qrZoomEnabled?: boolean;
+  qrFetchPriority?: "high" | "low" | "auto";
+  onQrRetry?: () => void;
   statusText?: string;
   progressPercent?: number;
   interactive?: boolean;
@@ -40,6 +42,8 @@ export function InteractiveLoyaltyCard({
   showQr = false,
   clientNumber = null,
   qrZoomEnabled = false,
+  qrFetchPriority = "auto",
+  onQrRetry,
   statusText,
   progressPercent,
   interactive = true,
@@ -69,7 +73,7 @@ export function InteractiveLoyaltyCard({
   const [autoQr, setAutoQr] = useState<string | null>(() => {
     if (!showQr) return null;
     if (qrSrc) return qrSrc;
-    return getCachedQr("fife-life");
+    return getPersonalizedQr();
   });
 
   useEffect(() => {
@@ -79,7 +83,7 @@ export function InteractiveLoyaltyCard({
   useEffect(() => {
     if (!showQr || qrSrc) return;
     let cancelled = false;
-    void loadUniversalQr("fife-life").then((next) => {
+    void loadPersonalizedQr("fife-life").then((next) => {
       if (!cancelled && next) setAutoQr(next);
     });
     return () => {
@@ -135,11 +139,18 @@ export function InteractiveLoyaltyCard({
                   className="loyalty-card__qr-image"
                   loading="eager"
                   decoding="async"
+                  fetchPriority={qrFetchPriority}
                   onError={() => setQrFailed(true)}
                 />
               ) : (
                 <span className="loyalty-card__qr-placeholder">
-                  {qrFailed ? "QR INDISPONIBLE" : "QR CLIENT"}
+                  {qrFailed ? (
+                    <button type="button" className="text-[10px] font-bold" onClick={onQrRetry}>
+                      RÉESSAYER
+                    </button>
+                  ) : (
+                    "QR CLIENT"
+                  )}
                 </span>
               )}
             </button>
