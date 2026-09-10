@@ -1,6 +1,6 @@
 "use client";
 
-import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
@@ -8,6 +8,7 @@ import { UNLOCK_REVEAL_DISPLAY_MODE } from "@/lib/wallet-unlock-card";
 import { MerchantCardRenderer } from "./merchant-card-renderer";
 import type { UnlockRevealPhase } from "./use-wallet-unlock-animation";
 import type { MerchantCardData } from "./types";
+import { useClientMounted, useHydrationSafeReducedMotion } from "./use-client-mounted";
 
 export function NewCardToast({
   phase,
@@ -28,21 +29,17 @@ export function NewCardToast({
   onDisplayed?: (eventId: string) => void;
   onDone: () => void;
 }) {
-  const reduced = useReducedMotion();
+  const reduced = useHydrationSafeReducedMotion();
   const onDoneRef = useRef(onDone);
   const onDisplayedRef = useRef(onDisplayed);
   const overlayRef = useRef<HTMLDivElement>(null);
   const displayedRef = useRef<string | null>(null);
-  const [mounted, setMounted] = useState(false);
+  const mounted = useClientMounted();
 
   onDoneRef.current = onDone;
   onDisplayedRef.current = onDisplayed;
 
   const visible = phase === "loading" || phase === "revealed";
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   useEffect(() => {
     if (phase !== "revealed" || !card || !eventId) return;

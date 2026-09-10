@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { motion, useMotionValue, useReducedMotion } from "motion/react";
+import { motion, useMotionValue } from "motion/react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useHydrationSafeReducedMotion } from "./use-client-mounted";
 import { DEMO_TIER_DECK_ORDER } from "@/lib/demo-tier-card-images";
 import { GlobalCard } from "./global-card";
 import { preloadWalletQr } from "./qr-cache";
@@ -53,7 +54,7 @@ export function CardDeck({
   onEnlargeCard?: (card: MerchantCardData) => void;
   demoVisual?: boolean;
 }) {
-  const prefersReduced = useReducedMotion();
+  const prefersReduced = useHydrationSafeReducedMotion();
   const sceneRef = useRef<HTMLDivElement>(null);
   const [isDesktop, setIsDesktop] = useState(false);
   const [index, setIndex] = useState(() => (demoVisual ? demoStartIndex(points) : 0));

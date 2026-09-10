@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { DEMO_CLIENT_NUMBER } from "@/lib/demo-visual";
-import { getPersonalizedQr, loadPersonalizedQr } from "./qr-cache";
+import { loadPersonalizedQr } from "./qr-cache";
 import { PREVIEW_QR } from "./preview-data";
 import { InteractiveLoyaltyCard } from "./interactive-loyalty-card";
 import { resolveTier } from "./tier";
@@ -49,9 +49,7 @@ export function GlobalCard({
   const displayPoints = tierOverride && demoTierPreview ? DEMO_TIER_POINTS[tierName] : points;
   const showQrOnCard = mode === "wallet" && large;
 
-  const [qr, setQr] = useState<string | null>(() =>
-    showQrOnCard ? (preview ? PREVIEW_QR : qrSrcProp ?? getPersonalizedQr()) : null,
-  );
+  const [qr, setQr] = useState<string | null>(null);
   useEffect(() => {
     if (!showQrOnCard || preview) return;
     if (qrSrcProp) {

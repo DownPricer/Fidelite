@@ -1,8 +1,12 @@
+import { logWalletQrClient } from "@/lib/wallet-qr-client-log";
+
 const cache = new Map<string, string>();
 const inflight = new Map<string, Promise<string | null>>();
+const failedOnce = new Set<string>();
 
 /** Source unique du QR client personnalisé (même token pour tout le wallet). */
 export const PERSONALIZED_QR_KEY = "@customer";
+const QR_API_PATH = "/api/customer/qr";
 
 function cacheKey(slug: string) {
   return slug || PERSONALIZED_QR_KEY;
@@ -19,6 +23,7 @@ export function getPersonalizedQr() {
 export function resetQrCache() {
   cache.clear();
   inflight.clear();
+  failedOnce.clear();
 }
 
 export async function loadUniversalQr(
@@ -26,6 +31,51 @@ export async function loadUniversalQr(
   options?: { force?: boolean },
 ): Promise<string | null> {
   return loadPersonalizedQr(slug, options);
+}
+
+async function fetchCustomerQr(requestSlug: string): Promise<string | null> {
+  logWalletQrClient("chargement commencé", { slug: requestSlug, path: QR_API_PATH });
+
+  const response = await fetch(QR_API_PATH, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    cache: "no-store",
+    credentials: "same-origin",
+    body: JSON.stringify({ slug: requestSlug }),
+  });
+
+  if (!response.ok) {
+    logWalletQrClient("échec HTTP", {
+      slug: requestSlug,
+      status: response.status,
+      path: QR_API_PATH,
+    });
+    return null;
+  }
+
+  const contentType = response.headers.get("content-type") ?? "";
+  if (!contentType.includes("application/json")) {
+    logWalletQrClient("réponse non JSON", {
+      slug: requestSlug,
+      status: response.status,
+      path: QR_API_PATH,
+      contentType,
+    });
+    return null;
+  }
+
+  const data = (await response.json()) as { image?: string };
+  if (!data.image) {
+    logWalletQrClient("échec HTTP", {
+      slug: requestSlug,
+      status: response.status,
+      path: QR_API_PATH,
+    });
+    return null;
+  }
+
+  logWalletQrClient("QR chargé", { slug: requestSlug, path: QR_API_PATH });
+  return data.image;
 }
 
 export async function loadPersonalizedQr(
@@ -45,21 +95,17 @@ export async function loadPersonalizedQr(
 
   const request = (async () => {
     try {
-      const response = await fetch("/api/customer/qr", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        cache: "no-store",
-        credentials: "same-origin",
-        body: JSON.stringify({ slug: requestSlug }),
-      });
-      if (!response.ok) {
-        return null;
+      let image = await fetchCustomerQr(requestSlug);
+
+      if (!image && !options?.force && !failedOnce.has(inflightKey)) {
+        failedOnce.add(inflightKey);
+        image = await fetchCustomerQr(requestSlug);
       }
-      const data = (await response.json()) as { image?: string };
-      if (data.image) {
-        cache.set(PERSONALIZED_QR_KEY, data.image);
-        cache.set(cacheKey(requestSlug), data.image);
-        return data.image;
+
+      if (image) {
+        cache.set(PERSONALIZED_QR_KEY, image);
+        cache.set(cacheKey(requestSlug), image);
+        return image;
       }
       return null;
     } finally {

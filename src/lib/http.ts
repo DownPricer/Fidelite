@@ -8,6 +8,15 @@ export function jsonOk<T>(data: T, status = 200) {
   return NextResponse.json(data, { status });
 }
 
+export function jsonOkPrivate<T>(data: T, status = 200) {
+  return NextResponse.json(data, {
+    status,
+    headers: {
+      "Cache-Control": "private, no-store",
+    },
+  });
+}
+
 export function clientIp(req: Request) {
   const forwarded = req.headers.get("x-forwarded-for");
   if (forwarded) {

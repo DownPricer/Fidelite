@@ -1,8 +1,9 @@
 "use client";
 
-import { motion, useMotionValue, useReducedMotion, useSpring, useTransform } from "motion/react";
+import { motion, useMotionValue, useSpring, useTransform } from "motion/react";
 import { useCallback, useRef, type CSSProperties, type ReactNode } from "react";
 import { cn } from "@/components/ui";
+import { useHydrationSafeReducedMotion } from "./use-client-mounted";
 
 type InteractiveCardShellProps = {
   children: ReactNode;
@@ -23,7 +24,7 @@ export function InteractiveCardShell({
   entrance = false,
   style,
 }: InteractiveCardShellProps) {
-  const reduced = useReducedMotion();
+  const reduced = useHydrationSafeReducedMotion();
   const ref = useRef<HTMLDivElement>(null);
   const rotateX = useSpring(0, { stiffness: 280, damping: 26, mass: 0.75 });
   const rotateY = useSpring(0, { stiffness: 280, damping: 26, mass: 0.75 });

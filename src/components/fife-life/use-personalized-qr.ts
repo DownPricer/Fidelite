@@ -3,15 +3,12 @@
 import { useCallback, useEffect, useState } from "react";
 
 import {
-  getPersonalizedQr,
   loadPersonalizedQr,
   PERSONALIZED_QR_KEY,
 } from "./qr-cache";
 
 export function usePersonalizedQr(enabled: boolean) {
-  const [qrSrc, setQrSrc] = useState<string | null>(() =>
-    enabled ? getPersonalizedQr() : null,
-  );
+  const [qrSrc, setQrSrc] = useState<string | null>(null);
   const [qrFailed, setQrFailed] = useState(false);
 
   const reload = useCallback(async () => {

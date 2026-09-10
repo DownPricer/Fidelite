@@ -123,4 +123,15 @@ describe("wallet unlock — QR preload", () => {
     preloadWalletQr("fife-life");
     expect(typeof preloadWalletQr).toBe("function");
   });
+
+  it("acquitte uniquement après montage overlay côté toast", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { resolve } = await import("node:path");
+    const source = readFileSync(
+      resolve(process.cwd(), "src/components/fife-life/new-card-toast.tsx"),
+      "utf8",
+    );
+    expect(source).toContain("onDisplayedRef.current?.(eventId)");
+    expect(source).toContain("requestAnimationFrame");
+  });
 });

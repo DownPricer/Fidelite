@@ -73,10 +73,8 @@ export function useWalletUnlockAnimation(
     setActiveEventId(event.id);
 
     const slug = typeof event.payload.slug === "string" ? event.payload.slug : "fife-life";
-    const [resolvedCard] = await Promise.all([
-      fetchUnlockCardDetail(event),
-      loadPersonalizedQr(slug),
-    ]);
+    void loadPersonalizedQr(slug);
+    const resolvedCard = await fetchUnlockCardDetail(event);
 
     if (!resolvedCard || !isUnlockCardReadyForReveal(resolvedCard)) {
       playingRef.current = false;

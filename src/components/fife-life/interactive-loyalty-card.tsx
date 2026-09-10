@@ -70,11 +70,7 @@ export function InteractiveLoyaltyCard({
   const [mounted, setMounted] = useState(false);
   const [qrFailed, setQrFailed] = useState(false);
   const [qrEnlarged, setQrEnlarged] = useState(false);
-  const [autoQr, setAutoQr] = useState<string | null>(() => {
-    if (!showQr) return null;
-    if (qrSrc) return qrSrc;
-    return getPersonalizedQr();
-  });
+  const [autoQr, setAutoQr] = useState<string | null>(null);
 
   useEffect(() => {
     setMounted(true);

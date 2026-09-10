@@ -18,7 +18,7 @@ import type { LoyaltyMode } from "@prisma/client";
 import { CardTemplateBackground } from "./card-template-background";
 import { MerchantInteractiveCard } from "./merchant-interactive-card";
 import { normalizePublishedWalletTemplate } from "@/lib/wallet-card-template";
-import { getPersonalizedQr, loadPersonalizedQr } from "./qr-cache";
+import { loadPersonalizedQr } from "./qr-cache";
 import type { MerchantCardData } from "./types";
 
 export type MerchantCardDisplayMode = "personalized" | "publicPreview" | "adminPreview" | "compact";
@@ -389,9 +389,7 @@ export function MerchantCardRenderer({
   };
 
   const usesRealQr = displayMode === "personalized";
-  const [qr, setQr] = useState<string | null>(() =>
-    usesRealQr && showQr ? qrSrcProp ?? getPersonalizedQr() : null,
-  );
+  const [qr, setQr] = useState<string | null>(null);
 
   useEffect(() => {
     if (!usesRealQr || !showQr) {
