@@ -143,7 +143,7 @@ export function WalletCardsList({
                   onClick={() => onOpenCard(card)}
                   className="merchant-search-row group flex w-full items-center gap-3 text-left"
                 >
-                  <div className="w-[120px] shrink-0">
+                  <div className="wallet-card-preview shrink-0" aria-hidden="true">
                     <MerchantCardRenderer
                       template={card.cardTemplate}
                       merchant={{
@@ -186,7 +186,7 @@ export function WalletCardsList({
                           href={`/rejoindre/${merchant.slug}`}
                           className="merchant-search-row group flex items-center gap-3"
                         >
-                          <div className="w-[120px] shrink-0">
+                          <div className="wallet-card-preview shrink-0" aria-hidden="true">
                             <MerchantCardPublicPreview
                               card={card}
                               merchant={{
