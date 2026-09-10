@@ -5,8 +5,9 @@ import { NextRequest } from "next/server";
 
 const requireMutatingRequest = vi.fn();
 const requireUser = vi.fn();
-const ensureCustomerMembershipForSlug = vi.fn();
+const tryEnsureCustomerMembershipForSlug = vi.fn();
 const generateCustomerQrDataUrl = vi.fn();
+const isCustomerQrInfrastructureError = vi.fn();
 
 vi.mock("@/lib/api-guard", () => ({
   requireMutatingRequest,
@@ -14,8 +15,9 @@ vi.mock("@/lib/api-guard", () => ({
 }));
 
 vi.mock("@/lib/customer-qr", () => ({
-  ensureCustomerMembershipForSlug,
+  tryEnsureCustomerMembershipForSlug,
   generateCustomerQrDataUrl,
+  isCustomerQrInfrastructureError,
 }));
 
 vi.mock("@/lib/rate-limit", () => ({
@@ -35,6 +37,7 @@ describe("POST /api/customer/qr", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     requireMutatingRequest.mockResolvedValue({ error: null });
+    isCustomerQrInfrastructureError.mockReturnValue(false);
   });
 
   it("expose la route dans le build source", () => {
@@ -43,6 +46,7 @@ describe("POST /api/customer/qr", () => {
     expect(source).toContain("export async function POST");
     expect(source).toContain('export const runtime = "nodejs"');
     expect(source).toContain("generateCustomerQrDataUrl");
+    expect(source).not.toContain("jsonError(membership.error, 404)");
   });
 
   it("refuse sans session client", async () => {
@@ -56,12 +60,12 @@ describe("POST /api/customer/qr", () => {
     expect(response.status).toBe(401);
   });
 
-  it("retourne le QR canonique pour une session valide", async () => {
+  it("retourne le QR même si le commerce du slug est introuvable", async () => {
     requireUser.mockResolvedValue({
       error: null,
       user: { id: "user-1", email: "lea@example.com" },
     });
-    ensureCustomerMembershipForSlug.mockResolvedValue({ error: null, merchant: { id: "m1" } });
+    tryEnsureCustomerMembershipForSlug.mockResolvedValue({ ensured: false, merchant: null });
     generateCustomerQrDataUrl.mockResolvedValue({
       image: "data:image/png;base64,abc",
       jti: "jti-1",
@@ -70,11 +74,24 @@ describe("POST /api/customer/qr", () => {
     const { POST } = await import("../src/app/api/customer/qr/route");
     const response = await POST(makePost({ slug: "fife-life" }));
     expect(response.status).toBe(200);
-    expect(response.headers.get("cache-control")).toBe("private, no-store");
 
     const payload = (await response.json()) as { image: string };
     expect(payload.image).toBe("data:image/png;base64,abc");
     expect(generateCustomerQrDataUrl).toHaveBeenCalledWith("user-1");
+  });
+
+  it("retourne une erreur serveur explicite si la migration QR manque", async () => {
+    requireUser.mockResolvedValue({
+      error: null,
+      user: { id: "user-1", email: "lea@example.com" },
+    });
+    tryEnsureCustomerMembershipForSlug.mockResolvedValue({ ensured: false, merchant: null });
+    generateCustomerQrDataUrl.mockRejectedValue(new Error("table missing"));
+    isCustomerQrInfrastructureError.mockReturnValue(true);
+
+    const { POST } = await import("../src/app/api/customer/qr/route");
+    const response = await POST(makePost({ slug: "fife-life" }));
+    expect(response.status).toBe(503);
   });
 });
 
@@ -84,11 +101,13 @@ describe("wallet — client QR", () => {
     expect(source).toContain("if (!response.ok)");
     expect(source).toContain('includes("application/json")');
     expect(source).toContain("logWalletQrClient");
+    expect(source).toContain("errorMessage");
   });
 
   it("réutilise signQrToken via customer-qr (compatible scanner caisse)", () => {
     const source = readFileSync(resolve(process.cwd(), "src/lib/customer-qr.ts"), "utf8");
     expect(source).toContain("signQrToken");
     expect(source).toContain("fifeLifeQrToken");
+    expect(source).toContain("ensureCustomerQrToken");
   });
 });

@@ -39,10 +39,10 @@ export function NewCardToast({
   onDoneRef.current = onDone;
   onDisplayedRef.current = onDisplayed;
 
-  const visible = phase === "loading" || phase === "revealed";
+  const visible = phase === "revealed" && Boolean(card);
 
   useEffect(() => {
-    if (phase !== "revealed" || !card || !eventId) return;
+    if (!visible || !card || !eventId) return;
     if (displayedRef.current === eventId) return;
     const frame = requestAnimationFrame(() => {
       if (!overlayRef.current) return;
@@ -50,13 +50,13 @@ export function NewCardToast({
       onDisplayedRef.current?.(eventId);
     });
     return () => cancelAnimationFrame(frame);
-  }, [phase, card, eventId]);
+  }, [visible, card, eventId]);
 
   useEffect(() => {
-    if (phase !== "revealed" || !card) return;
+    if (!visible || !card) return;
     const timer = window.setTimeout(() => onDoneRef.current(), reduced ? 900 : 2600);
     return () => window.clearTimeout(timer);
-  }, [phase, card, reduced]);
+  }, [visible, card, reduced]);
 
   if (!mounted || !visible) return null;
 
@@ -98,37 +98,29 @@ export function NewCardToast({
               transition={reduced ? { duration: 0 } : { duration: 0.6, delay: 0.1, ease: "easeOut" }}
             />
             <div className="relative">
-              {phase === "revealed" && card ? (
-                <MerchantCardRenderer
-                  template={card.cardTemplate}
-                  merchant={{
-                    name: card.name,
-                    logoUrl: card.logoUrl,
-                    primaryColor: card.primaryColor,
-                  }}
-                  card={card}
-                  slug={card.slug}
-                  clientName={clientName}
-                  clientNumber={clientNumber}
-                  displayMode={UNLOCK_REVEAL_DISPLAY_MODE}
-                  showQr
-                  qrSrc={qrSrc}
-                  qrFetchPriority="high"
-                  interactive
-                />
-              ) : (
-                <div className="grid h-[min(58vw,220px)] w-full place-items-center rounded-[18px] border border-white/10 bg-black/20">
-                  <div className="h-10 w-10 animate-pulse rounded-full bg-[var(--violet-bright)]/30" aria-hidden />
-                </div>
-              )}
+              <MerchantCardRenderer
+                template={card!.cardTemplate}
+                merchant={{
+                  name: card!.name,
+                  logoUrl: card!.logoUrl,
+                  primaryColor: card!.primaryColor,
+                }}
+                card={card!}
+                slug={card!.slug}
+                clientName={clientName}
+                clientNumber={clientNumber}
+                displayMode={UNLOCK_REVEAL_DISPLAY_MODE}
+                showQr
+                qrSrc={qrSrc}
+                qrFetchPriority="high"
+                interactive
+              />
               <div className="pointer-events-none absolute inset-x-0 bottom-4 px-5 text-center">
                 <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-[var(--violet-bright)] drop-shadow">
                   Nouvelle carte débloquée
                 </p>
                 <p className="mt-2 text-xs text-white/80 drop-shadow">
-                  {phase === "revealed"
-                    ? "La carte rejoint votre portefeuille Fife Life."
-                    : "Préparation de votre carte…"}
+                  La carte rejoint votre portefeuille Fife Life.
                 </p>
               </div>
             </div>

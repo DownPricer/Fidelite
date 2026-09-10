@@ -2,7 +2,13 @@ type WalletQrClientStep = "chargement commencé" | "QR chargé" | "échec HTTP" 
 
 export function logWalletQrClient(
   step: WalletQrClientStep,
-  context: { slug?: string; status?: number; path?: string; contentType?: string } = {},
+  context: {
+    slug?: string;
+    status?: number;
+    path?: string;
+    contentType?: string;
+    errorMessage?: string;
+  } = {},
 ) {
   console.info("[wallet-qr-client]", step, context);
 }

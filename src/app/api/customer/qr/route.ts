@@ -1,6 +1,10 @@
 import { requireMutatingRequest, requireUser } from "@/lib/api-guard";
-import { ensureCustomerMembershipForSlug, generateCustomerQrDataUrl } from "@/lib/customer-qr";
-import { clientIp, jsonError, jsonOkPrivate, readJson } from "@/lib/http";
+import {
+  generateCustomerQrDataUrl,
+  isCustomerQrInfrastructureError,
+  tryEnsureCustomerMembershipForSlug,
+} from "@/lib/customer-qr";
+import { jsonError, jsonOkPrivate, readJson } from "@/lib/http";
 import { LIMITS, rateLimit } from "@/lib/rate-limit";
 import { z } from "zod";
 
@@ -12,11 +16,16 @@ const schema = z.object({
 });
 
 export async function POST(req: Request) {
+  logCustomerQr("requête reçue");
+
   const csrf = await requireMutatingRequest(req);
   if (csrf.error) return csrf.error;
 
   const auth = await requireUser(req);
   if (auth.error || !auth.user) return auth.error ?? jsonError("Connexion requise.", 401);
+
+  logCustomerQr("session client validée");
+  logCustomerQr("utilisateur trouvé");
 
   const parsed = schema.safeParse(await readJson(req));
   if (!parsed.success) return jsonError("Commerce manquant.");
@@ -24,14 +33,22 @@ export async function POST(req: Request) {
   const limited = rateLimit(`qr:${auth.user.id}`, LIMITS.qr.limit, LIMITS.qr.windowMs);
   if (!limited.ok) return jsonError("Trop de demandes. Réessayez dans un instant.", 429);
 
-  const membership = await ensureCustomerMembershipForSlug(auth.user.id, parsed.data.slug);
-  if (membership.error) return jsonError(membership.error, 404);
+  await tryEnsureCustomerMembershipForSlug(auth.user.id, parsed.data.slug);
 
-  const { image } = await generateCustomerQrDataUrl(auth.user.id);
+  try {
+    const { image } = await generateCustomerQrDataUrl(auth.user.id);
+    logCustomerQr("réponse 200");
+    return jsonOkPrivate({ image });
+  } catch (error) {
+    if (isCustomerQrInfrastructureError(error)) {
+      console.error("[customer-qr] migration ou table QR manquante", error);
+      return jsonError("Service QR temporairement indisponible.", 503);
+    }
+    console.error("[customer-qr] échec génération QR", error);
+    return jsonError("Impossible de générer le QR pour le moment.", 500);
+  }
+}
 
-  return jsonOkPrivate({
-    image,
-    generatedAt: new Date().toISOString(),
-    ipHint: clientIp(req) === "unknown" ? undefined : true,
-  });
+function logCustomerQr(step: string) {
+  console.info(`[customer-qr] ${step}`);
 }

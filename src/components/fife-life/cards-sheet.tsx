@@ -1,8 +1,9 @@
 "use client";
 
-import { AnimatePresence, motion, useMotionValue, useReducedMotion, useTransform } from "motion/react";
+import { AnimatePresence, motion, useMotionValue, useTransform } from "motion/react";
 import { WalletCardsList } from "./wallet-cards-list";
 import type { MerchantCardData } from "./types";
+import { useHydrationSafeReducedMotion } from "./use-client-mounted";
 
 export function CardsSheet({
   open,
@@ -15,7 +16,7 @@ export function CardsSheet({
   onClose: () => void;
   onOpenCard: (card: MerchantCardData) => void;
 }) {
-  const reduced = useReducedMotion();
+  const reduced = useHydrationSafeReducedMotion();
   const dragY = useMotionValue(0);
   
   // Transform dragY en forme de chevron

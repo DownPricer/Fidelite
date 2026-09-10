@@ -1,7 +1,8 @@
 "use client";
 
-import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { AnimatePresence, motion } from "motion/react";
 import { useEffect } from "react";
+import { useHydrationSafeReducedMotion } from "./use-client-mounted";
 
 type QrEnlargedViewProps = {
   open: boolean;
@@ -11,7 +12,7 @@ type QrEnlargedViewProps = {
 };
 
 export function QrEnlargedView({ open, qrSrc, clientNumber, onClose }: QrEnlargedViewProps) {
-  const reduced = useReducedMotion();
+  const reduced = useHydrationSafeReducedMotion();
 
   useEffect(() => {
     if (open) document.body.style.overflow = "hidden";

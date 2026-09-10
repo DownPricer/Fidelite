@@ -68,8 +68,6 @@ export function useWalletUnlockAnimation(
     if (!event) return;
 
     playingRef.current = true;
-    setUnlockPhase("loading");
-    setUnlockCard(null);
     setActiveEventId(event.id);
 
     const slug = typeof event.payload.slug === "string" ? event.payload.slug : "fife-life";
@@ -79,6 +77,7 @@ export function useWalletUnlockAnimation(
     if (!resolvedCard || !isUnlockCardReadyForReveal(resolvedCard)) {
       playingRef.current = false;
       setUnlockPhase("idle");
+      setUnlockCard(null);
       setActiveEventId(null);
       void startNextUnlock();
       return;

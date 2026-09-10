@@ -11,11 +11,13 @@ import { NewCardToast } from "./new-card-toast";
 import { resolveTier } from "./tier";
 import type { MerchantCardData, WalletEventPayload } from "./types";
 import { markWalletEventSeen } from "@/lib/wallet-event-dedup";
+import { formatLoyaltyPoints } from "@/lib/loyalty-card-view-model";
 import { isUnlockEventType } from "@/lib/wallet-unlock";
 import { useWalletEvents } from "./use-wallet-events";
 import { preloadWalletQr } from "./qr-cache";
 import { usePersonalizedQr } from "./use-personalized-qr";
 import { useWalletUnlockAnimation } from "./use-wallet-unlock-animation";
+import { WalletMotionRoot } from "./wallet-motion-root";
 
 const ACTIVITY = [
   { label: "Brasserie Nova · 3 cocktails", delta: "+ 480 pts" },
@@ -127,6 +129,7 @@ export function WalletHome({
   }
 
   return (
+    <WalletMotionRoot>
     <main className="wallet-shell fife-page-shell obsidian-scene mx-auto flex w-full max-w-md flex-col px-5 pb-8 pt-3 lg:max-w-none">
       <div className="wallet-page-body flex min-h-0 flex-1 flex-col">
         <header className="wallet-page-header relative z-50 flex shrink-0 items-center justify-between">
@@ -157,14 +160,14 @@ export function WalletHome({
           <section className="wallet-points-block mt-6 shrink-0 px-1">
             <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-[var(--muted-strong)]">Points Fife Life</p>
             <p className="wallet-points-value mt-1 text-[2.35rem] font-black leading-none tabular-nums text-[var(--ink)]">
-              {points.toLocaleString("fr-FR")}
+              {formatLoyaltyPoints(points)}
               <span className="ml-1 text-sm font-semibold text-[var(--muted)]">pts</span>
             </p>
             <p className="mt-2 text-xs font-medium text-[var(--ink-soft)]">
               Niveau global · {tier.name}
               {tier.nextName == null
                 ? " · palier maximum"
-                : ` · ${tier.remaining.toLocaleString("fr-FR")} pts avant ${tier.nextName}`}
+                : ` · ${formatLoyaltyPoints(tier.remaining)} pts avant ${tier.nextName}`}
             </p>
           </section>
 
@@ -293,5 +296,6 @@ export function WalletHome({
         />
       ) : null}
     </main>
+    </WalletMotionRoot>
   );
 }

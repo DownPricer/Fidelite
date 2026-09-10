@@ -1,15 +1,16 @@
 "use client";
 
-import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { DEMO_CLIENT_NUMBER } from "@/lib/demo-visual";
-import { getPersonalizedQr, loadPersonalizedQr } from "./qr-cache";
+import { loadPersonalizedQr } from "./qr-cache";
 import { PREVIEW_QR } from "./preview-data";
 import { InteractiveLoyaltyCard } from "./interactive-loyalty-card";
 import { MerchantCardRenderer } from "./merchant-card-renderer";
 import { resolveTier } from "./tier";
 import type { MerchantCardData, WalletTier } from "./types";
+import { useClientMounted, useHydrationSafeReducedMotion } from "./use-client-mounted";
 
 type CardEnlargedViewProps = {
   open: boolean;
@@ -38,20 +39,14 @@ export function CardEnlargedView({
   preview = false,
   onClose,
 }: CardEnlargedViewProps) {
-  const reduced = useReducedMotion();
+  const reduced = useHydrationSafeReducedMotion();
   const spring = reduced ? { duration: 0 } : { type: "spring" as const, stiffness: 280, damping: 30 };
   const fifeLife = isFifeLifeCard(card);
   const tier: WalletTier = card.demoTier ?? resolveTier(fifeLifePoints ?? card.points).name;
   const effectiveClientNumber = clientNumber ?? (preview ? DEMO_CLIENT_NUMBER : null);
 
-  const [mounted, setMounted] = useState(false);
-  const [qr, setQr] = useState<string | null>(() =>
-    preview ? PREVIEW_QR : personalizedQr ?? getPersonalizedQr(),
-  );
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const mounted = useClientMounted();
+  const [qr, setQr] = useState<string | null>(() => (preview ? PREVIEW_QR : null));
 
   useEffect(() => {
     if (open) document.body.style.overflow = "hidden";

@@ -45,10 +45,22 @@ async function fetchCustomerQr(requestSlug: string): Promise<string | null> {
   });
 
   if (!response.ok) {
+    let errorMessage: string | undefined;
+    const errorContentType = response.headers.get("content-type") ?? "";
+    if (errorContentType.includes("application/json")) {
+      try {
+        const body = (await response.json()) as { error?: string };
+        if (typeof body.error === "string") errorMessage = body.error;
+      } catch {
+        /* corps illisible */
+      }
+    }
     logWalletQrClient("échec HTTP", {
       slug: requestSlug,
       status: response.status,
       path: QR_API_PATH,
+      contentType: errorContentType || undefined,
+      ...(errorMessage ? { errorMessage } : {}),
     });
     return null;
   }

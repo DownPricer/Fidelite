@@ -224,10 +224,18 @@ export function CardDeck({
 
             const content =
               item.kind === "global" || item.kind === "global-tier" ? (
-                <button
-                  type="button"
-                  className="deck-card-slot block w-full cursor-pointer border-0 bg-transparent p-0"
+                <div
+                  role="button"
+                  tabIndex={0}
+                  className="deck-card-slot block w-full cursor-pointer border-0 bg-transparent p-0 text-left"
                   onClick={() => {
+                    if (active && onEnlargeCard) {
+                      onEnlargeCard(globalEnlargePayload(item.kind === "global-tier" ? item.tier : undefined));
+                    }
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key !== "Enter" && event.key !== " ") return;
+                    event.preventDefault();
                     if (active && onEnlargeCard) {
                       onEnlargeCard(globalEnlargePayload(item.kind === "global-tier" ? item.tier : undefined));
                     }
@@ -247,7 +255,7 @@ export function CardDeck({
                     qrZoomEnabled={false}
                     qrFetchPriority={active ? "high" : "auto"}
                   />
-                </button>
+                </div>
               ) : (
                 <div
                   role="button"
