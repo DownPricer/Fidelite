@@ -38,6 +38,7 @@ export type WalletEventPayload = {
     | "CARD_UNLOCKED"
     | "CARD_CREATED"
     | "CARD_REMOVED"
+    | "MERCHANT_CARD_UPDATED"
     | "MERCHANT_POINTS_UPDATED"
     | "REWARD_REDEEMED"
     | "FIFE_LIFE_POINTS_UPDATED"

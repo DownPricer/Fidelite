@@ -1,22 +1,23 @@
 import type { LoyaltyMode } from "@prisma/client";
-import { prisma } from "./prisma";
-import type { CardTemplateConfig } from "./card-template-schema";
 
+import {
+  normalizeResolvedPublishedTemplate,
+  resolvePublishedMerchantCardTemplate,
+} from "./merchant-card-template-service";
+
+/** @deprecated Utiliser resolvePublishedMerchantCardTemplate */
 export async function getPublishedCardTemplate(merchantId: string, loyaltyMode?: LoyaltyMode) {
-  const template = await prisma.merchantCardTemplate.findFirst({
-    where: {
-      merchantId,
-      status: "PUBLISHED",
-      ...(loyaltyMode ? { loyaltyMode } : {}),
-    },
-    orderBy: [{ isDefault: "desc" }, { publishedAt: "desc" }],
-  });
-  if (!template) return null;
+  if (!loyaltyMode) return null;
+  const resolved = await resolvePublishedMerchantCardTemplate(merchantId, loyaltyMode);
+  const normalized = normalizeResolvedPublishedTemplate(resolved);
+  if (!normalized) return null;
   return {
-    id: template.id,
-    backgroundUrl: template.backgroundUrl,
-    config: template.config as CardTemplateConfig,
-    loyaltyMode: template.loyaltyMode,
-    version: template.version,
+    id: resolved!.id,
+    backgroundUrl: normalized.backgroundUrl,
+    config: normalized.config,
+    loyaltyMode: normalized.loyaltyMode,
+    version: resolved!.version,
   };
 }
+
+export { resolvePublishedMerchantCardTemplate } from "./merchant-card-template-service";

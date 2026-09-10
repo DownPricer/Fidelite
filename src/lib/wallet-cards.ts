@@ -1,32 +1,26 @@
-import type { CardTemplateConfig } from "./card-template-schema";
-import { normalizePublishedWalletTemplate } from "./wallet-card-template";
-import { prisma } from "./prisma";
+import type { LoyaltyMode } from "@prisma/client";
 
-export async function attachPublishedTemplates<T extends { merchantId: string; loyaltyMode?: string }>(
-  cards: T[],
-) {
+import {
+  normalizeResolvedPublishedTemplate,
+  resolvePublishedMerchantCardTemplate,
+} from "./merchant-card-template-service";
+import type { PublishedWalletTemplate } from "./wallet-card-template";
+
+export async function attachPublishedTemplates<
+  T extends { merchantId: string; loyaltyMode?: LoyaltyMode | string | null },
+>(cards: T[]) {
   if (cards.length === 0) return cards;
-  const merchantIds = [...new Set(cards.map((c) => c.merchantId))];
-  const templates = await prisma.merchantCardTemplate.findMany({
-    where: { merchantId: { in: merchantIds }, status: "PUBLISHED" },
-    orderBy: [{ isDefault: "desc" }, { publishedAt: "desc" }],
-  });
 
-  const byMerchant = new Map<string, (typeof templates)[number]>();
-  for (const template of templates) {
-    if (!byMerchant.has(template.merchantId)) byMerchant.set(template.merchantId, template);
-  }
-
-  return cards.map((card) => {
-    const template = byMerchant.get(card.merchantId);
-    if (!template) return { ...card, cardTemplate: null };
-    return {
-      ...card,
-      cardTemplate: normalizePublishedWalletTemplate({
-        backgroundUrl: template.backgroundUrl,
-        config: template.config as CardTemplateConfig,
-        loyaltyMode: template.loyaltyMode,
-      }),
-    };
-  });
+  return Promise.all(
+    cards.map(async (card) => {
+      const mode = (card.loyaltyMode ?? "VISITS") as LoyaltyMode;
+      const published = await resolvePublishedMerchantCardTemplate(card.merchantId, mode);
+      const normalized = normalizeResolvedPublishedTemplate(published);
+      return {
+        ...card,
+        cardTemplate: normalized as PublishedWalletTemplate | null,
+        loyaltyMode: mode,
+      };
+    }),
+  );
 }

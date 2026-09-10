@@ -12,7 +12,7 @@ const STEPS = [
   "Administrateur",
   "Programme",
   "Abonnement",
-  "Carte",
+  "Cartes par mode de fidélité",
   "Récapitulatif",
 ];
 
@@ -63,6 +63,7 @@ export function CreateMerchantWizard({ firstName }: { firstName: string }) {
     trialDays: 14,
     contractReference: "",
     cardBackgroundDataUrl: "",
+    duplicateCardDesignToAllModes: true,
   });
 
   const slugPreview = useMemo(
@@ -149,6 +150,7 @@ export function CreateMerchantWizard({ firstName }: { firstName: string }) {
         ? { reference: form.contractReference, amount: form.amount }
         : undefined,
       merchantStatus: form.subscriptionStatus === "TRIAL" ? "TRIAL" : "ACTIVE",
+      duplicateCardDesignToAllModes: form.duplicateCardDesignToAllModes,
     };
 
     const response = await fetch("/api/super-admin/merchants", {
@@ -164,11 +166,27 @@ export function CreateMerchantWizard({ firstName }: { firstName: string }) {
     }
 
     if (form.cardBackgroundDataUrl) {
-      await fetch("/api/super-admin/upload/card-background", {
+      const uploadResponse = await fetch("/api/super-admin/upload/card-background", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ merchantId: data.id, dataUrl: form.cardBackgroundDataUrl }),
-      }).catch(() => undefined);
+      }).catch(() => null);
+      if (uploadResponse?.ok) {
+        const uploadData = await uploadResponse.json();
+        if (uploadData.url) {
+          await fetch("/api/super-admin/card-templates", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              action: "apply-shared-background",
+              merchantId: data.id,
+              backgroundUrl: uploadData.url,
+              activeMode: form.loyaltyMode,
+              duplicateToAll: form.duplicateCardDesignToAllModes,
+            }),
+          }).catch(() => undefined);
+        }
+      }
     }
 
     sessionStorage.removeItem(WIZARD_STORAGE_KEY);
@@ -285,7 +303,7 @@ export function CreateMerchantWizard({ firstName }: { firstName: string }) {
 
           {step === 6 ? (
             <>
-              <Field label="Fond de carte (PNG/JPEG/WebP)">
+              <Field label="Fond principal de carte (PNG/JPEG/WebP)">
                 <Input
                   type="file"
                   accept="image/png,image/jpeg,image/webp"
@@ -298,7 +316,18 @@ export function CreateMerchantWizard({ firstName }: { firstName: string }) {
                   }}
                 />
               </Field>
-              <p className="text-xs text-[var(--muted-text)]">Le fond pourra être affiné dans l&apos;éditeur de cartes après création.</p>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={form.duplicateCardDesignToAllModes}
+                  onChange={(e) => update("duplicateCardDesignToAllModes", e.target.checked)}
+                />
+                Utiliser ce design pour tous les modes
+              </label>
+              <p className="text-xs text-[var(--muted-text)]">
+                Quatre variantes seront créées (passages, points selon montant, points fixes, paliers).
+                Vous pourrez personnaliser chaque carte dans la fiche commerce après création.
+              </p>
             </>
           ) : null}
 

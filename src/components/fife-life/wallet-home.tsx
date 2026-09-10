@@ -89,6 +89,21 @@ export function WalletHome({
         const total = event.payload.total;
         if (typeof total === "number") setPoints(total);
       }
+      if (event.type === "MERCHANT_CARD_UPDATED") {
+        const membershipId = event.customerMembershipId;
+        if (membershipId) {
+          void fetch(`/api/customer/wallet/cards/detail?membershipId=${membershipId}`)
+            .then((response) => response.json())
+            .then((data) => {
+              if (!data.card) return;
+              setCards((prev) =>
+                prev.map((card) => (card.id === membershipId ? { ...card, ...data.card } : card)),
+              );
+            })
+            .catch(() => undefined);
+        }
+        return;
+      }
       if (event.type === "MERCHANT_POINTS_UPDATED" || event.type === "REWARD_REDEEMED") {
         const nextPoints = event.payload.points;
         setCards((prev) =>

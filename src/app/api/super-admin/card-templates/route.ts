@@ -2,6 +2,13 @@ import { requireMutatingRequest, requireSuperAdmin } from "@/lib/api-guard";
 import { writeAudit } from "@/lib/audit";
 import { cardTemplateConfigSchema } from "@/lib/card-template-schema";
 import { clientIp, jsonError, jsonOk, readJson, userAgent } from "@/lib/http";
+import {
+  ALL_LOYALTY_MODES,
+  adaptTemplateConfigForLoyaltyMode,
+  applySharedBackgroundToModeTemplates,
+  summarizeTemplateForMode,
+} from "@/lib/merchant-card-template-service";
+import type { LoyaltyMode } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { cardTemplateSaveSchema, zodErrorMessage } from "@/lib/super-admin-validation";
 
@@ -13,12 +20,19 @@ export async function GET(req: Request) {
   const merchantId = url.searchParams.get("merchantId")?.trim();
   if (!merchantId) return jsonError("merchantId requis.", 400);
 
-  const templates = await prisma.merchantCardTemplate.findMany({
-    where: { merchantId },
-    orderBy: [{ isDefault: "desc" }, { updatedAt: "desc" }],
-  });
+  const [templates, program] = await Promise.all([
+    prisma.merchantCardTemplate.findMany({
+      where: { merchantId },
+      orderBy: [{ isDefault: "desc" }, { updatedAt: "desc" }],
+    }),
+    prisma.loyaltyProgram.findUnique({ where: { merchantId }, select: { mode: true } }),
+  ]);
 
-  return jsonOk({ templates });
+  const summaries = ALL_LOYALTY_MODES.map((loyaltyMode) =>
+    summarizeTemplateForMode(templates, loyaltyMode, program?.mode ?? null),
+  );
+
+  return jsonOk({ templates, summaries });
 }
 
 export async function POST(req: Request) {
@@ -27,9 +41,25 @@ export async function POST(req: Request) {
   const admin = await requireSuperAdmin(req);
   if (admin.error || !admin.user) return admin.error ?? jsonError("Accès refusé.", 403);
 
-  const body = (await readJson<{ merchantId?: string } & Record<string, unknown>>(req)) ?? {};
+  const body = (await readJson<{ merchantId?: string; action?: string } & Record<string, unknown>>(req)) ?? {};
   const merchantId = body.merchantId;
   if (!merchantId) return jsonError("merchantId requis.", 400);
+
+  if (body.action === "apply-shared-background") {
+    const backgroundUrl = typeof body.backgroundUrl === "string" ? body.backgroundUrl : "";
+    const activeMode = body.activeMode as LoyaltyMode | undefined;
+    if (!backgroundUrl || !activeMode) {
+      return jsonError("backgroundUrl et activeMode requis.", 400);
+    }
+    const templates = await applySharedBackgroundToModeTemplates({
+      merchantId,
+      activeMode,
+      backgroundUrl,
+      duplicateToAll: Boolean(body.duplicateToAll),
+      authorId: admin.user.id,
+    });
+    return jsonOk({ templates });
+  }
 
   const parsed = cardTemplateSaveSchema.safeParse(body);
   if (!parsed.success) return jsonError(zodErrorMessage(parsed.error));
@@ -37,25 +67,44 @@ export async function POST(req: Request) {
   const configParsed = cardTemplateConfigSchema.safeParse(parsed.data.config);
   if (!configParsed.success) return jsonError(zodErrorMessage(configParsed.error));
 
+  const existingDraft = await prisma.merchantCardTemplate.findFirst({
+    where: { merchantId, loyaltyMode: parsed.data.loyaltyMode, status: "DRAFT" },
+  });
+
   if (parsed.data.isDefault) {
     await prisma.merchantCardTemplate.updateMany({
-      where: { merchantId },
+      where: { merchantId, loyaltyMode: parsed.data.loyaltyMode },
       data: { isDefault: false },
     });
   }
 
-  const template = await prisma.merchantCardTemplate.create({
-    data: {
-      merchantId,
-      name: parsed.data.name ?? "Gabarit principal",
-      loyaltyMode: parsed.data.loyaltyMode,
-      backgroundUrl: parsed.data.backgroundUrl ?? null,
-      config: configParsed.data,
-      status: "DRAFT",
-      authorId: admin.user.id,
-      isDefault: parsed.data.isDefault ?? false,
-    },
-  });
+  const normalizedConfig = adaptTemplateConfigForLoyaltyMode(
+    configParsed.data,
+    parsed.data.loyaltyMode,
+  );
+
+  const template = existingDraft
+    ? await prisma.merchantCardTemplate.update({
+        where: { id: existingDraft.id },
+        data: {
+          name: parsed.data.name ?? existingDraft.name,
+          backgroundUrl: parsed.data.backgroundUrl ?? null,
+          config: normalizedConfig,
+          isDefault: parsed.data.isDefault ?? existingDraft.isDefault,
+        },
+      })
+    : await prisma.merchantCardTemplate.create({
+        data: {
+          merchantId,
+          name: parsed.data.name ?? "Gabarit principal",
+          loyaltyMode: parsed.data.loyaltyMode,
+          backgroundUrl: parsed.data.backgroundUrl ?? null,
+          config: normalizedConfig,
+          status: "DRAFT",
+          authorId: admin.user.id,
+          isDefault: parsed.data.isDefault ?? false,
+        },
+      });
 
   await writeAudit({
     actorId: admin.user.id,

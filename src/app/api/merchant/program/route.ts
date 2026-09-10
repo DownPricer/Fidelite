@@ -2,6 +2,11 @@ import { requireMerchantAdmin, requireMutatingRequest } from "@/lib/api-guard";
 import { writeAudit } from "@/lib/audit";
 import { clientIp, jsonError, jsonOk, readJson, userAgent } from "@/lib/http";
 import { programToConfig, rewardFromDb, validateTiers } from "@/lib/loyalty-program";
+import {
+  hasPublishedTemplateForMode,
+  normalizeResolvedPublishedTemplate,
+  resolvePublishedMerchantCardTemplate,
+} from "@/lib/merchant-card-template-service";
 import { prisma } from "@/lib/prisma";
 import { loyaltyDraftSchema, programSimulateSchema, zodErrorMessage } from "@/lib/validation";
 import { Prisma, type LoyaltyMode } from "@prisma/client";
@@ -140,6 +145,13 @@ export async function POST(req: Request) {
 
   if (!draft) return jsonError("Aucun brouillon à publier.", 400);
 
+  if (!(await hasPublishedTemplateForMode(staff.membership.merchantId, draft.mode))) {
+    return jsonError(
+      "La carte correspondant à ce mode de fidélité doit d'abord être configurée par le super-administrateur.",
+      400,
+    );
+  }
+
   const body = await readJson(req).catch(() => ({}));
   const confirmImpact = (body as { confirmImpact?: boolean }).confirmImpact;
   const modeChanged = draft.mode !== program.mode;
@@ -166,6 +178,15 @@ export async function POST(req: Request) {
 
   const nextVersion = program.version + 1;
   const firstReward = draft.rewards[0];
+  const merchantId = staff.membership.merchantId;
+
+  const [merchant, publishedCardTemplate] = await Promise.all([
+    prisma.merchant.findUnique({ where: { id: merchantId }, select: { slug: true, name: true } }),
+    modeChanged
+      ? resolvePublishedMerchantCardTemplate(merchantId, draft.mode)
+      : Promise.resolve(null),
+  ]);
+  const cardTemplatePayload = normalizeResolvedPublishedTemplate(publishedCardTemplate);
 
   await prisma.$transaction(async (tx) => {
     await tx.loyaltyProgram.update({
@@ -221,6 +242,32 @@ export async function POST(req: Request) {
         publishedBy: staff.user!.id,
       },
     });
+
+    if (modeChanged && merchant) {
+      const memberships = await tx.customerMembership.findMany({
+        where: { merchantId, removedAt: null },
+        select: { id: true, userId: true, points: true },
+      });
+      for (const membership of memberships) {
+        await tx.walletEvent.create({
+          data: {
+            userId: membership.userId,
+            merchantId,
+            customerMembershipId: membership.id,
+            type: "MERCHANT_CARD_UPDATED",
+            payload: {
+              slug: merchant.slug,
+              merchantName: merchant.name,
+              loyaltyMode: draft.mode,
+              points: membership.points,
+              visitsRequired: firstReward?.threshold ?? program.visitsRequired,
+              rewardLabel: firstReward?.name ?? program.rewardLabel,
+              cardTemplate: cardTemplatePayload,
+            },
+          },
+        });
+      }
+    }
   });
 
   await writeAudit({

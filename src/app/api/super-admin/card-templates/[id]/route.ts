@@ -1,8 +1,14 @@
+import type { LoyaltyMode } from "@prisma/client";
+
 import { requireMutatingRequest, requireSuperAdmin } from "@/lib/api-guard";
 import { writeAudit } from "@/lib/audit";
 import { cardTemplateConfigSchema } from "@/lib/card-template-schema";
 import { validateCardTemplateForPublishDetailed } from "@/lib/card-template-validation";
 import { clientIp, jsonError, jsonOk, readJson, userAgent } from "@/lib/http";
+import {
+  adaptTemplateConfigForLoyaltyMode,
+  duplicateTemplateToModes,
+} from "@/lib/merchant-card-template-service";
 import { prisma } from "@/lib/prisma";
 import { cardTemplateSaveSchema, zodErrorMessage } from "@/lib/super-admin-validation";
 
@@ -127,18 +133,35 @@ export async function PATCH(
     return jsonOk({ template: duplicate }, 201);
   }
 
+  if (action === "duplicate-to-modes") {
+    const targetModes = body.targetModes as LoyaltyMode[] | undefined;
+    if (!Array.isArray(targetModes) || targetModes.length === 0) {
+      return jsonError("Sélectionnez au moins un mode cible.", 400);
+    }
+    const created = await duplicateTemplateToModes(id, targetModes, admin.user.id);
+    return jsonOk({ templates: created }, 201);
+  }
+
   const parsed = cardTemplateSaveSchema.safeParse(body);
   if (!parsed.success) return jsonError(zodErrorMessage(parsed.error));
   const configParsed = cardTemplateConfigSchema.safeParse(parsed.data.config);
   if (!configParsed.success) return jsonError(zodErrorMessage(configParsed.error));
 
+  if (parsed.data.loyaltyMode !== existing.loyaltyMode) {
+    return jsonError("Le mode de fidélité du gabarit ne peut pas être modifié depuis l’éditeur.", 400);
+  }
+
+  const normalizedConfig = adaptTemplateConfigForLoyaltyMode(
+    configParsed.data,
+    existing.loyaltyMode,
+  );
+
   const updated = await prisma.merchantCardTemplate.update({
     where: { id },
     data: {
       name: parsed.data.name,
-      loyaltyMode: parsed.data.loyaltyMode,
       backgroundUrl: parsed.data.backgroundUrl,
-      config: configParsed.data,
+      config: normalizedConfig,
       isDefault: parsed.data.isDefault,
     },
   });

@@ -89,6 +89,7 @@ export const createMerchantFullSchema = z.object({
     })
     .optional(),
   cardBackgroundUrl: z.string().trim().max(500).optional(),
+  duplicateCardDesignToAllModes: z.boolean().optional(),
   merchantStatus: z.enum(["DRAFT", "TRIAL", "ACTIVE"]).optional(),
 });
 

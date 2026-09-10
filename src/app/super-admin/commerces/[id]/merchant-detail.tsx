@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { LoyaltyCardsSection } from "@/components/super-admin/loyalty-cards-section";
 import { SuperAdminShell } from "@/components/super-admin/layout-shell";
 import { Alert, Button, Card } from "@/components/ui";
 
@@ -42,7 +43,6 @@ export function MerchantDetailPage({ firstName, merchantId }: { firstName: strin
             <p className="text-sm text-[var(--muted-text)]">/{merchant?.slug} · {merchant?.status}</p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Link href={`/super-admin/cartes/${merchantId}/editeur`}><Button variant="secondary">Modifier la carte</Button></Link>
             <Button variant="danger" onClick={() => void action("suspend")}>Suspendre</Button>
             <Button onClick={() => void action("reactivate")}>Réactiver</Button>
             <Button variant="secondary" onClick={() => void action("archive")}>Archiver</Button>
@@ -76,6 +76,12 @@ export function MerchantDetailPage({ firstName, merchantId }: { firstName: strin
               <p><strong>Scans :</strong> {data.stats.scans}</p>
               <p><strong>Transactions :</strong> {data.stats.transactions}</p>
             </Card>
+            <LoyaltyCardsSection
+              merchantId={merchantId}
+              merchantName={merchant.name}
+              merchantSlug={merchant.slug}
+              activeMode={merchant.program?.mode ?? null}
+            />
             <Card className="p-5 space-y-2 text-sm lg:col-span-2">
               <h2 className="font-bold">Abonnement & contrat</h2>
               <p><strong>Plan :</strong> {merchant.subscription?.plan ?? "—"} · {merchant.subscription?.amount ?? 0} € / {merchant.subscription?.frequency ?? "—"}</p>

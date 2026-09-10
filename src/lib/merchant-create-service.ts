@@ -2,7 +2,7 @@ import type { LoyaltyMode, Prisma } from "@prisma/client";
 import { hashPassword } from "./password";
 import { prisma } from "./prisma";
 import { syncIsActiveFromStatus } from "./merchant-status";
-import { defaultCardTemplateConfig } from "./card-template-schema";
+import { createAllModeTemplatesForMerchant } from "./merchant-card-template-service";
 import { DEFAULT_RULES, type RewardConfig } from "./loyalty-program";
 
 export type CreateMerchantInput = {
@@ -79,6 +79,7 @@ export type CreateMerchantInput = {
     notes?: string;
   };
   cardBackgroundUrl?: string;
+  duplicateCardDesignToAllModes?: boolean;
   merchantStatus?: "DRAFT" | "TRIAL" | "ACTIVE";
 };
 
@@ -225,17 +226,11 @@ export async function createMerchantFull(input: CreateMerchantInput) {
       });
     }
 
-    const bgUrl = input.cardBackgroundUrl ?? "";
-    await tx.merchantCardTemplate.create({
-      data: {
-        merchantId: merchant.id,
-        loyaltyMode: input.program.mode,
-        name: "Gabarit principal",
-        backgroundUrl: bgUrl || null,
-        config: bgUrl ? defaultCardTemplateConfig(bgUrl) : { schemaVersion: 1, aspectRatio: 1.586, background: { url: "", fit: "cover", position: { x: 0.5, y: 0.5 }, scale: 1 }, safeZone: { top: 0.04, right: 0.04, bottom: 0.04, left: 0.04 }, elements: [] },
-        status: "DRAFT",
-        isDefault: true,
-      },
+    await createAllModeTemplatesForMerchant({
+      merchantId: merchant.id,
+      activeMode: input.program.mode,
+      backgroundUrl: input.cardBackgroundUrl ?? null,
+      duplicateToAll: input.duplicateCardDesignToAllModes ?? Boolean(input.cardBackgroundUrl),
     });
 
     return { merchant, adminUserId: adminUser.id };

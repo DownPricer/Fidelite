@@ -54,6 +54,15 @@ export function MerchantCardDetail({
       (event.merchantId && event.merchantId === card.merchantId);
     if (!match && event.type !== "FIFE_LIFE_POINTS_UPDATED") return;
 
+    if (event.type === "MERCHANT_CARD_UPDATED") {
+      void fetch(`/api/customer/wallet/cards/detail?membershipId=${card.id}`)
+        .then((response) => response.json())
+        .then((data) => {
+          if (data.card) setCard((prev) => ({ ...prev, ...data.card }));
+        })
+        .catch(() => undefined);
+      return;
+    }
     if (event.type === "MERCHANT_POINTS_UPDATED" || event.type === "REWARD_REDEEMED") {
       const nextPoints = event.payload.points;
       if (typeof nextPoints === "number") {

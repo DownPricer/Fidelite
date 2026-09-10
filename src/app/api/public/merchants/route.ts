@@ -1,6 +1,7 @@
-import { jsonOk } from "@/lib/http";
-import { prisma } from "@/lib/prisma";
 import type { CardTemplateConfig } from "@/lib/card-template-schema";
+import { jsonOk } from "@/lib/http";
+import { normalizeResolvedPublishedTemplate, resolvePublishedMerchantCardTemplate } from "@/lib/merchant-card-template-service";
+import { prisma } from "@/lib/prisma";
 
 /** Annuaire public — aucune donnée client, gabarit publié uniquement. */
 export async function GET(req: Request) {
@@ -25,19 +26,16 @@ export async function GET(req: Request) {
     },
     include: {
       program: true,
-      cardTemplates: {
-        where: { status: "PUBLISHED" },
-        orderBy: [{ isDefault: "desc" }, { publishedAt: "desc" }],
-        take: 1,
-      },
     },
     orderBy: { name: "asc" },
     take: limit,
   });
 
-  return jsonOk({
-    merchants: merchants.map((merchant) => {
-      const template = merchant.cardTemplates[0] ?? null;
+  const merchantsWithTemplates = await Promise.all(
+    merchants.map(async (merchant) => {
+      const activeMode = merchant.program?.mode ?? "VISITS";
+      const published = await resolvePublishedMerchantCardTemplate(merchant.id, activeMode);
+      const cardTemplate = normalizeResolvedPublishedTemplate(published);
       return {
         slug: merchant.slug,
         name: merchant.name,
@@ -47,15 +45,17 @@ export async function GET(req: Request) {
         shortDescription: merchant.shortDescription,
         rewardLabel: merchant.program?.rewardLabel ?? "Récompense",
         visitsRequired: merchant.program?.visitsRequired ?? 10,
-        loyaltyMode: merchant.program?.mode ?? "VISITS",
-        cardTemplate: template
+        loyaltyMode: activeMode,
+        cardTemplate: cardTemplate
           ? {
-              backgroundUrl: template.backgroundUrl,
-              config: template.config as CardTemplateConfig,
-              loyaltyMode: template.loyaltyMode,
+              backgroundUrl: cardTemplate.backgroundUrl,
+              config: cardTemplate.config as CardTemplateConfig,
+              loyaltyMode: cardTemplate.loyaltyMode,
             }
           : null,
       };
     }),
-  });
+  );
+
+  return jsonOk({ merchants: merchantsWithTemplates });
 }

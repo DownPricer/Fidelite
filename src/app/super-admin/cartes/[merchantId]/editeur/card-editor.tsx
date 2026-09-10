@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { SuperAdminShell } from "@/components/super-admin/layout-shell";
 import { CardEditorBackgroundCrop } from "@/components/super-admin/card-editor-background-crop";
 import { CardEditorCanvas, elementLabel } from "@/components/super-admin/card-editor-canvas";
@@ -14,11 +15,16 @@ import {
 import { defaultDataKey } from "@/lib/card-template-data-keys";
 import { normalizeCardElement, normalizeCardTemplateConfig } from "@/lib/card-template-normalize";
 import { CARD_EDITOR_REFERENCE_WIDTH } from "@/lib/card-template-normalize";
-import { ELEMENT_TYPE_LABELS, elementTypeLabel, loyaltyModeLabel } from "@/lib/card-template-i18n";
+import { ELEMENT_TYPE_LABELS, elementTypeLabel } from "@/lib/card-template-i18n";
+import {
+  ALL_LOYALTY_MODES,
+  LOYALTY_MODE_CARD_TITLES,
+  pickCanonicalTemplate,
+} from "@/lib/merchant-card-template-service";
 import { qrNormalizedHeight } from "@/lib/card-template-qr-geometry";
 import { validateCardTemplateForPublishDetailed } from "@/lib/card-template-validation";
 import { Alert, Button, Card, Field, Input } from "@/components/ui";
-import type { LoyaltyMode } from "@prisma/client";
+import type { CardTemplateStatus, LoyaltyMode } from "@prisma/client";
 
 const ELEMENT_CATALOG: { type: CardElement["type"]; label: string }[] = (
   Object.entries(ELEMENT_TYPE_LABELS) as [CardElement["type"], string][]
@@ -37,9 +43,20 @@ const SCENARIO_LABELS: Record<PreviewScenario, string> = {
 const PROGRESS_STEPS = [0, 25, 50, 75, 100];
 
 export function CardEditorPage({ firstName, merchantId }: { firstName: string; merchantId: string }) {
+  const searchParams = useSearchParams();
+  const lockedModeParam = searchParams.get("mode");
+  const lockedMode = ALL_LOYALTY_MODES.includes(lockedModeParam as LoyaltyMode)
+    ? (lockedModeParam as LoyaltyMode)
+    : null;
+
   const [merchant, setMerchant] = useState<any>(null);
   const [templateId, setTemplateId] = useState<string | null>(null);
-  const [templateMeta, setTemplateMeta] = useState<{ version: number; status: string; updatedAt?: string } | null>(null);
+  const [templateMeta, setTemplateMeta] = useState<{
+    version: number;
+    status: string;
+    updatedAt?: string;
+    loyaltyMode: LoyaltyMode;
+  } | null>(null);
   const [backgroundUrl, setBackgroundUrl] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -69,14 +86,38 @@ export function CardEditorPage({ firstName, merchantId }: { firstName: string; m
     const merchantData = await merchantRes.json();
     const templatesData = await templatesRes.json();
     setMerchant(merchantData.merchant);
-    const tpl = templatesData.templates?.find((t: { status: string }) => t.status === "DRAFT") ?? templatesData.templates?.[0];
+    const targetMode =
+      lockedMode ?? (merchantData.merchant?.program?.mode as LoyaltyMode | undefined) ?? "VISITS";
+    const templates = (templatesData.templates ?? []) as Array<{
+      id: string;
+      loyaltyMode: LoyaltyMode;
+      status: CardTemplateStatus;
+      version: number;
+      updatedAt: string;
+      backgroundUrl?: string | null;
+      config: CardTemplateConfig;
+      isDefault: boolean;
+    }>;
+    const tpl =
+      templates.find((template) => template.loyaltyMode === targetMode && template.status === "DRAFT") ??
+      pickCanonicalTemplate(templates, targetMode);
     if (tpl) {
       setTemplateId(tpl.id);
-      setTemplateMeta({ version: tpl.version, status: tpl.status, updatedAt: tpl.updatedAt });
+      setTemplateMeta({
+        version: tpl.version,
+        status: tpl.status,
+        updatedAt: tpl.updatedAt,
+        loyaltyMode: tpl.loyaltyMode,
+      });
       setBackgroundUrl(tpl.backgroundUrl ?? "");
       historySetRef.current(normalizeCardTemplateConfig(tpl.config as CardTemplateConfig), true);
+    } else {
+      setTemplateId(null);
+      setTemplateMeta({ version: 1, status: "DRAFT", loyaltyMode: targetMode });
+      setBackgroundUrl("");
+      historySetRef.current(null, true);
     }
-  }, [merchantId]);
+  }, [lockedMode, merchantId]);
 
   useEffect(() => {
     void load();
@@ -97,7 +138,7 @@ export function CardEditorPage({ firstName, merchantId }: { firstName: string; m
     return () => window.removeEventListener("keydown", onKey);
   }, [history]);
 
-  const loyaltyMode = (merchant?.program?.mode ?? "VISITS") as LoyaltyMode;
+  const loyaltyMode = (templateMeta?.loyaltyMode ?? lockedMode ?? merchant?.program?.mode ?? "VISITS") as LoyaltyMode;
   const config = history.value;
 
   const validation = useMemo(
@@ -306,7 +347,11 @@ export function CardEditorPage({ firstName, merchantId }: { firstName: string; m
       return;
     }
     setTemplateId(data.template.id);
-    setTemplateMeta({ version: data.template.version, status: data.template.status ?? "DRAFT" });
+    setTemplateMeta({
+      version: data.template.version,
+      status: data.template.status ?? "DRAFT",
+      loyaltyMode: data.template.loyaltyMode ?? loyaltyMode,
+    });
     setSavedAt(new Date().toISOString());
     setMessage("Brouillon enregistré.");
     history.set(normalizeCardTemplateConfig(data.template.config as CardTemplateConfig), true);
@@ -331,7 +376,11 @@ export function CardEditorPage({ firstName, merchantId }: { firstName: string; m
       setError(data.error ?? "Publication impossible.");
       return;
     }
-    setTemplateMeta({ version: data.template.version, status: "PUBLISHED" });
+    setTemplateMeta({
+      version: data.template.version,
+      status: "PUBLISHED",
+      loyaltyMode: data.template.loyaltyMode ?? loyaltyMode,
+    });
     setMessage(`Version ${data.template.version} publiée.`);
     setError(null);
   }
@@ -369,10 +418,13 @@ export function CardEditorPage({ firstName, merchantId }: { firstName: string; m
       <div className="mx-auto max-w-[1800px] space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-black text-[var(--ink)]">Éditeur de carte</h1>
+            <h1 className="text-2xl font-black text-[var(--ink)]">{merchant?.name ?? "…"}</h1>
             <p className="text-sm text-[var(--muted-text)]">
-              {merchant?.name ?? "…"} · {loyaltyModeLabel(loyaltyMode)}
+              Carte : {LOYALTY_MODE_CARD_TITLES[loyaltyMode]}
               {templateMeta ? ` · v${templateMeta.version} · ${templateMeta.status}` : ""}
+            </p>
+            <p className="text-xs text-[var(--muted-text)]">
+              Le mode associé à ce gabarit est verrouillé. Revenez à la fiche commerce pour changer de variante.
             </p>
             {history.dirty ? <p className="text-xs text-amber-300">Modifications non enregistrées</p> : savedAt ? <p className="text-xs text-green-300">Brouillon enregistré</p> : null}
           </div>
