@@ -14,8 +14,11 @@ import {
   isLoyaltyProgramSlot,
   loyaltyModeForCardSlot,
 } from "./merchant-card-slots";
+import { logMerchantCardSwitch } from "./merchant-card-switch-log";
 import { prisma } from "./prisma";
 import { normalizePublishedWalletTemplate, type PublishedWalletTemplate } from "./wallet-card-template";
+
+type TemplateDbClient = Pick<typeof prisma, "merchantCardTemplate">;
 
 export {
   ALL_MERCHANT_CARD_SLOTS,
@@ -241,8 +244,12 @@ export function summarizeTemplateForMode(
   };
 }
 
-async function findPublishedForSlot(merchantId: string, cardSlot: MerchantCardSlot) {
-  return prisma.merchantCardTemplate.findFirst({
+async function findPublishedForSlot(
+  merchantId: string,
+  cardSlot: MerchantCardSlot,
+  db: TemplateDbClient = prisma,
+) {
+  return db.merchantCardTemplate.findFirst({
     where: { merchantId, cardSlot, status: "PUBLISHED" },
     orderBy: [{ isDefault: "desc" }, { publishedAt: "desc" }],
   });
@@ -252,10 +259,25 @@ async function findPublishedForSlot(merchantId: string, cardSlot: MerchantCardSl
 export async function resolvePublishedMerchantCardTemplate(
   merchantId: string,
   activeLoyaltyMode: LoyaltyMode,
+  db: TemplateDbClient = prisma,
 ): Promise<ResolvedPublishedCardTemplate | null> {
   const programSlot = cardSlotForLoyaltyMode(activeLoyaltyMode);
-  const specific = await findPublishedForSlot(merchantId, programSlot);
+  logMerchantCardSwitch("variante demandée", {
+    merchantId,
+    mode: activeLoyaltyMode,
+    cardSlot: programSlot,
+  });
+
+  const specific = await findPublishedForSlot(merchantId, programSlot, db);
   if (specific) {
+    logMerchantCardSwitch("gabarit trouvé", {
+      merchantId,
+      mode: activeLoyaltyMode,
+      cardSlot: programSlot,
+      templateId: specific.id,
+      templateVersion: specific.version,
+      usedFallback: false,
+    });
     return {
       id: specific.id,
       backgroundUrl: specific.backgroundUrl,
@@ -267,8 +289,26 @@ export async function resolvePublishedMerchantCardTemplate(
     };
   }
 
-  const general = await findPublishedForSlot(merchantId, "GENERAL");
-  if (!general) return null;
+  const general = await findPublishedForSlot(merchantId, "GENERAL", db);
+  if (!general) {
+    logMerchantCardSwitch("gabarit trouvé", {
+      merchantId,
+      mode: activeLoyaltyMode,
+      cardSlot: programSlot,
+      templateId: null,
+      usedFallback: false,
+    });
+    return null;
+  }
+
+  logMerchantCardSwitch("gabarit trouvé", {
+    merchantId,
+    mode: activeLoyaltyMode,
+    cardSlot: "GENERAL",
+    templateId: general.id,
+    templateVersion: general.version,
+    usedFallback: true,
+  });
 
   return {
     id: general.id,

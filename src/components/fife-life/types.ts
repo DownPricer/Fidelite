@@ -20,6 +20,9 @@ export type MerchantCardData = {
     config: CardTemplateConfig;
     loyaltyMode: LoyaltyMode;
   } | null;
+  cardTemplateId?: string | null;
+  cardTemplateVersion?: number | null;
+  cardTemplateUsedFallback?: boolean;
   /** Niveau Fife Life pour l’image statique en mode démo. */
   demoTier?: WalletTier;
 };

@@ -1,7 +1,7 @@
 import { normalizeClientNumber } from "@/lib/client-number";
 import { publicScanPayload } from "@/lib/caisse-program";
 import type { CardTemplateConfig } from "@/lib/card-template-schema";
-import { cardSlotForLoyaltyMode } from "@/lib/merchant-card-slots";
+import { resolvePublishedMerchantCardTemplate } from "@/lib/merchant-card-template-service";
 import { prisma } from "@/lib/prisma";
 import { QrError, verifyQrToken } from "@/lib/qr";
 import { logWalletUnlock } from "@/lib/wallet-unlock-log";
@@ -55,24 +55,18 @@ async function buildScanResult(input: {
     }
 
     const activeMode = membership.merchant.program!.mode;
-    let publishedTemplate = await tx.merchantCardTemplate.findFirst({
-      where: {
-        merchantId: input.merchantId,
-        status: "PUBLISHED",
-        cardSlot: cardSlotForLoyaltyMode(activeMode),
-      },
-      orderBy: [{ isDefault: "desc" }, { publishedAt: "desc" }],
-    });
-    if (!publishedTemplate) {
-      publishedTemplate = await tx.merchantCardTemplate.findFirst({
-        where: {
-          merchantId: input.merchantId,
-          status: "PUBLISHED",
-          cardSlot: "GENERAL",
-        },
-        orderBy: [{ isDefault: "desc" }, { publishedAt: "desc" }],
-      });
-    }
+    const resolvedTemplate = await resolvePublishedMerchantCardTemplate(
+      input.merchantId,
+      activeMode,
+      tx,
+    );
+    const publishedTemplate = resolvedTemplate
+      ? {
+          backgroundUrl: resolvedTemplate.backgroundUrl,
+          config: resolvedTemplate.config,
+          loyaltyMode: resolvedTemplate.loyaltyMode,
+        }
+      : null;
 
     if (cardJustCreated) {
       logWalletUnlock("carte créée ou réactivée", {

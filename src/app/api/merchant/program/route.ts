@@ -6,6 +6,7 @@ import {
   normalizeResolvedPublishedTemplate,
   resolvePublishedMerchantCardTemplate,
 } from "@/lib/merchant-card-template-service";
+import { logMerchantCardSwitch } from "@/lib/merchant-card-switch-log";
 import { prisma } from "@/lib/prisma";
 import { loyaltyDraftSchema, programSimulateSchema, zodErrorMessage } from "@/lib/validation";
 import { Prisma, type LoyaltyMode } from "@prisma/client";
@@ -144,9 +145,13 @@ export async function POST(req: Request) {
 
   if (!draft) return jsonError("Aucun brouillon à publier.", 400);
 
+  const merchantId = staff.membership.merchantId;
   const body = await readJson(req).catch(() => ({}));
   const confirmImpact = (body as { confirmImpact?: boolean }).confirmImpact;
   const modeChanged = draft.mode !== program.mode;
+  logMerchantCardSwitch("mode sélectionné", { merchantId, mode: draft.mode });
+  logMerchantCardSwitch("mode actif en base", { merchantId, mode: program.mode });
+
   if (modeChanged && !confirmImpact) {
     const [customers, sum] = await Promise.all([
       prisma.customerMembership.count({ where: { merchantId: staff.membership.merchantId, points: { gt: 0 } } }),
@@ -170,15 +175,11 @@ export async function POST(req: Request) {
 
   const nextVersion = program.version + 1;
   const firstReward = draft.rewards[0];
-  const merchantId = staff.membership.merchantId;
 
-  const [merchant, publishedCardTemplate] = await Promise.all([
-    prisma.merchant.findUnique({ where: { id: merchantId }, select: { slug: true, name: true } }),
-    modeChanged
-      ? resolvePublishedMerchantCardTemplate(merchantId, draft.mode)
-      : Promise.resolve(null),
-  ]);
-  const cardTemplatePayload = normalizeResolvedPublishedTemplate(publishedCardTemplate);
+  const merchant = await prisma.merchant.findUnique({
+    where: { id: merchantId },
+    select: { slug: true, name: true },
+  });
 
   await prisma.$transaction(async (tx) => {
     await tx.loyaltyProgram.update({
@@ -236,6 +237,21 @@ export async function POST(req: Request) {
     });
 
     if (modeChanged && merchant) {
+      const publishedCardTemplate = await resolvePublishedMerchantCardTemplate(
+        merchantId,
+        draft.mode,
+        tx,
+      );
+      const cardTemplatePayload = normalizeResolvedPublishedTemplate(publishedCardTemplate);
+      logMerchantCardSwitch("mode publié", {
+        merchantId,
+        mode: draft.mode,
+        templateId: publishedCardTemplate?.id ?? null,
+        templateVersion: publishedCardTemplate?.version ?? null,
+        usedFallback: publishedCardTemplate?.usedFallback ?? false,
+        cardSlot: publishedCardTemplate?.cardSlot,
+      });
+
       const memberships = await tx.customerMembership.findMany({
         where: { merchantId, removedAt: null },
         select: { id: true, userId: true, points: true },
@@ -254,12 +270,24 @@ export async function POST(req: Request) {
               points: membership.points,
               visitsRequired: firstReward?.threshold ?? program.visitsRequired,
               rewardLabel: firstReward?.name ?? program.rewardLabel,
+              templateId: publishedCardTemplate?.id ?? null,
+              templateVersion: publishedCardTemplate?.version ?? null,
+              usedFallback: publishedCardTemplate?.usedFallback ?? false,
               cardTemplate: cardTemplatePayload,
             },
           },
         });
       }
     }
+  });
+
+  const activeProgram = await loadProgram(merchantId);
+  if (!activeProgram || activeProgram.mode !== draft.mode) {
+    return jsonError("Le mode actif n'a pas été mis à jour en base.", 500);
+  }
+  logMerchantCardSwitch("mode actif en base", {
+    merchantId,
+    mode: activeProgram.mode,
   });
 
   await writeAudit({
@@ -271,5 +299,11 @@ export async function POST(req: Request) {
     userAgent: userAgent(req),
   });
 
-  return jsonOk({ ok: true, published: true, version: nextVersion });
+  return jsonOk({
+    ok: true,
+    published: true,
+    version: nextVersion,
+    activeMode: activeProgram.mode,
+    modeChanged,
+  });
 }

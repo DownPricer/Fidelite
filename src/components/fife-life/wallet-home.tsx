@@ -10,7 +10,9 @@ import { WalletCardsList } from "./wallet-cards-list";
 import { NewCardToast } from "./new-card-toast";
 import { resolveTier } from "./tier";
 import type { MerchantCardData, WalletEventPayload } from "./types";
-import { markWalletEventSeen } from "@/lib/wallet-event-dedup";
+import { mergeMerchantCardUpdate } from "@/lib/merchant-card-update";
+import { logMerchantCardSwitch } from "@/lib/merchant-card-switch-log";
+import { markWalletEventSeen, hasSeenWalletEvent } from "@/lib/wallet-event-dedup";
 import { formatLoyaltyPoints } from "@/lib/loyalty-card-view-model";
 import { isUnlockEventType } from "@/lib/wallet-unlock";
 import { useWalletEvents } from "./use-wallet-events";
@@ -90,18 +92,37 @@ export function WalletHome({
         if (typeof total === "number") setPoints(total);
       }
       if (event.type === "MERCHANT_CARD_UPDATED") {
+        if (hasSeenWalletEvent(event.id)) return;
+        markWalletEventSeen(event.id);
         const membershipId = event.customerMembershipId;
-        if (membershipId) {
-          void fetch(`/api/customer/wallet/cards/detail?membershipId=${membershipId}`)
-            .then((response) => response.json())
-            .then((data) => {
-              if (!data.card) return;
-              setCards((prev) =>
-                prev.map((card) => (card.id === membershipId ? { ...card, ...data.card } : card)),
-              );
-            })
-            .catch(() => undefined);
-        }
+        if (!membershipId) return;
+
+        logMerchantCardSwitch("wallet rafraîchi", {
+          merchantId: event.merchantId ?? undefined,
+          mode: typeof event.payload.loyaltyMode === "string" ? event.payload.loyaltyMode : undefined,
+          templateId:
+            typeof event.payload.templateId === "string" ? event.payload.templateId : null,
+          templateVersion:
+            typeof event.payload.templateVersion === "number" ? event.payload.templateVersion : null,
+        });
+
+        setCards((prev) =>
+          prev.map((card) =>
+            card.id === membershipId ? mergeMerchantCardUpdate(card, event.payload) : card,
+          ),
+        );
+
+        void fetch(`/api/customer/wallet/cards/detail?membershipId=${membershipId}`, {
+          cache: "no-store",
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            if (!data.card) return;
+            setCards((prev) =>
+              prev.map((card) => (card.id === membershipId ? { ...card, ...data.card } : card)),
+            );
+          })
+          .catch(() => undefined);
         return;
       }
       if (event.type === "MERCHANT_POINTS_UPDATED" || event.type === "REWARD_REDEEMED") {

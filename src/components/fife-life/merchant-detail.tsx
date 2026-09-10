@@ -6,6 +6,7 @@ import { MerchantCardRenderer } from "./merchant-card-renderer";
 import { CardEnlargedView } from "./card-enlarged-view";
 import type { CardHistoryItem, MerchantCardData, WalletEventPayload } from "./types";
 import { usePersonalizedQr } from "./use-personalized-qr";
+import { mergeMerchantCardUpdate } from "@/lib/merchant-card-update";
 import { useWalletEvents } from "./use-wallet-events";
 
 function historyLabel(type: string) {
@@ -55,7 +56,8 @@ export function MerchantCardDetail({
     if (!match && event.type !== "FIFE_LIFE_POINTS_UPDATED") return;
 
     if (event.type === "MERCHANT_CARD_UPDATED") {
-      void fetch(`/api/customer/wallet/cards/detail?membershipId=${card.id}`)
+      setCard((prev) => mergeMerchantCardUpdate(prev, event.payload));
+      void fetch(`/api/customer/wallet/cards/detail?membershipId=${card.id}`, { cache: "no-store" })
         .then((response) => response.json())
         .then((data) => {
           if (data.card) setCard((prev) => ({ ...prev, ...data.card }));

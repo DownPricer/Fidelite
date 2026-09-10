@@ -56,7 +56,13 @@ export async function GET(req: Request) {
     cardTemplate?: Parameters<typeof normalizePublishedWalletTemplate>[0];
   };
   const cardTemplate = normalizePublishedWalletTemplate(cardWithTemplate.cardTemplate ?? null);
-  const card = { ...cardWithTemplate, cardTemplate };
+  const card = {
+    ...cardWithTemplate,
+    cardTemplate,
+    cardTemplateId: cardWithTemplate.cardTemplateId ?? null,
+    cardTemplateVersion: cardWithTemplate.cardTemplateVersion ?? null,
+    cardTemplateUsedFallback: cardWithTemplate.cardTemplateUsedFallback ?? false,
+  };
 
   return NextResponse.json(
     { card },

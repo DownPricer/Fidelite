@@ -220,7 +220,7 @@ export function CardDeck({
                 ? "global"
                 : item.kind === "global-tier"
                   ? `global-tier-${item.tier}`
-                  : item.card.id;
+                  : `${item.card.merchantId}:${item.card.loyaltyMode ?? "VISITS"}:${item.card.cardTemplateVersion ?? "0"}:${item.card.cardTemplateId ?? item.card.id}`;
 
             const content =
               item.kind === "global" || item.kind === "global-tier" ? (
@@ -273,6 +273,7 @@ export function CardDeck({
                   }}
                 >
                   <MerchantCardRenderer
+                    key={`${item.card.merchantId}:${item.card.loyaltyMode}:${item.card.cardTemplateVersion}`}
                     as="div"
                     template={item.card.cardTemplate}
                     merchant={{

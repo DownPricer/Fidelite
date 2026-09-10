@@ -41,11 +41,43 @@ export function ProgramConfigurator({ demo = false }: { demo?: boolean }) {
   const [simResult, setSimResult] = useState<string | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [cardTemplate, setCardTemplate] = useState<MerchantCardData["cardTemplate"]>(null);
-  const [merchantMeta, setMerchantMeta] = useState<{ name: string; logoUrl: string | null; primaryColor: string }>({
+  const [templateVersion, setTemplateVersion] = useState<number | null>(null);
+  const [templateFallbackNotice, setTemplateFallbackNotice] = useState<string | null>(null);
+  const [merchantMeta, setMerchantMeta] = useState<{
+    id: string;
+    name: string;
+    logoUrl: string | null;
+    primaryColor: string;
+  }>({
+    id: "preview",
     name: "Mon commerce",
     logoUrl: null,
     primaryColor: "#8557ff",
   });
+
+  const loadPreviewTemplate = useCallback(
+    async (selectedMode: LoyaltyMode) => {
+      if (demo) return;
+      const res = await fetch(`/api/merchant/card-template?mode=${selectedMode}`, { cache: "no-store" });
+      const data = await res.json();
+      if (!res.ok) {
+        setCardTemplate(null);
+        setTemplateVersion(null);
+        setTemplateFallbackNotice("Aucune carte publiée pour ce mode.");
+        return;
+      }
+      setCardTemplate(data.template ?? null);
+      setTemplateVersion(data.templateVersion ?? null);
+      if (data.usedFallback) {
+        setTemplateFallbackNotice("Aucune carte publiée pour ce mode — aperçu de la carte générale");
+      } else if (!data.template) {
+        setTemplateFallbackNotice("Aucune carte publiée pour ce mode.");
+      } else {
+        setTemplateFallbackNotice(null);
+      }
+    },
+    [demo],
+  );
 
   const load = useCallback(async () => {
     if (demo) {
@@ -54,9 +86,8 @@ export function ProgramConfigurator({ demo = false }: { demo?: boolean }) {
       setRewards(DEMO_CONFIG.rewards);
       return;
     }
-    const [programRes, templateRes, dashboardRes] = await Promise.all([
+    const [programRes, dashboardRes] = await Promise.all([
       fetch("/api/merchant/program"),
-      fetch("/api/merchant/card-template"),
       fetch("/api/merchant/dashboard"),
     ]);
     const data = await programRes.json();
@@ -66,28 +97,17 @@ export function ProgramConfigurator({ demo = false }: { demo?: boolean }) {
     setRules(src.rules);
     setRewards(src.rewards);
     setStatus(data.status);
-    if (templateRes.ok) {
-      const templateData = await templateRes.json();
-      const tpl = templateData.template;
-      setCardTemplate(
-        tpl
-          ? {
-              backgroundUrl: tpl.backgroundUrl,
-              config: tpl.config,
-              loyaltyMode: tpl.loyaltyMode,
-            }
-          : null,
-      );
-    }
     if (dashboardRes.ok) {
       const dashboardData = await dashboardRes.json();
       setMerchantMeta({
+        id: dashboardData.merchant?.id ?? "preview",
         name: dashboardData.merchant?.name ?? "Mon commerce",
         logoUrl: dashboardData.merchant?.logoUrl ?? null,
         primaryColor: dashboardData.merchant?.primaryColor ?? "#8557ff",
       });
     }
-  }, [demo]);
+    await loadPreviewTemplate(src.mode);
+  }, [demo, loadPreviewTemplate]);
 
   useEffect(() => {
     void load();
@@ -96,6 +116,10 @@ export function ProgramConfigurator({ demo = false }: { demo?: boolean }) {
   useEffect(() => {
     setRules(DEFAULT_RULES[mode]);
   }, [mode]);
+
+  useEffect(() => {
+    void loadPreviewTemplate(mode);
+  }, [mode, loadPreviewTemplate]);
 
   function markDirty() {
     setDirty(true);
@@ -222,21 +246,43 @@ export function ProgramConfigurator({ demo = false }: { demo?: boolean }) {
 
         <div className="space-y-6">
       {step === 0 && (
-        <div className="program-mode-grid space-y-3 lg:space-y-0">
-          {MODES.map((m) => (
-            <button
-              key={m.id}
-              type="button"
-              onClick={() => {
-                setMode(m.id);
-                markDirty();
-              }}
-              className={cn("program-mode-option", mode === m.id && "program-mode-option-active")}
-            >
-              <span className="font-bold text-[var(--ink)]">{m.title}</span>
-              <span className="text-xs text-[var(--muted)]">{m.hint}</span>
-            </button>
-          ))}
+        <div className="space-y-4">
+          <div className="program-mode-grid space-y-3 lg:space-y-0">
+            {MODES.map((m) => (
+              <button
+                key={m.id}
+                type="button"
+                onClick={() => {
+                  setMode(m.id);
+                  markDirty();
+                }}
+                className={cn("program-mode-option", mode === m.id && "program-mode-option-active")}
+              >
+                <span className="font-bold text-[var(--ink)]">{m.title}</span>
+                <span className="text-xs text-[var(--muted)]">{m.hint}</span>
+              </button>
+            ))}
+          </div>
+          <div className="program-step-card">
+            <p className="text-xs font-bold uppercase tracking-widest text-[var(--muted)]">Aperçu carte client</p>
+            <div className="mt-4 flex justify-center">
+              <div className="w-full max-w-sm">
+                <ProgramPreviewCard
+                  merchantId={merchantMeta.id}
+                  merchantName={merchantMeta.name}
+                  logoUrl={merchantMeta.logoUrl}
+                  primaryColor={merchantMeta.primaryColor}
+                  loyaltyMode={mode}
+                  templateVersion={templateVersion}
+                  fallbackNotice={templateFallbackNotice}
+                  points={Number(simBalance) || 320}
+                  visitsRequired={rewards.find((r) => r.isActive)?.threshold ?? 500}
+                  rewardLabel={rewards.find((r) => r.isActive)?.name ?? "Récompense"}
+                  cardTemplate={cardTemplate}
+                />
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
@@ -365,9 +411,13 @@ export function ProgramConfigurator({ demo = false }: { demo?: boolean }) {
             <div className="mt-4 flex flex-col items-center">
               <div className="w-full max-w-sm">
                 <ProgramPreviewCard
+                  merchantId={merchantMeta.id}
                   merchantName={merchantMeta.name}
                   logoUrl={merchantMeta.logoUrl}
                   primaryColor={merchantMeta.primaryColor}
+                  loyaltyMode={mode}
+                  templateVersion={templateVersion}
+                  fallbackNotice={templateFallbackNotice}
                   points={Number(simBalance) || 320}
                   visitsRequired={rewards.find((r) => r.isActive)?.threshold ?? 500}
                   rewardLabel={rewards.find((r) => r.isActive)?.name ?? "Récompense"}

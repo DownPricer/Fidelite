@@ -2,9 +2,10 @@
 
 import { MerchantCardRenderer } from "@/components/fife-life/merchant-card-renderer";
 import type { MerchantCardData } from "@/components/fife-life/types";
-import type { CardTemplateConfig } from "@/lib/card-template-schema";
+import type { LoyaltyMode } from "@prisma/client";
 
 export function ProgramPreviewCard({
+  merchantId,
   merchantName,
   primaryColor,
   points,
@@ -12,7 +13,11 @@ export function ProgramPreviewCard({
   rewardLabel,
   cardTemplate,
   logoUrl,
+  loyaltyMode,
+  templateVersion,
+  fallbackNotice,
 }: {
+  merchantId: string;
   merchantName: string;
   primaryColor: string;
   points: number;
@@ -20,10 +25,13 @@ export function ProgramPreviewCard({
   rewardLabel: string;
   cardTemplate?: MerchantCardData["cardTemplate"];
   logoUrl?: string | null;
+  loyaltyMode: LoyaltyMode;
+  templateVersion?: number | null;
+  fallbackNotice?: string | null;
 }) {
   const card: MerchantCardData = {
     id: "program-preview",
-    merchantId: "preview",
+    merchantId,
     slug: "preview",
     name: merchantName,
     logoUrl: logoUrl ?? null,
@@ -31,18 +39,26 @@ export function ProgramPreviewCard({
     points,
     visitsRequired,
     rewardLabel,
+    loyaltyMode,
     cardTemplate,
+    cardTemplateVersion: templateVersion ?? null,
   };
 
   return (
-    <MerchantCardRenderer
-      template={cardTemplate}
-      merchant={{ name: merchantName, logoUrl: logoUrl ?? null, primaryColor }}
-      card={card}
-      slug="preview"
-      displayMode="adminPreview"
-      showQr
-      interactive
-    />
+    <div className="space-y-2">
+      {fallbackNotice ? (
+        <p className="text-center text-xs text-amber-200">{fallbackNotice}</p>
+      ) : null}
+      <MerchantCardRenderer
+        key={`${merchantId}:${loyaltyMode}:${templateVersion ?? "none"}:${cardTemplate?.backgroundUrl ?? "empty"}`}
+        template={cardTemplate}
+        merchant={{ name: merchantName, logoUrl: logoUrl ?? null, primaryColor }}
+        card={card}
+        slug="preview"
+        displayMode="adminPreview"
+        showQr
+        interactive
+      />
+    </div>
   );
 }
