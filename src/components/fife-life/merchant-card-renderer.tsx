@@ -17,8 +17,16 @@ import {
 import type { LoyaltyMode } from "@prisma/client";
 import { CardTemplateBackground } from "./card-template-background";
 import { MerchantInteractiveCard } from "./merchant-interactive-card";
+import {
+  isQrTemplateElement,
+  listQrTemplateElements,
+  normalizeQrTemplateElement,
+  qrElementDimensionsValid,
+  resolveMerchantCardQrSrc,
+} from "@/lib/merchant-card-qr";
+import { logMerchantCardQr } from "@/lib/merchant-card-qr-log";
 import { normalizePublishedWalletTemplate } from "@/lib/wallet-card-template";
-import { loadPersonalizedQr } from "./qr-cache";
+import { getPersonalizedQr, loadPersonalizedQr } from "./qr-cache";
 import type { MerchantCardData } from "./types";
 
 export type MerchantCardDisplayMode = "personalized" | "publicPreview" | "adminPreview" | "compact";
@@ -215,22 +223,38 @@ function ElementView({
         </div>
       );
     case "qr":
-      if (!showQr) return null;
+      if (!showQr || !isQrTemplateElement(element)) return null;
+      if (displayMode === "personalized") {
+        const dims = qrElementDimensionsValid(element);
+        logMerchantCardQr("dimensions calculées", {
+          widthPct: dims.widthPct,
+          heightPct: dims.heightPct,
+        });
+      }
       return (
-        <div style={style} className="rounded-xl bg-white p-[6%] shadow-sm">
+        <div
+          style={{ ...style, zIndex: Math.max(element.zIndex, 2) }}
+          className="merchant-card-qr-shell rounded-xl bg-white p-[6%] shadow-sm"
+          data-qr-element-id={element.id}
+        >
           {qrSrc ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={qrSrc}
               alt=""
-              className="h-full w-full object-contain"
+              className="merchant-card-qr-image h-full w-full object-contain"
               draggable={false}
               loading="eager"
               decoding="async"
               fetchPriority={qrFetchPriority ?? "auto"}
+              onLoad={() => {
+                if (displayMode === "personalized") logMerchantCardQr("image chargée");
+              }}
             />
           ) : (
-            <div className="grid h-full w-full place-items-center text-[10px] font-bold text-black/40">QR</div>
+            <div className="merchant-card-qr-placeholder grid h-full w-full min-h-[2rem] min-w-[2rem] place-items-center text-[10px] font-bold text-black/40">
+              QR
+            </div>
           )}
         </div>
       );
@@ -389,31 +413,44 @@ export function MerchantCardRenderer({
   };
 
   const usesRealQr = displayMode === "personalized";
-  const [qr, setQr] = useState<string | null>(null);
+  const cachedQr = usesRealQr && showQr ? getPersonalizedQr() : null;
+  const [loadedQr, setLoadedQr] = useState<string | null>(null);
 
   useEffect(() => {
     if (!usesRealQr || !showQr) {
-      setQr(null);
+      setLoadedQr(null);
       return;
     }
-    if (qrSrcProp) {
-      setQr(qrSrcProp);
+    if (qrSrcProp || cachedQr) {
+      setLoadedQr(qrSrcProp ?? cachedQr);
       return;
     }
     let cancelled = false;
     void loadPersonalizedQr(slug).then((next) => {
       if (cancelled) return;
-      if (next) setQr(next);
+      if (next) setLoadedQr(next);
     });
     return () => {
       cancelled = true;
     };
-  }, [usesRealQr, showQr, slug, qrSrcProp]);
+  }, [usesRealQr, showQr, slug, qrSrcProp, cachedQr]);
+
+  const realQr = useMemo(
+    () => resolveMerchantCardQrSrc(displayMode, showQr, qrSrcProp, cachedQr, loadedQr),
+    [displayMode, showQr, qrSrcProp, cachedQr, loadedQr],
+  );
 
   const qrSrc = useMemo(
-    () => resolveDisplayQrSrc(displayMode, showQr, usesRealQr ? qrSrcProp ?? qr : null),
-    [displayMode, showQr, usesRealQr, qrSrcProp, qr],
+    () => resolveDisplayQrSrc(displayMode, showQr, usesRealQr ? realQr : null),
+    [displayMode, showQr, usesRealQr, realQr],
   );
+
+  useEffect(() => {
+    if (displayMode !== "personalized" || !showQr) return;
+    logMerchantCardQr("renderer personnalisé", { slug, displayMode });
+    if (realQr) logMerchantCardQr("source présente", { slug });
+    else logMerchantCardQr("source absente", { slug });
+  }, [displayMode, showQr, slug, realQr]);
 
   const normalizedTemplate = useMemo(
     () => normalizePublishedWalletTemplate(template ?? null),
@@ -424,6 +461,20 @@ export function MerchantCardRenderer({
     Boolean(normalizedTemplate?.backgroundUrl) &&
     Boolean(normalizedTemplate?.config?.elements?.length);
 
+  const qrElements = useMemo(
+    () => (normalizedTemplate ? listQrTemplateElements(normalizedTemplate.config) : []),
+    [normalizedTemplate],
+  );
+
+  useEffect(() => {
+    if (!hasPublishedTemplate || displayMode !== "personalized" || !showQr) return;
+    if (qrElements.length > 0) {
+      logMerchantCardQr("élément trouvé", { slug, elementCount: qrElements.length });
+    } else {
+      logMerchantCardQr("élément absent", { slug });
+    }
+  }, [hasPublishedTemplate, displayMode, showQr, slug, qrElements.length]);
+
   if (!hasPublishedTemplate) {
     return (
       <MerchantInteractiveCard
@@ -431,7 +482,7 @@ export function MerchantCardRenderer({
         slug={slug}
         preview={!usesRealQr}
         showQr={showQr && usesRealQr}
-        qrSrc={qrSrcProp ?? qr}
+        qrSrc={realQr}
         clientNumber={clientNumber}
         interactive={interactive}
         className={className}
@@ -443,7 +494,9 @@ export function MerchantCardRenderer({
   }
 
   const ratio = normalizedTemplate!.config.aspectRatio ?? 1.586;
-  const sorted = [...normalizedTemplate!.config.elements].sort((a, b) => a.zIndex - b.zIndex);
+  const sorted = [...normalizedTemplate!.config.elements]
+    .map(normalizeQrTemplateElement)
+    .sort((a, b) => a.zIndex - b.zIndex);
   const name = displayClientName(displayMode, clientName);
   const Wrapper = as;
 
@@ -479,8 +532,12 @@ export function MerchantCardRenderer({
         <CardTemplateBackground
           backgroundUrl={normalizedTemplate!.backgroundUrl!}
           background={normalizedTemplate!.config.background}
+          className="merchant-card-renderer__background"
         />
-        <div className="absolute inset-0" style={{ pointerEvents: "none", containerType: "inline-size" }}>
+        <div
+          className="merchant-card-renderer__elements absolute inset-0"
+          style={{ pointerEvents: "none", containerType: "inline-size", zIndex: 1 }}
+        >
           {sorted.map((element) => (
             <ElementView
               key={element.id}

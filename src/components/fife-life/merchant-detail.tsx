@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { MerchantCardRenderer } from "./merchant-card-renderer";
 import { CardEnlargedView } from "./card-enlarged-view";
 import type { CardHistoryItem, MerchantCardData, WalletEventPayload } from "./types";
+import { usePersonalizedQr } from "./use-personalized-qr";
 import { useWalletEvents } from "./use-wallet-events";
 
 function historyLabel(type: string) {
@@ -38,6 +39,7 @@ export function MerchantCardDetail({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [conditionsExpanded, setConditionsExpanded] = useState(false);
+  const { qrSrc: personalizedQr } = usePersonalizedQr(!preview);
 
   const remaining = Math.max(0, card.visitsRequired - card.points);
   const rewardAvailable = card.points >= card.visitsRequired;
@@ -222,6 +224,7 @@ Le commerçant se réserve le droit de modifier ou d'annuler le programme de fid
                 slug={slug}
                 displayMode={preview ? "adminPreview" : "personalized"}
                 showQr
+                qrSrc={personalizedQr}
                 className="h-auto aspect-[1.586/1] w-full"
               />
 
@@ -468,6 +471,7 @@ Le commerçant se réserve le droit de modifier ou d'annuler le programme de fid
         open={cardEnlarged}
         card={card}
         slug={slug}
+        personalizedQr={personalizedQr}
         preview={preview}
         onClose={() => setCardEnlarged(false)}
       />

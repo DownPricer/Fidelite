@@ -286,6 +286,7 @@ export function CardDeck({
                     clientNumber={clientNumber}
                     displayMode={demoVisual ? "adminPreview" : "personalized"}
                     showQr
+                    qrSrc={personalizedQr}
                     qrFetchPriority={active ? "high" : "auto"}
                     interactive={active && !isDesktop}
                   />

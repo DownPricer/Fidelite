@@ -1267,6 +1267,31 @@ body:has(.wallet-shell) {
   display: none;
 }
 
+.merchant-card-renderer__background {
+  z-index: 0;
+}
+
+.merchant-card-renderer__elements {
+  z-index: 1;
+}
+
+.merchant-card-qr-shell {
+  position: absolute;
+  overflow: visible;
+  opacity: 1;
+  visibility: visible;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  box-sizing: border-box;
+}
+
+.merchant-card-qr-image {
+  display: block;
+  min-width: 1.5rem;
+  min-height: 1.5rem;
+  background: #ffffff;
+}
+
 /* QR enlarged view wrapper */
 .qr-enlarged-wrapper {
   transform: scale(1.4);

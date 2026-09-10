@@ -1,6 +1,7 @@
 import type { LoyaltyMode } from "@prisma/client";
 
 import type { CardTemplateConfig } from "./card-template-schema";
+import { isQrTemplateElement, normalizeQrTemplateElement } from "./merchant-card-qr";
 import { qrRecommendedRect } from "./card-template-qr-geometry";
 
 export const DEFAULT_QR_ELEMENT_ID = "wallet-default-customer-qr";
@@ -12,12 +13,17 @@ export type PublishedWalletTemplate = {
 };
 
 export function templateHasVisibleQr(config: CardTemplateConfig) {
-  return config.elements.some((element) => element.type === "qr" && !element.hidden);
+  return config.elements.some(isQrTemplateElement);
 }
 
 /** Ajoute un QR client par défaut si le gabarit publié n'en contient pas. */
 export function ensureDefaultQrElement(config: CardTemplateConfig): CardTemplateConfig {
-  if (templateHasVisibleQr(config)) return config;
+  if (templateHasVisibleQr(config)) {
+    return {
+      ...config,
+      elements: config.elements.map(normalizeQrTemplateElement),
+    };
+  }
 
   const rect = qrRecommendedRect();
   const maxZ = config.elements.reduce((max, element) => Math.max(max, element.zIndex), 0);
@@ -25,10 +31,11 @@ export function ensureDefaultQrElement(config: CardTemplateConfig): CardTemplate
   return {
     ...config,
     elements: [
-      ...config.elements,
+      ...config.elements.map(normalizeQrTemplateElement),
       {
         id: DEFAULT_QR_ELEMENT_ID,
         type: "qr",
+        dataKey: "customer.qrCode",
         x: rect.x,
         y: rect.y,
         width: rect.width,
