@@ -3,7 +3,7 @@ import { clientIp, jsonError, jsonOk, readJson, userAgent } from "@/lib/http";
 import { LoyaltyError } from "@/lib/loyalty";
 import { commitLoyaltyTransaction } from "@/lib/loyalty-commit";
 import { MoneyError } from "@/lib/money";
-import { caisseEarnSchema, zodErrorMessage } from "@/lib/validation";
+import { caisseCommitSchema, zodErrorMessage } from "@/lib/validation";
 
 export async function POST(req: Request) {
   const csrf = await requireMutatingRequest(req);
@@ -11,28 +11,29 @@ export async function POST(req: Request) {
   const staff = await requireCaisse(req);
   if (staff.error || !staff.user || !staff.membership) return staff.error ?? jsonError("Accès refusé.", 403);
 
-  const permissionError = requireCaissePermission(staff.membership, "addPoints");
-  if (permissionError) return permissionError;
-
-  const parsed = caisseEarnSchema.safeParse(await readJson(req));
+  const parsed = caisseCommitSchema.safeParse(await readJson(req));
   if (!parsed.success) return jsonError(zodErrorMessage(parsed.error));
+
+  const permissionError = requireCaissePermission(
+    staff.membership,
+    parsed.data.action === "REDEEM" ? "redeemReward" : "addPoints",
+  );
+  if (permissionError) return permissionError;
 
   try {
     const view = await commitLoyaltyTransaction({
       grantId: parsed.data.grantId,
       actorUserId: staff.user.id,
       merchantId: staff.membership.merchantId,
-      action: "EARN",
+      action: parsed.data.action,
       purchaseAmountCents: parsed.data.purchaseAmountCents,
       purchaseAmount: parsed.data.purchaseAmount,
-      idempotencyKey: parsed.data.idempotencyKey ?? `earn:${parsed.data.grantId}`,
+      rewardId: parsed.data.rewardId,
+      idempotencyKey: parsed.data.idempotencyKey,
       ip: clientIp(req),
       userAgent: userAgent(req),
     });
-    return jsonOk({
-      ...view,
-      action: "EARN_VISIT",
-    });
+    return jsonOk(view);
   } catch (error) {
     if (error instanceof LoyaltyError || error instanceof MoneyError) {
       return jsonError(error.message, error.message.includes("déjà") ? 409 : 400);

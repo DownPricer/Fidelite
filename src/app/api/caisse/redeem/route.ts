@@ -1,9 +1,8 @@
 import { requireCaisse, requireCaissePermission, requireMutatingRequest } from "@/lib/api-guard";
-import { sanitizeEarnResponse } from "@/lib/caisse-program";
 import { clientIp, jsonError, jsonOk, readJson, userAgent } from "@/lib/http";
 import { LoyaltyError } from "@/lib/loyalty";
-import { applyLoyaltyAction } from "@/lib/loyalty-service";
-import { prisma } from "@/lib/prisma";
+import { commitLoyaltyTransaction } from "@/lib/loyalty-commit";
+import { MoneyError } from "@/lib/money";
 import { caisseActionSchema, zodErrorMessage } from "@/lib/validation";
 
 export async function POST(req: Request) {
@@ -18,33 +17,27 @@ export async function POST(req: Request) {
   const parsed = caisseActionSchema.safeParse(await readJson(req));
   if (!parsed.success) return jsonError(zodErrorMessage(parsed.error));
 
-  const grant = await prisma.caisseGrant.findFirst({
-    where: {
-      id: parsed.data.grantId,
+  try {
+    const view = await commitLoyaltyTransaction({
+      grantId: parsed.data.grantId,
       actorUserId: staff.user.id,
       merchantId: staff.membership.merchantId,
-    },
-  });
-  if (!grant || grant.consumedAt || grant.expiresAt < new Date()) {
-    return jsonError("Session de scan expirée. Scannez à nouveau le client.", 409);
-  }
-
-  try {
-    const result = await applyLoyaltyAction({
-      membershipId: grant.customerMembershipId,
-      merchantId: staff.membership.merchantId,
-      actorId: staff.user.id,
-      type: "REDEEM_REWARD",
+      action: "REDEEM",
+      purchaseAmountCents: parsed.data.purchaseAmountCents,
+      purchaseAmount: parsed.data.purchaseAmount,
+      rewardId: parsed.data.rewardId,
+      idempotencyKey: parsed.data.idempotencyKey ?? `redeem:${parsed.data.grantId}:${parsed.data.rewardId ?? "default"}`,
       ip: clientIp(req),
       userAgent: userAgent(req),
     });
-    await prisma.caisseGrant.update({
-      where: { id: grant.id },
-      data: { consumedAt: new Date() },
+    return jsonOk({
+      ...view,
+      action: "REDEEM_REWARD",
     });
-    return jsonOk({ ok: true, action: "REDEEM_REWARD", ...sanitizeEarnResponse(result) });
   } catch (error) {
-    if (error instanceof LoyaltyError) return jsonError(error.message);
+    if (error instanceof LoyaltyError || error instanceof MoneyError) {
+      return jsonError(error.message, error.message.includes("déjà") ? 409 : 400);
+    }
     return jsonError("Action impossible pour le moment.", 500);
   }
 }

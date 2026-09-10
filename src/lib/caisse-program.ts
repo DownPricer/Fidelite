@@ -1,15 +1,23 @@
 import type { LoyaltyMode, LoyaltyProgram, LoyaltyReward } from "@prisma/client";
 import { LoyaltyError } from "./loyalty";
 import {
-  computeEarn,
+  evaluateEarn,
+  isPurchaseAmountRequired,
+  primaryEarnLabel,
+  progressLabelFor,
+  type NextBenefitView,
+} from "./loyalty-engine";
+import {
   legacyRewardLabel,
   legacyVisitsRequired,
   nextReward,
   programToConfig,
-  type ProgramRules,
   unitLabel,
+  type ProgramRules,
 } from "./loyalty-program";
+import { eurosToCents } from "./money";
 import { prisma } from "./prisma";
+import type { EvaluatedReward } from "./loyalty-rewards";
 
 export type CaisseProgramSnapshot = {
   mode: LoyaltyMode;
@@ -35,56 +43,40 @@ export function buildProgramSnapshot(
   const rewardAvailable = points >= threshold;
   const upcoming = nextReward(config.rewards, points, config.mode);
 
-  let progressLabel: string;
-  if (config.mode === "VISITS" || config.mode === "AMOUNT_TIERS") {
-    progressLabel = `${points} / ${threshold} passages`;
-  } else {
-    progressLabel = `${points} ${unit}`;
-  }
-
-  const requirePurchaseAmount =
-    config.mode === "POINTS_BY_AMOUNT" ||
-    config.mode === "AMOUNT_TIERS" ||
-    Boolean(config.rules.requirePurchaseAmount);
-
-  let earnPreviewLabel = "+1 passage";
-  if (config.mode === "VISITS") {
-    const n = config.rules.visitsPerScan ?? 1;
-    earnPreviewLabel = n === 1 ? "+1 passage" : `+${n} passages`;
-  } else if (config.mode === "FIXED_POINTS") {
-    earnPreviewLabel = `+${config.rules.fixedPointsPerPurchase ?? 0} points`;
-  } else if (config.mode === "POINTS_BY_AMOUNT") {
-    earnPreviewLabel = "Ajouter les points";
-  } else if (config.mode === "AMOUNT_TIERS") {
-    earnPreviewLabel = "Valider l'achat";
-  }
-
   return {
     mode: config.mode,
     points,
     threshold,
     rewardLabel,
     rewardAvailable,
-    progressLabel,
+    progressLabel: progressLabelFor(config.mode, points, threshold),
     unitLabel: unit,
-    requirePurchaseAmount,
-    earnPreviewLabel,
-    nextRewardLabel: upcoming ? `Encore ${Math.max(0, upcoming.threshold - points)} ${unit} avant « ${upcoming.name} »` : null,
+    requirePurchaseAmount: isPurchaseAmountRequired(config.mode, config.rules),
+    earnPreviewLabel: primaryEarnLabel(config.mode),
+    nextRewardLabel: upcoming
+      ? `Encore ${Math.max(0, upcoming.threshold - points)} ${unit} avant « ${upcoming.name} »`
+      : null,
   };
 }
 
 export function publicScanPayload(input: {
   grantId: string;
   firstName: string;
+  lastName?: string | null;
   program: LoyaltyProgram & { rewards?: LoyaltyReward[] };
   points: number;
   expiresAt: string;
   cardJustCreated?: boolean;
+  rewards?: EvaluatedReward[];
+  nextBenefit?: NextBenefitView | null;
 }) {
   const snapshot = buildProgramSnapshot(input.points, input.program);
+  const lastName = input.lastName ?? "";
   return {
     grantId: input.grantId,
     firstName: input.firstName,
+    lastName,
+    customerName: [input.firstName, lastName].filter(Boolean).join(" ").trim(),
     points: snapshot.points,
     visitsRequired: snapshot.threshold,
     rewardLabel: snapshot.rewardLabel,
@@ -97,6 +89,8 @@ export function publicScanPayload(input: {
     requirePurchaseAmount: snapshot.requirePurchaseAmount,
     earnPreviewLabel: snapshot.earnPreviewLabel,
     nextRewardLabel: snapshot.nextRewardLabel,
+    rewards: input.rewards ?? [],
+    nextBenefit: input.nextBenefit ?? null,
   };
 }
 
@@ -106,65 +100,72 @@ export async function assertEarnProgramRules(input: {
   mode: LoyaltyMode;
   rules: ProgramRules;
   purchaseAmount?: number;
+  purchaseAmountCents?: number;
 }) {
-  const minInterval =
-    input.mode === "FIXED_POINTS"
-      ? input.rules.minIntervalFixed ?? 0
-      : input.rules.minIntervalMinutes ?? 0;
+  const cents =
+    input.purchaseAmountCents ??
+    (input.purchaseAmount !== undefined ? eurosToCents(input.purchaseAmount) : undefined);
 
-  if (minInterval > 0) {
-    const last = await prisma.loyaltyTransaction.findFirst({
-      where: {
-        customerMembershipId: input.customerMembershipId,
-        merchantId: input.merchantId,
-        type: "EARN_VISIT",
-        status: "COMPLETED",
-      },
-      orderBy: { createdAt: "desc" },
-    });
-    if (last && Date.now() - last.createdAt.getTime() < minInterval * 60_000) {
-      throw new LoyaltyError(`Attendez ${minInterval} min entre deux passages.`);
-    }
+  const early = evaluateEarn({
+    mode: input.mode,
+    rules: input.rules,
+    currentBalance: 0,
+    purchaseAmountCents: cents,
+    history: { lastEarnAt: null, earnCountToday: 0, pointsEarnedToday: 0 },
+  });
+  if (!early.ok && (early.block?.code === "amount_required" || early.block?.code === "min_purchase" || early.block?.code === "no_earn" || early.block?.code === "no_tier" || early.block?.code === "tiers_invalid")) {
+    throw new LoyaltyError(
+      [early.block?.title, ...(early.block?.details.length ? early.block.details : [early.block?.message ?? ""])]
+        .filter(Boolean)
+        .join("\n"),
+    );
   }
 
-  const maxPerDay = input.rules.maxPerDay ?? input.rules.maxPointsPerDay ?? 0;
-  if (maxPerDay > 0) {
-    const start = new Date();
-    start.setHours(0, 0, 0, 0);
-    const count = await prisma.loyaltyTransaction.count({
-      where: {
-        customerMembershipId: input.customerMembershipId,
-        merchantId: input.merchantId,
-        type: "EARN_VISIT",
-        status: "COMPLETED",
-        createdAt: { gte: start },
-      },
-    });
-    if (count >= maxPerDay) {
-      throw new LoyaltyError("Limite quotidienne atteinte pour ce client.");
-    }
-  }
+  const last = await prisma.loyaltyTransaction.findFirst({
+    where: {
+      customerMembershipId: input.customerMembershipId,
+      merchantId: input.merchantId,
+      type: "EARN_VISIT",
+      status: "COMPLETED",
+    },
+    orderBy: { createdAt: "desc" },
+  });
+  const start = new Date();
+  start.setHours(0, 0, 0, 0);
+  const today = await prisma.loyaltyTransaction.findMany({
+    where: {
+      customerMembershipId: input.customerMembershipId,
+      merchantId: input.merchantId,
+      type: "EARN_VISIT",
+      status: "COMPLETED",
+      createdAt: { gte: start },
+    },
+    select: { pointsDelta: true },
+  });
 
-  if (
-    (input.mode === "POINTS_BY_AMOUNT" || input.mode === "AMOUNT_TIERS") &&
-    (input.purchaseAmount === undefined || input.purchaseAmount <= 0)
-  ) {
-    throw new LoyaltyError("Indiquez le montant de l'achat.");
-  }
-
-  const minPurchase = input.rules.minPurchase ?? 0;
-  if (minPurchase > 0 && (input.purchaseAmount ?? 0) < minPurchase) {
-    throw new LoyaltyError(`Montant minimum : ${minPurchase.toFixed(2)} €.`);
-  }
-
-  const earned = computeEarn(input.mode, input.rules, input.purchaseAmount ?? 0);
-  if (earned <= 0) {
-    throw new LoyaltyError("Aucun gain applicable pour cette transaction.");
+  const evaluation = evaluateEarn({
+    mode: input.mode,
+    rules: input.rules,
+    currentBalance: 0,
+    purchaseAmountCents: cents,
+    history: {
+      lastEarnAt: last?.createdAt ?? null,
+      earnCountToday: today.length,
+      pointsEarnedToday: today.reduce((sum, tx) => sum + Math.max(0, tx.pointsDelta), 0),
+    },
+  });
+  if (!evaluation.ok) {
+    throw new LoyaltyError(
+      [evaluation.block?.title, ...(evaluation.block?.details.length ? evaluation.block.details : [evaluation.block?.message ?? ""])]
+        .filter(Boolean)
+        .join("\n"),
+    );
   }
 }
 
 export function sanitizeEarnResponse(result: {
   firstName: string;
+  lastName?: string;
   points: number;
   visitsRequired: number;
   rewardLabel: string;
@@ -172,6 +173,7 @@ export function sanitizeEarnResponse(result: {
 }) {
   return {
     firstName: result.firstName,
+    lastName: result.lastName ?? "",
     points: result.points,
     visitsRequired: result.visitsRequired,
     rewardLabel: result.rewardLabel,

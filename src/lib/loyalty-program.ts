@@ -54,6 +54,11 @@ export type RewardConfig = {
   maxUsesPerCustomer?: number | null;
   reuseDelayDays?: number | null;
   globalLimit?: number | null;
+  conditions?: {
+    stackable?: boolean;
+    earnOnRedeem?: boolean;
+    exclusive?: boolean;
+  } | null;
 };
 
 export type SimulateInput = {
@@ -109,6 +114,16 @@ export const DEFAULT_RULES: Record<LoyaltyMode, ProgramRules> = {
   },
 };
 
+function parseRewardConditionsField(raw: unknown): RewardConfig["conditions"] {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const value = raw as Record<string, unknown>;
+  const conditions: NonNullable<RewardConfig["conditions"]> = {};
+  if (typeof value.stackable === "boolean") conditions.stackable = value.stackable;
+  if (typeof value.earnOnRedeem === "boolean") conditions.earnOnRedeem = value.earnOnRedeem;
+  if (typeof value.exclusive === "boolean") conditions.exclusive = value.exclusive;
+  return conditions;
+}
+
 export function rewardFromDb(r: LoyaltyReward): RewardConfig {
   return {
     id: r.id,
@@ -128,6 +143,7 @@ export function rewardFromDb(r: LoyaltyReward): RewardConfig {
     maxUsesPerCustomer: r.maxUsesPerCustomer,
     reuseDelayDays: r.reuseDelayDays,
     globalLimit: r.globalLimit,
+    conditions: parseRewardConditionsField(r.conditions),
   };
 }
 
@@ -147,33 +163,98 @@ export function unitLabel(mode: LoyaltyMode) {
   return "points";
 }
 
-export function computeEarn(mode: LoyaltyMode, rules: ProgramRules, purchaseAmount = 0): number {
+export function amountForPointsCents(rules: ProgramRules) {
+  const euros = Math.max(0.01, rules.amountForPoints ?? 1);
+  return Math.round(euros * 100);
+}
+
+export function minPurchaseCents(rules: ProgramRules) {
+  const min = rules.minPurchase ?? 0;
+  return min > 0 ? Math.round(min * 100) : 0;
+}
+
+export type AppliedTier = {
+  id: string;
+  minAmountCents: number;
+  maxAmountCents: number | null;
+  earnValue: number;
+};
+
+export function resolveAmountTier(rules: ProgramRules, purchaseAmountCents: number): AppliedTier | null {
+  const tiers = [...(rules.amountTiers ?? [])]
+    .map((tier) => ({
+      id: tier.id,
+      minAmountCents: Math.round(tier.minAmount * 100),
+      maxAmountCents: tier.maxAmount === null ? null : Math.round(tier.maxAmount * 100),
+      earnValue: tier.earnValue,
+    }))
+    .sort((a, b) => a.minAmountCents - b.minAmountCents);
+  return (
+    tiers.find(
+      (tier) =>
+        purchaseAmountCents >= tier.minAmountCents &&
+        (tier.maxAmountCents === null || purchaseAmountCents <= tier.maxAmountCents),
+    ) ?? null
+  );
+}
+
+export function nextAmountTier(rules: ProgramRules, purchaseAmountCents: number): AppliedTier | null {
+  const tiers = [...(rules.amountTiers ?? [])]
+    .map((tier) => ({
+      id: tier.id,
+      minAmountCents: Math.round(tier.minAmount * 100),
+      maxAmountCents: tier.maxAmount === null ? null : Math.round(tier.maxAmount * 100),
+      earnValue: tier.earnValue,
+    }))
+    .sort((a, b) => a.minAmountCents - b.minAmountCents);
+  const current = resolveAmountTier(rules, purchaseAmountCents);
+  if (!current) {
+    return tiers.find((tier) => tier.minAmountCents > purchaseAmountCents) ?? null;
+  }
+  return tiers.find((tier) => tier.minAmountCents > current.minAmountCents) ?? null;
+}
+
+export function computeEarnFromCents(
+  mode: LoyaltyMode,
+  rules: ProgramRules,
+  purchaseAmountCents = 0,
+): { earned: number; tier: AppliedTier | null } {
   switch (mode) {
     case "VISITS":
-      return Math.max(0, rules.visitsPerScan ?? 1);
+      return { earned: Math.max(0, Math.trunc(rules.visitsPerScan ?? 1)), tier: null };
     case "POINTS_BY_AMOUNT": {
-      const min = rules.minPurchase ?? 0;
-      if (purchaseAmount < min) return 0;
-      const ratio = (rules.pointsPerAmount ?? 1) / Math.max(0.01, rules.amountForPoints ?? 1);
-      let pts = purchaseAmount * ratio;
-      if (rules.rounding === "floor") pts = Math.floor(pts);
-      else if (rules.rounding === "round") pts = Math.round(pts);
-      if (rules.maxPointsPerTx && rules.maxPointsPerTx > 0) pts = Math.min(pts, rules.maxPointsPerTx);
-      return Math.max(0, pts);
+      const minCents = minPurchaseCents(rules);
+      if (purchaseAmountCents < minCents) return { earned: 0, tier: null };
+      const pointsPerAmount = Math.max(0, Math.trunc(rules.pointsPerAmount ?? 1));
+      const denom = BigInt(Math.max(1, amountForPointsCents(rules)));
+      const num = BigInt(Math.max(0, purchaseAmountCents)) * BigInt(pointsPerAmount);
+      let pts: number;
+      if (rules.rounding === "round") {
+        pts = Number((num + denom / 2n) / denom);
+      } else {
+        pts = Number(num / denom);
+      }
+      if (rules.maxPointsPerTx && rules.maxPointsPerTx > 0) {
+        pts = Math.min(pts, rules.maxPointsPerTx);
+      }
+      return { earned: Math.max(0, Math.trunc(pts)), tier: null };
     }
     case "FIXED_POINTS": {
-      const min = rules.minPurchase ?? 0;
-      if (purchaseAmount < min && min > 0) return 0;
-      return Math.max(0, rules.fixedPointsPerPurchase ?? 0);
+      const minCents = minPurchaseCents(rules);
+      if (minCents > 0 && purchaseAmountCents < minCents) return { earned: 0, tier: null };
+      return { earned: Math.max(0, Math.trunc(rules.fixedPointsPerPurchase ?? 0)), tier: null };
     }
     case "AMOUNT_TIERS": {
-      const tiers = [...(rules.amountTiers ?? [])].sort((a, b) => a.minAmount - b.minAmount);
-      const tier = tiers.find((t) => purchaseAmount >= t.minAmount && (t.maxAmount === null || purchaseAmount <= t.maxAmount));
-      return tier?.earnValue ?? 0;
+      const tier = resolveAmountTier(rules, purchaseAmountCents);
+      return { earned: Math.max(0, Math.trunc(tier?.earnValue ?? 0)), tier };
     }
     default:
-      return 0;
+      return { earned: 0, tier: null };
   }
+}
+
+export function computeEarn(mode: LoyaltyMode, rules: ProgramRules, purchaseAmount = 0): number {
+  return computeEarnFromCents(mode, rules, Math.round((purchaseAmount ?? 0) * 100)).earned;
 }
 
 export function nextReward(rewards: RewardConfig[], balance: number, mode: LoyaltyMode): RewardConfig | null {

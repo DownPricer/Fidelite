@@ -408,6 +408,11 @@ model LoyaltyTransaction {
   status               LoyaltyTxStatus       @default(COMPLETED)
   pointsDelta          Int
   purchaseAmount       Float?
+  purchaseAmountCents  Int?
+  balanceBefore        Int?
+  balanceAfter         Int?
+  ruleApplied          String?
+  idempotencyKey       String?               @unique
   reason               String?
   rewardId             String?
   relatedTxId          String?
@@ -451,6 +456,8 @@ model CaisseGrant {
   actorUserId          String
   expiresAt            DateTime
   consumedAt           DateTime?
+  earnCommittedAt      DateTime?
+  earnTransactionId    String?
   createdAt            DateTime           @default(now())
   membership           CustomerMembership @relation(fields: [customerMembershipId], references: [id], onDelete: Cascade)
   merchant             Merchant           @relation(fields: [merchantId], references: [id], onDelete: Cascade)

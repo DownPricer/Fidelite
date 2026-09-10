@@ -2,12 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { MerchantCardScanResult } from "@/components/fife-life/merchant-card-scan-result";
 import { GlassBottomSheet } from "@/components/fife-life/profile/glass-bottom-sheet";
 import { QrScanner } from "@/components/qr-scanner";
-import { scanResultToMerchantCard } from "@/lib/scan-result-card";
-import type { CardTemplateConfig } from "@/lib/card-template-schema";
-import type { LoyaltyMode } from "@prisma/client";
+import { CashierCheckout, type CashierScanResult } from "@/components/caisse/cashier-checkout";
 import { Button, Field, Input } from "@/components/ui";
 import {
   postCaisseScan,
@@ -19,31 +16,7 @@ import {
 import type { StaffPermissions } from "@/lib/staff-permissions";
 import { QrInputError } from "@/lib/qr-input";
 
-type ScanResult = {
-  grantId: string;
-  firstName: string;
-  points: number;
-  visitsRequired: number;
-  rewardLabel: string;
-  rewardAvailable: boolean;
-  progressLabel: string;
-  programMode?: string;
-  requirePurchaseAmount?: boolean;
-  earnPreviewLabel?: string;
-  nextRewardLabel?: string | null;
-  unitLabel?: string;
-  merchant?: {
-    name: string;
-    slug: string;
-    logoUrl: string | null;
-    primaryColor: string;
-  };
-  cardTemplate?: {
-    backgroundUrl?: string | null;
-    config: CardTemplateConfig;
-    loyaltyMode: LoyaltyMode;
-  } | null;
-};
+type ScanResult = CashierScanResult;
 
 type EmployeeProfile = {
   firstName: string;
@@ -57,8 +30,6 @@ type Phase =
   | "camera"
   | "processing"
   | "result"
-  | "amount"
-  | "reward_confirm"
   | "error";
 
 function statusLabel(phase: Phase, cameraError: string | null) {
@@ -67,8 +38,6 @@ function statusLabel(phase: Phase, cameraError: string | null) {
   if (phase === "ready") return "Prêt à scanner";
   if (phase === "camera") return "Analyse du QR…";
   if (phase === "processing") return "Validation serveur…";
-  if (phase === "amount") return "Montant de l'achat";
-  if (phase === "reward_confirm") return "Confirmer la récompense";
   if (phase === "result") return "Client reconnu";
   if (phase === "error") return "Erreur";
   return "Prêt à scanner";
@@ -88,7 +57,7 @@ export function EmployeeScanScreen({
   demoOptions?: { amountView?: boolean; forceReward?: boolean };
 }) {
   const [phase, setPhase] = useState<Phase>(
-    demoOptions?.amountView ? "amount" : initialView === "result" ? "result" : initialView === "error" ? "error" : "ready",
+    initialView === "result" || demoOptions?.amountView ? "result" : initialView === "error" ? "error" : "ready",
   );
   const [cameraActive, setCameraActive] = useState(false);
   const [cameraSession, setCameraSession] = useState(0);
@@ -101,20 +70,30 @@ export function EmployeeScanScreen({
       ? {
           grantId: "demo-grant",
           firstName: "Léa",
+          lastName: "Martin",
+          customerName: "Léa Martin",
           points: demoOptions?.forceReward ? 10 : 7,
           visitsRequired: 10,
           rewardLabel: "1 boisson offerte",
           rewardAvailable: demoOptions?.forceReward ?? true,
           progressLabel: demoOptions?.forceReward ? "10 / 10 passages" : "7 / 10 passages",
-          earnPreviewLabel: demoOptions?.amountView ? "Ajouter les points" : "+1 passage",
+          earnPreviewLabel: "Valider un passage",
           requirePurchaseAmount: demoOptions?.amountView ?? false,
           nextRewardLabel: "Encore 3 passages avant « 1 boisson offerte »",
+          nextBenefit: {
+            name: "1 boisson offerte",
+            remaining: demoOptions?.forceReward ? 0 : 3,
+            unit: "passages",
+            progressLabel: demoOptions?.forceReward ? "10 / 10 passages" : "7 / 10 passages",
+            missingLabel: "Encore 3 passages pour obtenir une boisson offerte.",
+            euroEstimate: null,
+            remainingPurchases: demoOptions?.forceReward ? 0 : 3,
+          },
         }
       : null,
   );
   const [pasteOpen, setPasteOpen] = useState(false);
   const [pasteValue, setPasteValue] = useState("");
-  const [purchaseAmount, setPurchaseAmount] = useState("");
   const lastCameraTokenRef = useRef<TokenMemory | null>(null);
   const processingRef = useRef(false);
 
@@ -124,7 +103,6 @@ export function EmployeeScanScreen({
     setResult(null);
     setError(null);
     setSuccess(null);
-    setPurchaseAmount("");
     setCameraActive(false);
     setCameraError(null);
     setPhase("ready");
@@ -165,12 +143,14 @@ export function EmployeeScanScreen({
         setResult({
           grantId: "demo-grant",
           firstName: "Léa",
+          lastName: "Martin",
+          customerName: "Léa Martin",
           points: 7,
           visitsRequired: 10,
           rewardLabel: "1 boisson offerte",
           rewardAvailable: true,
           progressLabel: "7 / 10 passages",
-          earnPreviewLabel: "+1 passage",
+          earnPreviewLabel: "Valider un passage",
         });
         setPhase("result");
         return;
@@ -204,80 +184,6 @@ export function EmployeeScanScreen({
     },
     [busy, demo],
   );
-
-  async function act(path: "/api/caisse/earn" | "/api/caisse/redeem", amount?: number) {
-    if (!result || busy) return;
-
-    if (demo) {
-      setSuccess(
-        path.endsWith("earn")
-          ? "+1 passage pour Léa. 8 / 10 passages"
-          : "Récompense utilisée pour Léa.",
-      );
-      setResult(null);
-      setPhase("ready");
-      window.setTimeout(resetScanner, 1200);
-      return;
-    }
-
-    setBusy(true);
-    setError(null);
-    setPhase("processing");
-
-    const response = await fetch(path, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        grantId: result.grantId,
-        ...(amount !== undefined ? { purchaseAmount: amount } : {}),
-      }),
-    });
-    const data = await response.json();
-    setBusy(false);
-
-    if (!response.ok) {
-      setPhase("error");
-      setError(data.error ?? "Action impossible.");
-      return;
-    }
-
-    setSuccess(
-      path.endsWith("earn")
-        ? `Gain enregistré pour ${data.firstName}. ${data.snapshot?.progressLabel ?? ""}`
-        : `Récompense utilisée pour ${data.firstName}.`,
-    );
-    setResult(null);
-    setPhase("ready");
-    window.setTimeout(resetScanner, 1400);
-  }
-
-  function startEarn() {
-    if (!result) return;
-    if (result.requirePurchaseAmount) {
-      setPhase("amount");
-      return;
-    }
-    void act("/api/caisse/earn");
-  }
-
-  function confirmAmount(event: React.FormEvent) {
-    event.preventDefault();
-    const amount = Number(purchaseAmount.replace(",", "."));
-    if (!Number.isFinite(amount) || amount <= 0) {
-      setError("Montant invalide.");
-      return;
-    }
-    void act("/api/caisse/earn", amount);
-  }
-
-  function confirmRedeem() {
-    if (!result) return;
-    setPhase("reward_confirm");
-  }
-
-  async function finalizeRedeem() {
-    await act("/api/caisse/redeem");
-  }
 
   async function logout() {
     setCameraActive(false);
@@ -332,95 +238,8 @@ export function EmployeeScanScreen({
 
         <AnimatePresence mode="wait">
           {phase === "result" && result ? (
-            <motion.div key="result" className="flex min-h-0 flex-1 flex-col gap-3" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
-              {(() => {
-                const cardPayload = scanResultToMerchantCard(result);
-                if (cardPayload) {
-                  return (
-                    <MerchantCardScanResult
-                      card={cardPayload.card}
-                      clientName={result.firstName}
-                      merchant={cardPayload.merchant}
-                    />
-                  );
-                }
-                return (
-                  <div className="metric-card p-4">
-                    <h2 className="text-3xl font-black text-[var(--ink)]">{result.firstName}</h2>
-                    <p className="mt-2 text-lg font-bold text-[var(--violet-bright)]">{result.progressLabel}</p>
-                  </div>
-                );
-              })()}
-              {result.nextRewardLabel ? (
-                <p className="text-sm text-[var(--muted-strong)]">{result.nextRewardLabel}</p>
-              ) : null}
-              {result.rewardAvailable ? (
-                <p className="text-sm font-semibold text-[var(--positive)]">
-                  Récompense disponible : {result.rewardLabel}
-                </p>
-              ) : null}
-
-              {profile.permissions.addPoints ? (
-                <button
-                  type="button"
-                  className="glass-cta w-full justify-center py-4 text-lg font-black disabled:opacity-50"
-                  disabled={busy}
-                  onClick={startEarn}
-                >
-                  {result.earnPreviewLabel ?? "+1 Passage"}
-                </button>
-              ) : null}
-
-              {result.rewardAvailable && profile.permissions.redeemReward ? (
-                <button
-                  type="button"
-                  className="flex w-full items-center justify-center rounded-full bg-[var(--positive)] py-3.5 text-base font-black text-[#0b0714] disabled:opacity-50"
-                  disabled={busy}
-                  onClick={confirmRedeem}
-                >
-                  Utiliser : {result.rewardLabel}
-                </button>
-              ) : null}
-
-              <Button variant="ghost" className="mt-auto" onClick={resetScanner}>
-                Scanner une autre carte
-              </Button>
-            </motion.div>
-          ) : phase === "amount" && result ? (
-            <motion.form key="amount" className="flex flex-1 flex-col gap-4" onSubmit={confirmAmount}>
-              <div className="metric-card p-4">
-                <p className="text-sm text-[var(--muted-strong)]">Montant de l&apos;achat pour {result.firstName}</p>
-              </div>
-              <Field label="Montant (€)">
-                <Input
-                  inputMode="decimal"
-                  value={purchaseAmount}
-                  onChange={(e) => setPurchaseAmount(e.target.value)}
-                  placeholder="Ex. 24.50"
-                  autoFocus
-                  required
-                />
-              </Field>
-              <Button type="submit" className="w-full py-4" disabled={busy}>
-                Calculer et valider
-              </Button>
-              <Button type="button" variant="ghost" onClick={() => setPhase("result")}>
-                Retour
-              </Button>
-            </motion.form>
-          ) : phase === "reward_confirm" && result ? (
-            <motion.div key="reward" className="flex flex-1 flex-col gap-4">
-              <div className="metric-card p-4">
-                <p className="text-sm text-[var(--muted-strong)]">
-                  Confirmer l&apos;utilisation de « {result.rewardLabel} » pour {result.firstName} ?
-                </p>
-              </div>
-              <Button className="w-full py-4" disabled={busy} onClick={() => void finalizeRedeem()}>
-                Confirmer la récompense
-              </Button>
-              <Button variant="ghost" onClick={() => setPhase("result")}>
-                Annuler
-              </Button>
+            <motion.div key="result" className="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
+              <CashierCheckout result={result} permissions={profile.permissions} demo={demo} onReset={resetScanner} />
             </motion.div>
           ) : (
             <motion.div key="scan" className="flex min-h-0 flex-1 flex-col gap-3">
@@ -475,7 +294,7 @@ export function EmployeeScanScreen({
                   </>
                 )}
                 <Button variant="secondary" className="col-span-2" onClick={() => setPasteOpen(true)} disabled={busy}>
-                  Coller un lien
+                  Coller un lien ou un code
                 </Button>
               </div>
             </motion.div>
@@ -495,7 +314,7 @@ export function EmployeeScanScreen({
         ) : null}
       </div>
 
-      <GlassBottomSheet open={pasteOpen} title="Coller un lien" onClose={() => setPasteOpen(false)}>
+      <GlassBottomSheet open={pasteOpen} title="Coller un lien ou un code" onClose={() => setPasteOpen(false)}>
         <form
           className="space-y-4"
           onSubmit={(event) => {

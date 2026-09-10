@@ -3,13 +3,10 @@
 import Link from "next/link";
 import { useCallback, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { MerchantCardScanResult } from "@/components/fife-life/merchant-card-scan-result";
+import { CashierCheckout, type CashierScanResult } from "@/components/caisse/cashier-checkout";
 import { QrScanner, ClientNumberField } from "@/components/qr-scanner";
-import { Button } from "@/components/ui";
-import { scanResultToMerchantCard } from "@/lib/scan-result-card";
-import type { CardTemplateConfig } from "@/lib/card-template-schema";
-import type { LoyaltyMode } from "@prisma/client";
 import { DEMO_CLIENT_NUMBER } from "@/lib/demo-visual";
+import { resolvePermissions, type StaffPermissions } from "@/lib/staff-permissions";
 import {
   postCaisseScan,
   readManualClientNumber,
@@ -19,35 +16,23 @@ import {
 } from "@/lib/scan-session";
 import { QrInputError } from "@/lib/qr-input";
 
-type ScanResult = {
-  grantId: string;
-  firstName: string;
-  points: number;
-  visitsRequired: number;
-  rewardLabel: string;
-  rewardAvailable: boolean;
-  progressLabel: string;
-  merchant?: {
-    name: string;
-    slug: string;
-    logoUrl: string | null;
-    primaryColor: string;
-  };
-  cardTemplate?: {
-    backgroundUrl?: string | null;
-    config: CardTemplateConfig;
-    loyaltyMode: LoyaltyMode;
-  } | null;
-};
+type ScanResult = CashierScanResult;
+
+const ADMIN_PERMISSIONS = resolvePermissions({
+  role: "MERCHANT_ADMIN",
+  staffPreset: "CASHIER",
+});
 
 export function CaisseScreen({
   merchantName,
   role,
   demo = false,
+  permissions = ADMIN_PERMISSIONS,
 }: {
   merchantName: string;
   role: string;
   demo?: boolean;
+  permissions?: StaffPermissions;
 }) {
   const [scanning, setScanning] = useState(false);
   const [cameraSession, setCameraSession] = useState(0);
@@ -83,11 +68,15 @@ export function CaisseScreen({
       setResult({
         grantId: "demo-grant",
         firstName: "Léa",
+        lastName: "Martin",
+        customerName: "Léa Martin",
         points: 7,
         visitsRequired: 10,
         rewardLabel: "1 boisson offerte",
         rewardAvailable: false,
         progressLabel: "7 / 10 passages",
+        earnPreviewLabel: "Valider un passage",
+        nextRewardLabel: "Encore 3 passages avant « 1 boisson offerte »",
       });
       return;
     }
@@ -122,11 +111,14 @@ export function CaisseScreen({
         setResult({
           grantId: "demo-grant",
           firstName: "Léa",
+          lastName: "Martin",
+          customerName: "Léa Martin",
           points: 7,
           visitsRequired: 10,
           rewardLabel: "1 boisson offerte",
           rewardAvailable: false,
           progressLabel: "7 / 10 passages",
+          earnPreviewLabel: "Valider un passage",
         });
         return;
       }
@@ -143,40 +135,6 @@ export function CaisseScreen({
     },
     [demo],
   );
-
-  async function act(path: "/api/caisse/earn" | "/api/caisse/redeem") {
-    if (!result || busy) return;
-    if (demo) {
-      setSuccess(
-        path.endsWith("earn")
-          ? "+1 passage pour Marie. 8 / 10 passages"
-          : "Récompense utilisée pour Marie (démo).",
-      );
-      setResult(null);
-      setScanning(false);
-      return;
-    }
-    setBusy(true);
-    setError(null);
-    const response = await fetch(path, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ grantId: result.grantId }),
-    });
-    const data = await response.json();
-    setBusy(false);
-    if (!response.ok) {
-      setError(data.error ?? "Action impossible.");
-      return;
-    }
-    setSuccess(
-      path.endsWith("earn")
-        ? `+1 passage pour ${data.firstName}. ${data.snapshot.progressLabel}`
-        : `Récompense utilisée pour ${data.firstName}.`,
-    );
-    setResult(null);
-    setScanning(false);
-  }
 
   function resetToIdle() {
     lastCameraTokenRef.current = null;
@@ -300,52 +258,13 @@ export function CaisseScreen({
           ) : (
             <motion.div
               key="result"
-              className="flex min-h-0 flex-1 flex-col gap-3"
+              className="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden"
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -16 }}
               transition={{ type: "spring", duration: 0.45, bounce: 0.15 }}
             >
-              {(() => {
-                const cardPayload = scanResultToMerchantCard(result);
-                return cardPayload ? (
-                  <MerchantCardScanResult
-                    card={cardPayload.card}
-                    clientName={result.firstName}
-                    merchant={cardPayload.merchant}
-                  />
-                ) : (
-                  <motion.div layout className="metric-card shrink-0 p-4 text-[var(--ink)]">
-                    <h3 className="text-3xl font-black">{result.firstName}</h3>
-                    <p className="text-xl font-black text-[var(--violet-bright)]">{result.progressLabel}</p>
-                  </motion.div>
-                );
-              })()}
-
-              <motion.button
-                whileTap={{ scale: 0.97 }}
-                type="button"
-                className="glass-cta w-full justify-center py-4 text-lg font-black disabled:opacity-50"
-                disabled={busy}
-                onClick={() => void act("/api/caisse/earn")}
-              >
-                +1 Passage
-              </motion.button>
-              {result.rewardAvailable ? (
-                <motion.button
-                  whileTap={{ scale: 0.97 }}
-                  type="button"
-                  className="flex w-full items-center justify-center rounded-full bg-[var(--positive)] py-3.5 text-base font-black text-[#0b0714] disabled:opacity-50"
-                  disabled={busy}
-                  onClick={() => void act("/api/caisse/redeem")}
-                >
-                  Utiliser : {result.rewardLabel}
-                </motion.button>
-              ) : null}
-
-              <Button variant="ghost" className="mt-auto shrink-0" onClick={resetToIdle}>
-                Annuler et scanner un autre client
-              </Button>
+              <CashierCheckout result={result} permissions={permissions} demo={demo} onReset={resetToIdle} />
             </motion.div>
           )}
         </AnimatePresence>

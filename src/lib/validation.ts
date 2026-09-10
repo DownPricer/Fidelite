@@ -123,11 +123,34 @@ export const scanSchema = z
 
 export const caisseActionSchema = z.object({
   grantId: z.string().min(1),
+  rewardId: z.string().min(1).optional(),
+  purchaseAmount: z.number().min(0).max(100_000).optional(),
+  purchaseAmountCents: z.number().int().min(0).max(10_000_000).optional(),
+  idempotencyKey: z.string().min(8).max(80).optional(),
 });
 
 export const caisseEarnSchema = z.object({
   grantId: z.string().min(1),
   purchaseAmount: z.number().min(0).max(100_000).optional(),
+  purchaseAmountCents: z.number().int().min(0).max(10_000_000).optional(),
+  idempotencyKey: z.string().min(8).max(80).optional(),
+});
+
+export const caissePreviewSchema = z.object({
+  grantId: z.string().min(1),
+  action: z.enum(["EARN", "REDEEM"]).default("EARN"),
+  rewardId: z.string().min(1).optional(),
+  purchaseAmount: z.number().min(0).max(100_000).optional(),
+  purchaseAmountCents: z.number().int().min(0).max(10_000_000).optional(),
+});
+
+export const caisseCommitSchema = z.object({
+  grantId: z.string().min(1),
+  action: z.enum(["EARN", "REDEEM"]),
+  rewardId: z.string().min(1).optional(),
+  purchaseAmount: z.number().min(0).max(100_000).optional(),
+  purchaseAmountCents: z.number().int().min(0).max(10_000_000).optional(),
+  idempotencyKey: z.string().min(8, "Clé d'idempotence requise.").max(80),
 });
 
 export const createEmployeeSchema = z

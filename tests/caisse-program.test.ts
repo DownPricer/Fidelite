@@ -23,7 +23,7 @@ describe("programme caisse employé", () => {
   it("formate un programme par passages", () => {
     const snapshot = buildProgramSnapshot(3, baseProgram);
     expect(snapshot.progressLabel).toBe("3 / 10 passages");
-    expect(snapshot.earnPreviewLabel).toBe("+1 passage");
+    expect(snapshot.earnPreviewLabel).toBe("Valider un passage");
     expect(snapshot.requirePurchaseAmount).toBe(false);
   });
 
@@ -34,7 +34,7 @@ describe("programme caisse employé", () => {
       config: { pointsPerAmount: 1, amountForPoints: 1, requirePurchaseAmount: true },
     });
     expect(snapshot.requirePurchaseAmount).toBe(true);
-    expect(snapshot.earnPreviewLabel).toBe("Ajouter les points");
+    expect(snapshot.earnPreviewLabel).toBe("Valider les points");
   });
 
   it("limite la réponse scan aux données minimales", () => {

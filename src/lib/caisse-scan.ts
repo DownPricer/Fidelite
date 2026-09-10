@@ -1,13 +1,16 @@
 import { normalizeClientNumber } from "@/lib/client-number";
 import { publicScanPayload } from "@/lib/caisse-program";
 import type { CardTemplateConfig } from "@/lib/card-template-schema";
+import { buildNextBenefit } from "@/lib/loyalty-engine";
+import { CAISSE_GRANT_TTL_MS, evaluateCustomerRewards } from "@/lib/loyalty-commit";
+import { computeEarnFromCents, programToConfig } from "@/lib/loyalty-program";
 import { resolvePublishedMerchantCardTemplate } from "@/lib/merchant-card-template-service";
 import { prisma } from "@/lib/prisma";
 import { QrError, verifyQrToken } from "@/lib/qr";
 import { logWalletUnlock } from "@/lib/wallet-unlock-log";
 
 async function buildScanResult(input: {
-  user: { id: string; firstName: string };
+  user: { id: string; firstName: string; lastName?: string | null };
   merchantId: string;
   actorUserId: string;
   globalQrId: string;
@@ -15,7 +18,7 @@ async function buildScanResult(input: {
   return prisma.$transaction(async (tx) => {
     const merchant = await tx.merchant.findFirst({
       where: { id: input.merchantId, isActive: true },
-      include: { program: true },
+      include: { program: { include: { rewards: true } } },
     });
     if (!merchant || !merchant.program) {
       throw new QrError("Commerce introuvable.");
@@ -23,9 +26,9 @@ async function buildScanResult(input: {
 
     let membership = await tx.customerMembership.findFirst({
       where: { userId: input.user.id, merchantId: input.merchantId },
-      include: {
+        include: {
         user: true,
-        merchant: { include: { program: true } },
+        merchant: { include: { program: { include: { rewards: true } } } },
       },
     });
 
@@ -38,7 +41,7 @@ async function buildScanResult(input: {
         },
         include: {
           user: true,
-          merchant: { include: { program: true } },
+          merchant: { include: { program: { include: { rewards: true } } } },
         },
       });
       cardJustCreated = true;
@@ -48,7 +51,7 @@ async function buildScanResult(input: {
         data: { removedAt: null },
         include: {
           user: true,
-          merchant: { include: { program: true } },
+          merchant: { include: { program: { include: { rewards: true } } } },
         },
       });
       cardJustCreated = true;
@@ -125,18 +128,40 @@ async function buildScanResult(input: {
         customerMembershipId: membership.id,
         merchantId: input.merchantId,
         actorUserId: input.actorUserId,
-        expiresAt: new Date(now.getTime() + 90_000),
+        expiresAt: new Date(now.getTime() + CAISSE_GRANT_TTL_MS),
       },
     });
+
+    const config = programToConfig(membership.merchant.program);
+    const rewards = await evaluateCustomerRewards({
+      config,
+      balance: membership.points,
+      merchantName: merchant.name,
+      customerMembershipId: membership.id,
+      merchantId: input.merchantId,
+      grantCreatedAt: grant.createdAt,
+      now,
+      db: tx,
+    });
+    const nextBenefit = buildNextBenefit(
+      config.rewards,
+      membership.points,
+      config.mode,
+      config.rules,
+      computeEarnFromCents(config.mode, config.rules, 0).earned,
+    );
 
     return {
       ...publicScanPayload({
         grantId: grant.id,
         firstName: membership.user.firstName,
+        lastName: membership.user.lastName,
         program: membership.merchant.program,
         points: membership.points,
         expiresAt: grant.expiresAt.toISOString(),
         cardJustCreated,
+        rewards,
+        nextBenefit,
       }),
       merchant: {
         name: merchant.name,
