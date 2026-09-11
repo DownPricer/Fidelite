@@ -5,8 +5,6 @@ import {
   buildNextBenefit,
   earnPreviewLines,
   evaluateEarn,
-  primaryEarnLabel,
-  progressLabelFor,
   remainingPurchasesToReward,
   type EarnHistory,
   type LoyaltyAction,
@@ -15,9 +13,13 @@ import {
 } from "./loyalty-engine";
 import { applyLoyaltyAction } from "./loyalty-service";
 import {
+  assertGrantMatchesActiveProgram,
+  getActiveMerchantLoyaltyContext,
+  progressTargetForBalance,
+} from "./loyalty-context";
+import { earnActionLabel, earnGainLabel, progressBalanceLabel } from "./loyalty-labels";
+import {
   computeEarnFromCents,
-  legacyRewardLabel,
-  legacyVisitsRequired,
   programToConfig,
   unitLabel,
   type ProgramConfig,
@@ -250,10 +252,11 @@ function buildView(input: {
   redeem?: LoyaltyTransactionView["redeem"];
   block?: LoyaltyBlock | null;
 }): LoyaltyTransactionView {
-  const config = programToConfig(input.program);
-  const threshold = legacyVisitsRequired(input.program);
+  const config = programToConfig(input.program, { activeOnly: true, filterByMode: true });
+  const threshold = progressTargetForBalance(config, input.points);
   const unit = unitLabel(config.mode);
-  const progress = progressLabelFor(config.mode, input.points, threshold);
+  const progress = progressBalanceLabel(config.mode, input.points, threshold);
+  const primaryReward = config.rewards[0] ?? null;
   const evaluation = input.evaluation;
   const earned = evaluation?.ok ? evaluation.earned : 0;
   const nextBenefit = input.nextBenefit;
@@ -301,7 +304,7 @@ function buildView(input: {
     points: input.points,
     previousPoints: input.previousPoints,
     visitsRequired: threshold,
-    rewardLabel: legacyRewardLabel(input.program),
+    rewardLabel: primaryReward?.name ?? "Avantage",
     progressLabel: progress,
     unitLabel: unit,
     programMode: config.mode,
@@ -309,15 +312,12 @@ function buildView(input: {
     purchaseAmountLabel:
       input.purchaseAmountCents > 0 ? formatEurosFromCents(input.purchaseAmountCents) : null,
     earned,
-    earnLabel: evaluation?.ok ? `+${evaluation.earned} ${unit}` : null,
-    newBalanceLabel:
-      config.mode === "VISITS" || config.mode === "AMOUNT_TIERS"
-        ? `${input.points} / ${threshold} passages`
-        : `${input.points} ${unit}`,
+    earnLabel: evaluation?.ok ? earnGainLabel(config.mode, evaluation.earned) : null,
+    newBalanceLabel: progressBalanceLabel(config.mode, input.points, threshold),
     ruleApplied: evaluation?.ruleApplied ?? input.block?.title ?? null,
     block: input.block ?? evaluation?.block ?? null,
     previewLines,
-    primaryActionLabel: primaryEarnLabel(config.mode, evaluation?.ok ? evaluation.earned : undefined),
+    primaryActionLabel: earnActionLabel(config.mode, evaluation?.ok ? evaluation.earned : undefined),
     amountRequired: evaluation?.amountRequired ?? false,
     nextTierHint: evaluation?.nextTierHint ?? null,
     appliedTierLabel: evaluation ? appliedTierLabel(evaluation) : null,
@@ -367,7 +367,23 @@ async function loadGrantContext(input: {
   if (membership.merchantId !== input.merchantId || grant.merchantId !== input.merchantId) {
     throw new LoyaltyError("Ce client n'appartient pas à ce commerce.");
   }
-  return { grant, membership, program: membership.merchant.program };
+
+  const loyaltyContext = await getActiveMerchantLoyaltyContext(input.merchantId, db);
+  if (!loyaltyContext || !loyaltyContext.isOperational) {
+    throw new LoyaltyError("Programme de fidélité indisponible.");
+  }
+  try {
+    assertGrantMatchesActiveProgram(grant, loyaltyContext);
+  } catch (error) {
+    throw new LoyaltyError(error instanceof Error ? error.message : "Programme modifié.");
+  }
+
+  return {
+    grant,
+    membership,
+    program: loyaltyContext.program,
+    loyaltyContext,
+  };
 }
 
 async function assembleView(input: {
@@ -390,7 +406,7 @@ async function assembleView(input: {
 }): Promise<LoyaltyTransactionView> {
   const db = input.db ?? prisma;
   const now = input.now ?? new Date();
-  const config = programToConfig(input.program);
+  const config = programToConfig(input.program, { activeOnly: true, filterByMode: true });
   const history = await loadEarnHistory(db, {
     customerMembershipId: input.membership.id,
     merchantId: input.program.merchantId,

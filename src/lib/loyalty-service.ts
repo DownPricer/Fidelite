@@ -1,8 +1,10 @@
 import { LoyaltyTxType, WalletEventType, type Prisma } from "@prisma/client";
 import { writeAudit } from "./audit";
 import { updateWalletBalance } from "./google-wallet";
-import { applyAdjustment, applyRedeemReward, computeLoyalty, LoyaltyError } from "./loyalty";
-import { computeEarnFromCents, legacyRewardLabel, legacyVisitsRequired, programToConfig } from "./loyalty-program";
+import { applyAdjustment, applyRedeemReward, LoyaltyError } from "./loyalty";
+import { getActiveMerchantLoyaltyContext, progressTargetForBalance } from "./loyalty-context";
+import { earnGainLabel, historyEntryLabel, loyaltyUnitForMode, progressBalanceLabel } from "./loyalty-labels";
+import { computeEarnFromCents, programToConfig } from "./loyalty-program";
 import { env } from "./env";
 import { prisma } from "./prisma";
 import { centsToEuros, purchaseAmountCentsFromUnknown } from "./money";
@@ -39,10 +41,14 @@ async function persistLoyaltyAction(tx: LoyaltyDb, input: ApplyLoyaltyInput) {
     throw new Error("Carte introuvable.");
   }
 
-  const program = membership.merchant.program;
-  const config = programToConfig(program);
-  const required = legacyVisitsRequired(program);
-  let rewardLabel = legacyRewardLabel(program);
+  const loyaltyContext = await getActiveMerchantLoyaltyContext(input.merchantId, tx);
+  if (!loyaltyContext || !loyaltyContext.isOperational) {
+    throw new LoyaltyError("Programme de fidélité indisponible.");
+  }
+  const program = loyaltyContext.program;
+  const config = loyaltyContext.config;
+  const required = progressTargetForBalance(config, membership.points);
+  let rewardLabel = config.rewards[0]?.name ?? "Avantage";
   const purchaseAmountCents = purchaseAmountCentsFromUnknown({
     purchaseAmountCents: input.purchaseAmountCents,
     purchaseAmount: input.purchaseAmount,
@@ -58,8 +64,8 @@ async function persistLoyaltyAction(tx: LoyaltyDb, input: ApplyLoyaltyInput) {
     if (delta <= 0) throw new LoyaltyError("Aucun gain applicable pour cette transaction.");
   } else if (input.type === "REDEEM_REWARD") {
     const selected = input.rewardId
-      ? program.rewards.find((reward) => reward.id === input.rewardId)
-      : program.rewards[0];
+      ? config.rewards.find((reward) => reward.id === input.rewardId)
+      : config.rewards.find((reward) => membership.points >= reward.threshold);
     const cost = selected?.threshold ?? required;
     if (selected) rewardLabel = selected.name;
     const redeem = applyRedeemReward(membership.points, cost);
@@ -80,6 +86,23 @@ async function persistLoyaltyAction(tx: LoyaltyDb, input: ApplyLoyaltyInput) {
     data: { points: nextPoints },
   });
 
+  const unit = loyaltyUnitForMode(config.mode);
+  const progressLabel = progressBalanceLabel(config.mode, nextPoints, progressTargetForBalance(config, nextPoints));
+  const historyMeta = {
+    mode: config.mode,
+    unit,
+    earnLabel: input.type === "EARN_VISIT" && delta > 0 ? earnGainLabel(config.mode, delta) : undefined,
+    displayLabel:
+      input.type === "EARN_VISIT"
+        ? historyEntryLabel({
+            type: input.type,
+            pointsDelta: delta,
+            metadata: { mode: config.mode, unit, earnLabel: earnGainLabel(config.mode, delta) },
+            ruleApplied: input.ruleApplied ?? null,
+          }).title
+        : undefined,
+  };
+
   const loyaltyTx = await tx.loyaltyTransaction.create({
     data: {
       customerMembershipId: membership.id,
@@ -98,8 +121,12 @@ async function persistLoyaltyAction(tx: LoyaltyDb, input: ApplyLoyaltyInput) {
       performedByUserId: input.actorId,
       metadata: {
         mode: config.mode,
+        unit,
+        earnLabel: historyMeta.earnLabel ?? null,
+        displayLabel: historyMeta.displayLabel ?? null,
         ruleApplied: input.ruleApplied ?? null,
         purchaseAmountCents: purchaseAmountCents ?? null,
+        programVersion: program.version,
       },
     },
   });
@@ -108,8 +135,12 @@ async function persistLoyaltyAction(tx: LoyaltyDb, input: ApplyLoyaltyInput) {
     where: { userId: input.actorId, merchantId: input.merchantId },
     data: { lastActivityAt: new Date() },
   });
-
-  const snapshot = computeLoyalty(nextPoints, required);
+  const snapshot = {
+    points: nextPoints,
+    visitsRequired: required,
+    rewardAvailable: config.rewards.some((reward) => reward.isActive && nextPoints >= reward.threshold),
+    progressLabel,
+  };
 
   await writeAudit({
     actorId: input.actorId,

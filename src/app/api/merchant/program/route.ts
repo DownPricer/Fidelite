@@ -1,6 +1,7 @@
 import { requireMerchantAdmin, requireMutatingRequest } from "@/lib/api-guard";
 import { writeAudit } from "@/lib/audit";
 import { clientIp, jsonError, jsonOk, readJson, userAgent } from "@/lib/http";
+import { buildCustomerProgramView, getActiveMerchantLoyaltyContext } from "@/lib/loyalty-context";
 import { programToConfig, rewardFromDb, validateTiers } from "@/lib/loyalty-program";
 import {
   normalizeResolvedPublishedTemplate,
@@ -236,14 +237,15 @@ export async function POST(req: Request) {
       },
     });
 
-    if (modeChanged && merchant) {
+    if (merchant) {
+      const loyaltyContext = await getActiveMerchantLoyaltyContext(merchantId, tx);
       const publishedCardTemplate = await resolvePublishedMerchantCardTemplate(
         merchantId,
         draft.mode,
         tx,
       );
       const cardTemplatePayload = normalizeResolvedPublishedTemplate(publishedCardTemplate);
-      logMerchantCardSwitch("mode publié", {
+      logMerchantCardSwitch(modeChanged ? "mode publié" : "programme publié", {
         merchantId,
         mode: draft.mode,
         templateId: publishedCardTemplate?.id ?? null,
@@ -257,6 +259,9 @@ export async function POST(req: Request) {
         select: { id: true, userId: true, points: true },
       });
       for (const membership of memberships) {
+        const programView = loyaltyContext
+          ? buildCustomerProgramView(loyaltyContext, membership.points)
+          : null;
         await tx.walletEvent.create({
           data: {
             userId: membership.userId,
@@ -267,9 +272,13 @@ export async function POST(req: Request) {
               slug: merchant.slug,
               merchantName: merchant.name,
               loyaltyMode: draft.mode,
+              programVersion: nextVersion,
               points: membership.points,
-              visitsRequired: firstReward?.threshold ?? program.visitsRequired,
-              rewardLabel: firstReward?.name ?? program.rewardLabel,
+              visitsRequired: programView?.progressTarget ?? firstReward?.threshold ?? program.visitsRequired,
+              rewardLabel: programView?.rewards[0]?.name ?? firstReward?.name ?? program.rewardLabel,
+              programTitle: programView?.programTitle ?? null,
+              programDescription: programView?.programDescription ?? null,
+              minimumPurchaseLabel: programView?.minimumPurchaseLabel ?? null,
               templateId: publishedCardTemplate?.id ?? null,
               templateVersion: publishedCardTemplate?.version ?? null,
               usedFallback: publishedCardTemplate?.usedFallback ?? false,

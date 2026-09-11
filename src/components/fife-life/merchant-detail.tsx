@@ -7,25 +7,24 @@ import { CardEnlargedView } from "./card-enlarged-view";
 import type { CardHistoryItem, MerchantCardData, WalletEventPayload } from "./types";
 import { usePersonalizedQr } from "./use-personalized-qr";
 import { mergeMerchantCardUpdate } from "@/lib/merchant-card-update";
+import type { buildCustomerProgramView } from "@/lib/loyalty-context";
+import { formatUnitCount, historyEntryLabel } from "@/lib/loyalty-labels";
 import { useWalletEvents } from "./use-wallet-events";
 
-function historyLabel(type: string) {
-  if (type === "EARN_VISIT") return "Passage";
-  if (type === "REDEEM_REWARD") return "Récompense";
-  if (type === "ADJUSTMENT") return "Ajustement";
-  return type;
-}
+type CustomerProgramView = ReturnType<typeof buildCustomerProgramView>;
 
 export function MerchantCardDetail({
   slug,
   merchant,
   history,
+  programView,
   preview = false,
   walletEnabled = false,
 }: {
   slug: string;
   merchant: MerchantCardData;
   history: CardHistoryItem[];
+  programView?: CustomerProgramView;
   preview?: boolean;
   walletEnabled?: boolean;
 }) {
@@ -42,8 +41,11 @@ export function MerchantCardDetail({
   const [conditionsExpanded, setConditionsExpanded] = useState(false);
   const { qrSrc: personalizedQr } = usePersonalizedQr(!preview);
 
-  const remaining = Math.max(0, card.visitsRequired - card.points);
-  const rewardAvailable = card.points >= card.visitsRequired;
+  const mode = programView?.mode ?? card.loyaltyMode ?? "VISITS";
+  const remaining = programView?.upcomingRemaining ?? Math.max(0, card.visitsRequired - card.points);
+  const rewardAvailable = programView
+    ? programView.rewards.some((reward) => card.points >= reward.threshold)
+    : card.points >= card.visitsRequired;
 
   useEffect(() => {
     setAndroid(preview || /android/i.test(navigator.userAgent));
@@ -171,10 +173,14 @@ export function MerchantCardDetail({
     }
   }
 
-  // Mock data for demonstration (in reality, these would come from the database)
-  const rewards = [
-    { threshold: card.visitsRequired, reward: card.rewardLabel },
-  ];
+  const rewards =
+    programView?.rewards.length
+      ? programView.rewards.map((reward) => ({
+          threshold: reward.threshold,
+          thresholdUnit: reward.thresholdUnit,
+          reward: reward.name,
+        }))
+      : [{ threshold: card.visitsRequired, thresholdUnit: "visits" as const, reward: card.rewardLabel }];
 
   const conditions = `Les points sont crédités lors de chaque achat validé par le commerçant. 
   
@@ -299,20 +305,38 @@ Le commerçant se réserve le droit de modifier ou d'annuler le programme de fid
           </div>
 
           <div className="merchant-side-panel">
-          {/* Advantages section */}
           <section className="glass-panel mt-6 p-5">
+            <h2 className="section-title">Programme</h2>
+            <div className="mt-3 space-y-1 text-sm text-[var(--ink-soft)]">
+              <p className="font-semibold text-[var(--ink)]">
+                {programView?.programTitle ?? (mode === "FIXED_POINTS" ? "Points fixes par achat" : "Programme fidélité")}
+              </p>
+              {programView?.programDescription ? <p>{programView.programDescription}</p> : null}
+              {programView?.minimumPurchaseLabel ? <p>{programView.minimumPurchaseLabel}</p> : null}
+            </div>
+          </section>
+
+          {/* Advantages section */}
+          <section className="glass-panel mt-4 p-5">
             <h2 className="section-title">Avantages</h2>
-            <ul className="mt-4 divide-y divide-white/8">
-              {rewards.map((reward, idx) => (
-                <li key={idx} className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
-                  <span className="text-sm font-semibold text-[var(--positive)]">
-                    {reward.threshold} {reward.threshold > 1 ? "passages" : "passage"}
-                  </span>
-                  <span className="text-sm text-[var(--ink-soft)]">=</span>
-                  <span className="text-sm font-medium text-[var(--ink)]">{reward.reward}</span>
-                </li>
-              ))}
-            </ul>
+            {rewards.length ? (
+              <ul className="mt-4 divide-y divide-white/8">
+                {rewards.map((reward, idx) => (
+                  <li key={idx} className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0">
+                    <span className="text-sm font-semibold text-[var(--positive)]">
+                      {formatUnitCount(
+                        reward.threshold,
+                        reward.thresholdUnit === "points" ? "points" : "passages",
+                      )}
+                    </span>
+                    <span className="text-sm text-[var(--ink-soft)]">=</span>
+                    <span className="text-sm font-medium text-[var(--ink)]">{reward.reward}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="mt-4 text-sm text-[var(--muted)]">Aucun avantage configuré pour ce programme.</p>
+            )}
           </section>
 
           {/* History section */}
@@ -324,10 +348,17 @@ Le commerçant se réserve le droit de modifier ou d'annuler le programme de fid
               <ul className="mt-4 divide-y divide-white/8">
                 {rows.slice(0, 15).map((row) => {
                   const isPositive = row.pointsDelta > 0;
+                  const history = historyEntryLabel({
+                    type: row.type,
+                    pointsDelta: row.pointsDelta,
+                    reason: row.reason,
+                    metadata: row.metadata as Parameters<typeof historyEntryLabel>[0]["metadata"],
+                    ruleApplied: row.ruleApplied,
+                  });
                   return (
                     <li key={row.id} className="flex items-start justify-between gap-4 py-3 first:pt-0">
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-semibold text-[var(--ink)]">{historyLabel(row.type)}</p>
+                        <p className="text-sm font-semibold text-[var(--ink)]">{history.title}</p>
                         <p className="text-xs text-[var(--muted)] mt-0.5">
                           {new Date(row.createdAt).toLocaleString("fr-FR", {
                             day: "2-digit",
@@ -346,8 +377,7 @@ Le commerçant se réserve le droit de modifier ou d'annuler le programme de fid
                           isPositive ? "text-[var(--positive)]" : "text-[var(--danger)]"
                         }`}
                       >
-                        {isPositive ? "+" : ""}
-                        {row.pointsDelta}
+                        {history.deltaLabel}
                       </span>
                     </li>
                   );

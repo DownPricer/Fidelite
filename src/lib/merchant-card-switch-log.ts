@@ -1,6 +1,7 @@
 type MerchantCardSwitchStep =
   | "mode sélectionné"
   | "mode publié"
+  | "programme publié"
   | "mode actif en base"
   | "variante demandée"
   | "gabarit trouvé"

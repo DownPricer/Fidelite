@@ -1,4 +1,5 @@
 import type { LoyaltyMode } from "@prisma/client";
+import { earnActionLabel } from "./loyalty-labels";
 import { LoyaltyError } from "./loyalty";
 import {
   computeEarnFromCents,
@@ -73,16 +74,7 @@ export function isPurchaseAmountRequired(mode: LoyaltyMode, rules: ProgramRules)
 }
 
 export function primaryEarnLabel(mode: LoyaltyMode, earned?: number) {
-  if (mode === "VISITS") {
-    if (earned === undefined) return "Valider un passage";
-    return earned === 1 ? "Valider un passage" : `Valider +${earned} passages`;
-  }
-  if (earned !== undefined && earned > 0) {
-    return `Valider +${earned} ${mode === "AMOUNT_TIERS" ? (earned === 1 ? "passage" : "passages") : "points"}`;
-  }
-  if (mode === "FIXED_POINTS") return "Valider les points";
-  if (mode === "AMOUNT_TIERS") return "Valider l'achat";
-  return "Valider les points";
+  return earnActionLabel(mode, earned);
 }
 
 export function progressLabelFor(mode: LoyaltyMode, points: number, threshold: number) {

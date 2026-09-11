@@ -458,6 +458,9 @@ model CaisseGrant {
   consumedAt           DateTime?
   earnCommittedAt      DateTime?
   earnTransactionId    String?
+  programId            String?
+  programVersion       Int?
+  programMode          LoyaltyMode?
   createdAt            DateTime           @default(now())
   membership           CustomerMembership @relation(fields: [customerMembershipId], references: [id], onDelete: Cascade)
   merchant             Merchant           @relation(fields: [merchantId], references: [id], onDelete: Cascade)

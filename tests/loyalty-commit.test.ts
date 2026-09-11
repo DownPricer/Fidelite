@@ -3,6 +3,9 @@ import { LoyaltyError } from "../src/lib/loyalty";
 
 const grantFindFirst = vi.fn();
 const membershipFindFirst = vi.fn();
+const merchantFindUnique = vi.fn();
+const loyaltyProgramFindUnique = vi.fn();
+const merchantCardTemplateFindFirst = vi.fn();
 const txFindUnique = vi.fn();
 const txFindFirst = vi.fn();
 const txFindMany = vi.fn();
@@ -34,6 +37,9 @@ vi.mock("../src/lib/prisma", () => {
     },
     walletEvent: { create: (...args: unknown[]) => walletEventCreate(...args) },
     merchantMembership: { updateMany: (...args: unknown[]) => merchantMembershipUpdateMany(...args) },
+    merchant: { findUnique: (...args: unknown[]) => merchantFindUnique(...args) },
+    loyaltyProgram: { findUnique: (...args: unknown[]) => loyaltyProgramFindUnique(...args) },
+    merchantCardTemplate: { findFirst: (...args: unknown[]) => merchantCardTemplateFindFirst(...args) },
     user: { update: vi.fn() },
     fifeLifePointsLedger: { create: vi.fn() },
   };
@@ -108,6 +114,9 @@ const grant = {
   createdAt: new Date(),
   earnCommittedAt: null,
   consumedAt: null,
+  programId: "p1",
+  programVersion: 1,
+  programMode: "VISITS" as const,
 };
 
 describe("preview et commit caisse", () => {
@@ -125,6 +134,17 @@ describe("preview et commit caisse", () => {
     grantUpdate.mockResolvedValue({ ...grant, earnCommittedAt: new Date() });
     walletEventCreate.mockResolvedValue({ id: "we1" });
     merchantMembershipUpdateMany.mockResolvedValue({ count: 1 });
+    merchantFindUnique.mockResolvedValue({
+      id: "m1",
+      name: "Café Demo",
+      slug: "cafe-demo",
+      logoUrl: null,
+      primaryColor: "#875BFF",
+      isActive: true,
+      status: "ACTIVE",
+    });
+    loyaltyProgramFindUnique.mockResolvedValue(program);
+    merchantCardTemplateFindFirst.mockResolvedValue(null);
   });
 
   it("prévisualise sans créer de transaction", async () => {

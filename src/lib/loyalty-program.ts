@@ -1,4 +1,5 @@
 import type { LoyaltyMode, LoyaltyReward, LoyaltyProgram } from "@prisma/client";
+import { loyaltyUnitForMode } from "./loyalty-labels";
 
 export type RoundingMode = "floor" | "round" | "decimal";
 
@@ -147,14 +148,41 @@ export function rewardFromDb(r: LoyaltyReward): RewardConfig {
   };
 }
 
-export function programToConfig(program: LoyaltyProgram & { rewards?: LoyaltyReward[] }): ProgramConfig {
+function normalizeThresholdUnit(value: string | null | undefined): "visits" | "points" {
+  return value === "points" ? "points" : "visits";
+}
+
+export function rewardsForProgramMode(
+  rewards: LoyaltyReward[],
+  mode: LoyaltyMode,
+  options?: { activeOnly?: boolean },
+): RewardConfig[] {
+  const unit = loyaltyUnitForMode(mode);
+  return rewards
+    .filter((reward) => {
+      if (options?.activeOnly !== false && !reward.isActive) return false;
+      return normalizeThresholdUnit(reward.thresholdUnit) === unit;
+    })
+    .sort((a, b) => a.sortOrder - b.sortOrder)
+    .map(rewardFromDb);
+}
+
+export function programToConfig(
+  program: LoyaltyProgram & { rewards?: LoyaltyReward[] },
+  options?: { activeOnly?: boolean; filterByMode?: boolean },
+): ProgramConfig {
   const mode = program.mode ?? "VISITS";
   const stored = program.config as ProgramRules | null;
   const rules = { ...DEFAULT_RULES[mode], ...(stored ?? {}) };
+  const allRewards = program.rewards ?? [];
+  const rewards =
+    options?.filterByMode === false
+      ? allRewards.sort((a, b) => a.sortOrder - b.sortOrder).map(rewardFromDb)
+      : rewardsForProgramMode(allRewards, mode, { activeOnly: options?.activeOnly !== false });
   return {
     mode,
     rules,
-    rewards: (program.rewards ?? []).sort((a, b) => a.sortOrder - b.sortOrder).map(rewardFromDb),
+    rewards,
   };
 }
 

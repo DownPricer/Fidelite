@@ -33,6 +33,8 @@ export type CardHistoryItem = {
   pointsDelta: number;
   reason: string | null;
   createdAt: string;
+  metadata?: Record<string, unknown> | null;
+  ruleApplied?: string | null;
 };
 
 export type WalletEventPayload = {

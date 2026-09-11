@@ -3,9 +3,15 @@ import { WalletHome } from "@/components/fife-life/wallet-home";
 import { demoWalletProps } from "@/lib/demo-visual";
 import { isClientDemoPage } from "@/lib/demo-visual-server";
 import { resolveClientNumber } from "@/lib/client-number";
+import {
+  buildCustomerProgramView,
+  getActiveMerchantLoyaltyContext,
+} from "@/lib/loyalty-context";
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/session";
 import { attachPublishedTemplates } from "@/lib/wallet-cards";
+
+export const dynamic = "force-dynamic";
 
 export default async function CarteIndexPage({
   searchParams,
@@ -24,24 +30,31 @@ export default async function CarteIndexPage({
 
   const memberships = await prisma.customerMembership.findMany({
     where: { userId: user.id, removedAt: null, merchant: { isActive: true } },
-    include: { merchant: { include: { program: true } } },
+    include: { merchant: true },
     orderBy: { updatedAt: "desc" },
   });
 
-  const baseCards = memberships
-    .filter((item) => item.merchant.program)
-    .map((item) => ({
-      id: item.id,
-      merchantId: item.merchantId,
-      slug: item.merchant.slug,
-      name: item.merchant.name,
-      logoUrl: item.merchant.logoUrl,
-      primaryColor: item.merchant.primaryColor,
-      points: item.points,
-      visitsRequired: item.merchant.program!.visitsRequired,
-      rewardLabel: item.merchant.program!.rewardLabel,
-      loyaltyMode: item.merchant.program!.mode,
-    }));
+  const baseCards = (
+    await Promise.all(
+      memberships.map(async (item) => {
+        const loyaltyContext = await getActiveMerchantLoyaltyContext(item.merchantId);
+        if (!loyaltyContext || !loyaltyContext.isOperational) return null;
+        const programView = buildCustomerProgramView(loyaltyContext, item.points);
+        return {
+          id: item.id,
+          merchantId: item.merchantId,
+          slug: item.merchant.slug,
+          name: item.merchant.name,
+          logoUrl: item.merchant.logoUrl,
+          primaryColor: item.merchant.primaryColor,
+          points: item.points,
+          visitsRequired: programView.progressTarget,
+          rewardLabel: programView.rewards[0]?.name ?? "Avantage",
+          loyaltyMode: loyaltyContext.mode,
+        };
+      }),
+    )
+  ).filter((card): card is NonNullable<typeof card> => card !== null);
 
   const cards = await attachPublishedTemplates(baseCards);
 

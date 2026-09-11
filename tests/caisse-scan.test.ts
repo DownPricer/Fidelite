@@ -4,6 +4,8 @@ import { signQrToken } from "../src/lib/qr";
 const fifeLifeQrTokenFindUnique = vi.fn();
 const fifeLifeQrTokenUpdate = vi.fn();
 const merchantFindFirst = vi.fn();
+const merchantFindUnique = vi.fn();
+const loyaltyProgramFindUnique = vi.fn();
 const customerMembershipFindFirst = vi.fn();
 const customerMembershipCreate = vi.fn();
 const customerMembershipUpdate = vi.fn();
@@ -19,6 +21,10 @@ vi.mock("../src/lib/prisma", () => {
     },
     merchant: {
       findFirst: (...args: unknown[]) => merchantFindFirst(...args),
+      findUnique: (...args: unknown[]) => merchantFindUnique(...args),
+    },
+    loyaltyProgram: {
+      findUnique: (...args: unknown[]) => loyaltyProgramFindUnique(...args),
     },
     customerMembership: {
       findFirst: (...args: unknown[]) => customerMembershipFindFirst(...args),
@@ -88,6 +94,53 @@ describe("processCaisseScan — QR global Fife Life", () => {
         visitsRequired: 10,
         rewardLabel: "1 boisson offerte",
       },
+    });
+    merchantFindUnique.mockResolvedValue({
+      id: merchantId,
+      name: "Demo Commerce",
+      slug: "demo-commerce",
+      logoUrl: null,
+      primaryColor: "#875BFF",
+      isActive: true,
+      status: "ACTIVE",
+    });
+    loyaltyProgramFindUnique.mockResolvedValue({
+      id: "prog_demo",
+      merchantId,
+      mode: "VISITS",
+      status: "ACTIVE",
+      visitsRequired: 10,
+      rewardLabel: "1 boisson offerte",
+      config: { visitsPerScan: 1 },
+      draftConfig: null,
+      version: 1,
+      publishedAt: new Date(),
+      scheduledAt: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      rewards: [
+        {
+          id: "reward_demo",
+          programId: "prog_demo",
+          name: "1 boisson offerte",
+          description: null,
+          iconUrl: null,
+          rewardType: "FREE_PRODUCT",
+          threshold: 10,
+          thresholdUnit: "visits",
+          value: null,
+          minPurchase: null,
+          maxDiscount: null,
+          isActive: true,
+          sortOrder: 0,
+          validFrom: null,
+          validUntil: null,
+          maxUsesPerCustomer: null,
+          reuseDelayDays: null,
+          globalLimit: null,
+          conditions: null,
+        },
+      ],
     });
     merchantCardTemplateFindFirst.mockResolvedValue(null);
     customerMembershipFindFirst.mockResolvedValue(membership);

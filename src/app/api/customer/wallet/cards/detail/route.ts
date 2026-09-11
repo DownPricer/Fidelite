@@ -2,6 +2,10 @@ import { NextResponse } from "next/server";
 
 import { requireUser } from "@/lib/api-guard";
 import { jsonError } from "@/lib/http";
+import {
+  buildCustomerProgramView,
+  getActiveMerchantLoyaltyContext,
+} from "@/lib/loyalty-context";
 import { prisma } from "@/lib/prisma";
 import { attachPublishedTemplates } from "@/lib/wallet-cards";
 import { normalizePublishedWalletTemplate } from "@/lib/wallet-card-template";
@@ -30,12 +34,19 @@ export async function GET(req: Request) {
       ...(membershipId ? { id: membershipId } : {}),
       ...(merchantId ? { merchantId } : {}),
     },
-    include: { merchant: { include: { program: true } } },
+    include: { merchant: true },
   });
 
-  if (!membership || !membership.merchant.program) {
+  if (!membership) {
     return jsonError("Carte introuvable.", 404);
   }
+
+  const loyaltyContext = await getActiveMerchantLoyaltyContext(membership.merchantId);
+  if (!loyaltyContext || !loyaltyContext.isOperational) {
+    return jsonError("Programme indisponible.", 404);
+  }
+
+  const programView = buildCustomerProgramView(loyaltyContext, membership.points);
 
   const [cardBase] = await attachPublishedTemplates([
     {
@@ -46,9 +57,9 @@ export async function GET(req: Request) {
       logoUrl: membership.merchant.logoUrl,
       primaryColor: membership.merchant.primaryColor,
       points: membership.points,
-      visitsRequired: membership.merchant.program.visitsRequired,
-      rewardLabel: membership.merchant.program.rewardLabel,
-      loyaltyMode: membership.merchant.program.mode,
+      visitsRequired: programView.progressTarget,
+      rewardLabel: programView.rewards[0]?.name ?? "Avantage",
+      loyaltyMode: loyaltyContext.mode,
     },
   ]);
 
@@ -62,6 +73,7 @@ export async function GET(req: Request) {
     cardTemplateId: cardWithTemplate.cardTemplateId ?? null,
     cardTemplateVersion: cardWithTemplate.cardTemplateVersion ?? null,
     cardTemplateUsedFallback: cardWithTemplate.cardTemplateUsedFallback ?? false,
+    programView,
   };
 
   return NextResponse.json(

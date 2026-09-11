@@ -3,6 +3,9 @@ import { LoyaltyTxType } from "@prisma/client";
 
 const customerMembershipFindFirst = vi.fn();
 const customerMembershipUpdate = vi.fn();
+const merchantFindUnique = vi.fn();
+const loyaltyProgramFindUnique = vi.fn();
+const merchantCardTemplateFindFirst = vi.fn();
 const loyaltyTransactionCreate = vi.fn();
 const walletEventCreate = vi.fn();
 const userUpdate = vi.fn();
@@ -29,6 +32,9 @@ vi.mock("../src/lib/prisma", () => {
     merchantMembership: {
       updateMany: vi.fn(async () => ({ count: 1 })),
     },
+    merchant: { findUnique: (...args: unknown[]) => merchantFindUnique(...args) },
+    loyaltyProgram: { findUnique: (...args: unknown[]) => loyaltyProgramFindUnique(...args) },
+    merchantCardTemplate: { findFirst: (...args: unknown[]) => merchantCardTemplateFindFirst(...args) },
   };
 
   return {
@@ -73,9 +79,37 @@ const baseMembership = {
   },
 };
 
+const activeProgram = {
+  id: "prog_1",
+  merchantId: "merchant_1",
+  mode: "VISITS" as const,
+  status: "ACTIVE" as const,
+  visitsRequired: 10,
+  rewardLabel: "1 boisson offerte",
+  config: { visitsPerScan: 1 },
+  draftConfig: null,
+  version: 1,
+  publishedAt: new Date(),
+  scheduledAt: null,
+  createdAt: new Date(),
+  updatedAt: new Date(),
+  rewards: [],
+};
+
 describe("points Fife Life globaux", () => {
   it("un simple passage ne donne aucun point Fife Life", async () => {
     vi.clearAllMocks();
+    merchantFindUnique.mockResolvedValue({
+      id: "merchant_1",
+      name: "Café Demo",
+      slug: "cafe-demo",
+      logoUrl: null,
+      primaryColor: "#875BFF",
+      isActive: true,
+      status: "ACTIVE",
+    });
+    loyaltyProgramFindUnique.mockResolvedValue(activeProgram);
+    merchantCardTemplateFindFirst.mockResolvedValue(null);
     customerMembershipFindFirst.mockResolvedValue({
       ...baseMembership,
       points: 3,
@@ -104,6 +138,17 @@ describe("points Fife Life globaux", () => {
 
   it("une récompense validée crédite des points Fife Life configurés", async () => {
     vi.clearAllMocks();
+    merchantFindUnique.mockResolvedValue({
+      id: "merchant_1",
+      name: "Café Demo",
+      slug: "cafe-demo",
+      logoUrl: null,
+      primaryColor: "#875BFF",
+      isActive: true,
+      status: "ACTIVE",
+    });
+    loyaltyProgramFindUnique.mockResolvedValue(activeProgram);
+    merchantCardTemplateFindFirst.mockResolvedValue(null);
     customerMembershipFindFirst.mockResolvedValue({
       ...baseMembership,
       points: 10,

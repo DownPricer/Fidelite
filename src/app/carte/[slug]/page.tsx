@@ -3,9 +3,15 @@ import { MerchantCardDetail } from "@/components/fife-life/merchant-detail";
 import { PREVIEW_CARDS, PREVIEW_HISTORY } from "@/components/fife-life/preview-data";
 import { isClientDemoPage } from "@/lib/demo-visual-server";
 import { isGoogleWalletConfigured } from "@/lib/google-wallet";
+import {
+  buildCustomerProgramView,
+  getActiveMerchantLoyaltyContext,
+} from "@/lib/loyalty-context";
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/session";
 import { attachPublishedTemplates } from "@/lib/wallet-cards";
+
+export const dynamic = "force-dynamic";
 
 export default async function CardPage({
   params,
@@ -36,9 +42,14 @@ export default async function CardPage({
 
   const membership = await prisma.customerMembership.findFirst({
     where: { userId: user.id, removedAt: null, merchant: { slug, isActive: true } },
-    include: { merchant: { include: { program: true } } },
+    include: { merchant: true },
   });
-  if (!membership || !membership.merchant.program) redirect(`/c/${slug}`);
+  if (!membership) redirect(`/c/${slug}`);
+
+  const loyaltyContext = await getActiveMerchantLoyaltyContext(membership.merchantId);
+  if (!loyaltyContext || !loyaltyContext.isOperational) redirect(`/c/${slug}`);
+
+  const programView = buildCustomerProgramView(loyaltyContext, membership.points);
 
   const history = await prisma.loyaltyTransaction.findMany({
     where: { customerMembershipId: membership.id },
@@ -50,6 +61,8 @@ export default async function CardPage({
       pointsDelta: true,
       reason: true,
       createdAt: true,
+      metadata: true,
+      ruleApplied: true,
     },
   });
 
@@ -62,9 +75,9 @@ export default async function CardPage({
       logoUrl: membership.merchant.logoUrl,
       primaryColor: membership.merchant.primaryColor,
       points: membership.points,
-      visitsRequired: membership.merchant.program.visitsRequired,
-      rewardLabel: membership.merchant.program.rewardLabel,
-      loyaltyMode: membership.merchant.program.mode,
+      visitsRequired: programView.progressTarget,
+      rewardLabel: programView.rewards[0]?.name ?? "Avantage",
+      loyaltyMode: loyaltyContext.mode,
     },
   ]);
 
@@ -73,12 +86,15 @@ export default async function CardPage({
       slug={slug}
       walletEnabled={isGoogleWalletConfigured()}
       merchant={merchantCard}
+      programView={programView}
       history={history.map((row) => ({
         id: row.id,
         type: row.type,
         pointsDelta: row.pointsDelta,
         reason: row.reason,
         createdAt: row.createdAt.toISOString(),
+        metadata: (row.metadata as Record<string, unknown> | null) ?? null,
+        ruleApplied: row.ruleApplied,
       }))}
     />
   );

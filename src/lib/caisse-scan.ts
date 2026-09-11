@@ -1,10 +1,10 @@
 import { normalizeClientNumber } from "@/lib/client-number";
 import { publicScanPayload } from "@/lib/caisse-program";
 import type { CardTemplateConfig } from "@/lib/card-template-schema";
+import { getActiveMerchantLoyaltyContext } from "@/lib/loyalty-context";
 import { buildNextBenefit } from "@/lib/loyalty-engine";
 import { CAISSE_GRANT_TTL_MS, evaluateCustomerRewards } from "@/lib/loyalty-commit";
-import { computeEarnFromCents, programToConfig } from "@/lib/loyalty-program";
-import { resolvePublishedMerchantCardTemplate } from "@/lib/merchant-card-template-service";
+import { computeEarnFromCents } from "@/lib/loyalty-program";
 import { prisma } from "@/lib/prisma";
 import { QrError, verifyQrToken } from "@/lib/qr";
 import { logWalletUnlock } from "@/lib/wallet-unlock-log";
@@ -16,20 +16,14 @@ async function buildScanResult(input: {
   globalQrId: string;
 }) {
   return prisma.$transaction(async (tx) => {
-    const merchant = await tx.merchant.findFirst({
-      where: { id: input.merchantId, isActive: true },
-      include: { program: { include: { rewards: true } } },
-    });
-    if (!merchant || !merchant.program) {
-      throw new QrError("Commerce introuvable.");
+    const context = await getActiveMerchantLoyaltyContext(input.merchantId, tx);
+    if (!context || !context.isOperational) {
+      throw new QrError("Commerce ou programme de fidélité indisponible.");
     }
 
     let membership = await tx.customerMembership.findFirst({
       where: { userId: input.user.id, merchantId: input.merchantId },
-        include: {
-        user: true,
-        merchant: { include: { program: { include: { rewards: true } } } },
-      },
+      include: { user: true },
     });
 
     let cardJustCreated = false;
@@ -39,35 +33,23 @@ async function buildScanResult(input: {
           userId: input.user.id,
           merchantId: input.merchantId,
         },
-        include: {
-          user: true,
-          merchant: { include: { program: { include: { rewards: true } } } },
-        },
+        include: { user: true },
       });
       cardJustCreated = true;
     } else if (membership.removedAt) {
       membership = await tx.customerMembership.update({
         where: { id: membership.id },
         data: { removedAt: null },
-        include: {
-          user: true,
-          merchant: { include: { program: { include: { rewards: true } } } },
-        },
+        include: { user: true },
       });
       cardJustCreated = true;
     }
 
-    const activeMode = membership.merchant.program!.mode;
-    const resolvedTemplate = await resolvePublishedMerchantCardTemplate(
-      input.merchantId,
-      activeMode,
-      tx,
-    );
-    const publishedTemplate = resolvedTemplate
+    const publishedTemplate = context.cardTemplate
       ? {
-          backgroundUrl: resolvedTemplate.backgroundUrl,
-          config: resolvedTemplate.config,
-          loyaltyMode: resolvedTemplate.loyaltyMode,
+          backgroundUrl: context.cardTemplate.backgroundUrl,
+          config: context.cardTemplate.config,
+          loyaltyMode: context.mode,
         }
       : null;
 
@@ -84,19 +66,19 @@ async function buildScanResult(input: {
           customerMembershipId: membership.id,
           type: "CARD_UNLOCKED",
           payload: {
-            merchantName: membership.merchant.name,
-            slug: membership.merchant.slug,
-            logoUrl: membership.merchant.logoUrl,
-            primaryColor: membership.merchant.primaryColor,
+            merchantName: context.merchant.name,
+            slug: context.merchant.slug,
+            logoUrl: context.merchant.logoUrl,
+            primaryColor: context.merchant.primaryColor,
             points: membership.points,
-            visitsRequired: membership.merchant.program!.visitsRequired,
-            rewardLabel: membership.merchant.program!.rewardLabel,
-            loyaltyMode: activeMode,
+            visitsRequired: context.progressTarget,
+            rewardLabel: context.primaryRewardLabel ?? "Avantage",
+            loyaltyMode: context.mode,
             cardTemplate: publishedTemplate
               ? {
                   backgroundUrl: publishedTemplate.backgroundUrl,
                   config: publishedTemplate.config as CardTemplateConfig,
-                  loyaltyMode: activeMode,
+                  loyaltyMode: context.mode,
                 }
               : null,
           },
@@ -109,10 +91,6 @@ async function buildScanResult(input: {
         membershipId: membership.id,
         userId: input.user.id,
       });
-    }
-
-    if (!membership.merchant.program) {
-      throw new QrError("Carte introuvable.");
     }
 
     const now = new Date();
@@ -129,14 +107,16 @@ async function buildScanResult(input: {
         merchantId: input.merchantId,
         actorUserId: input.actorUserId,
         expiresAt: new Date(now.getTime() + CAISSE_GRANT_TTL_MS),
+        programId: context.programId,
+        programVersion: context.programVersion,
+        programMode: context.mode,
       },
     });
 
-    const config = programToConfig(membership.merchant.program);
     const rewards = await evaluateCustomerRewards({
-      config,
+      config: context.config,
       balance: membership.points,
-      merchantName: merchant.name,
+      merchantName: context.merchant.name,
       customerMembershipId: membership.id,
       merchantId: input.merchantId,
       grantCreatedAt: grant.createdAt,
@@ -144,11 +124,11 @@ async function buildScanResult(input: {
       db: tx,
     });
     const nextBenefit = buildNextBenefit(
-      config.rewards,
+      context.rewards,
       membership.points,
-      config.mode,
-      config.rules,
-      computeEarnFromCents(config.mode, config.rules, 0).earned,
+      context.mode,
+      context.config.rules,
+      computeEarnFromCents(context.mode, context.config.rules, 0).earned,
     );
 
     return {
@@ -156,7 +136,7 @@ async function buildScanResult(input: {
         grantId: grant.id,
         firstName: membership.user.firstName,
         lastName: membership.user.lastName,
-        program: membership.merchant.program,
+        context,
         points: membership.points,
         expiresAt: grant.expiresAt.toISOString(),
         cardJustCreated,
@@ -164,16 +144,16 @@ async function buildScanResult(input: {
         nextBenefit,
       }),
       merchant: {
-        name: merchant.name,
-        slug: merchant.slug,
-        logoUrl: merchant.logoUrl,
-        primaryColor: merchant.primaryColor,
+        name: context.merchant.name,
+        slug: context.merchant.slug,
+        logoUrl: context.merchant.logoUrl,
+        primaryColor: context.merchant.primaryColor,
       },
       cardTemplate: publishedTemplate
         ? {
             backgroundUrl: publishedTemplate.backgroundUrl,
             config: publishedTemplate.config as CardTemplateConfig,
-            loyaltyMode: publishedTemplate.loyaltyMode,
+            loyaltyMode: context.mode,
           }
         : null,
     };

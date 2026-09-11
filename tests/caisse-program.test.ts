@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { buildProgramSnapshot, publicScanPayload } from "../src/lib/caisse-program";
 import type { LoyaltyProgram } from "@prisma/client";
+import { mockLoyaltyContext, mockLoyaltyProgram } from "./helpers/loyalty-context-fixtures";
 
 const baseProgram = {
   id: "p1",
@@ -23,7 +24,7 @@ describe("programme caisse employé", () => {
   it("formate un programme par passages", () => {
     const snapshot = buildProgramSnapshot(3, baseProgram);
     expect(snapshot.progressLabel).toBe("3 / 10 passages");
-    expect(snapshot.earnPreviewLabel).toBe("Valider un passage");
+    expect(snapshot.earnPreviewLabel).toBe("Valider le passage");
     expect(snapshot.requirePurchaseAmount).toBe(false);
   });
 
@@ -38,10 +39,18 @@ describe("programme caisse employé", () => {
   });
 
   it("limite la réponse scan aux données minimales", () => {
+    const context = mockLoyaltyContext(
+      mockLoyaltyProgram({
+        id: baseProgram.id,
+        merchantId: baseProgram.merchantId,
+        mode: "VISITS",
+        rewards: [{ name: "Boisson offerte", threshold: 10, thresholdUnit: "visits" }],
+      }),
+    );
     const payload = publicScanPayload({
       grantId: "g1",
       firstName: "Léa",
-      program: baseProgram,
+      context,
       points: 4,
       expiresAt: new Date().toISOString(),
     });
