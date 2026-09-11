@@ -1,25 +1,75 @@
 import { cookies } from "next/headers";
-import { EMPLOYEE_DEMO_COOKIE, MERCHANT_DEMO_COOKIE } from "@/lib/demo-mode";
-import { destroyEmployeeSession } from "@/lib/employee-session";
+import { NextResponse } from "next/server";
+import { isPublicDemoEnabled } from "@/lib/demo-mode";
+import {
+  demoCookieNamesForRole,
+  demoEnterTarget,
+  employeeSessionCookieName,
+  type DemoRole,
+} from "@/lib/demo-routing";
+import { isProduction } from "@/lib/env";
+import { revokeEmployeeSessionToken } from "@/lib/employee-session";
 
-const demoCookieOptions = {
-  path: "/",
-  httpOnly: true,
-  sameSite: "lax" as const,
-  maxAge: 60 * 60 * 24 * 7,
-};
+const DEMO_COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
 
-/** Active le mode démo commerçant en isolant la session employé éventuelle. */
-export async function activateMerchantDemoCookie() {
-  await destroyEmployeeSession();
-  const jar = await cookies();
-  jar.delete(EMPLOYEE_DEMO_COOKIE);
-  jar.set(MERCHANT_DEMO_COOKIE, "1", demoCookieOptions);
+function sharedCookieOptions() {
+  return {
+    path: "/",
+    httpOnly: true,
+    sameSite: "lax" as const,
+    secure: isProduction(),
+  };
 }
 
-/** Active le mode démo employé sans toucher à la session client. */
-export async function activateEmployeeDemoCookie() {
+export function setDemoCookieOnResponse(response: NextResponse, name: string, value: string) {
+  response.cookies.set(name, value, {
+    ...sharedCookieOptions(),
+    maxAge: DEMO_COOKIE_MAX_AGE,
+  });
+}
+
+export function clearCookieOnResponse(response: NextResponse, name: string) {
+  response.cookies.set(name, "", {
+    ...sharedCookieOptions(),
+    maxAge: 0,
+    expires: new Date(0),
+  });
+}
+
+export function applyDemoRoleCookies(response: NextResponse, role: DemoRole) {
+  const { activate, deactivate } = demoCookieNamesForRole(role);
+  for (const name of deactivate) {
+    clearCookieOnResponse(response, name);
+  }
+  setDemoCookieOnResponse(response, activate, "1");
+
+  if (role === "merchant" || role === "client") {
+    clearCookieOnResponse(response, employeeSessionCookieName());
+  }
+}
+
+export async function createDemoEnterResponse(request: Request, role: DemoRole) {
+  console.info("[demo-routing] rôle demandé", role);
+
+  if (!isPublicDemoEnabled()) {
+    const fallback =
+      role === "client" ? "/connexion" : role === "merchant" ? "/app/connexion" : "/employe/connexion";
+    return NextResponse.redirect(new URL(fallback, request.url));
+  }
+
   const jar = await cookies();
-  jar.delete(MERCHANT_DEMO_COOKIE);
-  jar.set(EMPLOYEE_DEMO_COOKIE, "1", demoCookieOptions);
+  const employeeToken = jar.get(employeeSessionCookieName())?.value;
+  if ((role === "merchant" || role === "client") && employeeToken) {
+    await revokeEmployeeSessionToken(employeeToken);
+    console.info("[demo-routing] session employé supprimée");
+  }
+
+  const response = NextResponse.redirect(new URL(demoEnterTarget(role), request.url));
+  applyDemoRoleCookies(response, role);
+
+  if (role === "merchant") {
+    console.info("[demo-routing] mode commerçant activé");
+  }
+
+  return response;
 }

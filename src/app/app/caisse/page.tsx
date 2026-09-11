@@ -7,12 +7,13 @@ import { canOpenCaisse, firstActiveStaffMembership } from "@/lib/rbac";
 import { CaisseScreen } from "./ui";
 
 export default async function CaissePage() {
-  const employeeSession = await getEmployeeSession();
-  if (employeeSession) {
-    redirect("/employe/scan");
-  }
-
   const { user, demo } = await resolveMerchantDemo();
+  if (!demo) {
+    const employeeSession = await getEmployeeSession();
+    if (employeeSession) {
+      redirect("/employe/scan");
+    }
+  }
 
   if (demo) {
     return <CaisseScreen merchantName={DEMO_MERCHANT.merchantName} role={DEMO_MERCHANT.role} demo />;

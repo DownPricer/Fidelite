@@ -1,11 +1,5 @@
-import { redirect } from "next/navigation";
-import { activateMerchantDemoCookie } from "@/lib/demo-session";
-import { isPublicDemoEnabled } from "@/lib/demo-mode";
+import { createDemoEnterResponse } from "@/lib/demo-session";
 
-export async function GET() {
-  if (!isPublicDemoEnabled()) {
-    redirect("/app/connexion");
-  }
-  await activateMerchantDemoCookie();
-  redirect("/app");
+export async function GET(request: Request) {
+  return createDemoEnterResponse(request, "merchant");
 }

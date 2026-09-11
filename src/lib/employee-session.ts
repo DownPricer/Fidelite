@@ -58,13 +58,17 @@ export async function createEmployeeSession(
   return rawToken;
 }
 
+export async function revokeEmployeeSessionToken(token: string) {
+  await prisma.session.deleteMany({
+    where: { tokenHash: hashToken(token), kind: SessionKind.EMPLOYEE },
+  });
+}
+
 export async function destroyEmployeeSession(token?: string) {
   const jar = await cookies();
   const value = token ?? jar.get(employeeCookieName())?.value;
   if (value) {
-    await prisma.session.deleteMany({
-      where: { tokenHash: hashToken(value), kind: SessionKind.EMPLOYEE },
-    });
+    await revokeEmployeeSessionToken(value);
   }
   jar.set(employeeCookieName(), "", { ...cookieOptions(new Date(0)), maxAge: 0 });
 }

@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { hasEmployeeCookie } from "./lib/employee-cookie";
-import { MERCHANT_DEMO_COOKIE } from "./lib/demo-mode";
+import { merchantDemoActiveFromRequest, shouldRedirectAppToEmployee } from "./lib/demo-routing";
 import { env } from "./lib/env";
 import { isAdminHost, isAppHost, isEmployeeHost } from "./lib/hosts";
 import { hasSuperAdminEntryCookie, SUPER_ADMIN_ENTRY_COOKIE, superAdminEntryCookieOptions } from "./lib/super-admin-entry";
@@ -21,16 +21,11 @@ const MERCHANT_BLOCKED_PREFIXES = [
   "/api/auth/change-password",
 ];
 
-function hasMerchantDemoCookie(req: NextRequest) {
-  if (!env.publicDemoMode) return false;
-  return req.cookies.get(MERCHANT_DEMO_COOKIE)?.value === "1";
-}
-
 export function middleware(req: NextRequest) {
   const host = req.headers.get("host") ?? "";
   const { pathname } = req.nextUrl;
   const employeeCookiePresent = hasEmployeeCookie(req);
-  const merchantDemoActive = hasMerchantDemoCookie(req);
+  const merchantDemoActive = merchantDemoActiveFromRequest(req);
 
   if (
     pathname.startsWith("/api") ||
@@ -53,10 +48,20 @@ export function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  if (employeeCookiePresent && !merchantDemoActive && pathname.startsWith("/app")) {
+  if (
+    shouldRedirectAppToEmployee({
+      pathname,
+      merchantDemoActive,
+      employeeCookiePresent,
+    })
+  ) {
+    console.info("[demo-routing] décision middleware", "redirect-employee");
     const url = req.nextUrl.clone();
     url.pathname = "/employe/scan";
     return NextResponse.redirect(url);
+  }
+  if (pathname.startsWith("/app") && merchantDemoActive) {
+    console.info("[demo-routing] décision middleware", "allow-merchant-demo");
   }
 
   if (isEmployeeHost(host)) {

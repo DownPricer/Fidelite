@@ -1,17 +1,5 @@
-import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
-import { CLIENT_DEMO_COOKIE, isPublicDemoEnabled } from "@/lib/demo-mode";
+import { createDemoEnterResponse } from "@/lib/demo-session";
 
-export async function GET() {
-  if (!isPublicDemoEnabled()) {
-    redirect("/connexion");
-  }
-  const jar = await cookies();
-  jar.set(CLIENT_DEMO_COOKIE, "1", {
-    path: "/",
-    httpOnly: true,
-    sameSite: "lax",
-    maxAge: 60 * 60 * 24 * 7,
-  });
-  redirect("/carte?demo=1");
+export async function GET(request: Request) {
+  return createDemoEnterResponse(request, "client");
 }
