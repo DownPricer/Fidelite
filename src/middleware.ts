@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { hasEmployeeCookie } from "./lib/employee-cookie";
+import { MERCHANT_DEMO_COOKIE } from "./lib/demo-mode";
 import { env } from "./lib/env";
 import { isAdminHost, isAppHost, isEmployeeHost } from "./lib/hosts";
 import { hasSuperAdminEntryCookie, SUPER_ADMIN_ENTRY_COOKIE, superAdminEntryCookieOptions } from "./lib/super-admin-entry";
@@ -20,10 +21,16 @@ const MERCHANT_BLOCKED_PREFIXES = [
   "/api/auth/change-password",
 ];
 
+function hasMerchantDemoCookie(req: NextRequest) {
+  if (!env.publicDemoMode) return false;
+  return req.cookies.get(MERCHANT_DEMO_COOKIE)?.value === "1";
+}
+
 export function middleware(req: NextRequest) {
   const host = req.headers.get("host") ?? "";
   const { pathname } = req.nextUrl;
   const employeeCookiePresent = hasEmployeeCookie(req);
+  const merchantDemoActive = hasMerchantDemoCookie(req);
 
   if (
     pathname.startsWith("/api") ||
@@ -33,7 +40,11 @@ export function middleware(req: NextRequest) {
     pathname === "/manifest.webmanifest" ||
     pathname === "/favicon.ico"
   ) {
-    if (employeeCookiePresent && MERCHANT_BLOCKED_PREFIXES.some((prefix) => pathname.startsWith(prefix))) {
+    if (
+      employeeCookiePresent &&
+      !merchantDemoActive &&
+      MERCHANT_BLOCKED_PREFIXES.some((prefix) => pathname.startsWith(prefix))
+    ) {
       if (pathname.startsWith("/api/caisse") || pathname.startsWith("/api/employe")) {
         return NextResponse.next();
       }
@@ -42,7 +53,7 @@ export function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  if (employeeCookiePresent && pathname.startsWith("/app")) {
+  if (employeeCookiePresent && !merchantDemoActive && pathname.startsWith("/app")) {
     const url = req.nextUrl.clone();
     url.pathname = "/employe/scan";
     return NextResponse.redirect(url);

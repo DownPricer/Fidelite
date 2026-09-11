@@ -5,10 +5,11 @@ import { firstActiveStaffMembership, canManageMerchantSettings } from "@/lib/rba
 import DashboardLayoutClient from "./layout-client";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const employee = await getEmployeeSession();
-  if (employee) redirect("/employe/scan");
-
   const { user, demo } = await resolveMerchantDemo();
+  if (!demo) {
+    const employee = await getEmployeeSession();
+    if (employee) redirect("/employe/scan");
+  }
   const membership = user ? firstActiveStaffMembership(user.merchantMemberships) : null;
   const admin = demo || (membership ? canManageMerchantSettings(membership.role) : false);
 
