@@ -60,8 +60,12 @@ export async function createDemoEnterResponse(request: Request, role: DemoRole) 
   const jar = await cookies();
   const employeeToken = jar.get(employeeSessionCookieName())?.value;
   if ((role === "merchant" || role === "client") && employeeToken) {
-    await revokeEmployeeSessionToken(employeeToken);
-    console.info("[demo-routing] session employé supprimée");
+    try {
+      await revokeEmployeeSessionToken(employeeToken);
+      console.info("[demo-routing] session employé supprimée");
+    } catch (error) {
+      console.warn("[demo-routing] révocation session employé en base ignorée", error);
+    }
   }
 
   const response = NextResponse.redirect(new URL(demoEnterTarget(role), request.url));
