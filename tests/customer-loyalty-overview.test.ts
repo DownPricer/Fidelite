@@ -1,10 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
   activityFromWalletEvent,
+  buildFifeLifeNextReward,
   buildNextRewardCandidates,
   formatActivityDate,
   formatActivityFromTransaction,
+  resolveNextRewardForActiveCard,
   selectBestNextReward,
+  type CardNextRewardEntry,
 } from "@/lib/customer-loyalty-overview";
 
 describe("customer loyalty overview", () => {
@@ -237,6 +240,128 @@ describe("customer loyalty overview", () => {
       if (!ids.has(id)) ids.add(id);
     }
     expect([...ids]).toEqual(["a", "b", "c", "d"]);
+  });
+
+  it("carte active wallet — Fife Life, commerçant et pas de mélange", () => {
+    const cardRewards: CardNextRewardEntry[] = [
+      {
+        cardKey: "global",
+        cardType: "global",
+        membershipId: null,
+        merchantId: null,
+        slug: "fife-life",
+        nextReward: buildFifeLifeNextReward(180),
+        availableReward: null,
+        progress: { current: 180, target: 250, percent: 53, unit: "points" },
+      },
+      {
+        cardKey: "mem-cafe",
+        cardType: "merchant",
+        membershipId: "mem-cafe",
+        merchantId: "cafe",
+        slug: "cafe-nova",
+        nextReward: selectBestNextReward(
+          buildNextRewardCandidates({
+            merchantId: "cafe",
+            merchantName: "Café Nova",
+            merchantSlug: "cafe-nova",
+            merchantLogoUrl: null,
+            mode: "FIXED_POINTS",
+            unit: "points",
+            balance: 80,
+            rewards: [{ id: "r1", name: "Café offert", threshold: 100, thresholdUnit: "points", isActive: true }],
+          }),
+        ),
+        availableReward: null,
+        progress: { current: 80, target: 100, percent: 80, unit: "points" },
+      },
+      {
+        cardKey: "mem-hotel",
+        cardType: "merchant",
+        membershipId: "mem-hotel",
+        merchantId: "hotel",
+        slug: "prism-hotel",
+        nextReward: selectBestNextReward(
+          buildNextRewardCandidates({
+            merchantId: "hotel",
+            merchantName: "Prism Hôtel",
+            merchantSlug: "prism-hotel",
+            merchantLogoUrl: null,
+            mode: "VISITS",
+            unit: "passages",
+            balance: 9,
+            rewards: [{ id: "r2", name: "Nuit offerte", threshold: 10, thresholdUnit: "visits", isActive: true }],
+          }),
+        ),
+        availableReward: null,
+        progress: { current: 9, target: 10, percent: 90, unit: "passages" },
+      },
+    ];
+
+    expect(
+      resolveNextRewardForActiveCard({
+        cardRewards,
+        activeCard: {
+          cardType: "global",
+          cardKey: "global",
+          membershipId: null,
+          merchantId: null,
+          slug: "fife-life",
+          activeIndex: 0,
+        },
+        fifeLifePoints: 180,
+      })?.rewardName,
+    ).toBe("Niveau Gold");
+
+    expect(
+      resolveNextRewardForActiveCard({
+        cardRewards,
+        activeCard: {
+          cardType: "merchant",
+          cardKey: "mem-cafe",
+          membershipId: "mem-cafe",
+          merchantId: "cafe",
+          slug: "cafe-nova",
+          activeIndex: 1,
+        },
+        fifeLifePoints: 180,
+      }),
+    ).toMatchObject({ rewardName: "Café offert", unit: "points" });
+
+    expect(
+      resolveNextRewardForActiveCard({
+        cardRewards,
+        activeCard: {
+          cardType: "merchant",
+          cardKey: "mem-hotel",
+          membershipId: "mem-hotel",
+          merchantId: "hotel",
+          slug: "prism-hotel",
+          activeIndex: 2,
+        },
+        fifeLifePoints: 180,
+      }),
+    ).toMatchObject({ rewardName: "Nuit offerte", unit: "passages" });
+  });
+
+  it("Fife Life max tier → aucune récompense globale inventée", () => {
+    expect(buildFifeLifeNextReward(600)).toBeNull();
+  });
+
+  it("récompense disponible → Disponible maintenant", () => {
+    const reward = selectBestNextReward(
+      buildNextRewardCandidates({
+        merchantId: "cafe",
+        merchantName: "Café Nova",
+        merchantSlug: "cafe-nova",
+        merchantLogoUrl: null,
+        mode: "FIXED_POINTS",
+        unit: "points",
+        balance: 120,
+        rewards: [{ id: "r1", name: "Boisson offerte", threshold: 100, thresholdUnit: "points", isActive: true }],
+      }),
+    );
+    expect(reward?.statusLabel).toBe("Disponible maintenant");
   });
 
   it("ignore les récompenses inactives ou unité incompatible", () => {

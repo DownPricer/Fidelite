@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { CardDeck } from "./card-deck";
 import { CardEnlargedView } from "./card-enlarged-view";
@@ -22,6 +22,12 @@ import { useWalletUnlockAnimation } from "./use-wallet-unlock-animation";
 import { WalletMotionRoot } from "./wallet-motion-root";
 import {
   activityFromWalletEvent,
+  buildFifeLifeNextReward,
+  resolveNextRewardForActiveCard,
+  selectBestNextReward,
+  buildNextRewardCandidates,
+  type ActiveWalletCard,
+  type CardNextRewardEntry,
   type CustomerLoyaltyOverview,
   type NextRewardOverview,
 } from "@/lib/customer-loyalty-overview";
@@ -57,7 +63,15 @@ export function WalletHome({
 
   const [points, setPoints] = useState(fifeLifePoints);
   const [cards, setCards] = useState(initialCards);
-  const [nextReward, setNextReward] = useState<NextRewardOverview | null>(initialOverview?.nextReward ?? null);
+  const [cardRewards, setCardRewards] = useState<CardNextRewardEntry[]>(initialOverview?.cardRewards ?? []);
+  const [activeCard, setActiveCard] = useState<ActiveWalletCard>({
+    cardType: "global",
+    cardKey: "global",
+    membershipId: null,
+    merchantId: null,
+    slug: "fife-life",
+    activeIndex: 0,
+  });
   const [recentActivity, setRecentActivity] = useState(initialOverview?.recentActivity ?? []);
   const [activityTotal, setActivityTotal] = useState(initialOverview?.activityTotal ?? 0);
   const [overviewError, setOverviewError] = useState<string | null>(null);
@@ -85,11 +99,25 @@ export function WalletHome({
 
   useEffect(() => {
     if (initialOverview) {
-      setNextReward(initialOverview.nextReward);
+      setCardRewards(initialOverview.cardRewards);
       setRecentActivity(initialOverview.recentActivity);
       setActivityTotal(initialOverview.activityTotal);
     }
   }, [initialOverview]);
+
+  const activeNextReward = useMemo(
+    () =>
+      resolveNextRewardForActiveCard({
+        cardRewards,
+        activeCard,
+        fifeLifePoints: points,
+      }),
+    [cardRewards, activeCard, points],
+  );
+
+  const handleActiveCardChange = useCallback((nextActive: ActiveWalletCard) => {
+    setActiveCard(nextActive);
+  }, []);
 
   useEffect(() => {
     setSheetOpen(initialSheetOpen);
@@ -101,7 +129,7 @@ export function WalletHome({
       const response = await fetch("/api/customer/loyalty/overview?activityLimit=5", { cache: "no-store" });
       if (!response.ok) throw new Error("overview");
       const data = (await response.json()) as CustomerLoyaltyOverview;
-      setNextReward(data.nextReward);
+      setCardRewards(data.cardRewards);
       setRecentActivity(data.recentActivity);
       setActivityTotal(data.activityTotal);
       setOverviewError(null);
@@ -119,7 +147,26 @@ export function WalletHome({
     (event: WalletEventPayload) => {
       if (event.type === "FIFE_LIFE_POINTS_UPDATED") {
         const total = event.payload.total;
-        if (typeof total === "number") setPoints(total);
+        if (typeof total === "number") {
+          setPoints(total);
+          setCardRewards((prev) =>
+            prev.map((entry) =>
+              entry.cardKey === "global"
+                ? {
+                    ...entry,
+                    nextReward: buildFifeLifeNextReward(total),
+                    progress: entry.progress
+                      ? {
+                          ...entry.progress,
+                          current: total,
+                          percent: buildFifeLifeNextReward(total)?.progressPercent ?? entry.progress.percent,
+                        }
+                      : null,
+                  }
+                : entry,
+            ),
+          );
+        }
       }
       if (event.type === "MERCHANT_CARD_UPDATED") {
         if (hasSeenWalletEvent(event.id)) return;
@@ -197,6 +244,57 @@ export function WalletHome({
           return [activityItem, ...prev].slice(0, 5);
         });
         setActivityTotal((prev) => prev + 1);
+
+        const membershipId =
+          event.customerMembershipId ??
+          cards.find((card) => card.merchantId === event.merchantId)?.id ??
+          null;
+        if (membershipId && typeof nextPoints === "number") {
+          setCardRewards((prev) => {
+            const current = prev.find((entry) => entry.membershipId === membershipId);
+            if (!current?.nextReward) return prev;
+            const card = cards.find((item) => item.id === membershipId);
+            if (!card) return prev;
+
+            const candidates = buildNextRewardCandidates({
+              merchantId: card.merchantId,
+              merchantName: card.name,
+              merchantSlug: card.slug,
+              merchantLogoUrl: card.logoUrl,
+              mode: current.nextReward.mode,
+              unit: current.nextReward.unit,
+              balance: nextPoints,
+              rewards: [
+                {
+                  id: "active-reward",
+                  name: current.nextReward.rewardName,
+                  threshold: current.nextReward.progressTarget,
+                  thresholdUnit: current.nextReward.unit === "passages" ? "visits" : "points",
+                  isActive: true,
+                },
+              ],
+            });
+            const updatedReward = selectBestNextReward(candidates);
+            return prev.map((entry) =>
+              entry.membershipId === membershipId
+                ? {
+                    ...entry,
+                    nextReward: updatedReward,
+                    availableReward: updatedReward?.available ? updatedReward : entry.availableReward,
+                    progress: updatedReward
+                      ? {
+                          current: updatedReward.progressCurrent,
+                          target: updatedReward.progressTarget,
+                          percent: updatedReward.progressPercent,
+                          unit: updatedReward.unit,
+                        }
+                      : entry.progress,
+                  }
+                : entry,
+            );
+          });
+        }
+
         void refreshOverview();
       }
       if (event.type === "CARD_REMOVED") {
@@ -214,7 +312,7 @@ export function WalletHome({
         enqueueUnlock(event);
       }
     },
-    [enqueueUnlock, refreshOverview],
+    [enqueueUnlock, refreshOverview, cards],
   );
 
   useWalletEvents(!preview, onEvent);
@@ -276,6 +374,7 @@ export function WalletHome({
               personalizedQr={personalizedQr}
               onOpenMerchant={openCard}
               onEnlargeCard={setEnlargedCard}
+              onActiveCardChange={handleActiveCardChange}
               demoVisual={preview}
             />
           </div>
@@ -286,19 +385,25 @@ export function WalletHome({
         <aside className="wallet-sidebar-column">
           <section className="wallet-reward-block glass-panel shrink-0 p-4">
             <h3 className="section-title mb-2">Prochaine récompense</h3>
-            {nextReward ? (
+            {activeNextReward ? (
               <>
-                <p className="text-sm font-semibold text-[var(--ink)]">
-                  {nextReward.rewardName} chez {nextReward.merchantName}
-                </p>
-                <p className="mt-1 text-xs text-[var(--muted-strong)]">{nextReward.statusLabel}</p>
-                {!nextReward.available ? (
+                <p className="text-sm font-semibold text-[var(--ink)]">{activeNextReward.rewardName}</p>
+                <p className="mt-1 text-xs text-[var(--muted-strong)]">{activeNextReward.statusLabel}</p>
+                {!activeNextReward.available ? (
                   <p className="mt-1 text-[10px] text-[var(--muted)]">
-                    {progressBalanceLabel(nextReward.mode as LoyaltyMode, nextReward.progressCurrent, nextReward.progressTarget)}{" "}
-                    · {nextReward.progressPercent} %
+                    {progressBalanceLabel(
+                      activeNextReward.mode as LoyaltyMode,
+                      activeNextReward.progressCurrent,
+                      activeNextReward.progressTarget,
+                    )}{" "}
+                    · {activeNextReward.progressPercent} %
                   </p>
                 ) : null}
               </>
+            ) : activeCard.cardType === "global" || activeCard.cardType === "global-tier" ? (
+              <p className="text-xs text-[var(--muted-strong)]">
+                Aucun prochain avantage Fife Life pour le moment.
+              </p>
             ) : (
               <p className="text-xs text-[var(--muted-strong)]">
                 Aucun prochain avantage disponible pour le moment.

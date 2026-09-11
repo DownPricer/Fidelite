@@ -9,6 +9,7 @@ import { GlobalCard } from "./global-card";
 import { preloadWalletQr } from "./qr-cache";
 import { MerchantCardRenderer } from "./merchant-card-renderer";
 import { resolveTier } from "./tier";
+import type { ActiveWalletCard } from "@/lib/customer-loyalty-overview";
 import type { MerchantCardData, WalletTier } from "./types";
 
 const SWIPE_THRESHOLD = 50;
@@ -35,6 +36,49 @@ function demoStartIndex(points: number) {
   return idx >= 0 ? idx : 0;
 }
 
+function activeCardFromDeck(deck: DeckItem[], index: number): ActiveWalletCard {
+  const safeIndex = ((index % deck.length) + deck.length) % deck.length;
+  const item = deck[safeIndex];
+  if (!item) {
+    return {
+      cardType: "global",
+      cardKey: "global",
+      membershipId: null,
+      merchantId: null,
+      slug: "fife-life",
+      activeIndex: 0,
+    };
+  }
+  if (item.kind === "global") {
+    return {
+      cardType: "global",
+      cardKey: "global",
+      membershipId: null,
+      merchantId: null,
+      slug: "fife-life",
+      activeIndex: safeIndex,
+    };
+  }
+  if (item.kind === "global-tier") {
+    return {
+      cardType: "global-tier",
+      cardKey: `global-tier-${item.tier}`,
+      membershipId: null,
+      merchantId: null,
+      slug: "fife-life",
+      activeIndex: safeIndex,
+    };
+  }
+  return {
+    cardType: "merchant",
+    cardKey: item.card.id,
+    membershipId: item.card.id,
+    merchantId: item.card.merchantId,
+    slug: item.card.slug,
+    activeIndex: safeIndex,
+  };
+}
+
 export function CardDeck({
   points,
   customerName,
@@ -43,6 +87,7 @@ export function CardDeck({
   personalizedQr = null,
   onOpenMerchant,
   onEnlargeCard,
+  onActiveCardChange,
   demoVisual = false,
 }: {
   points: number;
@@ -52,6 +97,7 @@ export function CardDeck({
   personalizedQr?: string | null;
   onOpenMerchant: (card: MerchantCardData) => void;
   onEnlargeCard?: (card: MerchantCardData) => void;
+  onActiveCardChange?: (activeCard: ActiveWalletCard) => void;
   demoVisual?: boolean;
 }) {
   const prefersReduced = useHydrationSafeReducedMotion();
@@ -74,6 +120,10 @@ export function CardDeck({
   useEffect(() => {
     if (index > deck.length - 1) setIndex(Math.max(0, deck.length - 1));
   }, [deck.length, index]);
+
+  useEffect(() => {
+    onActiveCardChange?.(activeCardFromDeck(deck, index));
+  }, [deck, index, onActiveCardChange]);
 
   useEffect(() => {
     const media = window.matchMedia("(min-width: 1024px)");
