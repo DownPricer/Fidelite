@@ -110,6 +110,9 @@ describe("champ manuel et caméra", () => {
     const fetchMock = vi.fn(async () => ({
       ok: true,
       status: 200,
+      headers: {
+        get: (name: string) => (name.toLowerCase() === "content-type" ? "application/json" : null),
+      },
       json: async () => ({ grantId: "grant_manual" }),
     }));
     vi.stubGlobal("fetch", fetchMock);
@@ -119,14 +122,21 @@ describe("champ manuel et caméra", () => {
     const manualToken = readManualToken(typed);
     expect(manualToken).toBe(cameraToken);
 
-    const camera = await postCaisseScan({ token: cameraToken });
-    const manual = await postCaisseScan({ token: manualToken });
+    const camera = await postCaisseScan({ inputType: "QR", value: cameraToken });
+    const manual = await postCaisseScan({ inputType: "QR", value: manualToken });
 
     expect(camera.data).toEqual(manual.data);
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(fetchMock.mock.calls[0]?.[0]).toBe(CAISSE_SCAN_PATH);
     expect(fetchMock.mock.calls[1]?.[0]).toBe(CAISSE_SCAN_PATH);
-    expect(fetchMock.mock.calls[0]?.[1]).toEqual(fetchMock.mock.calls[1]?.[1]);
+    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toEqual({
+      inputType: "QR",
+      value: cameraToken,
+    });
+    expect(JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body))).toEqual({
+      inputType: "QR",
+      value: manualToken,
+    });
 
     vi.unstubAllGlobals();
   });

@@ -103,7 +103,7 @@ export function CardEnlargedView({
             animate={{ scale: 1, y: 0 }}
             exit={{ scale: 0.94, y: 12 }}
             transition={spring}
-            onClick={(event) => event.stopPropagation()}
+            onClick={onClose}
           >
             {fifeLife ? (
               <div className="card-enlarged-loyalty-wrap w-full">
@@ -146,7 +146,7 @@ export function CardEnlargedView({
             )}
 
             <p className="card-enlarged-hint mt-4 text-center text-xs text-[var(--muted)] sm:text-sm">
-              Appuyez à côté de la carte pour fermer · touchez le QR pour l&apos;agrandir
+              Touchez à nouveau pour fermer · touchez le QR pour l&apos;agrandir
             </p>
           </motion.div>
         </motion.div>

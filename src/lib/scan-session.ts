@@ -96,20 +96,42 @@ export async function finalizeCameraStart(input: {
 
 export const CAISSE_SCAN_PATH = "/api/caisse/scan";
 
-export async function postCaisseScan(input: { token?: string; clientNumber?: string }) {
+export type CaisseScanRequest =
+  | { inputType: "QR"; value: string }
+  | { inputType: "CLIENT_NUMBER"; value: string };
+
+export async function postCaisseScan(input: CaisseScanRequest) {
   const response = await fetch(CAISSE_SCAN_PATH, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input),
   });
-  const data = (await response.json()) as Record<string, unknown>;
+
+  let data: Record<string, unknown> = {};
+  const contentType = response.headers?.get?.("content-type") ?? "";
+  if (contentType.includes("application/json")) {
+    try {
+      data = (await response.json()) as Record<string, unknown>;
+    } catch {
+      data = { error: "Une erreur est survenue. Réessayez." };
+    }
+  } else if (!response.ok) {
+    data = { error: "Une erreur est survenue. Réessayez." };
+  }
+
   return { ok: response.ok, status: response.status, data };
+}
+
+export function resolveCaisseScanError(data: Record<string, unknown>, status: number): string {
+  if (typeof data.error === "string" && data.error.trim()) return data.error;
+  if (status === 401) return "Votre session de caisse a expiré.";
+  return "Une erreur est survenue. Réessayez.";
 }
 
 export function readManualClientNumber(raw: string) {
   const digits = raw.replace(/\D/g, "");
   if (digits.length < 4 || digits.length > 8) {
-    throw new QrInputError("Saisissez un numéro client valide (4 à 8 chiffres).");
+    throw new QrInputError("Numéro client invalide.");
   }
   return digits;
 }

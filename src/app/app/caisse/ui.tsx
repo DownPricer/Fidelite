@@ -11,6 +11,7 @@ import {
   postCaisseScan,
   readManualClientNumber,
   rememberToken,
+  resolveCaisseScanError,
   shouldIgnoreInstantDuplicate,
   type TokenMemory,
 } from "@/lib/scan-session";
@@ -41,6 +42,7 @@ export function CaisseScreen({
   const [success, setSuccess] = useState<string | null>(null);
   const [result, setResult] = useState<ScanResult | null>(null);
   const lastCameraTokenRef = useRef<TokenMemory | null>(null);
+  const processingRef = useRef(false);
 
   const startScan = useCallback(() => {
     lastCameraTokenRef.current = null;
@@ -52,6 +54,7 @@ export function CaisseScreen({
   }, []);
 
   const submitToken = useCallback(async (token: string, source: "camera" | "manual") => {
+    if (processingRef.current || busy) return;
     if (source === "camera" && shouldIgnoreInstantDuplicate(lastCameraTokenRef.current, token)) {
       return;
     }
@@ -59,12 +62,14 @@ export function CaisseScreen({
       lastCameraTokenRef.current = rememberToken(token);
     }
 
+    processingRef.current = true;
     setBusy(true);
     setError(null);
     setScanning(false);
 
     if (demo) {
       setBusy(false);
+      processingRef.current = false;
       setResult({
         grantId: "demo-grant",
         firstName: "Léa",
@@ -81,19 +86,26 @@ export function CaisseScreen({
       return;
     }
 
-    const { ok, data } = await postCaisseScan({ token });
+    const { ok, status, data } = await postCaisseScan({ inputType: "QR", value: token });
     setBusy(false);
+    processingRef.current = false;
     if (!ok) {
       setResult(null);
-      setError(typeof data.error === "string" ? data.error : "Scan refusé.");
+      if (status === 401) {
+        window.location.href = "/app/connexion";
+        return;
+      }
+      setError(resolveCaisseScanError(data, status));
       return;
     }
     setResult(data as ScanResult);
     setSuccess(null);
-  }, [demo]);
+  }, [busy, demo]);
 
   const submitClientNumber = useCallback(
     async (raw: string) => {
+      if (processingRef.current || busy) return;
+
       let clientNumber: string;
       try {
         clientNumber = readManualClientNumber(raw);
@@ -102,12 +114,14 @@ export function CaisseScreen({
         return;
       }
 
+      processingRef.current = true;
       setBusy(true);
       setError(null);
       setScanning(false);
 
       if (demo && clientNumber === DEMO_CLIENT_NUMBER) {
         setBusy(false);
+        processingRef.current = false;
         setResult({
           grantId: "demo-grant",
           firstName: "Léa",
@@ -123,21 +137,30 @@ export function CaisseScreen({
         return;
       }
 
-      const { ok, data } = await postCaisseScan({ clientNumber });
+      const { ok, status, data } = await postCaisseScan({
+        inputType: "CLIENT_NUMBER",
+        value: raw.trim(),
+      });
       setBusy(false);
+      processingRef.current = false;
       if (!ok) {
         setResult(null);
-        setError(typeof data.error === "string" ? data.error : "Client introuvable.");
+        if (status === 401) {
+          window.location.href = "/app/connexion";
+          return;
+        }
+        setError(resolveCaisseScanError(data, status));
         return;
       }
       setResult(data as ScanResult);
       setSuccess(null);
     },
-    [demo],
+    [busy, demo],
   );
 
   function resetToIdle() {
     lastCameraTokenRef.current = null;
+    processingRef.current = false;
     setResult(null);
     setError(null);
     setSuccess(null);
@@ -200,8 +223,8 @@ export function CaisseScreen({
                 <div className="glass-panel flex shrink-0 flex-col gap-4 p-5">
                   <div>
                     <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--muted)]">Passage caisse</p>
-                    <h2 className="mt-1 text-xl font-black text-[var(--ink)]">Scanner un QR Fife Life</h2>
-                    <p className="mt-1 text-sm text-[var(--muted-strong)]">Ou saisissez le numéro client ci-dessous.</p>
+                    <h2 className="mt-1 text-xl font-black text-[var(--ink)]">Scanner un QR ou saisir le numéro client</h2>
+                    <p className="mt-1 text-sm text-[var(--muted-strong)]">Utilisez la caméra ou le champ numérique ci-dessous.</p>
                   </div>
                   <motion.button
                     type="button"
@@ -234,7 +257,7 @@ export function CaisseScreen({
               )}
 
               <div className="shrink-0 space-y-2">
-                <p className="text-sm font-semibold text-[var(--ink)]">Entrer le numéro du client</p>
+                <p className="text-sm font-semibold text-[var(--ink)]">Numéro client</p>
                 <ClientNumberField
                   disabled={busy}
                   onSubmit={(value) => void submitClientNumber(value)}

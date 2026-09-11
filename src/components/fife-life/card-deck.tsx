@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { motion, useMotionValue } from "motion/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useHydrationSafeReducedMotion } from "./use-client-mounted";
@@ -199,23 +198,6 @@ export function CardDeck({
       rewardLabel: "Avantage Fife Life",
       demoTier: tier,
     };
-  }
-
-  if (deck.length === 1 && cards.length === 0 && !demoVisual) {
-    return (
-      <div ref={sceneRef} className="deck-scene fife-deck-scene deck-scene-solo relative mx-auto w-full select-none overflow-visible">
-        <Link href="/carte/identite" className="absolute inset-x-0 top-1/2 z-20 mx-auto block w-[var(--wallet-card-width)] max-w-full -translate-y-1/2">
-          <GlobalCard
-            points={points}
-            customerName={customerName}
-            clientNumber={clientNumber}
-            qrSrc={personalizedQr}
-            large
-            mode="wallet"
-          />
-        </Link>
-      </div>
-    );
   }
 
   return (

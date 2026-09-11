@@ -181,7 +181,6 @@ export function ClientNumberField({
     const token = value.trim();
     if (!token) return;
     onSubmit(token);
-    setValue("");
   }
 
   return (
@@ -202,10 +201,10 @@ export function ClientNumberField({
         placeholder="Numéro client (ex. 482 917)"
         autoComplete="off"
         inputMode="numeric"
-        enterKeyHint="done"
+        enterKeyHint="search"
       />
       <Button type="submit" variant="primary" className="shrink-0 px-5 sm:min-w-[9rem]" disabled={disabled}>
-        Valider
+        Rechercher le client
       </Button>
     </form>
   );

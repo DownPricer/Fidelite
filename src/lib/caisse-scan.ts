@@ -1,3 +1,4 @@
+import { CaisseScanError, maskClientNumberForLog } from "@/lib/caisse-scan-errors";
 import { normalizeClientNumber } from "@/lib/client-number";
 import { publicScanPayload } from "@/lib/caisse-program";
 import type { CardTemplateConfig } from "@/lib/card-template-schema";
@@ -18,7 +19,7 @@ async function buildScanResult(input: {
   return prisma.$transaction(async (tx) => {
     const context = await getActiveMerchantLoyaltyContext(input.merchantId, tx);
     if (!context || !context.isOperational) {
-      throw new QrError("Commerce ou programme de fidélité indisponible.");
+      throw new CaisseScanError("Ce client ne peut pas être utilisé dans ce commerce.", "MERCHANT_UNAVAILABLE");
     }
 
     let membership = await tx.customerMembership.findFirst({
@@ -191,16 +192,20 @@ export async function processCaisseScanByClientNumber(input: {
 }) {
   logWalletUnlock("scan validé", { merchantId: input.merchantId });
   const normalized = normalizeClientNumber(input.clientNumber);
-  if (normalized.length < 4) {
-    throw new QrError("Numéro client invalide.");
+  console.info("[caisse-scan] numéro normalisé", maskClientNumberForLog(normalized));
+  if (normalized.length < 4 || normalized.length > 8) {
+    console.info("[caisse-scan] refus : raison", "INVALID_CLIENT_NUMBER");
+    throw new CaisseScanError("Numéro client invalide.", "INVALID_CLIENT_NUMBER");
   }
 
   const user = await prisma.user.findFirst({
     where: { clientNumber: normalized, isActive: true },
   });
   if (!user) {
-    throw new QrError("Aucun client trouvé pour ce numéro.");
+    console.info("[caisse-scan] refus : raison", "CLIENT_NOT_FOUND");
+    throw new CaisseScanError("Client introuvable.", "CLIENT_NOT_FOUND");
   }
+  console.info("[caisse-scan] client trouvé", { userId: user.id });
 
   let global = await prisma.fifeLifeQrToken.findUnique({
     where: { userId: user.id },

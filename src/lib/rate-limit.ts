@@ -32,5 +32,6 @@ export const LIMITS = {
   superAdminLogin: { limit: 5, windowMs: 15 * 60 * 1000 },
   register: { limit: 5, windowMs: 15 * 60 * 1000 },
   scan: { limit: 40, windowMs: 60 * 1000 },
+  clientNumberLookup: { limit: 20, windowMs: 60 * 1000 },
   qr: { limit: 40, windowMs: 60 * 1000 },
 };

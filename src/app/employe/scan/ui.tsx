@@ -3,13 +3,15 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { GlassBottomSheet } from "@/components/fife-life/profile/glass-bottom-sheet";
-import { QrScanner } from "@/components/qr-scanner";
+import { ClientNumberField, QrScanner } from "@/components/qr-scanner";
 import { CashierCheckout, type CashierScanResult } from "@/components/caisse/cashier-checkout";
 import { Button, Field, Input } from "@/components/ui";
 import {
   postCaisseScan,
+  readManualClientNumber,
   readManualToken,
   rememberToken,
+  resolveCaisseScanError,
   shouldIgnoreInstantDuplicate,
   type TokenMemory,
 } from "@/lib/scan-session";
@@ -156,7 +158,7 @@ export function EmployeeScanScreen({
         return;
       }
 
-      const { ok, status, data } = await postCaisseScan({ token });
+      const { ok, status, data } = await postCaisseScan({ inputType: "QR", value: token });
       setBusy(false);
       processingRef.current = false;
 
@@ -171,11 +173,75 @@ export function EmployeeScanScreen({
           setError("Compte suspendu ou accès retiré.");
           return;
         }
-        if (status === 429) {
-          setError(typeof data.error === "string" ? data.error : "Scan trop rapproché.");
+        setError(resolveCaisseScanError(data, status));
+        return;
+      }
+
+      setResult(data as ScanResult);
+      setPhase("result");
+    },
+    [busy, demo],
+  );
+
+  const submitClientNumber = useCallback(
+    async (raw: string) => {
+      if (processingRef.current || busy) return;
+
+      let clientNumber: string;
+      try {
+        clientNumber = readManualClientNumber(raw);
+      } catch (err) {
+        setPhase("error");
+        setError(err instanceof QrInputError ? err.message : "Numéro client invalide.");
+        setCameraActive(false);
+        return;
+      }
+
+      processingRef.current = true;
+      setBusy(true);
+      setError(null);
+      setPhase("processing");
+      setCameraActive(false);
+      setPasteOpen(false);
+
+      if (demo) {
+        setBusy(false);
+        processingRef.current = false;
+        setResult({
+          grantId: "demo-grant",
+          firstName: "Léa",
+          lastName: "Martin",
+          customerName: "Léa Martin",
+          points: 7,
+          visitsRequired: 10,
+          rewardLabel: "1 boisson offerte",
+          rewardAvailable: true,
+          progressLabel: "7 / 10 passages",
+          earnPreviewLabel: "Valider un passage",
+        });
+        setPhase("result");
+        return;
+      }
+
+      const { ok, status, data } = await postCaisseScan({
+        inputType: "CLIENT_NUMBER",
+        value: clientNumber,
+      });
+      setBusy(false);
+      processingRef.current = false;
+
+      if (!ok) {
+        setResult(null);
+        setPhase("error");
+        if (status === 401) {
+          window.location.href = "/employe/connexion";
           return;
         }
-        setError(typeof data.error === "string" ? data.error : "QR invalide.");
+        if (status === 403) {
+          setError("Compte suspendu ou accès retiré.");
+          return;
+        }
+        setError(resolveCaisseScanError(data, status));
         return;
       }
 
@@ -262,7 +328,7 @@ export function EmployeeScanScreen({
                         </p>
                       </>
                     ) : (
-                      <p>Appuyez sur « Autoriser la caméra » pour scanner un QR Fife Life.</p>
+                      <p>Scanner un QR ou saisir le numéro client ci-dessous.</p>
                     )}
                   </div>
                 )}
@@ -294,8 +360,16 @@ export function EmployeeScanScreen({
                   </>
                 )}
                 <Button variant="secondary" className="col-span-2" onClick={() => setPasteOpen(true)} disabled={busy}>
-                  Coller un lien ou un code
+                  Coller un lien ou un code QR
                 </Button>
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted-text)]">Numéro client</p>
+                <ClientNumberField
+                  disabled={busy}
+                  onSubmit={(value) => void submitClientNumber(value)}
+                />
               </div>
             </motion.div>
           )}
