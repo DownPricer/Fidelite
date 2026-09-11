@@ -8,7 +8,13 @@ import type { CardHistoryItem, MerchantCardData, WalletEventPayload } from "./ty
 import { usePersonalizedQr } from "./use-personalized-qr";
 import { mergeMerchantCardUpdate } from "@/lib/merchant-card-update";
 import type { buildCustomerProgramView } from "@/lib/loyalty-context";
-import { formatUnitCount, historyEntryLabel } from "@/lib/loyalty-labels";
+import { formatUnitCount, historyEntryLabel, progressBalanceLabel, type HistoryTxMetadata } from "@/lib/loyalty-labels";
+import {
+  activityFromWalletEvent,
+  type ActivityItem,
+  type NextRewardOverview,
+} from "@/lib/customer-loyalty-overview";
+import type { LoyaltyMode } from "@prisma/client";
 import { useWalletEvents } from "./use-wallet-events";
 
 type CustomerProgramView = ReturnType<typeof buildCustomerProgramView>;
@@ -18,6 +24,9 @@ export function MerchantCardDetail({
   merchant,
   history,
   programView,
+  nextReward: initialNextReward = null,
+  recentActivity: initialRecentActivity = [],
+  activityTotal: initialActivityTotal = 0,
   preview = false,
   walletEnabled = false,
 }: {
@@ -25,11 +34,19 @@ export function MerchantCardDetail({
   merchant: MerchantCardData;
   history: CardHistoryItem[];
   programView?: CustomerProgramView;
+  nextReward?: NextRewardOverview | null;
+  recentActivity?: ActivityItem[];
+  activityTotal?: number;
   preview?: boolean;
   walletEnabled?: boolean;
 }) {
   const [card, setCard] = useState(merchant);
   const [rows, setRows] = useState(history);
+  const [nextReward, setNextReward] = useState<NextRewardOverview | null>(initialNextReward);
+  const [recentActivity, setRecentActivity] = useState(initialRecentActivity);
+  const [activityTotal, setActivityTotal] = useState(initialActivityTotal);
+  const [showFullHistory, setShowFullHistory] = useState(false);
+  const [overviewError, setOverviewError] = useState<string | null>(null);
   const [walletBusy, setWalletBusy] = useState(false);
   const [shareBusy, setShareBusy] = useState(false);
   const [shareSuccess, setShareSuccess] = useState(false);
@@ -50,6 +67,30 @@ export function MerchantCardDetail({
   useEffect(() => {
     setAndroid(preview || /android/i.test(navigator.userAgent));
   }, [preview]);
+
+  useEffect(() => {
+    setNextReward(initialNextReward);
+    setRecentActivity(initialRecentActivity);
+    setActivityTotal(initialActivityTotal);
+  }, [initialNextReward, initialRecentActivity, initialActivityTotal]);
+
+  const refreshOverview = useCallback(async () => {
+    if (preview) return;
+    try {
+      const response = await fetch(
+        `/api/customer/loyalty/overview?merchantSlug=${encodeURIComponent(slug)}&activityLimit=5`,
+        { cache: "no-store" },
+      );
+      if (!response.ok) throw new Error("overview");
+      const data = await response.json();
+      setNextReward(data.nextReward ?? null);
+      setRecentActivity(data.recentActivity ?? []);
+      setActivityTotal(data.activityTotal ?? 0);
+      setOverviewError(null);
+    } catch {
+      setOverviewError("Impossible de charger l'activité.");
+    }
+  }, [preview, slug]);
 
   const onEvent = useCallback((event: WalletEventPayload) => {
     const match =
@@ -74,18 +115,45 @@ export function MerchantCardDetail({
       }
       const txId = typeof event.payload.txId === "string" ? event.payload.txId : event.id;
       const delta = typeof event.payload.delta === "number" ? event.payload.delta : 0;
-      setRows((prev) => [
-        {
-          id: txId,
-          type: typeof event.payload.type === "string" ? event.payload.type : event.type,
-          pointsDelta: delta,
-          reason: typeof event.payload.rewardLabel === "string" ? event.payload.rewardLabel : null,
-          createdAt: event.createdAt,
-        },
-        ...prev,
-      ]);
+      const txType = typeof event.payload.type === "string" ? event.payload.type : event.type;
+      const metadata = (event.payload.metadata as HistoryTxMetadata | null) ?? null;
+      setRows((prev) => {
+        if (prev.some((row) => row.id === txId)) return prev;
+        return [
+          {
+            id: txId,
+            type: txType,
+            pointsDelta: delta,
+            reason: typeof event.payload.rewardLabel === "string" ? event.payload.rewardLabel : null,
+            createdAt: event.createdAt,
+            metadata: metadata as Record<string, unknown> | null,
+          },
+          ...prev,
+        ];
+      });
+
+      const activityItem = activityFromWalletEvent({
+        eventId: txId,
+        merchantId: card.merchantId,
+        merchantName: card.name,
+        merchantSlug: slug,
+        merchantLogoUrl: card.logoUrl,
+        createdAt: event.createdAt,
+        type: txType,
+        delta,
+        rewardLabel: typeof event.payload.rewardLabel === "string" ? event.payload.rewardLabel : null,
+        purchaseAmountCents:
+          typeof event.payload.purchaseAmountCents === "number" ? event.payload.purchaseAmountCents : null,
+        metadata,
+      });
+      setRecentActivity((prev) => {
+        if (prev.some((row) => row.id === activityItem.id)) return prev;
+        return [activityItem, ...prev].slice(0, 5);
+      });
+      setActivityTotal((prev) => prev + 1);
+      void refreshOverview();
     }
-  }, [card.id, card.merchantId]);
+  }, [card.id, card.merchantId, card.logoUrl, card.name, slug, refreshOverview]);
 
   useWalletEvents(!preview, onEvent);
 
@@ -306,6 +374,75 @@ Le commerçant se réserve le droit de modifier ou d'annuler le programme de fid
 
           <div className="merchant-side-panel">
           <section className="glass-panel mt-6 p-5">
+            <h2 className="section-title">Prochaine récompense</h2>
+            {nextReward ? (
+              <div className="mt-3">
+                <p className="text-sm font-semibold text-[var(--ink)]">{nextReward.rewardName}</p>
+                <p className="mt-1 text-xs text-[var(--muted-strong)]">{nextReward.statusLabel}</p>
+                {!nextReward.available ? (
+                  <p className="mt-1 text-[10px] text-[var(--muted)]">
+                    {progressBalanceLabel(nextReward.mode as LoyaltyMode, nextReward.progressCurrent, nextReward.progressTarget)}{" "}
+                    · {nextReward.progressPercent} %
+                  </p>
+                ) : null}
+              </div>
+            ) : (
+              <p className="mt-3 text-sm text-[var(--muted)]">
+                Aucun prochain avantage disponible pour le moment.
+              </p>
+            )}
+          </section>
+
+          <section className="glass-panel mt-4 p-5">
+            <h2 className="section-title">Activité récente</h2>
+            {overviewError ? (
+              <div className="mt-3 space-y-2">
+                <p className="text-sm text-[var(--muted-strong)]">{overviewError}</p>
+                <button
+                  type="button"
+                  onClick={() => void refreshOverview()}
+                  className="text-xs font-semibold text-[var(--violet-bright)] hover:underline"
+                >
+                  Réessayer
+                </button>
+              </div>
+            ) : recentActivity.length === 0 ? (
+              <p className="mt-3 text-sm text-[var(--muted)]">
+                Aucune activité enregistrée chez {card.name}.
+              </p>
+            ) : (
+              <>
+                <ul className="mt-4 divide-y divide-white/8">
+                  {recentActivity.map((row) => (
+                    <li key={row.id} className="flex items-start justify-between gap-4 py-3 first:pt-0">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold text-[var(--ink)]">{row.detail}</p>
+                        <p className="text-xs text-[var(--muted)] mt-0.5">{row.formattedDate}</p>
+                      </div>
+                      <span
+                        className={`text-sm font-black tabular-nums ${
+                          row.deltaLabel.startsWith("−") ? "text-[var(--danger)]" : "text-[var(--positive)]"
+                        }`}
+                      >
+                        {row.deltaLabel}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+                {activityTotal > recentActivity.length && !showFullHistory ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowFullHistory(true)}
+                    className="mt-3 text-xs font-semibold text-[var(--violet-bright)] hover:underline"
+                  >
+                    Voir tout
+                  </button>
+                ) : null}
+              </>
+            )}
+          </section>
+
+          <section className="glass-panel mt-4 p-5">
             <h2 className="section-title">Programme</h2>
             <div className="mt-3 space-y-1 text-sm text-[var(--ink-soft)]">
               <p className="font-semibold text-[var(--ink)]">
@@ -340,6 +477,7 @@ Le commerçant se réserve le droit de modifier ou d'annuler le programme de fid
           </section>
 
           {/* History section */}
+          {showFullHistory ? (
           <section className="glass-panel mt-4 p-5">
             <h2 className="section-title">Historique</h2>
             {rows.length === 0 ? (
@@ -385,6 +523,7 @@ Le commerçant se réserve le droit de modifier ou d'annuler le programme de fid
               </ul>
             )}
           </section>
+          ) : null}
 
           {/* Conditions section */}
           <section className="glass-panel mt-4 p-5">

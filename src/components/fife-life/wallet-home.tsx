@@ -20,12 +20,13 @@ import { preloadWalletQr } from "./qr-cache";
 import { usePersonalizedQr } from "./use-personalized-qr";
 import { useWalletUnlockAnimation } from "./use-wallet-unlock-animation";
 import { WalletMotionRoot } from "./wallet-motion-root";
-
-const ACTIVITY = [
-  { label: "Brasserie Nova · 3 cocktails", delta: "+ 480 pts" },
-  { label: "Cinéma Lumière · 2 places", delta: "+ 260 pts" },
-  { label: "Prism Hôtel · Check-in", delta: "+ 1 200 pts" },
-];
+import {
+  activityFromWalletEvent,
+  type CustomerLoyaltyOverview,
+  type NextRewardOverview,
+} from "@/lib/customer-loyalty-overview";
+import { progressBalanceLabel, type HistoryTxMetadata } from "@/lib/loyalty-labels";
+import type { LoyaltyMode } from "@prisma/client";
 
 export function WalletHome({
   firstName,
@@ -34,6 +35,7 @@ export function WalletHome({
   clientNumber,
   fifeLifePoints,
   cards: initialCards,
+  initialOverview = null,
   preview = false,
   initialSheetOpen = false,
   initialNewCard = null,
@@ -44,6 +46,7 @@ export function WalletHome({
   clientNumber?: string | null;
   fifeLifePoints: number;
   cards: MerchantCardData[];
+  initialOverview?: CustomerLoyaltyOverview | null;
   preview?: boolean;
   initialSheetOpen?: boolean;
   initialNewCard?: string | null;
@@ -54,6 +57,10 @@ export function WalletHome({
 
   const [points, setPoints] = useState(fifeLifePoints);
   const [cards, setCards] = useState(initialCards);
+  const [nextReward, setNextReward] = useState<NextRewardOverview | null>(initialOverview?.nextReward ?? null);
+  const [recentActivity, setRecentActivity] = useState(initialOverview?.recentActivity ?? []);
+  const [activityTotal, setActivityTotal] = useState(initialOverview?.activityTotal ?? 0);
+  const [overviewError, setOverviewError] = useState<string | null>(null);
   const [sheetOpen, setSheetOpen] = useState(initialSheetOpen);
   const [enlargedCard, setEnlargedCard] = useState<MerchantCardData | null>(null);
   const { qrSrc: personalizedQr } = usePersonalizedQr(!preview);
@@ -77,8 +84,31 @@ export function WalletHome({
   }, [fifeLifePoints]);
 
   useEffect(() => {
+    if (initialOverview) {
+      setNextReward(initialOverview.nextReward);
+      setRecentActivity(initialOverview.recentActivity);
+      setActivityTotal(initialOverview.activityTotal);
+    }
+  }, [initialOverview]);
+
+  useEffect(() => {
     setSheetOpen(initialSheetOpen);
   }, [initialSheetOpen]);
+
+  const refreshOverview = useCallback(async () => {
+    if (preview) return;
+    try {
+      const response = await fetch("/api/customer/loyalty/overview?activityLimit=5", { cache: "no-store" });
+      if (!response.ok) throw new Error("overview");
+      const data = (await response.json()) as CustomerLoyaltyOverview;
+      setNextReward(data.nextReward);
+      setRecentActivity(data.recentActivity);
+      setActivityTotal(data.activityTotal);
+      setOverviewError(null);
+    } catch {
+      setOverviewError("Impossible de charger votre activité.");
+    }
+  }, [preview]);
 
   useEffect(() => {
     if (preview) return;
@@ -138,6 +168,36 @@ export function WalletHome({
             };
           }),
         );
+
+        const txId = typeof event.payload.txId === "string" ? event.payload.txId : event.id;
+        const delta = typeof event.payload.delta === "number" ? event.payload.delta : 0;
+        const merchantName =
+          typeof event.payload.merchantName === "string" ? event.payload.merchantName : "Commerce";
+        const merchantSlug =
+          typeof event.payload.merchantSlug === "string" ? event.payload.merchantSlug : "";
+        const activityItem = activityFromWalletEvent({
+          eventId: txId,
+          merchantId: event.merchantId ?? "",
+          merchantName,
+          merchantSlug,
+          merchantLogoUrl:
+            typeof event.payload.merchantLogoUrl === "string" ? event.payload.merchantLogoUrl : null,
+          createdAt: event.createdAt,
+          type: typeof event.payload.type === "string" ? event.payload.type : event.type,
+          delta,
+          rewardLabel: typeof event.payload.rewardLabel === "string" ? event.payload.rewardLabel : null,
+          purchaseAmountCents:
+            typeof event.payload.purchaseAmountCents === "number"
+              ? event.payload.purchaseAmountCents
+              : null,
+          metadata: (event.payload.metadata as HistoryTxMetadata | null) ?? null,
+        });
+        setRecentActivity((prev) => {
+          if (prev.some((row) => row.id === activityItem.id)) return prev;
+          return [activityItem, ...prev].slice(0, 5);
+        });
+        setActivityTotal((prev) => prev + 1);
+        void refreshOverview();
       }
       if (event.type === "CARD_REMOVED") {
         markWalletEventSeen(event.id);
@@ -154,7 +214,7 @@ export function WalletHome({
         enqueueUnlock(event);
       }
     },
-    [enqueueUnlock],
+    [enqueueUnlock, refreshOverview],
   );
 
   useWalletEvents(!preview, onEvent);
@@ -226,27 +286,73 @@ export function WalletHome({
         <aside className="wallet-sidebar-column">
           <section className="wallet-reward-block glass-panel shrink-0 p-4">
             <h3 className="section-title mb-2">Prochaine récompense</h3>
-            <p className="text-sm font-semibold text-[var(--ink)]">Nuit offerte chez Prism Hôtel</p>
-            <p className="mt-1 text-xs text-[var(--muted-strong)]">Encore 1 240 pts Fife Life</p>
+            {nextReward ? (
+              <>
+                <p className="text-sm font-semibold text-[var(--ink)]">
+                  {nextReward.rewardName} chez {nextReward.merchantName}
+                </p>
+                <p className="mt-1 text-xs text-[var(--muted-strong)]">{nextReward.statusLabel}</p>
+                {!nextReward.available ? (
+                  <p className="mt-1 text-[10px] text-[var(--muted)]">
+                    {progressBalanceLabel(nextReward.mode as LoyaltyMode, nextReward.progressCurrent, nextReward.progressTarget)}{" "}
+                    · {nextReward.progressPercent} %
+                  </p>
+                ) : null}
+              </>
+            ) : (
+              <p className="text-xs text-[var(--muted-strong)]">
+                Aucun prochain avantage disponible pour le moment.
+              </p>
+            )}
           </section>
 
           <div className="wallet-activity-block wallet-lower mt-4 shrink-0 lg:mt-0">
             <section className="glass-panel p-4">
               <h3 className="section-title mb-3">Activité récente</h3>
-              <p className="wallet-reward-inline mb-3 text-xs font-medium text-[var(--ink-soft)]">
-                Prochaine récompense · Nuit offerte chez Prism Hôtel
-              </p>
-              <ul className="space-y-2">
-                {ACTIVITY.map((row) => (
-                  <li key={row.label} className="flex items-center justify-between gap-3 text-[11px]">
-                    <span className="flex min-w-0 items-center gap-2 text-[var(--ink-soft)]">
-                      <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--violet-bright)]" />
-                      <span className="truncate">{row.label}</span>
-                    </span>
-                    <span className="shrink-0 font-semibold text-[#9fd88a]">{row.delta}</span>
-                  </li>
-                ))}
-              </ul>
+              {overviewError ? (
+                <div className="space-y-2">
+                  <p className="text-xs text-[var(--muted-strong)]">{overviewError}</p>
+                  <button
+                    type="button"
+                    onClick={() => void refreshOverview()}
+                    className="text-xs font-semibold text-[var(--violet-bright)] hover:underline"
+                  >
+                    Réessayer
+                  </button>
+                </div>
+              ) : recentActivity.length === 0 ? (
+                <p className="text-xs text-[var(--muted-strong)]">
+                  Votre activité apparaîtra ici après votre premier passage.
+                </p>
+              ) : (
+                <>
+                  <ul className="space-y-2">
+                    {recentActivity.map((row) => (
+                      <li key={row.id} className="flex items-center justify-between gap-3 text-[11px]">
+                        <span className="flex min-w-0 items-center gap-2 text-[var(--ink-soft)]">
+                          <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--violet-bright)]" />
+                          <span className="truncate">{row.lineLabel}</span>
+                        </span>
+                        <span
+                          className={`shrink-0 font-semibold ${
+                            row.deltaLabel.startsWith("−") ? "text-[var(--danger)]" : "text-[#9fd88a]"
+                          }`}
+                        >
+                          {row.deltaLabel}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                  {activityTotal > recentActivity.length ? (
+                    <Link
+                      href={preview ? "/compte?demo=1" : "/compte"}
+                      className="mt-3 inline-block text-xs font-semibold text-[var(--violet-bright)] hover:underline"
+                    >
+                      Voir tout
+                    </Link>
+                  ) : null}
+                </>
+              )}
             </section>
           </div>
 

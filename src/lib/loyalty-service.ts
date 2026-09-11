@@ -175,6 +175,10 @@ async function persistLoyaltyAction(tx: LoyaltyDb, input: ApplyLoyaltyInput) {
         visitsRequired: required,
         progressLabel: snapshot.progressLabel,
         merchantName: membership.merchant.name,
+        merchantSlug: membership.merchant.slug,
+        merchantLogoUrl: membership.merchant.logoUrl,
+        purchaseAmountCents: purchaseAmountCents ?? null,
+        metadata: loyaltyTx.metadata,
       },
     },
   });
@@ -205,10 +209,16 @@ async function persistLoyaltyAction(tx: LoyaltyDb, input: ApplyLoyaltyInput) {
         type: WalletEventType.REWARD_REDEEMED,
         payload: {
           txId: loyaltyTx.id,
+          type: input.type,
+          delta,
           rewardId: input.rewardId ?? null,
           rewardLabel,
           points: nextPoints,
           merchantName: membership.merchant.name,
+          merchantSlug: membership.merchant.slug,
+          merchantLogoUrl: membership.merchant.logoUrl,
+          purchaseAmountCents: purchaseAmountCents ?? null,
+          metadata: loyaltyTx.metadata,
         },
       },
     });

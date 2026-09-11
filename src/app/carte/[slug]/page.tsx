@@ -10,6 +10,7 @@ import {
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/session";
 import { attachPublishedTemplates } from "@/lib/wallet-cards";
+import { getCustomerLoyaltyOverview } from "@/lib/customer-loyalty-overview";
 
 export const dynamic = "force-dynamic";
 
@@ -66,6 +67,12 @@ export default async function CardPage({
     },
   });
 
+  const overview = await getCustomerLoyaltyOverview({
+    userId: user.id,
+    merchantId: membership.merchantId,
+    activityLimit: 5,
+  });
+
   const [merchantCard] = await attachPublishedTemplates([
     {
       id: membership.id,
@@ -87,6 +94,9 @@ export default async function CardPage({
       walletEnabled={isGoogleWalletConfigured()}
       merchant={merchantCard}
       programView={programView}
+      nextReward={overview.nextReward}
+      recentActivity={overview.recentActivity}
+      activityTotal={overview.activityTotal}
       history={history.map((row) => ({
         id: row.id,
         type: row.type,

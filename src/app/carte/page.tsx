@@ -10,6 +10,7 @@ import {
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/session";
 import { attachPublishedTemplates } from "@/lib/wallet-cards";
+import { getCustomerLoyaltyOverview } from "@/lib/customer-loyalty-overview";
 
 export const dynamic = "force-dynamic";
 
@@ -57,6 +58,7 @@ export default async function CarteIndexPage({
   ).filter((card): card is NonNullable<typeof card> => card !== null);
 
   const cards = await attachPublishedTemplates(baseCards);
+  const overview = await getCustomerLoyaltyOverview({ userId: user.id, activityLimit: 5 });
 
   return (
     <WalletHome
@@ -68,6 +70,7 @@ export default async function CarteIndexPage({
       initialSheetOpen={params.sheet === "1"}
       initialNewCard={params.toast ?? null}
       cards={cards}
+      initialOverview={overview}
     />
   );
 }

@@ -1,4 +1,5 @@
 import { PREVIEW_CARDS, PREVIEW_HISTORY, PREVIEW_PROFILE, PREVIEW_PREFERENCES } from "@/components/fife-life/preview-data";
+import { DEMO_LOYALTY_OVERVIEW } from "@/lib/demo-loyalty-overview";
 import { isClientDemoMode, isDemoCookie, CLIENT_DEMO_COOKIE } from "@/lib/demo-mode";
 import { presetPermissions } from "@/lib/staff-permissions";
 
@@ -31,6 +32,7 @@ export function demoWalletProps(searchParams?: { sheet?: string; toast?: string 
     clientNumber: DEMO_CLIENT_NUMBER,
     fifeLifePoints: DEMO_POINTS,
     cards: PREVIEW_CARDS,
+    initialOverview: DEMO_LOYALTY_OVERVIEW,
     preview: true,
     initialSheetOpen: searchParams?.sheet === "1",
     initialNewCard: searchParams?.toast ?? null,
