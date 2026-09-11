@@ -37,10 +37,19 @@ export function ExpandableQrCode({
   const [open, setOpen] = useState(false);
   const canZoom = zoomEnabled && Boolean(qrSrc);
 
-  function handleActivate(event: React.MouseEvent | React.KeyboardEvent) {
-    event.stopPropagation();
+  function openQr() {
     if (!canZoom) return;
     setOpen(true);
+  }
+
+  function handleActivate(event: React.MouseEvent | React.KeyboardEvent) {
+    event.preventDefault();
+    event.stopPropagation();
+    openQr();
+  }
+
+  function stopCardExpand(event: React.PointerEvent | React.MouseEvent) {
+    event.stopPropagation();
   }
 
   const content = qrSrc ? (
@@ -78,7 +87,11 @@ export function ExpandableQrCode({
             role="button"
             tabIndex={0}
             aria-label="Agrandir le QR code"
+            data-no-card-expand="true"
             className={cn("merchant-card-qr-hitbox h-full w-full", className)}
+            style={{ pointerEvents: "auto" }}
+            onPointerDown={stopCardExpand}
+            onPointerUp={stopCardExpand}
             onClick={handleActivate}
             onKeyDown={(event) => {
               if (event.key === "Enter" || event.key === " ") {

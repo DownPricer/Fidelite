@@ -1,6 +1,11 @@
-/** Normalise un numéro client saisi (espaces, tirets). */
+/** Normalise un numéro client saisi (espaces, tirets, #, etc.). */
+export function normalizeCustomerNumber(raw: string): string {
+  return raw.replace(/[^\d]/g, "");
+}
+
+/** Alias historique — même logique que {@link normalizeCustomerNumber}. */
 export function normalizeClientNumber(raw: string): string {
-  return raw.replace(/\D/g, "");
+  return normalizeCustomerNumber(raw);
 }
 
 /** Affichage lisible : 482917 → 482 917 */

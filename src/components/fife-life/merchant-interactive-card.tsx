@@ -112,6 +112,10 @@ export function MerchantInteractiveCard({
         {showQr ? (
           <div
             className={cn("merchant-interactive-card__qr-wrap", compactQr && "is-compact")}
+            data-no-card-expand="true"
+            style={{ pointerEvents: "auto" }}
+            onPointerDown={(event) => event.stopPropagation()}
+            onPointerUp={(event) => event.stopPropagation()}
             onClick={(event) => event.stopPropagation()}
           >
             <ExpandableQrCode

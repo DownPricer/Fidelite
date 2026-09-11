@@ -107,7 +107,14 @@ export function InteractiveLoyaltyCard({
         </header>
 
         {showQr ? (
-          <div className="loyalty-card__qr-block" onClick={(event) => event.stopPropagation()}>
+          <div
+            className="loyalty-card__qr-block"
+            data-no-card-expand="true"
+            style={{ pointerEvents: "auto" }}
+            onPointerDown={(event) => event.stopPropagation()}
+            onPointerUp={(event) => event.stopPropagation()}
+            onClick={(event) => event.stopPropagation()}
+          >
             <ExpandableQrCode
               qrSrc={effectiveQrSrc && !qrFailed ? effectiveQrSrc : null}
               clientNumber={clientNumber}

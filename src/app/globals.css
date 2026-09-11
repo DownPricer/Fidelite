@@ -581,7 +581,10 @@ body:has(.wallet-shell) {
 }
 
 .loyalty-card button,
-.loyalty-card a {
+.loyalty-card a,
+.loyalty-card__qr-block,
+.loyalty-card__qr-block .merchant-card-qr-hitbox,
+.loyalty-card__qr-block .merchant-card-qr-shell {
   pointer-events: auto;
 }
 
@@ -659,6 +662,7 @@ body:has(.wallet-shell) {
   left: 6.8%;
   top: 32%;
   width: 25.7%;
+  pointer-events: auto;
 }
 
 .loyalty-card__qr {
@@ -935,6 +939,7 @@ body:has(.wallet-shell) {
   flex-direction: column;
   align-items: center;
   margin-top: 4cqw;
+  pointer-events: auto;
 }
 
 .merchant-interactive-card__qr-wrap.is-compact {

@@ -1,7 +1,7 @@
 import { requireCaisse, requireMutatingRequest } from "@/lib/api-guard";
 import { processCaisseScan, processCaisseScanByClientNumber } from "@/lib/caisse-scan";
 import { CaisseScanError, maskClientNumberForLog } from "@/lib/caisse-scan-errors";
-import { normalizeClientNumber } from "@/lib/client-number";
+import { normalizeCustomerNumber } from "@/lib/client-number";
 import { writeAudit } from "@/lib/audit";
 import { clientIp, jsonError, jsonOk, readJson, userAgent } from "@/lib/http";
 import { publicQrErrorMessage } from "@/lib/qr";
@@ -13,13 +13,28 @@ function scanVia(input: { inputType: "QR" | "CLIENT_NUMBER" }) {
   return input.inputType === "CLIENT_NUMBER" ? "clientNumber" : "qr";
 }
 
+function logScanBody(body: unknown) {
+  console.info("[caisse-scan] clés du body reçues", body && typeof body === "object" ? Object.keys(body) : []);
+  if (body && typeof body === "object" && "inputType" in body) {
+    console.info("[caisse-scan] inputType reçu", String(body.inputType));
+  }
+  if (body && typeof body === "object" && "value" in body && typeof body.value === "string") {
+    console.info("[caisse-scan] longueur de value", body.value.length);
+  }
+}
+
 export async function POST(req: Request) {
+  const contentType = req.headers.get("content-type") ?? "";
+  console.info("[caisse-scan] content-type reçu", contentType);
+
   const csrf = await requireMutatingRequest(req);
   if (csrf.error) return csrf.error;
   const staff = await requireCaisse(req);
   if (staff.error || !staff.user || !staff.membership) return staff.error ?? jsonError("Accès refusé.", 403);
 
   const body = await readJson(req);
+  logScanBody(body);
+
   const parsed = scanSchema.safeParse(body);
   if (!parsed.success) {
     const inputType =
@@ -27,9 +42,12 @@ export async function POST(req: Request) {
     const code = inputType === "CLIENT_NUMBER" ? "INVALID_CLIENT_NUMBER" : "INVALID_REQUEST";
     const message =
       inputType === "CLIENT_NUMBER" ? "Numéro client invalide." : zodErrorMessage(parsed.error);
+    console.info("[caisse-scan] validation échouée", code);
     console.info("[caisse-scan] refus : raison", code);
     return jsonError(message, 400, { code });
   }
+
+  console.info("[caisse-scan] validation réussie", parsed.data.inputType);
 
   const via = scanVia(parsed.data);
 
@@ -64,7 +82,7 @@ export async function POST(req: Request) {
   const scanKey =
     parsed.data.inputType === "QR"
       ? `scan-token:${staff.user.id}:${parsed.data.value.slice(0, 32)}`
-      : `scan-client:${staff.user.id}:${normalizeClientNumber(parsed.data.value)}`;
+      : `scan-client:${staff.user.id}:${normalizeCustomerNumber(parsed.data.value)}`;
   const duplicate = rateLimit(scanKey, 1, 2_000);
   if (!duplicate.ok) {
     return jsonError("Scan trop rapproché. Patientez un instant.", 429);
@@ -74,7 +92,7 @@ export async function POST(req: Request) {
     const result =
       parsed.data.inputType === "CLIENT_NUMBER"
         ? await processCaisseScanByClientNumber({
-            clientNumber: normalizeClientNumber(parsed.data.value),
+            clientNumber: normalizeCustomerNumber(parsed.data.value),
             merchantId: staff.membership.merchantId,
             actorUserId: staff.user.id,
           })
@@ -98,7 +116,9 @@ export async function POST(req: Request) {
         programMode: result.programMode,
         membershipId: "id" in staff.membership ? staff.membership.id : staff.membership.merchantId,
         ...(parsed.data.inputType === "CLIENT_NUMBER"
-          ? { clientNumberMasked: maskClientNumberForLog(normalizeClientNumber(parsed.data.value)) }
+          ? {
+              clientNumberMasked: maskClientNumberForLog(normalizeCustomerNumber(parsed.data.value)),
+            }
           : {}),
       },
       ip: clientIp(req),
@@ -111,6 +131,7 @@ export async function POST(req: Request) {
     const isQrInput = error instanceof QrInputError;
     const message = isCaisseScan || isQrInput ? error.message : publicQrErrorMessage(error);
     const code = isCaisseScan ? error.code : isQrInput ? "INVALID_QR" : "SCAN_FAILED";
+    const status = isCaisseScan ? error.status : 400;
 
     console.info("[caisse-scan] refus : raison", code);
 
@@ -127,9 +148,6 @@ export async function POST(req: Request) {
       userAgent: userAgent(req),
     });
 
-    if (isCaisseScan || isQrInput) {
-      return jsonError(message, 400, { code });
-    }
-    return jsonError(message, 400, { code });
+    return jsonError(message, status, { code });
   }
 }

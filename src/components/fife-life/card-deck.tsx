@@ -9,6 +9,7 @@ import { preloadWalletQr } from "./qr-cache";
 import { MerchantCardRenderer } from "./merchant-card-renderer";
 import { resolveTier } from "./tier";
 import type { ActiveWalletCard } from "@/lib/customer-loyalty-overview";
+import { shouldProceedWithCardExpand } from "@/lib/card-deck-interaction";
 import type { MerchantCardData, WalletTier } from "./types";
 
 const SWIPE_THRESHOLD = 50;
@@ -105,6 +106,7 @@ export function CardDeck({
   const [index, setIndex] = useState(() => (demoVisual ? demoStartIndex(points) : 0));
   const [deckMetrics, setDeckMetrics] = useState({ spread: 32, offsetY: 105 });
   const dragY = useMotionValue(0);
+  const suppressCardClickRef = useRef(false);
 
   const deck = useMemo<DeckItem[]>(() => {
     if (demoVisual) {
@@ -168,11 +170,30 @@ export function CardDeck({
     const velocity = info.velocity.y;
 
     if (Math.abs(swipe) > SWIPE_THRESHOLD || Math.abs(velocity) > VELOCITY_THRESHOLD) {
+      suppressCardClickRef.current = true;
       if (swipe < 0) snapTo(index + 1);
       else snapTo(index - 1);
     } else {
       dragY.set(0);
     }
+  }
+
+  function handleCardExpand(
+    event: React.MouseEvent | React.KeyboardEvent,
+    callback: () => void,
+    active: boolean,
+  ) {
+    if (
+      !shouldProceedWithCardExpand({
+        target: event.target,
+        active,
+        suppressNextClick: suppressCardClickRef.current,
+      })
+    ) {
+      if (suppressCardClickRef.current) suppressCardClickRef.current = false;
+      return;
+    }
+    callback();
   }
 
   function handleKeyDown(e: React.KeyboardEvent) {
@@ -260,17 +281,19 @@ export function CardDeck({
                   role="button"
                   tabIndex={0}
                   className="deck-card-slot block w-full cursor-pointer border-0 bg-transparent p-0 text-left"
-                  onClick={() => {
-                    if (active && onEnlargeCard) {
+                  onClick={(event) => {
+                    if (!onEnlargeCard) return;
+                    handleCardExpand(event, () => {
                       onEnlargeCard(globalEnlargePayload(item.kind === "global-tier" ? item.tier : undefined));
-                    }
+                    }, active);
                   }}
                   onKeyDown={(event) => {
                     if (event.key !== "Enter" && event.key !== " ") return;
                     event.preventDefault();
-                    if (active && onEnlargeCard) {
+                    if (!onEnlargeCard) return;
+                    handleCardExpand(event, () => {
                       onEnlargeCard(globalEnlargePayload(item.kind === "global-tier" ? item.tier : undefined));
-                    }
+                    }, active);
                   }}
                 >
                   <GlobalCard
@@ -293,15 +316,21 @@ export function CardDeck({
                   role="button"
                   tabIndex={0}
                   className="deck-card-slot block w-full cursor-pointer border-0 bg-transparent p-0 text-left"
-                  onClick={() => {
-                    if (active && onEnlargeCard) onEnlargeCard(item.card);
-                    else if (!active) setIndex(i);
+                  onClick={(event) => {
+                    if (active && onEnlargeCard) {
+                      handleCardExpand(event, () => onEnlargeCard(item.card), active);
+                    } else if (!active) {
+                      setIndex(i);
+                    }
                   }}
                   onKeyDown={(event) => {
                     if (event.key !== "Enter" && event.key !== " ") return;
                     event.preventDefault();
-                    if (active && onEnlargeCard) onEnlargeCard(item.card);
-                    else if (!active) setIndex(i);
+                    if (active && onEnlargeCard) {
+                      handleCardExpand(event, () => onEnlargeCard(item.card), active);
+                    } else if (!active) {
+                      setIndex(i);
+                    }
                   }}
                 >
                   <MerchantCardRenderer

@@ -1,9 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { deriveClientNumber } from "../src/lib/client-number";
 import { scanSchema } from "../src/lib/validation";
 import { readManualClientNumber, postCaisseScan } from "../src/lib/scan-session";
 import { QrInputError } from "../src/lib/qr-input";
 
 const userFindFirst = vi.fn();
+const userFindMany = vi.fn();
 const fifeLifeQrTokenFindUnique = vi.fn();
 const fifeLifeQrTokenCreate = vi.fn();
 
@@ -67,7 +69,10 @@ vi.mock("../src/lib/prisma", () => {
   return {
     prisma: {
       $transaction: async (callback: (tx: typeof tx) => Promise<unknown>) => callback(tx),
-      user: { findFirst: (...args: unknown[]) => userFindFirst(...args) },
+      user: {
+        findFirst: (...args: unknown[]) => userFindFirst(...args),
+        findMany: (...args: unknown[]) => userFindMany(...args),
+      },
       ...tx,
     },
   };
@@ -95,9 +100,10 @@ describe("scanSchema — body explicite", () => {
 });
 
 describe("readManualClientNumber", () => {
-  it("normalise espaces et tirets", () => {
+  it("normalise espaces, tirets et #", () => {
     expect(readManualClientNumber("482 917")).toBe("482917");
     expect(readManualClientNumber("482-917")).toBe("482917");
+    expect(readManualClientNumber("#482917")).toBe("482917");
   });
 
   it("rejette un numéro trop court", () => {
@@ -129,6 +135,7 @@ describe("postCaisseScan — lecture JSON sûre", () => {
 describe("processCaisseScanByClientNumber", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    userFindMany.mockResolvedValue([]);
     userFindFirst.mockResolvedValue({
       id: "user_1",
       firstName: "Alice",
@@ -156,14 +163,43 @@ describe("processCaisseScanByClientNumber", () => {
     });
   });
 
-  it("signale un client introuvable", async () => {
+  it("retrouve un numéro dérivé affiché sur la carte", async () => {
+    const userId = "user_derived_only";
+    const derived = deriveClientNumber(userId);
+
     userFindFirst.mockResolvedValueOnce(null);
+    userFindMany.mockResolvedValueOnce([{ id: userId }]);
+    userFindFirst.mockResolvedValueOnce({
+      id: userId,
+      firstName: "Bob",
+      lastName: null,
+      clientNumber: null,
+      isActive: true,
+    });
+
+    const result = await processCaisseScanByClientNumber({
+      clientNumber: derived,
+      merchantId: "merchant_demo",
+      actorUserId: "staff_1",
+    });
+
+    expect(result.grantId).toBe("grant_client");
+  });
+
+  it("signale un client introuvable en 404", async () => {
+    userFindFirst.mockResolvedValue(null);
+    userFindMany.mockResolvedValue([]);
+
     await expect(
       processCaisseScanByClientNumber({
         clientNumber: "999999",
         merchantId: "merchant_demo",
         actorUserId: "staff_1",
       }),
-    ).rejects.toBeInstanceOf(CaisseScanError);
+    ).rejects.toMatchObject({
+      name: "CaisseScanError",
+      code: "CLIENT_NOT_FOUND",
+      status: 404,
+    });
   });
 });

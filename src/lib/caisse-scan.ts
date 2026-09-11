@@ -1,5 +1,5 @@
 import { CaisseScanError, maskClientNumberForLog } from "@/lib/caisse-scan-errors";
-import { normalizeClientNumber } from "@/lib/client-number";
+import { deriveClientNumber, normalizeCustomerNumber } from "@/lib/client-number";
 import { publicScanPayload } from "@/lib/caisse-program";
 import type { CardTemplateConfig } from "@/lib/card-template-schema";
 import { getActiveMerchantLoyaltyContext } from "@/lib/loyalty-context";
@@ -19,7 +19,11 @@ async function buildScanResult(input: {
   return prisma.$transaction(async (tx) => {
     const context = await getActiveMerchantLoyaltyContext(input.merchantId, tx);
     if (!context || !context.isOperational) {
-      throw new CaisseScanError("Ce client ne peut pas être utilisé dans ce commerce.", "MERCHANT_UNAVAILABLE");
+      throw new CaisseScanError(
+        "Ce client ne peut pas être utilisé dans ce commerce.",
+        "MERCHANT_UNAVAILABLE",
+        403,
+      );
     }
 
     let membership = await tx.customerMembership.findFirst({
@@ -185,25 +189,46 @@ export async function processCaisseScan(input: {
   });
 }
 
+async function findUserByCustomerNumber(normalized: string) {
+  const direct = await prisma.user.findFirst({
+    where: { clientNumber: normalized, isActive: true },
+  });
+  if (direct) return direct;
+
+  const candidates = await prisma.user.findMany({
+    where: {
+      isActive: true,
+      OR: [{ clientNumber: null }, { clientNumber: "" }],
+    },
+    select: { id: true },
+    take: 10_000,
+  });
+
+  const derivedMatch = candidates.find((candidate) => deriveClientNumber(candidate.id) === normalized);
+  if (!derivedMatch) return null;
+
+  return prisma.user.findFirst({
+    where: { id: derivedMatch.id, isActive: true },
+  });
+}
+
 export async function processCaisseScanByClientNumber(input: {
   clientNumber: string;
   merchantId: string;
   actorUserId: string;
 }) {
   logWalletUnlock("scan validé", { merchantId: input.merchantId });
-  const normalized = normalizeClientNumber(input.clientNumber);
+  const normalized = normalizeCustomerNumber(input.clientNumber);
   console.info("[caisse-scan] numéro normalisé", maskClientNumberForLog(normalized));
   if (normalized.length < 4 || normalized.length > 8) {
     console.info("[caisse-scan] refus : raison", "INVALID_CLIENT_NUMBER");
-    throw new CaisseScanError("Numéro client invalide.", "INVALID_CLIENT_NUMBER");
+    throw new CaisseScanError("Numéro client invalide.", "INVALID_CLIENT_NUMBER", 400);
   }
 
-  const user = await prisma.user.findFirst({
-    where: { clientNumber: normalized, isActive: true },
-  });
+  const user = await findUserByCustomerNumber(normalized);
   if (!user) {
     console.info("[caisse-scan] refus : raison", "CLIENT_NOT_FOUND");
-    throw new CaisseScanError("Client introuvable.", "CLIENT_NOT_FOUND");
+    throw new CaisseScanError("Client introuvable.", "CLIENT_NOT_FOUND", 404);
   }
   console.info("[caisse-scan] client trouvé", { userId: user.id });
 

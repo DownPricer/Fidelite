@@ -139,7 +139,7 @@ export function CaisseScreen({
 
       const { ok, status, data } = await postCaisseScan({
         inputType: "CLIENT_NUMBER",
-        value: raw.trim(),
+        value: clientNumber,
       });
       setBusy(false);
       processingRef.current = false;

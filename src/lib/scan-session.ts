@@ -1,3 +1,4 @@
+import { normalizeCustomerNumber } from "./client-number";
 import { QrInputError, extractFifeLifeQrToken } from "./qr-input";
 
 export const INSTANT_DUPLICATE_MS = 1_500;
@@ -129,7 +130,7 @@ export function resolveCaisseScanError(data: Record<string, unknown>, status: nu
 }
 
 export function readManualClientNumber(raw: string) {
-  const digits = raw.replace(/\D/g, "");
+  const digits = normalizeCustomerNumber(raw);
   if (digits.length < 4 || digits.length > 8) {
     throw new QrInputError("Numéro client invalide.");
   }

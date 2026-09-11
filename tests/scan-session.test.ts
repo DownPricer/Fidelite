@@ -140,4 +140,29 @@ describe("champ manuel et caméra", () => {
 
     vi.unstubAllGlobals();
   });
+
+  it("envoie le body CLIENT_NUMBER explicite pour la saisie manuelle", async () => {
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      headers: {
+        get: (name: string) => (name.toLowerCase() === "content-type" ? "application/json" : null),
+      },
+      json: async () => ({ grantId: "grant_client" }),
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await postCaisseScan({ inputType: "CLIENT_NUMBER", value: "482917" });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      CAISSE_SCAN_PATH,
+      expect.objectContaining({
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ inputType: "CLIENT_NUMBER", value: "482917" }),
+      }),
+    );
+
+    vi.unstubAllGlobals();
+  });
 });
