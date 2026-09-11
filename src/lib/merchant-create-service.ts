@@ -2,7 +2,7 @@ import type { LoyaltyMode, Prisma } from "@prisma/client";
 import { hashPassword } from "./password";
 import { prisma } from "./prisma";
 import { syncIsActiveFromStatus } from "./merchant-status";
-import { createAllModeTemplatesForMerchant } from "./merchant-card-template-service";
+import { createMerchantCardSlots } from "./merchant-card-template-service";
 import { DEFAULT_RULES, type RewardConfig } from "./loyalty-program";
 
 export type CreateMerchantInput = {
@@ -226,8 +226,7 @@ export async function createMerchantFull(input: CreateMerchantInput) {
       });
     }
 
-    await createAllModeTemplatesForMerchant({
-      merchantId: merchant.id,
+    await createMerchantCardSlots(tx, merchant.id, {
       activeMode: input.program.mode,
       backgroundUrl: input.cardBackgroundUrl ?? null,
       duplicateToAll: input.duplicateCardDesignToAllModes ?? Boolean(input.cardBackgroundUrl),

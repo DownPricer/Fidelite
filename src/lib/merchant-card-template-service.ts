@@ -555,18 +555,22 @@ export async function applySharedBackgroundToModeTemplates(input: {
   return results;
 }
 
-export async function createAllModeTemplatesForMerchant(input: {
+export type CreateMerchantCardSlotsInput = {
   merchantId: string;
   activeMode: LoyaltyMode;
   backgroundUrl?: string | null;
   authorId?: string | null;
   duplicateToAll?: boolean;
-}) {
+  db?: TemplateDbClient;
+};
+
+export async function createAllModeTemplatesForMerchant(input: CreateMerchantCardSlotsInput) {
+  const db = input.db ?? prisma;
   const backgroundUrl = input.backgroundUrl ?? null;
   const results = [];
 
   for (const cardSlot of ALL_MERCHANT_CARD_SLOTS) {
-    const existing = await prisma.merchantCardTemplate.findFirst({
+    const existing = await db.merchantCardTemplate.findFirst({
       where: { merchantId: input.merchantId, cardSlot },
     });
     if (existing) {
@@ -581,7 +585,7 @@ export async function createAllModeTemplatesForMerchant(input: {
       ? defaultTemplateConfigForSlot(backgroundUrl!, cardSlot)
       : defaultTemplateConfigForSlot("", cardSlot);
 
-    const created = await prisma.merchantCardTemplate.create({
+    const created = await db.merchantCardTemplate.create({
       data: {
         merchantId: input.merchantId,
         cardSlot,
@@ -597,6 +601,15 @@ export async function createAllModeTemplatesForMerchant(input: {
     results.push(created);
   }
   return results;
+}
+
+/** Crée les cinq emplacements de cartes dans une transaction Prisma existante. */
+export async function createMerchantCardSlots(
+  db: Prisma.TransactionClient,
+  merchantId: string,
+  options: Omit<CreateMerchantCardSlotsInput, "db" | "merchantId">,
+) {
+  return createAllModeTemplatesForMerchant({ db, merchantId, ...options });
 }
 
 export async function resetDraftForSlot(merchantId: string, cardSlot: MerchantCardSlot) {

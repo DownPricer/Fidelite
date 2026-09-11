@@ -118,9 +118,14 @@ export async function POST(req: Request) {
     return jsonOk({ ok: true, id: result.merchant.id }, 201);
   } catch (error) {
     if (error instanceof Error) {
-      if (error.message === "SLUG_TAKEN") return jsonError("Ce slug est déjà utilisé.", 409);
-      if (error.message === "EMAIL_TAKEN") return jsonError("Cet e-mail administrateur est déjà utilisé.", 409);
+      if (error.message === "SLUG_TAKEN") {
+        return jsonError("Ce slug est déjà utilisé.", 409, { code: "SLUG_TAKEN" });
+      }
+      if (error.message === "EMAIL_TAKEN") {
+        return jsonError("Cet e-mail administrateur est déjà utilisé.", 409, { code: "EMAIL_TAKEN" });
+      }
     }
-    throw error;
+    console.error("[merchant-create]", error);
+    return jsonError("Impossible de créer le commerce.", 500, { code: "MERCHANT_CREATE_FAILED" });
   }
 }

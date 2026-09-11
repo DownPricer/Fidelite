@@ -101,6 +101,7 @@ export function CreateMerchantWizard({ firstName }: { firstName: string }) {
   }
 
   async function submit() {
+    if (loading) return;
     setLoading(true);
     setError(null);
     const payload = {
@@ -153,15 +154,38 @@ export function CreateMerchantWizard({ firstName }: { firstName: string }) {
       duplicateCardDesignToAllModes: form.duplicateCardDesignToAllModes,
     };
 
-    const response = await fetch("/api/super-admin/merchants", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    const data = await response.json();
-    if (!response.ok) {
+    let response: Response;
+    try {
+      response = await fetch("/api/super-admin/merchants", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+    } catch {
+      setError("Impossible de créer le commerce.");
       setLoading(false);
-      setError(data.error ?? "Création impossible.");
+      return;
+    }
+
+    const text = await response.text();
+    let data: { error?: string; id?: string } | null = null;
+    if (text) {
+      try {
+        data = JSON.parse(text) as { error?: string; id?: string };
+      } catch {
+        data = null;
+      }
+    }
+
+    if (!response.ok) {
+      setError(data?.error ?? "Impossible de créer le commerce.");
+      setLoading(false);
+      return;
+    }
+
+    if (!data?.id) {
+      setError("Impossible de créer le commerce.");
+      setLoading(false);
       return;
     }
 
@@ -191,6 +215,7 @@ export function CreateMerchantWizard({ firstName }: { firstName: string }) {
 
     sessionStorage.removeItem(WIZARD_STORAGE_KEY);
     router.push(`/super-admin/commerces/${data.id}`);
+    setLoading(false);
   }
 
   return (
