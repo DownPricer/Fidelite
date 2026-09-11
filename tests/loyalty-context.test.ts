@@ -85,6 +85,17 @@ function mockContext(mode: LoyaltyMode, rewards: Partial<LoyaltyReward>[]): Acti
 }
 
 describe("rewardsForProgramMode", () => {
+  it("conserve les récompenses VISITS quand le programme actif est VISITS", () => {
+    const program = mockProgram("VISITS", [
+      { id: "visit", name: "Café offert", threshold: 10, thresholdUnit: "visits", isActive: true },
+      { id: "points", name: "Boisson offerte", threshold: 100, thresholdUnit: "points", isActive: true },
+    ]);
+    const filtered = rewardsForProgramMode(program.rewards, "VISITS");
+    expect(filtered).toHaveLength(1);
+    expect(filtered[0]?.name).toBe("Café offert");
+    expect(filtered[0]?.thresholdUnit).toBe("visits");
+  });
+
   it("ignore les récompenses d'un ancien mode VISITS quand le programme actif est FIXED_POINTS", () => {
     const program = mockProgram("FIXED_POINTS", [
       { id: "old", name: "1 café", threshold: 30, thresholdUnit: "visits", isActive: true },

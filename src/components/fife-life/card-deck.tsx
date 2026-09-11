@@ -123,7 +123,12 @@ export function CardDeck({
   }, [deck.length, index]);
 
   useEffect(() => {
-    onActiveCardChange?.(activeCardFromDeck(deck, index));
+    const active = activeCardFromDeck(deck, index);
+    console.info("[wallet-active-card] index actif", active.activeIndex);
+    console.info("[wallet-active-card] type", active.cardType);
+    console.info("[wallet-active-card] merchantId", active.merchantId ?? "—");
+    console.info("[wallet-active-card] membershipId", active.membershipId ?? "—");
+    onActiveCardChange?.(active);
   }, [deck, index, onActiveCardChange]);
 
   useEffect(() => {

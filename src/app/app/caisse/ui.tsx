@@ -168,7 +168,7 @@ export function CaisseScreen({
   }
 
   return (
-    <div className="obsidian-scene flex h-dvh flex-col text-[var(--body-text)]">
+    <div className="flex h-dvh flex-col text-[var(--body-text)]">
       <header className="flex shrink-0 items-center justify-between border-b border-[var(--stroke)] bg-[rgba(12,10,24,0.92)] px-4 py-3 backdrop-blur-md">
         <div className="min-w-0">
           <h1 className="text-lg font-black uppercase tracking-tight text-[var(--panel-text)]">Caisse</h1>

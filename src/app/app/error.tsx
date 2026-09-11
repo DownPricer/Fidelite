@@ -16,7 +16,7 @@ export default function AppError({
   }, [error]);
 
   return (
-    <main className="obsidian-scene flex min-h-dvh flex-col items-center justify-center px-6 py-12 text-center">
+    <main className="flex min-h-dvh flex-col items-center justify-center px-6 py-12 text-center">
       <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--violet-bright)]">Espace commerçant</p>
       <h1 className="mt-3 text-2xl font-black text-[var(--ink)]">Impossible d&apos;afficher cette page</h1>
       <p className="mt-3 max-w-md text-sm leading-relaxed text-[var(--muted-strong)]">

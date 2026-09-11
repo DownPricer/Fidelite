@@ -152,16 +152,21 @@ function normalizeThresholdUnit(value: string | null | undefined): "visits" | "p
   return value === "points" ? "points" : "visits";
 }
 
+/** Unité stockée en base (`visits` | `points`) pour un mode de programme actif. */
+export function thresholdUnitForMode(mode: LoyaltyMode): "visits" | "points" {
+  return mode === "VISITS" || mode === "AMOUNT_TIERS" ? "visits" : "points";
+}
+
 export function rewardsForProgramMode(
   rewards: LoyaltyReward[],
   mode: LoyaltyMode,
   options?: { activeOnly?: boolean },
 ): RewardConfig[] {
-  const unit = loyaltyUnitForMode(mode);
+  const thresholdUnit = thresholdUnitForMode(mode);
   return rewards
     .filter((reward) => {
       if (options?.activeOnly !== false && !reward.isActive) return false;
-      return normalizeThresholdUnit(reward.thresholdUnit) === unit;
+      return normalizeThresholdUnit(reward.thresholdUnit) === thresholdUnit;
     })
     .sort((a, b) => a.sortOrder - b.sortOrder)
     .map(rewardFromDb);

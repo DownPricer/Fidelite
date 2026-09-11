@@ -12,9 +12,11 @@ export function loyaltyUnitForMode(mode: LoyaltyMode): LoyaltyUnit {
 export function formatUnitCount(count: number, unit: LoyaltyUnit): string {
   const safe = Math.abs(Math.trunc(count));
   if (unit === "passages") {
-    return `${safe} passage${safe > 1 ? "s" : ""}`;
+    const label = safe <= 1 ? "passage" : "passages";
+    return `${safe} ${label}`;
   }
-  return `${safe} point${safe > 1 ? "s" : ""}`;
+  const label = safe <= 1 ? "point" : "points";
+  return `${safe} ${label}`;
 }
 
 export function formatSignedUnitDelta(delta: number, unit: LoyaltyUnit): string {
@@ -38,19 +40,20 @@ export function modeTitle(mode: LoyaltyMode): string {
 }
 
 export function balanceLabel(mode: LoyaltyMode, balance: number): string {
-  const unit = loyaltyUnitForMode(mode);
-  if (mode === "VISITS" || mode === "AMOUNT_TIERS") {
-    return `${balance} ${unit === "passages" ? "passage" : "point"}${balance > 1 ? "s" : ""}`;
-  }
-  return formatUnitCount(balance, "points");
+  return formatUnitCount(balance, loyaltyUnitForMode(mode));
 }
 
 export function progressBalanceLabel(mode: LoyaltyMode, balance: number, target: number): string {
   const unit = loyaltyUnitForMode(mode);
-  if (mode === "VISITS" || mode === "AMOUNT_TIERS") {
-    return `${balance} / ${target} passages`;
-  }
-  return `${balance} points`;
+  const unitLabel =
+    unit === "passages"
+      ? target <= 1
+        ? "passage"
+        : "passages"
+      : target <= 1
+        ? "point"
+        : "points";
+  return `${balance} / ${target} ${unitLabel}`;
 }
 
 export function earnActionLabel(mode: LoyaltyMode, earned?: number): string {

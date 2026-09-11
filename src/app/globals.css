@@ -2244,8 +2244,9 @@ body:has(.wallet-shell) {
     height: auto;
   }
 
-  /* Fond obsidienne plein écran derrière les pages client */
-  .obsidian-scene::before,
+  /* Fond obsidienne plein écran — une seule couche décorative (pas par panneau/page) */
+  .obsidian-scene-root::before,
+  .wallet-shell.obsidian-scene::before,
   .merchant-detail-scene::before,
   .profile-scene.obsidian-scene::before {
     content: "";
@@ -2833,6 +2834,46 @@ body:has(.wallet-shell) {
   .merchant-page-shell {
     padding: 2rem 2.5rem 3rem;
     max-width: 80rem;
+  }
+
+  /* Espace commerçant desktop — un seul halo (::before), pas de fond dupliqué sur l'élément */
+  .obsidian-scene-root.obsidian-scene {
+    background: transparent;
+  }
+
+  .obsidian-scene-root .glass-panel {
+    box-shadow:
+      0 8px 24px rgba(0, 0, 0, 0.22),
+      inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(12px) saturate(1.2);
+  }
+
+  .obsidian-scene-root .glass-panel::before,
+  .obsidian-scene-root .glass-panel::after {
+    opacity: 0.65;
+  }
+
+  .obsidian-scene-root .merchant-page-shell .glass-panel {
+    box-shadow:
+      0 10px 28px rgba(0, 0, 0, 0.26),
+      inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  }
+
+  .obsidian-scene-root .compact-list-shell {
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.26);
+    backdrop-filter: blur(12px);
+  }
+
+  .obsidian-scene-root .metric-card {
+    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.24);
+  }
+
+  .obsidian-scene-root .glass-cta {
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.32);
+  }
+
+  .obsidian-scene-root .glass-cta-icon {
+    box-shadow: 0 0 10px rgba(133, 87, 255, 0.35);
   }
 }
 

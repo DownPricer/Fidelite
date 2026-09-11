@@ -1,6 +1,9 @@
 import type { LoyaltyMode, LoyaltyProgram, LoyaltyReward, Merchant, Prisma } from "@prisma/client";
 import {
+  computeEarnFromCents,
+  nextReward,
   programToConfig,
+  thresholdUnitForMode,
   type ProgramConfig,
   type RewardConfig,
 } from "./loyalty-program";
@@ -11,7 +14,6 @@ import {
   type ResolvedPublishedCardTemplate,
 } from "./merchant-card-template-service";
 import { buildNextBenefit } from "./loyalty-engine";
-import { computeEarnFromCents, nextReward } from "./loyalty-program";
 import { prisma } from "./prisma";
 
 const LOG_PREFIX = "[loyalty-context]";
@@ -47,9 +49,9 @@ function isProgramOperational(program: Pick<LoyaltyProgram, "status">) {
 }
 
 export function progressTargetForBalance(config: ProgramConfig, balance: number): number {
-  const unit = loyaltyUnitForMode(config.mode);
+  const thresholdUnit = thresholdUnitForMode(config.mode);
   const active = config.rewards.filter(
-    (reward) => reward.isActive && reward.thresholdUnit === unit,
+    (reward) => reward.isActive && reward.thresholdUnit === thresholdUnit,
   );
   const upcoming = nextReward(config.rewards, balance, config.mode);
   if (upcoming) return upcoming.threshold;

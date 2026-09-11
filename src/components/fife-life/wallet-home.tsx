@@ -105,19 +105,27 @@ export function WalletHome({
     }
   }, [initialOverview]);
 
-  const activeNextReward = useMemo(
-    () =>
-      resolveNextRewardForActiveCard({
-        cardRewards,
-        activeCard,
-        fifeLifePoints: points,
-      }),
-    [cardRewards, activeCard, points],
-  );
+  const activeNextReward = useMemo(() => {
+    const reward = resolveNextRewardForActiveCard({
+      cardRewards,
+      activeCard,
+      fifeLifePoints: points,
+    });
+    console.info(
+      "[wallet-active-card] prochaine récompense trouvée",
+      reward ? reward.rewardName : "aucune",
+    );
+    return reward;
+  }, [cardRewards, activeCard, points]);
 
   const handleActiveCardChange = useCallback((nextActive: ActiveWalletCard) => {
     setActiveCard(nextActive);
   }, []);
+
+  const activeMerchantCard = useMemo(
+    () => (activeCard.membershipId ? cards.find((card) => card.id === activeCard.membershipId) : null),
+    [activeCard.membershipId, cards],
+  );
 
   useEffect(() => {
     setSheetOpen(initialSheetOpen);
@@ -200,6 +208,7 @@ export function WalletHome({
             );
           })
           .catch(() => undefined);
+        void refreshOverview();
         return;
       }
       if (event.type === "MERCHANT_POINTS_UPDATED" || event.type === "REWARD_REDEEMED") {
@@ -406,7 +415,9 @@ export function WalletHome({
               </p>
             ) : (
               <p className="text-xs text-[var(--muted-strong)]">
-                Aucun prochain avantage disponible pour le moment.
+                {activeMerchantCard
+                  ? `Aucun avantage configuré chez ${activeMerchantCard.name}.`
+                  : "Aucun prochain avantage disponible pour le moment."}
               </p>
             )}
           </section>

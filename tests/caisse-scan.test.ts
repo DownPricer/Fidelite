@@ -40,6 +40,10 @@ vi.mock("../src/lib/prisma", () => {
     merchantCardTemplate: {
       findFirst: (...args: unknown[]) => merchantCardTemplateFindFirst(...args),
     },
+    loyaltyTransaction: {
+      count: vi.fn(async () => 0),
+      findFirst: vi.fn(async () => null),
+    },
   };
 
   return {

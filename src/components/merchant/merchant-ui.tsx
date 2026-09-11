@@ -28,7 +28,7 @@ export function MerchantPageShell({
   children: ReactNode;
   narrow?: boolean;
 }) {
-  return <main className={cn("merchant-page-shell obsidian-scene", narrow && "merchant-page-shell-narrow")}>{children}</main>;
+  return <main className={cn("merchant-page-shell", narrow && "merchant-page-shell-narrow")}>{children}</main>;
 }
 
 export function MerchantPageHeader({

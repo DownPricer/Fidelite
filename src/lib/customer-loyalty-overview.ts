@@ -270,6 +270,17 @@ export function cardRewardsMap(entries: CardNextRewardEntry[]): Record<string, C
   return Object.fromEntries(entries.map((entry) => [entry.cardKey, entry]));
 }
 
+/** Index des prochaines récompenses par adhésion commerçant (accueil wallet). */
+export function nextRewardByMembershipId(
+  entries: CardNextRewardEntry[],
+): Record<string, CardNextRewardEntry> {
+  return Object.fromEntries(
+    entries
+      .filter((entry): entry is CardNextRewardEntry & { membershipId: string } => Boolean(entry.membershipId))
+      .map((entry) => [entry.membershipId, entry]),
+  );
+}
+
 export function selectBestNextReward(candidates: NextRewardCandidate[]): NextRewardOverview | null {
   if (candidates.length === 0) return null;
 
