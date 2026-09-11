@@ -1696,6 +1696,63 @@ body:has(.wallet-shell) {
   transform: translateX(4px);
 }
 
+.merchant-reward-progress {
+  border: 1px solid rgba(190, 164, 255, 0.16);
+}
+
+.reward-progress-normal {
+  border-color: rgba(133, 87, 255, 0.22);
+  background: rgba(133, 87, 255, 0.08);
+}
+
+.reward-progress-almost {
+  border-color: rgba(166, 139, 255, 0.38);
+  background:
+    radial-gradient(ellipse 90% 80% at 50% 0%, rgba(166, 139, 255, 0.22), transparent 70%),
+    rgba(112, 133, 255, 0.1);
+  box-shadow: 0 0 24px rgba(133, 87, 255, 0.16);
+}
+
+.reward-progress-unlocked {
+  border-color: rgba(72, 214, 154, 0.42);
+  background:
+    radial-gradient(ellipse 90% 80% at 50% 0%, rgba(72, 214, 154, 0.24), transparent 70%),
+    rgba(36, 120, 86, 0.12);
+  box-shadow: 0 0 24px rgba(72, 214, 154, 0.18);
+}
+
+.reward-progress-icon {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.reward-progress-track {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.reward-progress-fill {
+  background: linear-gradient(90deg, rgba(133, 87, 255, 0.95), rgba(166, 139, 255, 0.95));
+}
+
+.reward-progress-unlocked .reward-progress-fill {
+  background: linear-gradient(90deg, rgba(72, 214, 154, 0.95), rgba(120, 236, 186, 0.95));
+}
+
+.reward-progress-fill[data-pulse="1"] {
+  filter: brightness(1.15);
+}
+
+.reward-use-btn {
+  border: 1px solid rgba(190, 164, 255, 0.24);
+  background: rgba(255, 255, 255, 0.06);
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.reward-use-btn:active {
+  transform: scale(0.98);
+  background: rgba(255, 255, 255, 0.1);
+}
+
 /* Delete zone - dark area */
 .delete-zone {
   border-radius: 1.625rem;

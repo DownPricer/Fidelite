@@ -16,6 +16,11 @@ import {
 } from "@/lib/customer-loyalty-overview";
 import type { LoyaltyMode } from "@prisma/client";
 import { useWalletEvents } from "./use-wallet-events";
+import {
+  MerchantRewardProgressPanel,
+  notifyMerchantRewardProgressRefresh,
+} from "./merchant-reward-progress-panel";
+import type { CustomerMerchantRewardProgress } from "@/lib/customer-reward-progress-types";
 
 type CustomerProgramView = ReturnType<typeof buildCustomerProgramView>;
 
@@ -25,8 +30,10 @@ export function MerchantCardDetail({
   history,
   programView,
   nextReward: initialNextReward = null,
+  rewardProgress: initialRewardProgress = null,
   recentActivity: initialRecentActivity = [],
   activityTotal: initialActivityTotal = 0,
+  clientNumber = null,
   preview = false,
   walletEnabled = false,
 }: {
@@ -35,8 +42,10 @@ export function MerchantCardDetail({
   history: CardHistoryItem[];
   programView?: CustomerProgramView;
   nextReward?: NextRewardOverview | null;
+  rewardProgress?: CustomerMerchantRewardProgress | null;
   recentActivity?: ActivityItem[];
   activityTotal?: number;
+  clientNumber?: string | null;
   preview?: boolean;
   walletEnabled?: boolean;
 }) {
@@ -152,6 +161,7 @@ export function MerchantCardDetail({
       });
       setActivityTotal((prev) => prev + 1);
       void refreshOverview();
+      notifyMerchantRewardProgressRefresh();
     }
   }, [card.id, card.merchantId, card.logoUrl, card.name, slug, refreshOverview]);
 
@@ -321,6 +331,15 @@ Le commerçant se réserve le droit de modifier ou d'annuler le programme de fid
               </div>
             </button>
           </section>
+
+          <MerchantRewardProgressPanel
+            slug={slug}
+            merchantName={card.name}
+            initialProgress={initialRewardProgress}
+            qrSrc={personalizedQr}
+            clientNumber={clientNumber}
+            preview={preview}
+          />
 
           {/* Actions: Add to Wallet & Share */}
           <section className="merchant-actions-block mt-5 flex gap-3">

@@ -11,6 +11,8 @@ import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/session";
 import { attachPublishedTemplates } from "@/lib/wallet-cards";
 import { getCustomerLoyaltyOverview } from "@/lib/customer-loyalty-overview";
+import { getCustomerMerchantRewardProgress } from "@/lib/customer-reward-progress";
+import { resolveClientNumber } from "@/lib/client-number";
 
 export const dynamic = "force-dynamic";
 
@@ -67,11 +69,17 @@ export default async function CardPage({
     },
   });
 
-  const overview = await getCustomerLoyaltyOverview({
-    userId: user.id,
-    merchantId: membership.merchantId,
-    activityLimit: 5,
-  });
+  const [overview, rewardProgress] = await Promise.all([
+    getCustomerLoyaltyOverview({
+      userId: user.id,
+      merchantId: membership.merchantId,
+      activityLimit: 5,
+    }),
+    getCustomerMerchantRewardProgress({
+      userId: user.id,
+      merchantId: membership.merchantId,
+    }),
+  ]);
 
   const [merchantCard] = await attachPublishedTemplates([
     {
@@ -95,6 +103,8 @@ export default async function CardPage({
       merchant={merchantCard}
       programView={programView}
       nextReward={overview.nextReward}
+      rewardProgress={rewardProgress}
+      clientNumber={resolveClientNumber({ clientNumber: user.clientNumber, userId: user.id })}
       recentActivity={overview.recentActivity}
       activityTotal={overview.activityTotal}
       history={history.map((row) => ({
