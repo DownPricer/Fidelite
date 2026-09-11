@@ -1,27 +1,22 @@
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { shouldRedirectAppLayoutToEmployee } from "@/lib/demo-routing";
-import { getEmployeeSession } from "@/lib/employee-session";
-import { resolveMerchantDemo } from "@/lib/merchant-demo-server";
-import { firstActiveStaffMembership, canManageMerchantSettings } from "@/lib/rbac";
+import {
+  resolveMerchantAppAccess,
+  shouldRedirectAppToEmployeeSpace,
+} from "@/lib/merchant-app-access";
 import DashboardLayoutClient from "./layout-client";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const { user, demo } = await resolveMerchantDemo();
-  const employee = demo ? null : await getEmployeeSession();
-  if (
-    shouldRedirectAppLayoutToEmployee({
-      merchantDemoActive: demo,
-      employeeSessionActive: Boolean(employee),
-    })
-  ) {
-    console.info("[demo-routing] décision layout", "redirect-employee");
+  const pathname = (await headers()).get("x-pathname") ?? "";
+  const access = await resolveMerchantAppAccess();
+
+  if (shouldRedirectAppToEmployeeSpace({ access, pathname })) {
+    console.info("[merchant-app-access] layout redirect", "/employe/scan");
     redirect("/employe/scan");
   }
-  if (demo) {
-    console.info("[demo-routing] décision layout", "allow-merchant-demo");
-  }
-  const membership = user ? firstActiveStaffMembership(user.merchantMemberships) : null;
-  const admin = demo || (membership ? canManageMerchantSettings(membership.role) : false);
+
+  const admin =
+    access.access === "MERCHANT_DEMO" || (access.access === "MERCHANT" && access.admin);
 
   return (
     <DashboardLayoutClient admin={admin}>

@@ -1,12 +1,8 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { isPublicDemoEnabled } from "@/lib/demo-mode";
-import {
-  demoCookieNamesForRole,
-  demoEnterTarget,
-  employeeSessionCookieName,
-  type DemoRole,
-} from "@/lib/demo-routing";
+import { demoCookieNamesForRole, demoEnterTarget, type DemoRole } from "@/lib/demo-routing";
+import { employeeSessionCookieName } from "@/lib/employee-session";
 import { isProduction } from "@/lib/env";
 import { revokeEmployeeSessionToken } from "@/lib/employee-session";
 

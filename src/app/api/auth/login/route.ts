@@ -6,6 +6,7 @@ import { clientIp, jsonError, jsonOk, readJson, userAgent } from "@/lib/http";
 import { LIMITS, rateLimit } from "@/lib/rate-limit";
 import { prisma } from "@/lib/prisma";
 import { verifyPassword } from "@/lib/password";
+import { clearEmployeeBrowserSession } from "@/lib/session-handoff";
 import { createSession } from "@/lib/session";
 import { loginSchema, zodErrorMessage } from "@/lib/validation";
 
@@ -54,6 +55,7 @@ export async function POST(req: Request) {
     }
 
     await createSession(user.id, { ip, userAgent: userAgent(req) });
+    await clearEmployeeBrowserSession();
     await writeAudit({
       actorId: user.id,
       action: "LOGIN",

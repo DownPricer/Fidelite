@@ -18,24 +18,6 @@ export function merchantDemoActiveFromRequest(req: Pick<NextRequest, "cookies">)
   return isMerchantDemoCookieValue(req.cookies.get(MERCHANT_DEMO_COOKIE)?.value);
 }
 
-export function shouldRedirectAppToEmployee(input: {
-  pathname: string;
-  merchantDemoActive: boolean;
-  employeeCookiePresent: boolean;
-}): boolean {
-  if (!input.pathname.startsWith("/app")) return false;
-  if (env.publicDemoMode && input.merchantDemoActive) return false;
-  return input.employeeCookiePresent;
-}
-
-export function shouldRedirectAppLayoutToEmployee(input: {
-  merchantDemoActive: boolean;
-  employeeSessionActive: boolean;
-}): boolean {
-  if (input.merchantDemoActive) return false;
-  return input.employeeSessionActive;
-}
-
 export function demoEnterTarget(role: DemoRole): string {
   switch (role) {
     case "client":

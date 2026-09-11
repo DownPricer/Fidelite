@@ -1,6 +1,4 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { hasEmployeeCookie } from "./lib/employee-cookie";
-import { merchantDemoActiveFromRequest, shouldRedirectAppToEmployee } from "./lib/demo-routing";
 import { env } from "./lib/env";
 import { isAdminHost, isAppHost, isEmployeeHost } from "./lib/hosts";
 import { hasSuperAdminEntryCookie, SUPER_ADMIN_ENTRY_COOKIE, superAdminEntryCookieOptions } from "./lib/super-admin-entry";
@@ -10,22 +8,15 @@ function superAdminPublicPrefix() {
   return path ? `/${path}` : "";
 }
 
-const MERCHANT_BLOCKED_PREFIXES = [
-  "/app",
-  "/api/merchant",
-  "/api/admin",
-  "/api/super-admin",
-  "/api/auth/login",
-  "/api/auth/register",
-  "/api/auth/me",
-  "/api/auth/change-password",
-];
+function nextWithPathname(req: NextRequest) {
+  const requestHeaders = new Headers(req.headers);
+  requestHeaders.set("x-pathname", req.nextUrl.pathname);
+  return NextResponse.next({ request: { headers: requestHeaders } });
+}
 
 export function middleware(req: NextRequest) {
   const host = req.headers.get("host") ?? "";
   const { pathname } = req.nextUrl;
-  const employeeCookiePresent = hasEmployeeCookie(req);
-  const merchantDemoActive = merchantDemoActiveFromRequest(req);
 
   if (
     pathname.startsWith("/api") ||
@@ -35,33 +26,7 @@ export function middleware(req: NextRequest) {
     pathname === "/manifest.webmanifest" ||
     pathname === "/favicon.ico"
   ) {
-    if (
-      employeeCookiePresent &&
-      !merchantDemoActive &&
-      MERCHANT_BLOCKED_PREFIXES.some((prefix) => pathname.startsWith(prefix))
-    ) {
-      if (pathname.startsWith("/api/caisse") || pathname.startsWith("/api/employe")) {
-        return NextResponse.next();
-      }
-      return NextResponse.json({ error: "Accès administrateur refusé." }, { status: 403 });
-    }
     return NextResponse.next();
-  }
-
-  if (
-    shouldRedirectAppToEmployee({
-      pathname,
-      merchantDemoActive,
-      employeeCookiePresent,
-    })
-  ) {
-    console.info("[demo-routing] décision middleware", "redirect-employee");
-    const url = req.nextUrl.clone();
-    url.pathname = "/employe/scan";
-    return NextResponse.redirect(url);
-  }
-  if (pathname.startsWith("/app") && merchantDemoActive) {
-    console.info("[demo-routing] décision middleware", "allow-merchant-demo");
   }
 
   if (isEmployeeHost(host)) {
@@ -71,7 +36,7 @@ export function middleware(req: NextRequest) {
       pathname.startsWith("/api/caisse") ||
       pathname.startsWith("/api/health")
     ) {
-      return NextResponse.next();
+      return nextWithPathname(req);
     }
     const url = req.nextUrl.clone();
     url.pathname = pathname === "/" ? "/employe/scan" : `/employe${pathname}`;
@@ -93,7 +58,7 @@ export function middleware(req: NextRequest) {
     if (!hasSuperAdminEntryCookie(req)) {
       return new NextResponse(null, { status: 404 });
     }
-    const response = NextResponse.next();
+    const response = nextWithPathname(req);
     response.headers.set("x-robots-tag", "noindex, nofollow");
     return response;
   }
@@ -122,7 +87,7 @@ export function middleware(req: NextRequest) {
     return NextResponse.rewrite(url);
   }
 
-  return NextResponse.next();
+  return nextWithPathname(req);
 }
 
 export const config = {

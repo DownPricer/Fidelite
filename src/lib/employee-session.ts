@@ -17,8 +17,12 @@ function cookieOptions(expires: Date) {
   };
 }
 
-function employeeCookieName() {
+export function employeeSessionCookieName() {
   return env.employeeSessionCookie;
+}
+
+function employeeCookieName() {
+  return employeeSessionCookieName();
 }
 
 export function employeeTokenFromRequest(req: Request | import("next/server").NextRequest) {
