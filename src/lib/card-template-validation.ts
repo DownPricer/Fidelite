@@ -6,9 +6,7 @@ import {
 } from "./card-template-schema";
 import { elementTypeLabel, validationMessage } from "./card-template-i18n";
 import {
-  LOYALTY_WIDGET_LABELS,
   loyaltyWidgetLabelForSlot,
-  loyaltyWidgetModeForCardSlot,
   validateLoyaltyWidgetsForSlot,
 } from "./loyalty-widget";
 import { qrMinWidthValid, qrVisuallySquare } from "./card-template-qr-geometry";
@@ -26,7 +24,12 @@ const QR_SILENCE_MARGIN = 0.02;
 
 export type PublishValidationResult = {
   ok: boolean;
-  errors: { message: string; elementId?: string }[];
+  errors: {
+    message: string;
+    elementId?: string;
+    elementIds?: string[];
+    code?: string;
+  }[];
 };
 
 function inSafeZone(rect: NormalizedRect, safeZone: CardTemplateConfig["safeZone"]) {
@@ -62,16 +65,8 @@ export function validateCardTemplateForPublishDetailed(
     errors.push({ message: "Ajoutez au moins un élément dynamique." });
   }
 
-  const required = SLOT_REQUIRED[slot];
+  const required = SLOT_REQUIRED[slot].filter((type) => type !== "loyaltyWidget");
   for (const type of required) {
-    if (type === "loyaltyWidget") {
-      const mode = loyaltyWidgetModeForCardSlot(slot);
-      const hasWidget = config.elements.some((el) => el.type === "loyaltyWidget");
-      if (!hasWidget && mode) {
-        errors.push({ message: `Bloc obligatoire manquant : ${LOYALTY_WIDGET_LABELS[mode]}.` });
-      }
-      continue;
-    }
     if (!config.elements.some((el) => el.type === type)) {
       errors.push({ message: validationMessage(type) });
     }

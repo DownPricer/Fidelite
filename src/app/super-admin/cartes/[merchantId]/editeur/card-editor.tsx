@@ -13,7 +13,16 @@ import {
   type CardTemplateConfig,
 } from "@/lib/card-template-schema";
 import { defaultDataKey } from "@/lib/card-template-data-keys";
-import { normalizeCardElement, normalizeCardTemplateConfig } from "@/lib/card-template-normalize";
+import {
+  applyEditorAutoFix,
+  migrateLegacyOnLoad,
+  summarizeEditorValidation,
+} from "@/lib/card-template-editor-validation";
+import {
+  normalizeCardElement,
+  normalizeCardTemplateConfig,
+  normalizeCardTemplateForSlot,
+} from "@/lib/card-template-normalize";
 import { CARD_EDITOR_REFERENCE_WIDTH } from "@/lib/card-template-normalize";
 import { ELEMENT_TYPE_LABELS, elementTypeLabel } from "@/lib/card-template-i18n";
 import {
@@ -25,7 +34,6 @@ import { pickCanonicalTemplate } from "@/lib/merchant-card-template-service";
 import { CARD_SLOT_TITLES, isLoyaltyProgramSlot } from "@/lib/merchant-card-slots";
 import { qrNormalizedHeight } from "@/lib/card-template-qr-geometry";
 import { defaultNextRewardStyle } from "@/lib/next-reward-styles";
-import { validateCardTemplateForPublishDetailed } from "@/lib/card-template-validation";
 import { Alert, Button, Card, Field, Input } from "@/components/ui";
 import type { CardTemplateStatus, LoyaltyMode, MerchantCardSlot } from "@prisma/client";
 
@@ -85,6 +93,8 @@ export function CardEditorPage({
   const [recentColors, setRecentColors] = useState<string[]>([]);
   const [mobilePropsOpen, setMobilePropsOpen] = useState(false);
   const [cropBackgroundMode, setCropBackgroundMode] = useState(false);
+  const [resetDialogOpen, setResetDialogOpen] = useState(false);
+  const [resetBusy, setResetBusy] = useState(false);
 
   const canvasViewportRef = useRef<HTMLDivElement>(null);
 
@@ -122,7 +132,12 @@ export function CardEditorPage({
         cardSlot: tpl.cardSlot,
       });
       setBackgroundUrl(tpl.backgroundUrl ?? "");
-      historySetRef.current(normalizeCardTemplateConfig(tpl.config as CardTemplateConfig), true);
+      const loaded = tpl.config as CardTemplateConfig;
+      const { config: migrated, migrated: hadLegacy } = migrateLegacyOnLoad(loaded, cardSlot);
+      historySetRef.current(normalizeCardTemplateForSlot(migrated, cardSlot), !hadLegacy);
+      if (hadLegacy) {
+        setMessage("Anciens éléments convertis en bloc de fidélité. Enregistrez le brouillon.");
+      }
     } else {
       setTemplateId(null);
       setTemplateMeta({ version: 1, status: "DRAFT", cardSlot });
@@ -156,9 +171,21 @@ export function CardEditorPage({
   const elementCatalog = useMemo(() => buildElementCatalog(cardSlot), [cardSlot]);
 
   const validation = useMemo(
-    () => (config ? validateCardTemplateForPublishDetailed(config, cardSlot) : { ok: false, errors: [] }),
+    () => (config ? summarizeEditorValidation(config, cardSlot) : { ok: false, issues: [] }),
     [config, cardSlot],
   );
+
+  function applyAutoFix(fix: "migrate_legacy" | "add_loyalty_widget") {
+    if (!config) return;
+    const next = normalizeCardTemplateForSlot(applyEditorAutoFix(config, cardSlot, fix), cardSlot);
+    history.set(next);
+    setMessage(
+      fix === "migrate_legacy"
+        ? "Anciens éléments remplacés par le bloc de fidélité."
+        : "Bloc de fidélité ajouté.",
+    );
+    setError(null);
+  }
 
   const visitsRequired = merchant?.program?.visitsRequired ?? 10;
 
@@ -364,10 +391,13 @@ export function CardEditorPage({
     if (!config) return;
     setSaving(true);
     setError(null);
-    const normalized = normalizeCardTemplateConfig({
-      ...config,
-      background: { ...config.background, url: backgroundUrl },
-    });
+    const normalized = normalizeCardTemplateForSlot(
+      {
+        ...config,
+        background: { ...config.background, url: backgroundUrl },
+      },
+      cardSlot,
+    );
     const payload = {
       merchantId,
       cardSlot,
@@ -394,12 +424,49 @@ export function CardEditorPage({
     });
     setSavedAt(new Date().toISOString());
     setMessage("Brouillon enregistré.");
-    history.set(normalizeCardTemplateConfig(data.template.config as CardTemplateConfig), true);
+    history.set(normalizeCardTemplateForSlot(data.template.config as CardTemplateConfig, cardSlot), true);
+  }
+
+  async function runResetAction(action: "restore-published" | "reset-draft") {
+    if (!templateId) {
+      setError("Aucun brouillon à réinitialiser.");
+      return;
+    }
+    setResetBusy(true);
+    setError(null);
+    const response = await fetch(`/api/super-admin/card-templates/${templateId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action }),
+    });
+    const data = await response.json();
+    setResetBusy(false);
+    setResetDialogOpen(false);
+    if (!response.ok) {
+      setError(data.error ?? "Réinitialisation impossible.");
+      return;
+    }
+    setTemplateId(data.template.id);
+    setTemplateMeta({
+      version: data.template.version,
+      status: data.template.status ?? "DRAFT",
+      cardSlot: data.template.cardSlot ?? cardSlot,
+    });
+    setBackgroundUrl(data.template.backgroundUrl ?? "");
+    history.set(
+      normalizeCardTemplateForSlot(data.template.config as CardTemplateConfig, cardSlot),
+      true,
+    );
+    setMessage(
+      action === "restore-published"
+        ? "Version publiée restaurée dans le brouillon."
+        : "Brouillon réinitialisé avec les éléments obligatoires.",
+    );
   }
 
   async function publish() {
     if (!validation.ok) {
-      const first = validation.errors[0];
+      const first = validation.issues[0];
       setError(first.message);
       if (first.elementId) setSelectedId(first.elementId);
       return;
@@ -474,6 +541,9 @@ export function CardEditorPage({
             {history.dirty ? <p className="text-xs text-amber-300">Modifications non enregistrées</p> : savedAt ? <p className="text-xs text-green-300">Brouillon enregistré</p> : null}
           </div>
           <div className="flex flex-wrap gap-2">
+            <Button variant="secondary" disabled={resetBusy} onClick={() => setResetDialogOpen(true)}>
+              Réinitialiser
+            </Button>
             <Button variant="secondary" disabled={!history.canUndo} onClick={history.undo}>Annuler</Button>
             <Button variant="secondary" disabled={!history.canRedo} onClick={history.redo}>Rétablir</Button>
             <Button variant="secondary" disabled={saving} onClick={() => void saveDraft()}>{saving ? "…" : "Enregistrer le brouillon"}</Button>
@@ -485,13 +555,85 @@ export function CardEditorPage({
 
         {message ? <Alert>{message}</Alert> : null}
         {error ? <Alert>{error}</Alert> : null}
-        {!validation.ok && validation.errors.length ? (
-          <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-100">
-            {validation.errors.map((e) => (
-              <button key={e.message} type="button" className="block w-full text-left hover:underline" onClick={() => e.elementId && setSelectedId(e.elementId)}>
-                {e.message}
-              </button>
+        {!validation.ok && validation.issues.length ? (
+          <div className="space-y-2">
+            {validation.issues.map((issue) => (
+              <div
+                key={issue.code ?? issue.message}
+                className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-100"
+              >
+                <p>{issue.message}</p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {issue.autoFix === "migrate_legacy" ? (
+                    <Button
+                      variant="secondary"
+                      className="text-xs"
+                      onClick={() => applyAutoFix("migrate_legacy")}
+                    >
+                      Corriger automatiquement
+                    </Button>
+                  ) : null}
+                  {issue.autoFix === "add_loyalty_widget" ? (
+                    <Button
+                      variant="secondary"
+                      className="text-xs"
+                      onClick={() => applyAutoFix("add_loyalty_widget")}
+                    >
+                      Ajouter le bloc
+                    </Button>
+                  ) : null}
+                  {issue.elementId ? (
+                    <button
+                      type="button"
+                      className="text-[10px] underline opacity-80"
+                      onClick={() => setSelectedId(issue.elementId!)}
+                    >
+                      Voir l’élément
+                    </button>
+                  ) : null}
+                </div>
+              </div>
             ))}
+          </div>
+        ) : null}
+
+        {resetDialogOpen ? (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+            <Card className="max-w-md space-y-4 p-5">
+              <h2 className="text-lg font-bold text-[var(--ink)]">Réinitialiser cette carte</h2>
+              <p className="text-sm text-[var(--muted-text)]">
+                La carte actuellement publiée restera visible par les clients jusqu’à la publication de
+                votre nouveau brouillon.
+              </p>
+              <div className="space-y-2">
+                <Button
+                  variant="secondary"
+                  className="w-full justify-start"
+                  disabled={resetBusy}
+                  onClick={() => void runResetAction("restore-published")}
+                >
+                  Restaurer la version publiée
+                </Button>
+                <p className="text-[10px] text-[var(--muted-text)]">
+                  Abandonne les changements du brouillon et reprend la dernière version publiée.
+                </p>
+                <Button
+                  variant="secondary"
+                  className="w-full justify-start"
+                  disabled={resetBusy}
+                  onClick={() => void runResetAction("reset-draft")}
+                >
+                  Recommencer cette carte de zéro
+                </Button>
+                <p className="text-[10px] text-[var(--muted-text)]">
+                  Crée un brouillon propre pour {CARD_SLOT_TITLES[cardSlot]} avec les éléments
+                  obligatoires uniquement.
+                </p>
+              </div>
+              <Button variant="secondary" className="w-full" disabled={resetBusy} onClick={() => setResetDialogOpen(false)}>
+                Annuler
+              </Button>
+            </Card>
           </div>
         ) : null}
 

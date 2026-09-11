@@ -9,6 +9,7 @@ import {
   adaptTemplateConfigForCardSlot,
   duplicateTemplateToSlots,
   resetDraftForSlot,
+  restoreDraftFromPublished,
 } from "@/lib/merchant-card-template-service";
 import { prisma } from "@/lib/prisma";
 import { cardTemplateSaveSchema, zodErrorMessage } from "@/lib/super-admin-validation";
@@ -128,7 +129,32 @@ export async function PATCH(
   if (action === "reset-draft") {
     const updated = await resetDraftForSlot(existing.merchantId, existing.cardSlot);
     if (!updated) return jsonError("Aucun brouillon à réinitialiser.", 404);
+    await writeAudit({
+      actorId: admin.user.id,
+      merchantId: existing.merchantId,
+      action: "CARD_TEMPLATE_RESET_DRAFT",
+      metadata: { templateId: id, cardSlot: existing.cardSlot },
+      ip: clientIp(req),
+      userAgent: userAgent(req),
+    });
     return jsonOk({ template: updated });
+  }
+
+  if (action === "restore-published") {
+    const result = await restoreDraftFromPublished(existing.merchantId, existing.cardSlot);
+    if (result.error === "no_published") {
+      return jsonError("Aucune version publiée à restaurer pour cette carte.", 404);
+    }
+    if (!result.template) return jsonError("Restauration impossible.", 500);
+    await writeAudit({
+      actorId: admin.user.id,
+      merchantId: existing.merchantId,
+      action: "CARD_TEMPLATE_RESTORE_PUBLISHED",
+      metadata: { templateId: result.template.id, cardSlot: existing.cardSlot },
+      ip: clientIp(req),
+      userAgent: userAgent(req),
+    });
+    return jsonOk({ template: result.template });
   }
 
   if (action === "duplicate") {

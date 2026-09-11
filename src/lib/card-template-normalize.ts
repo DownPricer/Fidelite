@@ -1,7 +1,8 @@
+import type { MerchantCardSlot } from "@prisma/client";
 import type { CardElement, CardTemplateConfig } from "./card-template-schema";
 import { defaultDataKey } from "./card-template-data-keys";
 import { defaultNextRewardStyle } from "./next-reward-styles";
-import { defaultLoyaltyWidgetConfig } from "./loyalty-widget";
+import { defaultLoyaltyWidgetConfig, sanitizeLoyaltyWidgetsForSlot } from "./loyalty-widget";
 import { normalizeQrElementRect } from "./card-template-qr-geometry";
 
 export const CARD_EDITOR_REFERENCE_WIDTH = 920;
@@ -143,4 +144,12 @@ export function normalizeCardTemplateConfig(config: CardTemplateConfig): CardTem
     ...config,
     elements: config.elements.map(normalizeCardElement),
   };
+}
+
+/** Normalisation structurelle + migration legacy + filtrage par emplacement (client et serveur). */
+export function normalizeCardTemplateForSlot(
+  config: CardTemplateConfig,
+  cardSlot: MerchantCardSlot,
+): CardTemplateConfig {
+  return normalizeCardTemplateConfig(sanitizeLoyaltyWidgetsForSlot(config, cardSlot));
 }

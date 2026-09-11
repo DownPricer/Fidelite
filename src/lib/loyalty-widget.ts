@@ -198,6 +198,40 @@ export function findPrimaryLoyaltyRect(elements: CardElement[]) {
   return { x: 0.06, y: 0.55, width: 0.88, height: 0.28 };
 }
 
+export function findLegacyLoyaltyElements(config: CardTemplateConfig) {
+  return config.elements.filter((el) => isLegacyLoyaltyElement(el.type));
+}
+
+function styleVariantFromLegacy(
+  mode: LoyaltyWidgetMode,
+  legacyBar: CardElement | undefined,
+): LoyaltyStyleVariant {
+  if (mode === "VISITS") return legacyBar ? "segmentedBar" : "stampGrid";
+  if (mode === "AMOUNT_TIERS") return "tierStair";
+  if (mode === "FIXED_POINTS") return legacyBar ? "progressBar" : "counterWithNextGoal";
+  return legacyBar ? "progressBar" : "bigBalance";
+}
+
+function widgetConfigFromLegacy(
+  mode: LoyaltyWidgetMode,
+  legacyElements: CardElement[],
+): LoyaltyWidgetConfig {
+  const legacyBar = legacyElements.find((el) => el.type === "progressBar");
+  return {
+    ...defaultLoyaltyWidgetConfig(mode),
+    styleVariant: styleVariantFromLegacy(mode, legacyBar),
+    colors: {
+      fill: legacyBar?.progressColors?.fill ?? "#875BFF",
+      track: legacyBar?.progressColors?.track ?? "#FFFFFF44",
+      radius: legacyBar?.progressColors?.radius ?? 8,
+      borderColor: legacyBar?.progressColors?.borderColor,
+      borderWidth: legacyBar?.progressColors?.borderWidth,
+      glow: legacyBar?.progressColors?.glow,
+      shadow: legacyBar?.progressColors?.shadow,
+    },
+  };
+}
+
 /** Convertit les anciens éléments atomiques en un bloc canonique (migration douce). */
 export function migrateLegacyLoyaltyElements(
   config: CardTemplateConfig,
@@ -213,53 +247,51 @@ export function migrateLegacyLoyaltyElements(
   const mode = loyaltyWidgetModeForCardSlot(cardSlot);
   if (!mode) return config;
 
-  const hasWidget = config.elements.some((el) => el.type === "loyaltyWidget");
-  if (hasWidget) return config;
+  const legacyElements = findLegacyLoyaltyElements(config);
+  if (legacyElements.length === 0) return config;
 
-  const hasLegacy = config.elements.some((el) => isLegacyLoyaltyElement(el.type));
-  if (!hasLegacy) return config;
+  const rect = findPrimaryLoyaltyRect(legacyElements.length ? legacyElements : config.elements);
+  const maxZ = Math.max(...config.elements.map((el) => el.zIndex), 1);
+  const withoutLegacy = config.elements.filter((el) => !isLegacyLoyaltyElement(el.type));
+  const existingWidget = withoutLegacy.find((el) => el.type === "loyaltyWidget");
 
-  const rect = findPrimaryLoyaltyRect(config.elements);
-  const legacyBar = config.elements.find((el) => el.type === "progressBar");
+  if (existingWidget?.loyaltyWidget) {
+    return {
+      ...config,
+      elements: withoutLegacy.map((el) =>
+        el.id === existingWidget.id
+          ? {
+              ...el,
+              ...rect,
+              loyaltyWidget: {
+                ...el.loyaltyWidget!,
+                ...widgetConfigFromLegacy(mode, legacyElements),
+                colors: {
+                  ...widgetConfigFromLegacy(mode, legacyElements).colors,
+                  ...el.loyaltyWidget!.colors,
+                },
+              },
+            }
+          : el,
+      ),
+    };
+  }
+
   const widget: CardElement = {
     id: `loyaltyWidget-migrated-${Date.now()}`,
     type: "loyaltyWidget",
     label: LOYALTY_WIDGET_LABELS[mode],
     ...rect,
-    zIndex: Math.max(...config.elements.map((el) => el.zIndex), 1),
+    zIndex: maxZ + 1,
     locked: false,
     hidden: false,
     anchor: "top-left",
-    loyaltyWidget: {
-      ...defaultLoyaltyWidgetConfig(mode),
-      styleVariant:
-        mode === "VISITS"
-          ? legacyBar
-            ? "segmentedBar"
-            : "stampGrid"
-          : mode === "AMOUNT_TIERS"
-            ? "tierStair"
-            : legacyBar
-              ? "progressBar"
-              : "bigBalance",
-      colors: {
-        fill: legacyBar?.progressColors?.fill ?? "#875BFF",
-        track: legacyBar?.progressColors?.track ?? "#FFFFFF44",
-        radius: legacyBar?.progressColors?.radius ?? 8,
-        borderColor: legacyBar?.progressColors?.borderColor,
-        borderWidth: legacyBar?.progressColors?.borderWidth,
-        glow: legacyBar?.progressColors?.glow,
-        shadow: legacyBar?.progressColors?.shadow,
-      },
-    },
+    loyaltyWidget: widgetConfigFromLegacy(mode, legacyElements),
   };
 
   return {
     ...config,
-    elements: [
-      ...config.elements.filter((el) => !isLegacyLoyaltyElement(el.type)),
-      widget,
-    ],
+    elements: [...withoutLegacy, widget],
   };
 }
 
@@ -331,7 +363,12 @@ export function sanitizeLoyaltyWidgetsForSlot(
   return next;
 }
 
-export type LoyaltyWidgetValidationError = { message: string; elementId?: string };
+export type LoyaltyWidgetValidationError = {
+  message: string;
+  elementId?: string;
+  elementIds?: string[];
+  code?: "legacy_loyalty_elements" | "missing_loyalty_widget";
+};
 
 export function validateLoyaltyWidgetsForSlot(
   config: CardTemplateConfig,
@@ -369,12 +406,17 @@ export function validateLoyaltyWidgetsForSlot(
   );
 
   if (widgets.length === 0 && legacy.length === 0) {
-    errors.push({ message: `Bloc obligatoire manquant : ${LOYALTY_WIDGET_LABELS[mode]}.` });
+    errors.push({
+      code: "missing_loyalty_widget",
+      message: `${LOYALTY_WIDGET_LABELS[mode]} manquante`,
+    });
   }
 
-  if (widgets.length > 0 && legacy.length > 0) {
+  if (legacy.length > 0) {
     errors.push({
-      message: "Utilisez uniquement le bloc de fidélité canonique — retirez les anciens éléments atomiques.",
+      code: "legacy_loyalty_elements",
+      message: `Des anciens éléments de fidélité ont été détectés. Ils peuvent être remplacés automatiquement par le bloc ${LOYALTY_WIDGET_LABELS[mode]}.`,
+      elementIds: legacy.map((el) => el.id),
     });
   }
 
@@ -395,14 +437,6 @@ export function validateLoyaltyWidgetsForSlot(
         elementId: el.id,
       });
     }
-  }
-
-  for (const el of legacy) {
-    if (LOYALTY_COMPANION_TYPES.includes(el.type)) continue;
-    errors.push({
-      message: "Les éléments de fidélité atomiques ne sont plus autorisés — utilisez le bloc de progression.",
-      elementId: el.id,
-    });
   }
 
   return errors;

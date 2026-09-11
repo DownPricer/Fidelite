@@ -2,6 +2,9 @@ import type { CardTemplateStatus, LoyaltyMode, MerchantCardSlot, Prisma } from "
 
 import type { CardTemplateConfig } from "./card-template-schema";
 import { defaultCardTemplateConfig } from "./card-template-schema";
+import { normalizeCardTemplateForSlot } from "./card-template-normalize";
+import { defaultNextRewardStyle } from "./next-reward-styles";
+import { qrNormalizedHeight } from "./card-template-qr-geometry";
 import {
   convertConfigForTargetSlot,
   createDefaultLoyaltyWidgetElement,
@@ -80,7 +83,58 @@ export function adaptTemplateConfigForCardSlot(
   cardSlot: MerchantCardSlot,
   _activeLoyaltyMode: LoyaltyMode,
 ): CardTemplateConfig {
-  return sanitizeLoyaltyWidgetsForSlot(config, cardSlot);
+  return normalizeCardTemplateForSlot(config, cardSlot);
+}
+
+function mandatoryElementsForSlot(cardSlot: MerchantCardSlot, maxZ: number): CardTemplateConfig["elements"] {
+  const extras: CardTemplateConfig["elements"] = [];
+
+  extras.push({
+    id: `clientName-fresh-${cardSlot}`,
+    type: "clientName",
+    label: "Identité client",
+    x: 0.06,
+    y: 0.28,
+    width: 0.52,
+    height: 0.08,
+    zIndex: maxZ + 1,
+    locked: false,
+    hidden: false,
+    anchor: "top-left",
+    style: {
+      fontFamily: "system",
+      fontSize: 16,
+      fontWeight: "600",
+      color: "#FFFFFF",
+      textAlign: "left",
+      opacity: 1,
+      lineHeight: 1.2,
+      shadow: true,
+      borderRadius: 0,
+      fitMode: "autoShrink",
+      minFontSize: 10,
+      maxLines: 2,
+    },
+  });
+
+  if (isLoyaltyProgramSlot(cardSlot)) {
+    extras.push({
+      id: `nextReward-fresh-${cardSlot}`,
+      type: "nextReward",
+      label: "Prochain avantage",
+      x: 0.06,
+      y: 0.86,
+      width: 0.88,
+      height: 0.08,
+      zIndex: maxZ + 2,
+      locked: false,
+      hidden: false,
+      anchor: "top-left",
+      nextRewardStyle: defaultNextRewardStyle(),
+    });
+  }
+
+  return extras;
 }
 
 export function defaultTemplateConfigForSlot(
@@ -91,18 +145,51 @@ export function defaultTemplateConfigForSlot(
   if (cardSlot === "GENERAL") {
     const withoutWidget = {
       ...base,
-      elements: base.elements.filter((el) => el.type !== "loyaltyWidget"),
+      elements: [
+        ...base.elements.filter((el) => el.type !== "loyaltyWidget"),
+        ...mandatoryElementsForSlot("GENERAL", base.elements.length),
+      ],
     };
-    return sanitizeLoyaltyWidgetsForSlot(withoutWidget, "GENERAL");
+    return normalizeCardTemplateForSlot(withoutWidget, "GENERAL");
   }
   const widget = createDefaultLoyaltyWidgetElement(cardSlot, 3);
+  const filtered = base.elements.filter((el) => el.type !== "loyaltyWidget");
   const elements = widget
-    ? [
-        ...base.elements.filter((el) => el.type !== "loyaltyWidget"),
-        widget,
-      ]
-    : base.elements;
-  return sanitizeLoyaltyWidgetsForSlot({ ...base, elements }, cardSlot);
+    ? [...filtered, ...mandatoryElementsForSlot(cardSlot, filtered.length), widget]
+    : [...filtered, ...mandatoryElementsForSlot(cardSlot, filtered.length)];
+  return normalizeCardTemplateForSlot({ ...base, elements }, cardSlot);
+}
+
+/** Brouillon vierge avec uniquement les éléments techniques obligatoires pour l’emplacement. */
+export function freshDraftConfigForSlot(cardSlot: MerchantCardSlot): CardTemplateConfig {
+  const qrWidth = 0.18;
+  const config = defaultTemplateConfigForSlot("", cardSlot);
+  return normalizeCardTemplateForSlot(
+    {
+      ...config,
+      background: {
+        ...config.background,
+        url: "",
+        fit: "cover",
+        position: { x: 0.5, y: 0.5 },
+        scale: 1,
+      },
+      elements: config.elements
+        .filter((el) => el.type !== "decorative" && el.type !== "staticText")
+        .map((el) => {
+          if (el.type === "qr") {
+            return {
+              ...el,
+              width: qrWidth,
+              height: qrNormalizedHeight(qrWidth),
+              lockAspectRatio: true,
+            };
+          }
+          return el;
+        }),
+    },
+    cardSlot,
+  );
 }
 
 function templateRank(status: CardTemplateStatus) {
@@ -518,7 +605,7 @@ export async function resetDraftForSlot(merchantId: string, cardSlot: MerchantCa
   });
   if (!draft) return null;
 
-  const emptyConfig = defaultTemplateConfigForSlot("", cardSlot);
+  const emptyConfig = freshDraftConfigForSlot(cardSlot);
   return prisma.merchantCardTemplate.update({
     where: { id: draft.id },
     data: {
@@ -527,4 +614,47 @@ export async function resetDraftForSlot(merchantId: string, cardSlot: MerchantCa
       version: { increment: 1 },
     },
   });
+}
+
+export async function restoreDraftFromPublished(merchantId: string, cardSlot: MerchantCardSlot) {
+  const published = await prisma.merchantCardTemplate.findFirst({
+    where: { merchantId, cardSlot, status: "PUBLISHED" },
+    orderBy: [{ publishedAt: "desc" }, { version: "desc" }],
+  });
+  if (!published) return { error: "no_published" as const, template: null };
+
+  let draft = await prisma.merchantCardTemplate.findFirst({
+    where: { merchantId, cardSlot, status: "DRAFT" },
+  });
+
+  const config = normalizeCardTemplateForSlot(
+    published.config as CardTemplateConfig,
+    cardSlot,
+  );
+
+  if (draft) {
+    const updated = await prisma.merchantCardTemplate.update({
+      where: { id: draft.id },
+      data: {
+        backgroundUrl: published.backgroundUrl,
+        config: config as Prisma.InputJsonValue,
+        version: { increment: 1 },
+      },
+    });
+    return { error: null, template: updated };
+  }
+
+  draft = await prisma.merchantCardTemplate.create({
+    data: {
+      merchantId,
+      cardSlot,
+      loyaltyMode: loyaltyModeForCardSlot(cardSlot),
+      name: CARD_SLOT_TITLES[cardSlot],
+      backgroundUrl: published.backgroundUrl,
+      config: config as Prisma.InputJsonValue,
+      status: "DRAFT",
+      authorId: published.authorId,
+    },
+  });
+  return { error: null, template: draft };
 }
