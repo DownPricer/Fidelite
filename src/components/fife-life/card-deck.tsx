@@ -252,7 +252,7 @@ export function CardDeck({
                     tierOverride={item.kind === "global-tier" ? item.tier : undefined}
                     demoTierPreview={demoVisual && item.kind === "global-tier"}
                     interactive={active && !isDesktop}
-                    qrZoomEnabled={false}
+                    qrZoomEnabled
                     qrFetchPriority={active ? "high" : "auto"}
                   />
                 </div>
@@ -290,6 +290,7 @@ export function CardDeck({
                     qrSrc={personalizedQr}
                     qrFetchPriority={active ? "high" : "auto"}
                     interactive={active && !isDesktop}
+                    qrZoomEnabled
                   />
                 </div>
               );

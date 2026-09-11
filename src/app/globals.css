@@ -172,7 +172,212 @@ body:has(.wallet-shell) {
 }
 
 .deck-halo {
-  display: none;
+  pointer-events: none;
+  border-radius: 9999px;
+  background:
+    radial-gradient(circle, rgba(135, 91, 255, 0.55) 0%, rgba(112, 133, 255, 0.35) 42%, transparent 72%);
+  filter: blur(18px);
+  animation: unlock-halo-pulse 2s ease-out forwards;
+}
+
+@keyframes unlock-halo-pulse {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.55);
+  }
+  35% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.05);
+  }
+  100% {
+    opacity: 0.75;
+    transform: translate(-50%, -50%) scale(1.15);
+  }
+}
+
+.unlock-reveal-ring {
+  pointer-events: none;
+  position: absolute;
+  inset: -12%;
+  border-radius: 9999px;
+  border: 2px solid rgba(135, 91, 255, 0.45);
+  box-shadow: 0 0 40px rgba(112, 133, 255, 0.35);
+  animation: unlock-ring-open 2s ease-out forwards;
+}
+
+@keyframes unlock-ring-open {
+  0% {
+    opacity: 0;
+    transform: scale(0.65);
+  }
+  40% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.25);
+  }
+}
+
+.unlock-reveal-star {
+  pointer-events: none;
+  position: absolute;
+  left: 50%;
+  top: 42%;
+  width: 1.25rem;
+  height: 1.25rem;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(circle, #fff 0%, rgba(135, 91, 255, 0.9) 55%, transparent 70%);
+  border-radius: 9999px;
+  animation: unlock-star-flash 2s ease-out forwards;
+}
+
+@keyframes unlock-star-flash {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.2);
+  }
+  25% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.2);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.6);
+  }
+}
+
+.unlock-reveal-particles {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.unlock-reveal-particles span {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.85);
+  box-shadow: 0 0 8px rgba(135, 91, 255, 0.8);
+  animation: unlock-particle-rise 2s ease-out forwards;
+}
+
+.unlock-reveal-particles span:nth-child(1) {
+  left: 18%;
+  bottom: 28%;
+  animation-delay: 0.1s;
+}
+.unlock-reveal-particles span:nth-child(2) {
+  left: 72%;
+  bottom: 34%;
+  animation-delay: 0.2s;
+}
+.unlock-reveal-particles span:nth-child(3) {
+  left: 48%;
+  bottom: 18%;
+  animation-delay: 0.15s;
+}
+.unlock-reveal-particles span:nth-child(4) {
+  left: 32%;
+  bottom: 42%;
+  animation-delay: 0.25s;
+}
+.unlock-reveal-particles span:nth-child(5) {
+  left: 62%;
+  bottom: 22%;
+  animation-delay: 0.18s;
+}
+
+@keyframes unlock-particle-rise {
+  0% {
+    opacity: 0;
+    transform: translateY(12px) scale(0.5);
+  }
+  30% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-28px) scale(1);
+  }
+}
+
+.unlock-reveal-shimmer {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 35%,
+    rgba(255, 255, 255, 0.35) 50%,
+    transparent 65%
+  );
+  transform: translateX(-120%);
+  animation: unlock-shimmer-sweep 2s ease-out forwards;
+}
+
+@keyframes unlock-shimmer-sweep {
+  0% {
+    transform: translateX(-120%);
+    opacity: 0;
+  }
+  35% {
+    opacity: 0.85;
+  }
+  100% {
+    transform: translateX(120%);
+    opacity: 0;
+  }
+}
+
+.cashier-rewards-widget {
+  animation: cashier-widget-rise 0.45s ease-out forwards;
+}
+
+@keyframes cashier-widget-rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.cashier-rewards-highlight {
+  animation: cashier-rewards-flash 1.2s ease-out;
+}
+
+@keyframes cashier-rewards-flash {
+  0% {
+    box-shadow: 0 0 0 rgba(56, 217, 169, 0);
+  }
+  35% {
+    box-shadow: 0 0 0 4px rgba(56, 217, 169, 0.35);
+  }
+  100% {
+    box-shadow: 0 0 0 rgba(56, 217, 169, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .deck-halo,
+  .unlock-reveal-ring,
+  .unlock-reveal-star,
+  .unlock-reveal-particles span,
+  .unlock-reveal-shimmer {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+
+  .deck-halo {
+    opacity: 0.85;
+    transform: translate(-50%, -50%) scale(1);
+  }
 }
 
 .deck-floor-shadow {
@@ -808,25 +1013,26 @@ body:has(.wallet-shell) {
 }
 
 .merchant-interactive-card__qr-image {
-  width: 24cqw;
-  height: 24cqw;
+  width: 18cqw;
+  height: 18cqw;
   border-radius: 2cqw;
   object-fit: contain;
   background: #faf9ff;
-  padding: 1.2cqw;
+  padding: 0.6cqw;
+  box-sizing: border-box;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85), 0 14px 32px rgba(0, 0, 0, 0.55);
 }
 
 .merchant-interactive-card__qr.is-compact .merchant-interactive-card__qr-image {
-  width: 20cqw;
-  height: 20cqw;
+  width: 16cqw;
+  height: 16cqw;
 }
 
 .merchant-interactive-card__qr-placeholder {
   display: grid;
   place-content: center;
-  width: 24cqw;
-  height: 24cqw;
+  width: 18cqw;
+  height: 18cqw;
   border: 0.12cqw solid rgba(255, 255, 255, 0.35);
   border-radius: 2cqw;
   font-size: 2cqw;
@@ -1276,20 +1482,37 @@ body:has(.wallet-shell) {
 }
 
 .merchant-card-qr-shell {
-  position: absolute;
+  position: relative;
   overflow: visible;
   opacity: 1;
   visibility: visible;
+  width: 100%;
+  height: 100%;
   min-width: 2.75rem;
   min-height: 2.75rem;
   box-sizing: border-box;
+  padding: 2%;
+  background: #ffffff;
+}
+
+.merchant-card-qr-shell--zoomable .merchant-card-qr-hitbox {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  cursor: zoom-in;
 }
 
 .merchant-card-qr-image {
   display: block;
+  width: 100%;
+  height: 100%;
   min-width: 1.5rem;
   min-height: 1.5rem;
   background: #ffffff;
+  object-fit: contain;
 }
 
 /* QR enlarged view wrapper */

@@ -3,6 +3,8 @@
 import { useMemo, useState } from "react";
 import type { LoyaltyMode, MerchantCardSlot } from "@prisma/client";
 import { LoyaltyWidgetStylePicker } from "@/components/super-admin/loyalty-widget-style-picker";
+import { NextRewardStylePicker } from "@/components/super-admin/next-reward-style-picker";
+import { defaultNextRewardStyle } from "@/lib/next-reward-styles";
 import { Button, Field, Input } from "@/components/ui";
 import type { CardElement, CardTemplateConfig, CardTextStyle } from "@/lib/card-template-schema";
 import { CARD_FONT_OPTIONS } from "@/lib/card-template-fonts";
@@ -80,11 +82,13 @@ export function CardEditorProperties({
   onDelete,
   recentColors,
   onColorUsed,
+  merchantPrimaryColor = "#875BFF",
 }: {
   element: CardElement;
   config: CardTemplateConfig;
   loyaltyMode: LoyaltyMode;
   cardSlot: MerchantCardSlot;
+  merchantPrimaryColor?: string;
   onUpdate: (patch: Partial<CardElement>) => void;
   onDuplicate: () => void;
   onDelete: () => void;
@@ -543,6 +547,23 @@ export function CardEditorProperties({
               <option value="pill">Pilule</option>
             </select>
           </Field>
+        </Section>
+      ) : null}
+
+      {element.type === "nextReward" ? (
+        <Section
+          title="Prochain avantage"
+          open={open.appearance}
+          onToggle={() => setOpen((s) => ({ ...s, appearance: !s.appearance }))}
+        >
+          <NextRewardStylePicker
+            style={element.nextRewardStyle ?? defaultNextRewardStyle(merchantPrimaryColor)}
+            primaryColor={merchantPrimaryColor}
+            onChange={(nextRewardStyle) => onUpdate({ nextRewardStyle })}
+          />
+          <p className="text-[10px] text-[var(--muted-text)]">
+            Les noms et progressions viennent du programme actif — jamais enregistrés dans le gabarit.
+          </p>
         </Section>
       ) : null}
 

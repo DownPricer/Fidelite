@@ -1,5 +1,6 @@
 import type { CardElement, CardTemplateConfig } from "./card-template-schema";
 import { defaultDataKey } from "./card-template-data-keys";
+import { defaultNextRewardStyle } from "./next-reward-styles";
 import { defaultLoyaltyWidgetConfig } from "./loyalty-widget";
 import { normalizeQrElementRect } from "./card-template-qr-geometry";
 
@@ -124,6 +125,13 @@ export function normalizeCardElement(el: CardElement): CardElement {
       shape: "rectangle",
       shadow: false,
       ...el.decorativeStyle,
+    };
+  }
+
+  if (el.type === "nextReward") {
+    normalized.nextRewardStyle = {
+      ...defaultNextRewardStyle(),
+      ...el.nextRewardStyle,
     };
   }
 

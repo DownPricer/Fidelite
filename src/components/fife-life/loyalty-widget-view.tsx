@@ -9,6 +9,9 @@ export type LoyaltyWidgetProgress = {
   target: number;
   label: string;
   nextReward?: string | null;
+  nextRewardName?: string | null;
+  nextRewardHeadline?: string | null;
+  nextRewardEuroEstimate?: string | null;
   unlockedReward?: string | null;
   tierLabel?: string | null;
   fixedPointsPerPurchase?: number | null;
@@ -267,6 +270,34 @@ function Gauge({ config, pctValue }: { config: CardLoyaltyWidgetConfig; pctValue
       </svg>
       <p className="font-bold" style={{ color: config.colors.fill }}>{Math.round(pctValue)}%</p>
     </div>
+  );
+}
+
+/** Aperçu fidèle de la jauge pour le sélecteur de styles. */
+export function LoyaltyGaugeThumbnail({
+  fill,
+  track,
+  pctValue = 62,
+}: {
+  fill: string;
+  track: string;
+  pctValue?: number;
+}) {
+  const angle = -90 + (pctValue / 100) * 180;
+  return (
+    <svg viewBox="0 0 120 70" className="h-8 w-full max-w-[4.5rem]">
+      <path d="M10 60 A50 50 0 0 1 110 60" fill="none" stroke={track} strokeWidth="10" strokeLinecap="round" />
+      <path
+        d="M10 60 A50 50 0 0 1 110 60"
+        fill="none"
+        stroke={fill}
+        strokeWidth="10"
+        strokeLinecap="round"
+        strokeDasharray="157"
+        strokeDashoffset={157 - (pctValue / 100) * 157}
+      />
+      <line x1="60" y1="60" x2="60" y2="18" stroke={fill} strokeWidth="3" transform={`rotate(${angle} 60 60)`} />
+    </svg>
   );
 }
 

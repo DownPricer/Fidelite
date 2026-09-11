@@ -65,10 +65,12 @@ export const LOYALTY_ATOMIC_TYPES: CardElement["type"][] = [
   "visitsCount",
   "progressText",
   "progressBar",
-  "nextReward",
   "unlockedReward",
   "tierLevel",
 ];
+
+/** Éléments dynamiques autorisés en complément du bloc canonique. */
+export const LOYALTY_COMPANION_TYPES: CardElement["type"][] = ["nextReward"];
 
 export const COMMON_ELEMENT_TYPES: CardElement["type"][] = [
   "logo",
@@ -146,7 +148,7 @@ export function loyaltyWidgetModeForCardSlot(cardSlot: MerchantCardSlot): Loyalt
 }
 
 export function allowedElementTypesForSlot(cardSlot: MerchantCardSlot): CardElement["type"][] {
-  const common = [...COMMON_ELEMENT_TYPES];
+  const common = [...COMMON_ELEMENT_TYPES, ...LOYALTY_COMPANION_TYPES];
   if (cardSlot === "GENERAL") return common;
   return [...common, "loyaltyWidget"];
 }
@@ -362,7 +364,9 @@ export function validateLoyaltyWidgetsForSlot(
 
   const mode = loyaltyWidgetModeForCardSlot(cardSlot)!;
   const widgets = config.elements.filter((el) => el.type === "loyaltyWidget");
-  const legacy = config.elements.filter((el) => isLegacyLoyaltyElement(el.type));
+  const legacy = config.elements.filter(
+    (el) => isLegacyLoyaltyElement(el.type) && !LOYALTY_COMPANION_TYPES.includes(el.type),
+  );
 
   if (widgets.length === 0 && legacy.length === 0) {
     errors.push({ message: `Bloc obligatoire manquant : ${LOYALTY_WIDGET_LABELS[mode]}.` });
@@ -394,6 +398,7 @@ export function validateLoyaltyWidgetsForSlot(
   }
 
   for (const el of legacy) {
+    if (LOYALTY_COMPANION_TYPES.includes(el.type)) continue;
     errors.push({
       message: "Les éléments de fidélité atomiques ne sont plus autorisés — utilisez le bloc de progression.",
       elementId: el.id,

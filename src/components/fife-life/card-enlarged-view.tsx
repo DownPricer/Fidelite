@@ -138,6 +138,7 @@ export function CardEnlargedView({
                 showQr
                 qrSrc={personalizedQr ?? qr}
                 qrFetchPriority="high"
+                qrZoomEnabled
                 interactive={false}
                 className="card-enlarged-merchant-card w-full"
                 shellClassName="card-enlarged-merchant-shell"

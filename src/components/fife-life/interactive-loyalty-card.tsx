@@ -1,14 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { createPortal } from "react-dom";
 import { cn } from "@/components/ui";
 import { formatClientNumberDisplay } from "@/lib/client-number";
 import { buildLoyaltyCardViewModel, type LoyaltyCardQrMode } from "@/lib/loyalty-card-view-model";
 import { getLoyaltyCardBackground } from "@/lib/loyalty-card-assets";
-import { getPersonalizedQr, loadPersonalizedQr } from "./qr-cache";
-import { PREVIEW_QR } from "./preview-data";
-import { QrEnlargedView } from "./qr-enlarged-view";
+import { loadPersonalizedQr } from "./qr-cache";
+import { ExpandableQrCode } from "./expandable-qr-code";
 import type { WalletTier } from "./types";
 import { InteractiveCardShell } from "./interactive-card-shell";
 
@@ -67,14 +65,8 @@ export function InteractiveLoyaltyCard({
     [tier, name, points, qrMode, statusText, progressPercent],
   );
 
-  const [mounted, setMounted] = useState(false);
   const [qrFailed, setQrFailed] = useState(false);
-  const [qrEnlarged, setQrEnlarged] = useState(false);
   const [autoQr, setAutoQr] = useState<string | null>(null);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   useEffect(() => {
     if (!showQr || qrSrc) return;
@@ -115,30 +107,17 @@ export function InteractiveLoyaltyCard({
         </header>
 
         {showQr ? (
-          <div className="loyalty-card__qr-block">
-            <button
-              type="button"
-              className="loyalty-card__qr"
-              aria-label={qrZoomEnabled ? "Agrandir le QR code" : "QR code client"}
-              onClick={(event) => {
-                event.stopPropagation();
-                if (qrZoomEnabled && effectiveQrSrc && !qrFailed) {
-                  setQrEnlarged(true);
-                }
-              }}
-            >
-              {effectiveQrSrc && !qrFailed ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={effectiveQrSrc}
-                  alt={`QR code de ${model.name}`}
-                  className="loyalty-card__qr-image"
-                  loading="eager"
-                  decoding="async"
-                  fetchPriority={qrFetchPriority}
-                  onError={() => setQrFailed(true)}
-                />
-              ) : (
+          <div className="loyalty-card__qr-block" onClick={(event) => event.stopPropagation()}>
+            <ExpandableQrCode
+              qrSrc={effectiveQrSrc && !qrFailed ? effectiveQrSrc : null}
+              clientNumber={clientNumber}
+              merchantName="Fife Life"
+              zoomEnabled={qrZoomEnabled}
+              fetchPriority={qrFetchPriority}
+              onError={() => setQrFailed(true)}
+              shellClassName="loyalty-card__qr !rounded-[0.7cqw] !p-[3%] !shadow-none"
+              imgClassName="loyalty-card__qr-image"
+              placeholder={
                 <span className="loyalty-card__qr-placeholder">
                   {qrFailed ? (
                     <button type="button" className="text-[10px] font-bold" onClick={onQrRetry}>
@@ -148,8 +127,8 @@ export function InteractiveLoyaltyCard({
                     "QR CLIENT"
                   )}
                 </span>
-              )}
-            </button>
+              }
+            />
           </div>
         ) : null}
 
@@ -188,32 +167,16 @@ export function InteractiveLoyaltyCard({
     </Element>
   );
 
-  return (
-    <>
-      {enlarged ? (
-        card
-      ) : (
-        <InteractiveCardShell
-          interactive={interactive}
-          entrance={entrance}
-          halo={false}
-          className={cn("loyalty-card-shell w-full", shellClassName)}
-        >
-          {card}
-        </InteractiveCardShell>
-      )}
+  if (enlarged) return card;
 
-      {mounted
-        ? createPortal(
-            <QrEnlargedView
-              open={qrEnlarged}
-              qrSrc={effectiveQrSrc ?? ""}
-              clientNumber={clientNumber}
-              onClose={() => setQrEnlarged(false)}
-            />,
-            document.body,
-          )
-        : null}
-    </>
+  return (
+    <InteractiveCardShell
+      interactive={interactive}
+      entrance={entrance}
+      halo={false}
+      className={cn("loyalty-card-shell w-full", shellClassName)}
+    >
+      {card}
+    </InteractiveCardShell>
   );
 }

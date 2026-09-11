@@ -24,6 +24,7 @@ import {
 import { pickCanonicalTemplate } from "@/lib/merchant-card-template-service";
 import { CARD_SLOT_TITLES, isLoyaltyProgramSlot } from "@/lib/merchant-card-slots";
 import { qrNormalizedHeight } from "@/lib/card-template-qr-geometry";
+import { defaultNextRewardStyle } from "@/lib/next-reward-styles";
 import { validateCardTemplateForPublishDetailed } from "@/lib/card-template-validation";
 import { Alert, Button, Card, Field, Input } from "@/components/ui";
 import type { CardTemplateStatus, LoyaltyMode, MerchantCardSlot } from "@prisma/client";
@@ -191,14 +192,18 @@ export function CardEditorPage({
     if (previewScenario !== "noPoints" && previewScenario !== "midProgress" && previewScenario !== "rewardReached") {
       current = Math.round(target * (progressTestPct / 100));
     }
+    const rewardName = merchant?.program?.rewardLabel ?? "Récompense";
+    const remaining = Math.max(0, target - current);
     return {
       current,
       target,
       label:
         current >= target
-          ? `${merchant?.program?.rewardLabel ?? "Récompense"} disponible`
-          : `Encore ${Math.max(0, target - current)} · ${merchant?.program?.rewardLabel ?? "Récompense"}`,
-      nextReward: merchant?.program?.rewardLabel ?? "Récompense",
+          ? `${rewardName} disponible`
+          : `Encore ${remaining} · ${rewardName}`,
+      nextReward: rewardName,
+      nextRewardName: rewardName,
+      nextRewardHeadline: "Prochain avantage",
     };
   }, [previewScenario, progressTestPct, editorLoyaltyMode, visitsRequired, merchant?.program?.rewardLabel]);
 
@@ -284,6 +289,10 @@ export function CardEditorPage({
           ? { backgroundColor: "#FFFFFF22", borderRadius: 12, shape: "rectangle" }
           : undefined,
       logoStyle: type === "logo" ? { objectFit: "contain", borderRadius: 12, lockAspectRatio: true } : undefined,
+      nextRewardStyle:
+        type === "nextReward"
+          ? defaultNextRewardStyle(merchant?.primaryColor ?? "#875BFF")
+          : undefined,
     });
     updateElements([...config.elements, element]);
     setSelectedId(id);
@@ -422,6 +431,7 @@ export function CardEditorPage({
       config={config}
       loyaltyMode={editorLoyaltyMode}
       cardSlot={cardSlot}
+      merchantPrimaryColor={merchant?.primaryColor ?? "#875BFF"}
       onUpdate={(patch) => updateElement(selected.id, patch)}
       onDuplicate={() => {
         const copy = normalizeCardElement({

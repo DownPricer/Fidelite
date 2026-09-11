@@ -9,10 +9,14 @@ export function AmountField({
   value,
   onChange,
   disabled,
+  showKeypad = false,
+  compact = false,
 }: {
   value: string;
   onChange: (next: string) => void;
   disabled?: boolean;
+  showKeypad?: boolean;
+  compact?: boolean;
 }) {
   const parsed = value.trim() ? tryParsePurchaseAmountToCents(value) : null;
 
@@ -34,7 +38,7 @@ export function AmountField({
   }
 
   return (
-    <div className="w-full min-w-0 space-y-3">
+    <div className={cn("w-full min-w-0", compact ? "space-y-2" : "space-y-3")}>
       <label className="block space-y-2">
         <span className="text-[13px] font-bold uppercase tracking-wider text-[var(--muted-text)]">
           Montant de l&apos;achat
@@ -47,28 +51,35 @@ export function AmountField({
           disabled={disabled}
           onChange={(event) => onChange(event.target.value)}
           placeholder="0,00"
-          className="w-full min-w-0 rounded-xl border border-[var(--stroke)] bg-[var(--surface-raised)] px-4 py-4 text-3xl font-black tracking-tight text-[var(--ink)] outline-none focus:border-[var(--violet)] focus:ring-4 focus:ring-[var(--violet)]/30"
+          className={cn(
+            "w-full min-w-0 rounded-xl border border-[var(--stroke)] bg-[var(--surface-raised)] px-4 font-black tracking-tight text-[var(--ink)] outline-none focus:border-[var(--violet)] focus:ring-4 focus:ring-[var(--violet)]/30",
+            compact ? "py-3 text-2xl" : "py-4 text-3xl",
+          )}
         />
       </label>
-      <p className="text-sm font-semibold text-[var(--violet-bright)]">
-        {parsed?.ok ? formatEurosFromCents(parsed.cents) : value.trim() ? "Montant invalide" : "0,00 €"}
-      </p>
-      <div className="grid grid-cols-3 gap-2">
-        {KEYS.map((key) => (
-          <button
-            key={key}
-            type="button"
-            disabled={disabled}
-            onClick={() => press(key)}
-            className={cn(
-              "rounded-xl border border-[var(--stroke)] bg-[var(--surface-raised)] py-3 text-xl font-black text-[var(--ink)] active:scale-[0.98] disabled:opacity-50",
-              key === "⌫" && "text-[var(--muted-strong)]",
-            )}
-          >
-            {key}
-          </button>
-        ))}
-      </div>
+      {!compact ? (
+        <p className="text-sm font-semibold text-[var(--violet-bright)]">
+          {parsed?.ok ? formatEurosFromCents(parsed.cents) : value.trim() ? "Montant invalide" : "0,00 €"}
+        </p>
+      ) : null}
+      {showKeypad ? (
+        <div className="grid grid-cols-3 gap-2">
+          {KEYS.map((key) => (
+            <button
+              key={key}
+              type="button"
+              disabled={disabled}
+              onClick={() => press(key)}
+              className={cn(
+                "rounded-xl border border-[var(--stroke)] bg-[var(--surface-raised)] py-3 text-xl font-black text-[var(--ink)] active:scale-[0.98] disabled:opacity-50",
+                key === "⌫" && "text-[var(--muted-strong)]",
+              )}
+            >
+              {key}
+            </button>
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }

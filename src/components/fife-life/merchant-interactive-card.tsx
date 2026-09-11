@@ -1,11 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createPortal } from "react-dom";
 import { cn } from "@/components/ui";
-import { getPersonalizedQr, loadPersonalizedQr } from "./qr-cache";
+import { loadPersonalizedQr } from "./qr-cache";
 import { PREVIEW_QR } from "./preview-data";
-import { QrEnlargedView } from "./qr-enlarged-view";
+import { ExpandableQrCode } from "./expandable-qr-code";
 import { InteractiveCardShell } from "./interactive-card-shell";
 import type { MerchantCardData } from "./types";
 
@@ -48,14 +47,8 @@ export function MerchantInteractiveCard({
     ? `${card.rewardLabel} disponible`
     : `Encore ${remaining} · ${card.rewardLabel}`;
 
-  const [mounted, setMounted] = useState(false);
   const [qr, setQr] = useState<string | null>(() => (preview ? PREVIEW_QR : null));
   const [qrError, setQrError] = useState(false);
-  const [qrEnlarged, setQrEnlarged] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   useEffect(() => {
     if (preview) {
@@ -80,99 +73,85 @@ export function MerchantInteractiveCard({
   const Element = as;
 
   return (
-    <>
-      <InteractiveCardShell
-        interactive={interactive}
-        entrance={entrance}
-        halo={false}
-        className={cn("merchant-card-shell w-full", shellClassName)}
+    <InteractiveCardShell
+      interactive={interactive}
+      entrance={entrance}
+      halo={false}
+      className={cn("merchant-card-shell w-full", shellClassName)}
+    >
+      <Element
+        {...rest}
+        data-merchant-card
+        aria-label={`Carte ${card.name}`}
+        className={cn("merchant-interactive-card", className)}
+        style={{
+          ["--merchant-hue" as never]: card.primaryColor,
+          ["--merchant-progress" as never]: `${progress}%`,
+        }}
       >
-        <Element
-          {...rest}
-          data-merchant-card
-          aria-label={`Carte ${card.name}`}
-          className={cn("merchant-interactive-card", className)}
-          style={{
-            ["--merchant-hue" as never]: card.primaryColor,
-            ["--merchant-progress" as never]: `${progress}%`,
-          }}
-        >
-          <div className="merchant-interactive-card__noise" aria-hidden />
+        <div className="merchant-interactive-card__noise" aria-hidden />
 
-          <header className="merchant-interactive-card__header">
-            {card.logoUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={card.logoUrl} alt="" className="merchant-interactive-card__logo" />
-            ) : (
-              <div
-                className="merchant-interactive-card__logo-fallback"
-                style={{ backgroundColor: card.primaryColor }}
-              >
-                {card.name.slice(0, 1)}
-              </div>
-            )}
-            <div className="merchant-interactive-card__brand">
-              <p className="merchant-interactive-card__eyebrow">Fife Life</p>
-              <h2 className="merchant-interactive-card__name">{card.name}</h2>
+        <header className="merchant-interactive-card__header">
+          {card.logoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={card.logoUrl} alt="" className="merchant-interactive-card__logo" />
+          ) : (
+            <div
+              className="merchant-interactive-card__logo-fallback"
+              style={{ backgroundColor: card.primaryColor }}
+            >
+              {card.name.slice(0, 1)}
             </div>
-          </header>
-
-          {showQr ? (
-            <div className={cn("merchant-interactive-card__qr-wrap", compactQr && "is-compact")}>
-              <button
-                type="button"
-                className={cn("merchant-interactive-card__qr", compactQr && "is-compact")}
-                aria-label={qrZoomEnabled ? "Agrandir le QR code" : "QR code client"}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  if (qrZoomEnabled && qr && !qrError) {
-                    setQrEnlarged(true);
-                  }
-                }}
-              >
-                {qr && !qrError ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={qr} alt={`QR ${card.name}`} className="merchant-interactive-card__qr-image" />
-                ) : (
-                  <span className="merchant-interactive-card__qr-placeholder">
-                    {qrError ? "QR INDISPONIBLE" : "QR CLIENT"}
-                  </span>
-                )}
-              </button>
-            </div>
-          ) : null}
-
-          <div className="merchant-interactive-card__points">
-            <p className="merchant-interactive-card__points-value">
-              {card.points}
-              <span>/{card.visitsRequired}</span>
-            </p>
-            <p className="merchant-interactive-card__status">{status}</p>
+          )}
+          <div className="merchant-interactive-card__brand">
+            <p className="merchant-interactive-card__eyebrow">Fife Life</p>
+            <h2 className="merchant-interactive-card__name">{card.name}</h2>
           </div>
+        </header>
 
+        {showQr ? (
           <div
-            className="merchant-interactive-card__progress"
-            role="progressbar"
-            aria-valuenow={Math.round(progress)}
-            aria-valuemin={0}
-            aria-valuemax={100}
+            className={cn("merchant-interactive-card__qr-wrap", compactQr && "is-compact")}
+            onClick={(event) => event.stopPropagation()}
           >
-            <span className="merchant-interactive-card__progress-fill" />
-          </div>
-        </Element>
-      </InteractiveCardShell>
-
-      {mounted
-        ? createPortal(
-            <QrEnlargedView
-              open={qrEnlarged}
-              qrSrc={qr ?? ""}
+            <ExpandableQrCode
+              qrSrc={qr && !qrError ? qr : null}
               clientNumber={clientNumber}
-              onClose={() => setQrEnlarged(false)}
-            />,
-            document.body,
-          )
-        : null}
-    </>
+              merchantName={card.name}
+              zoomEnabled={qrZoomEnabled}
+              shellClassName={cn(
+                "merchant-interactive-card__qr",
+                compactQr && "is-compact",
+                "!relative !h-auto !w-auto !min-h-0 !bg-transparent !p-0 !shadow-none",
+              )}
+              imgClassName="merchant-interactive-card__qr-image"
+              placeholder={
+                <span className="merchant-interactive-card__qr-placeholder">
+                  {qrError ? "QR INDISPONIBLE" : "QR CLIENT"}
+                </span>
+              }
+            />
+          </div>
+        ) : null}
+
+        <div className="merchant-interactive-card__points">
+          <p className="merchant-interactive-card__points-value">
+            {card.points}
+            <span>/{card.visitsRequired}</span>
+          </p>
+          <p className="merchant-interactive-card__status">{status}</p>
+        </div>
+
+        <div
+          className="merchant-interactive-card__progress"
+          role="progressbar"
+          aria-valuenow={Math.round(progress)}
+          aria-valuemin={0}
+          aria-valuemax={100}
+        >
+          <span className="merchant-interactive-card__progress-fill" />
+        </div>
+      </Element>
+    </InteractiveCardShell>
   );
 }

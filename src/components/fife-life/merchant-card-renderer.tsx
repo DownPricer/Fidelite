@@ -28,6 +28,8 @@ import { logMerchantCardQr } from "@/lib/merchant-card-qr-log";
 import { normalizePublishedWalletTemplate } from "@/lib/wallet-card-template";
 import { getPersonalizedQr, loadPersonalizedQr } from "./qr-cache";
 import type { MerchantCardData } from "./types";
+import { ExpandableQrCode } from "./expandable-qr-code";
+import { NextRewardView } from "./next-reward-view";
 import { LoyaltyWidgetView, type LoyaltyWidgetProgress } from "./loyalty-widget-view";
 
 export type MerchantCardDisplayMode = "personalized" | "publicPreview" | "adminPreview" | "compact";
@@ -57,6 +59,7 @@ export type MerchantCardRendererProps = {
   /** QR client déjà chargé (source unique du wallet). */
   qrSrc?: string | null;
   qrFetchPriority?: "high" | "low" | "auto";
+  qrZoomEnabled?: boolean;
   interactive?: boolean;
   className?: string;
   shellClassName?: string;
@@ -153,6 +156,9 @@ function ElementView({
   displayMode,
   progressPercentOverride,
   qrFetchPriority,
+  qrZoomEnabled,
+  clientNumber,
+  loyaltyMode,
 }: {
   element: CardElement;
   merchant: MerchantCardRendererProps["merchant"];
@@ -163,6 +169,9 @@ function ElementView({
   displayMode: MerchantCardDisplayMode;
   progressPercentOverride?: number;
   qrFetchPriority?: "high" | "low" | "auto";
+  qrZoomEnabled?: boolean;
+  clientNumber?: string | null;
+  loyaltyMode?: LoyaltyMode;
 }) {
   if (element.hidden || shouldHideElement(element.type, displayMode)) return null;
 
@@ -227,29 +236,19 @@ function ElementView({
       }
       return (
         <div
-          style={{ ...style, zIndex: Math.max(element.zIndex, 2) }}
-          className="merchant-card-qr-shell rounded-xl bg-white p-[6%] shadow-sm"
+          style={{ ...style, zIndex: Math.max(element.zIndex, 2), pointerEvents: "auto" }}
           data-qr-element-id={element.id}
         >
-          {qrSrc ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={qrSrc}
-              alt=""
-              className="merchant-card-qr-image h-full w-full object-contain"
-              draggable={false}
-              loading="eager"
-              decoding="async"
-              fetchPriority={qrFetchPriority ?? "auto"}
-              onLoad={() => {
-                if (displayMode === "personalized") logMerchantCardQr("image chargée");
-              }}
-            />
-          ) : (
-            <div className="merchant-card-qr-placeholder grid h-full w-full min-h-[2rem] min-w-[2rem] place-items-center text-[10px] font-bold text-black/40">
-              QR
-            </div>
-          )}
+          <ExpandableQrCode
+            qrSrc={qrSrc}
+            clientNumber={clientNumber}
+            merchantName={merchant.name}
+            zoomEnabled={qrZoomEnabled && displayMode === "personalized"}
+            fetchPriority={qrFetchPriority ?? "auto"}
+            onLoad={() => {
+              if (displayMode === "personalized") logMerchantCardQr("image chargée");
+            }}
+          />
         </div>
       );
     case "pointsBalance":
@@ -278,7 +277,13 @@ function ElementView({
     case "nextReward":
       return (
         <div style={style}>
-          <TextBlock element={element} text={masked ? "Récompense membre" : progress.nextReward ?? progress.label} />
+          <NextRewardView
+            style={element.nextRewardStyle}
+            progress={progress}
+            primaryColor={merchant.primaryColor}
+            loyaltyMode={loyaltyMode ?? null}
+            masked={masked}
+          />
         </div>
       );
     case "unlockedReward":
@@ -419,6 +424,7 @@ export function MerchantCardRenderer({
   showQr = true,
   qrSrc: qrSrcProp = null,
   qrFetchPriority = "auto",
+  qrZoomEnabled = true,
   interactive = true,
   className,
   shellClassName,
@@ -507,6 +513,7 @@ export function MerchantCardRenderer({
         showQr={showQr && usesRealQr}
         qrSrc={realQr}
         clientNumber={clientNumber}
+        qrZoomEnabled={qrZoomEnabled && usesRealQr}
         interactive={interactive}
         className={className}
         shellClassName={shellClassName}
@@ -573,6 +580,9 @@ export function MerchantCardRenderer({
               displayMode={displayMode}
               progressPercentOverride={progressPercentOverride}
               qrFetchPriority={qrFetchPriority}
+              qrZoomEnabled={qrZoomEnabled}
+              clientNumber={clientNumber}
+              loyaltyMode={card.loyaltyMode ?? normalizedTemplate!.loyaltyMode}
             />
           ))}
         </div>

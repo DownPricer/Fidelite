@@ -78,9 +78,14 @@ describe("merchant card — affichage QR client", () => {
       resolve(process.cwd(), "src/components/fife-life/merchant-card-renderer.tsx"),
       "utf8",
     );
+    const qrComponent = readFileSync(
+      resolve(process.cwd(), "src/components/fife-life/expandable-qr-code.tsx"),
+      "utf8",
+    );
     expect(source).toContain("merchant-card-renderer__background");
     expect(source).toContain("merchant-card-renderer__elements");
-    expect(source).toContain("merchant-card-qr-shell");
+    expect(source).toContain("ExpandableQrCode");
+    expect(qrComponent).toContain("merchant-card-qr-shell");
   });
 
   it("propage qrSrc dans le carrousel, l’agrandissement et la fiche commerce", () => {

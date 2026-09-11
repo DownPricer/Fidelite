@@ -1,6 +1,7 @@
 "use client";
 
 import type { CardLoyaltyWidgetConfig } from "@/lib/card-template-schema";
+import { LoyaltyGaugeThumbnail } from "@/components/fife-life/loyalty-widget-view";
 import {
   applyStyleVariantPreservingColors,
   STYLE_VARIANT_LABELS,
@@ -37,7 +38,9 @@ function StyleThumbnail({
             <circle cx="20" cy="20" r="14" fill="none" stroke={track} strokeWidth="4" />
             <circle cx="20" cy="20" r="14" fill="none" stroke={fill} strokeWidth="4" strokeDasharray="60 88" transform="rotate(-90 20 20)" />
           </svg>
-        ) : variant.includes("Bar") || variant === "gauge" || variant === "segmentedBar" ? (
+        ) : variant === "gauge" ? (
+          <LoyaltyGaugeThumbnail fill={fill} track={track} pctValue={62} />
+        ) : variant.includes("Bar") || variant === "segmentedBar" ? (
           <div className="flex h-2 w-full gap-0.5">
             {[0, 1, 2, 3].map((i) => (
               <div key={i} className="h-full flex-1 rounded-sm" style={{ background: i < 2 ? fill : track }} />

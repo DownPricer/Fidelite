@@ -90,6 +90,34 @@ const decorativeStyleSchema = z
   })
   .optional();
 
+const nextRewardStyleSchema = z
+  .object({
+    variant: z.enum([
+      "compactBadge",
+      "glowingCapsule",
+      "glassPanel",
+      "ribbon",
+      "giftIcon",
+      "comingSoon",
+      "minimalArrow",
+      "miniProgress",
+    ]),
+    primaryColor: z.string().regex(/^#([0-9a-fA-F]{6})$/),
+    textColor: z.string().regex(/^#([0-9a-fA-F]{6})$/),
+    backgroundColor: z.string().regex(/^#([0-9a-fA-F]{6})$/),
+    borderColor: z.string().regex(/^#([0-9a-fA-F]{6})$/).optional(),
+    borderWidth: z.number().min(0).max(8).optional(),
+    fontFamily: z.enum(["system", "card", "serif", "mono", "display"]).optional(),
+    fontSize: z.number().min(8).max(48).optional(),
+    icon: z.string().max(8).optional(),
+    glow: z.boolean().optional(),
+    shadow: z.boolean().optional(),
+    textAlign: z.enum(["left", "center", "right"]).optional(),
+    showRemaining: z.boolean().optional(),
+    hideWhenComplete: z.boolean().optional(),
+  })
+  .optional();
+
 const elementTypes = z.enum([
   "logo",
   "merchantName",
@@ -140,6 +168,7 @@ export const cardElementSchema = z.object({
   progressColors: progressColorsSchema,
   loyaltyWidget: loyaltyWidgetConfigSchema,
   decorativeStyle: decorativeStyleSchema,
+  nextRewardStyle: nextRewardStyleSchema,
 });
 
 export const cardTemplateConfigSchema = z.object({
@@ -169,6 +198,7 @@ export type CardLogoStyle = NonNullable<z.infer<typeof logoStyleSchema>>;
 export type CardProgressColors = NonNullable<z.infer<typeof progressColorsSchema>>;
 export type CardLoyaltyWidgetConfig = NonNullable<z.infer<typeof loyaltyWidgetConfigSchema>>;
 export type CardDecorativeStyle = NonNullable<z.infer<typeof decorativeStyleSchema>>;
+export type CardNextRewardStyle = NonNullable<z.infer<typeof nextRewardStyleSchema>>;
 
 export { validateCardTemplateForPublish, validateCardTemplateForPublishDetailed } from "./card-template-validation";
 
