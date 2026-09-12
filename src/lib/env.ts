@@ -38,12 +38,15 @@ export const env = {
   smtpPass: read("SMTP_PASS"),
   // Nombre de points Fife Life attribués lorsqu'une récompense commerçant est validée.
   fifeLifePointsPerReward: Number(read("FIFE_LIFE_POINTS_PER_REWARD", "12")),
+  googleWalletEnabled: read("GOOGLE_WALLET_ENABLED", "false") === "true",
   googleWalletIssuerId: read("GOOGLE_WALLET_ISSUER_ID"),
-  googleServiceAccountEmail: read("GOOGLE_SERVICE_ACCOUNT_EMAIL"),
-  googleServiceAccountPrivateKey: read("GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY"),
+  googleWalletGlobalClassId: read("GOOGLE_WALLET_GLOBAL_CLASS_ID"),
+  googleServiceAccountEmail:
+    read("GOOGLE_WALLET_SERVICE_ACCOUNT_EMAIL") || read("GOOGLE_SERVICE_ACCOUNT_EMAIL"),
+  googleWalletServiceAccountFile: read("GOOGLE_WALLET_SERVICE_ACCOUNT_FILE"),
   googleCloudProjectId: read("GOOGLE_CLOUD_PROJECT_ID"),
+  googleWalletOrigin: read("GOOGLE_WALLET_ORIGIN") || read("CUSTOMER_ORIGIN", "https://fidelite.sitereadyshd.fr"),
   googleWalletOrigins: read("GOOGLE_WALLET_ORIGINS"),
-  googleWalletClassPrefix: read("GOOGLE_WALLET_CLASS_PREFIX"),
 };
 
 export function isProduction() {
@@ -65,8 +68,10 @@ export function getAllowedOrigins() {
 
 export function isGoogleWalletConfigured() {
   return Boolean(
-    env.googleWalletIssuerId &&
+    env.googleWalletEnabled &&
+      env.googleWalletIssuerId &&
+      env.googleWalletGlobalClassId &&
       env.googleServiceAccountEmail &&
-      env.googleServiceAccountPrivateKey,
+      env.googleWalletServiceAccountFile,
   );
 }

@@ -174,11 +174,18 @@ L’intégration est isolée dans `src/lib/google-wallet.ts`. Sans les variables
 Variables (aucune clé dans Git) :
 
 ```env
-GOOGLE_WALLET_ISSUER_ID=
-GOOGLE_SERVICE_ACCOUNT_EMAIL=
-GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY=
-GOOGLE_CLOUD_PROJECT_ID=
-GOOGLE_WALLET_ORIGINS=https://fidelite.sitereadyshd.fr
+GOOGLE_WALLET_ENABLED=false
+GOOGLE_WALLET_ISSUER_ID=3388000000023198536
+GOOGLE_WALLET_GLOBAL_CLASS_ID=3388000000023198536.fifelife_global
+GOOGLE_WALLET_SERVICE_ACCOUNT_EMAIL=fife-life-google-wallet@fide-life-wallet.iam.gserviceaccount.com
+GOOGLE_WALLET_SERVICE_ACCOUNT_FILE=/run/secrets/google-wallet-service-account.json
+GOOGLE_WALLET_ORIGIN=https://fidelite.sitereadyshd.fr
+```
+
+Le JSON du compte de service est monté côté VPS en lecture seule et peut être vérifié avec :
+
+```bash
+npx tsx scripts/google-wallet-doctor.ts
 ```
 
 ## Checklist de déploiement

@@ -8,6 +8,8 @@ import { Alert, Button, Card } from "@/components/ui";
 export function MerchantDetailPage({ firstName, merchantId }: { firstName: string; merchantId: string }) {
   const [data, setData] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
+  const [walletBusy, setWalletBusy] = useState<string | null>(null);
+  const [walletMessage, setWalletMessage] = useState<string | null>(null);
 
   useEffect(() => {
     void fetch(`/api/super-admin/merchants/${merchantId}`)
@@ -31,7 +33,37 @@ export function MerchantDetailPage({ firstName, merchantId }: { firstName: strin
     else window.location.reload();
   }
 
+  async function walletAction(kind: "preview" | "sync" | "test") {
+    setWalletBusy(kind);
+    setWalletMessage(null);
+    const response = await fetch(`/api/super-admin/merchants/${merchantId}/google-wallet`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: kind }),
+    });
+    const json = await response.json();
+    setWalletBusy(null);
+    if (!response.ok) {
+      setWalletMessage(json.error ?? "Action Google Wallet impossible.");
+      return;
+    }
+    if (kind === "preview") {
+      setWalletMessage(json.preview?.note ?? "Aperçu prêt.");
+      return;
+    }
+    setWalletMessage(kind === "sync" ? `${json.syncedObjects ?? 0} objet(s) synchronisé(s).` : "Configuration valide.");
+    void fetch(`/api/super-admin/merchants/${merchantId}`)
+      .then((r) => r.json())
+      .then((next) => {
+        if (!next.error) setData(next);
+      });
+  }
+
   const merchant = data?.merchant;
+  const walletClass = merchant?.googleWalletClasses?.[0] ?? null;
+  const walletObjects = merchant?.googleWalletObjects ?? [];
+  const walletError =
+    walletClass?.lastError ?? walletObjects.find((item: any) => item.lastError)?.lastError ?? null;
 
   return (
     <SuperAdminShell firstName={firstName}>
@@ -77,6 +109,40 @@ export function MerchantDetailPage({ firstName, merchantId }: { firstName: strin
               <p><strong>Clients :</strong> {data.stats.customers}</p>
               <p><strong>Scans :</strong> {data.stats.scans}</p>
               <p><strong>Transactions :</strong> {data.stats.transactions}</p>
+            </Card>
+            <Card className="p-5 space-y-4 text-sm lg:col-span-2">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <h2 className="font-bold">Google Wallet</h2>
+                  <p className="text-xs text-[var(--muted-text)]">
+                    Aperçu approximatif conforme aux contraintes Google Wallet.
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button variant="secondary" onClick={() => void walletAction("preview")} disabled={Boolean(walletBusy)}>
+                    {walletBusy === "preview" ? "Prévisualisation…" : "Prévisualiser"}
+                  </Button>
+                  <Button onClick={() => void walletAction("sync")} disabled={Boolean(walletBusy)}>
+                    {walletBusy === "sync" ? "Synchronisation…" : "Synchroniser avec Google"}
+                  </Button>
+                  <Button variant="secondary" onClick={() => void walletAction("test")} disabled={Boolean(walletBusy)}>
+                    {walletBusy === "test" ? "Test…" : "Tester la configuration"}
+                  </Button>
+                </div>
+              </div>
+              <div className="grid gap-3 md:grid-cols-2">
+                <p><strong>Identifiant de classe :</strong> {walletClass?.googleClassId ?? "—"}</p>
+                <p><strong>État de la classe :</strong> {walletClass?.syncStatus ?? "NEVER_SYNCED"}</p>
+                <p><strong>Profil actif :</strong> {walletClass?.activeProfile ?? merchant.program?.mode ?? "GENERAL"}</p>
+                <p>
+                  <strong>Dernière synchronisation :</strong>{" "}
+                  {walletClass?.lastSyncedAt ? new Date(walletClass.lastSyncedAt).toLocaleString("fr-FR") : "—"}
+                </p>
+                <p><strong>Objets clients connus :</strong> {data.stats.googleWalletObjects ?? 0}</p>
+                <p><strong>Objets en erreur :</strong> {walletObjects.filter((item: any) => item.syncStatus === "ERROR").length}</p>
+              </div>
+              {walletError ? <Alert>Dernière erreur Google Wallet : {walletError}</Alert> : null}
+              {walletMessage ? <p className="text-xs font-semibold text-[var(--ink)]">{walletMessage}</p> : null}
             </Card>
             <Card className="p-5 space-y-2 text-sm lg:col-span-2">
               <h2 className="font-bold">Abonnement & contrat</h2>

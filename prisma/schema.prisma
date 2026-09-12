@@ -145,6 +145,19 @@ enum WalletEventType {
   FIFE_LIFE_POINTS_UPDATED
 }
 
+enum GoogleWalletClassKind {
+  GLOBAL
+  MERCHANT
+}
+
+enum GoogleWalletSyncStatus {
+  NEVER_SYNCED
+  PENDING
+  SYNCED
+  ERROR
+  DISABLED
+}
+
 model User {
   id                 String       @id @default(cuid())
   email              String       @unique
@@ -183,6 +196,7 @@ model User {
   walletEvents          WalletEvent[]
   fifeLifeQrToken       FifeLifeQrToken?
   preferences           CustomerPreferences?
+  googleWalletObjects   GoogleWalletObject[]
 }
 
 model CustomerPreferences {
@@ -277,6 +291,8 @@ model Merchant {
   subscription        MerchantSubscription?
   contracts           MerchantContract[]
   payments            MerchantPayment[]
+  googleWalletClasses GoogleWalletClass[]
+  googleWalletObjects GoogleWalletObject[]
 }
 
 model MerchantMembership {
@@ -395,6 +411,7 @@ model CustomerMembership {
   qrTokens             QrToken[]
   caisseGrants         CaisseGrant[]
   walletEvents         WalletEvent[]
+  googleWalletObject   GoogleWalletObject?
 
   @@unique([userId, merchantId])
   @@index([merchantId])
@@ -638,4 +655,49 @@ model FifeLifeQrToken {
   caisseGrants CaisseGrant[]
 
   @@index([userId])
+}
+
+model GoogleWalletClass {
+  id            String                 @id @default(cuid())
+  kind          GoogleWalletClassKind
+  merchantId    String?
+  googleClassId String                 @unique
+  activeProfile MerchantCardSlot       @default(GENERAL)
+  configByMode  Json                   @default("{}")
+  syncStatus    GoogleWalletSyncStatus @default(NEVER_SYNCED)
+  lastSyncedAt  DateTime?
+  lastError     String?
+  createdAt     DateTime               @default(now())
+  updatedAt     DateTime               @updatedAt
+  merchant      Merchant?              @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  walletObjects GoogleWalletObject[]
+
+  @@unique([kind, merchantId])
+  @@index([merchantId])
+  @@index([syncStatus])
+}
+
+model GoogleWalletObject {
+  id                   String                 @id @default(cuid())
+  userId               String
+  merchantId           String?
+  customerMembershipId String?                @unique
+  googleObjectId       String                 @unique
+  googleClassId        String
+  classRecordId        String?
+  syncStatus           GoogleWalletSyncStatus @default(NEVER_SYNCED)
+  needsSync            Boolean                @default(true)
+  lastSyncedAt         DateTime?
+  lastError            String?
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+  user                 User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  merchant             Merchant?              @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  membership           CustomerMembership?    @relation(fields: [customerMembershipId], references: [id], onDelete: Cascade)
+  classRecord          GoogleWalletClass?     @relation(fields: [classRecordId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, merchantId])
+  @@index([userId])
+  @@index([merchantId])
+  @@index([syncStatus, needsSync])
 }

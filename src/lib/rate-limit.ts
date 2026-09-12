@@ -34,4 +34,5 @@ export const LIMITS = {
   scan: { limit: 40, windowMs: 60 * 1000 },
   clientNumberLookup: { limit: 20, windowMs: 60 * 1000 },
   qr: { limit: 40, windowMs: 60 * 1000 },
+  googleWallet: { limit: 10, windowMs: 60 * 1000 },
 };

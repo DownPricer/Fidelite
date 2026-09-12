@@ -11,6 +11,7 @@ import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/session";
 import { attachPublishedTemplates } from "@/lib/wallet-cards";
 import { getCustomerLoyaltyOverview } from "@/lib/customer-loyalty-overview";
+import { isGoogleWalletConfigured } from "@/lib/google-wallet";
 
 export const dynamic = "force-dynamic";
 
@@ -71,6 +72,7 @@ export default async function CarteIndexPage({
       initialNewCard={params.toast ?? null}
       cards={cards}
       initialOverview={overview}
+      walletEnabled={isGoogleWalletConfigured()}
     />
   );
 }

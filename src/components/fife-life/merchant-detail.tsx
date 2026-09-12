@@ -21,6 +21,7 @@ import {
   notifyMerchantRewardProgressRefresh,
 } from "./merchant-reward-progress-panel";
 import type { CustomerMerchantRewardProgress } from "@/lib/customer-reward-progress-types";
+import { AddToGoogleWalletButton } from "./add-to-google-wallet-button";
 
 type CustomerProgramView = ReturnType<typeof buildCustomerProgramView>;
 
@@ -56,11 +57,9 @@ export function MerchantCardDetail({
   const [activityTotal, setActivityTotal] = useState(initialActivityTotal);
   const [showFullHistory, setShowFullHistory] = useState(false);
   const [overviewError, setOverviewError] = useState<string | null>(null);
-  const [walletBusy, setWalletBusy] = useState(false);
   const [shareBusy, setShareBusy] = useState(false);
   const [shareSuccess, setShareSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [android, setAndroid] = useState(preview);
   const [cardEnlarged, setCardEnlarged] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteBusy, setDeleteBusy] = useState(false);
@@ -72,10 +71,6 @@ export function MerchantCardDetail({
   const rewardAvailable = programView
     ? programView.rewards.some((reward) => card.points >= reward.threshold)
     : card.points >= card.visitsRequired;
-
-  useEffect(() => {
-    setAndroid(preview || /android/i.test(navigator.userAgent));
-  }, [preview]);
 
   useEffect(() => {
     setNextReward(initialNextReward);
@@ -166,24 +161,6 @@ export function MerchantCardDetail({
   }, [card.id, card.merchantId, card.logoUrl, card.name, slug, refreshOverview]);
 
   useWalletEvents(!preview, onEvent);
-
-  async function addWallet() {
-    if (preview) return;
-    setWalletBusy(true);
-    setError(null);
-    const response = await fetch("/api/customer/wallet", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ slug }),
-    });
-    const data = await response.json();
-    setWalletBusy(false);
-    if (!response.ok || !data.url) {
-      setError("Google Wallet est temporairement indisponible.");
-      return;
-    }
-    window.location.href = data.url;
-  }
 
   async function shareCard() {
     if (preview) {
@@ -343,23 +320,12 @@ Le commerçant se réserve le droit de modifier ou d'annuler le programme de fid
 
           {/* Actions: Add to Wallet & Share */}
           <section className="merchant-actions-block mt-5 flex gap-3">
-            <button
-              type="button"
-              onClick={() => void addWallet()}
-              disabled={walletBusy || !(walletEnabled && android)}
-              className="action-btn-glassy flex-1 flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold text-[var(--ink)] disabled:opacity-50"
-            >
-              {walletBusy ? (
-                <div className="h-4 w-4 rounded-full border-2 border-current border-t-transparent animate-spin" />
-              ) : (
-                <>
-                  <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M21 18v1c0 1.1-.9 2-2 2H5c-1.11 0-2-.9-2-2V5c0-1.1.89-2 2-2h14c1.1 0 2 .9 2 2v1h-9c-1.11 0-2 .9-2 2v8c0 1.1.89 2 2 2h9zm-9-2h10V8H12v8zm4-2.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z" />
-                  </svg>
-                  Google Wallet
-                </>
-              )}
-            </button>
+            {!preview && walletEnabled ? (
+              <AddToGoogleWalletButton
+                endpoint={`/api/customer/google-wallet/merchant/${encodeURIComponent(slug)}`}
+                className="flex-1"
+              />
+            ) : null}
             <button
               type="button"
               onClick={() => void shareCard()}

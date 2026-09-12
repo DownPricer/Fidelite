@@ -20,6 +20,7 @@ import { preloadWalletQr } from "./qr-cache";
 import { usePersonalizedQr } from "./use-personalized-qr";
 import { useWalletUnlockAnimation } from "./use-wallet-unlock-animation";
 import { WalletMotionRoot } from "./wallet-motion-root";
+import { AddToGoogleWalletButton } from "./add-to-google-wallet-button";
 import {
   activityFromWalletEvent,
   buildFifeLifeNextReward,
@@ -45,6 +46,7 @@ export function WalletHome({
   preview = false,
   initialSheetOpen = false,
   initialNewCard = null,
+  walletEnabled = false,
 }: {
   firstName: string;
   lastName?: string;
@@ -56,6 +58,7 @@ export function WalletHome({
   preview?: boolean;
   initialSheetOpen?: boolean;
   initialNewCard?: string | null;
+  walletEnabled?: boolean;
 }) {
   const displayName = customerName ?? (lastName ? `${firstName} ${lastName}` : firstName);
   const profileHref = preview ? "/compte?demo=1" : "/compte";
@@ -386,6 +389,12 @@ export function WalletHome({
               onActiveCardChange={handleActiveCardChange}
               demoVisual={preview}
             />
+            {!preview && walletEnabled ? (
+              <AddToGoogleWalletButton
+                endpoint="/api/customer/google-wallet/global"
+                className="mt-3"
+              />
+            ) : null}
           </div>
         </div>
 

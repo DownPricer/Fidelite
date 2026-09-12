@@ -15,6 +15,9 @@ prisma/dev.db-journal
 *.pem
 *.p12
 google-wallet-key.json
+google-wallet-service-account.json
+*-google-wallet-service-account.json
+secrets/google-wallet-service-account.json
 .idea
 .vscode
 data/uploads/

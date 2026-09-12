@@ -58,6 +58,7 @@ services:
       UPLOADS_DIR: /var/lib/fifelite/uploads
     volumes:
       - /opt/fifelite/data/uploads:/var/lib/fifelite/uploads
+      - /opt/fifelite/secrets/google-wallet-service-account.json:/run/secrets/google-wallet-service-account.json:ro
     depends_on:
       postgres:
         condition: service_healthy

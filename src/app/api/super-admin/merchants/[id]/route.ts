@@ -23,12 +23,15 @@ export async function GET(
       payments: { orderBy: { createdAt: "desc" }, take: 20 },
       memberships: { include: { user: true } },
       cardTemplates: { orderBy: { updatedAt: "desc" } },
+      googleWalletClasses: { orderBy: { updatedAt: "desc" } },
+      googleWalletObjects: { select: { id: true, syncStatus: true, needsSync: true, lastSyncedAt: true, lastError: true } },
       _count: {
         select: {
           customerMemberships: true,
           transactions: true,
           caisseGrants: true,
-          auditLogs: true,
+      auditLogs: true,
+          googleWalletObjects: true,
         },
       },
     },
@@ -49,6 +52,7 @@ export async function GET(
       transactions: merchant._count.transactions,
       scans: merchant._count.caisseGrants,
       auditEntries: merchant._count.auditLogs,
+      googleWalletObjects: merchant._count.googleWalletObjects,
     },
     recentAudit,
   });
