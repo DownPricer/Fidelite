@@ -26,7 +26,10 @@ export function AddToGoogleWalletButton({
         headers: { "Content-Type": "application/json" },
         cache: "no-store",
       });
-      const data = (await response.json()) as { saveUrl?: string; error?: string };
+      const contentType = response.headers.get("content-type") ?? "";
+      const data = contentType.includes("application/json")
+        ? ((await response.json()) as { saveUrl?: string; error?: string })
+        : ({ error: "Réponse Google Wallet illisible." } as { saveUrl?: string; error?: string });
       if (!response.ok || !data.saveUrl) {
         throw new Error(data.error ?? "Google Wallet est temporairement indisponible.");
       }

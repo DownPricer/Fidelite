@@ -62,6 +62,7 @@ export function MerchantDetailPage({ firstName, merchantId }: { firstName: strin
   const merchant = data?.merchant;
   const walletClass = merchant?.googleWalletClasses?.[0] ?? null;
   const walletObjects = merchant?.googleWalletObjects ?? [];
+  const walletConfig = (walletClass?.configByMode ?? {}) as Record<string, unknown>;
   const walletError =
     walletClass?.lastError ?? walletObjects.find((item: any) => item.lastError)?.lastError ?? null;
 
@@ -131,9 +132,17 @@ export function MerchantDetailPage({ firstName, merchantId }: { firstName: strin
                 </div>
               </div>
               <div className="grid gap-3 md:grid-cols-2">
+                <p><strong>Classe configurée :</strong> {walletClass ? "Oui" : "Non"}</p>
                 <p><strong>Identifiant de classe :</strong> {walletClass?.googleClassId ?? "—"}</p>
-                <p><strong>État de la classe :</strong> {walletClass?.syncStatus ?? "NEVER_SYNCED"}</p>
+                <p><strong>Statut Google :</strong> {(walletConfig.reviewStatus as string | null) ?? walletClass?.syncStatus ?? "—"}</p>
+                <p><strong>Mode actif :</strong> {merchant.program?.mode ?? "—"}</p>
                 <p><strong>Profil actif :</strong> {walletClass?.activeProfile ?? merchant.program?.mode ?? "GENERAL"}</p>
+                <p>
+                  <strong>Gabarit Fife Life :</strong>{" "}
+                  {(walletConfig.templateId as string | null) ?? "—"}
+                  {walletConfig.templateVersion ? ` · v${walletConfig.templateVersion}` : ""}
+                  {walletConfig.templateUsedFallback ? " · fallback général" : ""}
+                </p>
                 <p>
                   <strong>Dernière synchronisation :</strong>{" "}
                   {walletClass?.lastSyncedAt ? new Date(walletClass.lastSyncedAt).toLocaleString("fr-FR") : "—"}

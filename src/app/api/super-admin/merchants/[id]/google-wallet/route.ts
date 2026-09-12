@@ -5,7 +5,7 @@ import {
   GoogleWalletConfigError,
   isGoogleWalletConfigured,
   publicGoogleWalletError,
-  syncGoogleWalletMembershipObject,
+  syncGoogleWalletMerchant,
   testGoogleWalletMerchantConfig,
 } from "@/lib/google-wallet";
 import { clientIp, jsonError, jsonOkPrivate, readJson, userAgent } from "@/lib/http";
@@ -48,18 +48,7 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
     await testGoogleWalletMerchantConfig(id);
     let syncedObjects = 0;
     if (parsed.data.action === "sync") {
-      const memberships = await prisma.customerMembership.findMany({
-        where: { merchantId: id, removedAt: null },
-        select: { id: true },
-      });
-      for (const membership of memberships) {
-        try {
-          await syncGoogleWalletMembershipObject(membership.id);
-          syncedObjects += 1;
-        } catch {
-          // Each object keeps its own ERROR state; keep syncing the rest.
-        }
-      }
+      syncedObjects = (await syncGoogleWalletMerchant({ merchantId: id, includeObjects: true })).syncedObjects;
     }
 
     await writeAudit({

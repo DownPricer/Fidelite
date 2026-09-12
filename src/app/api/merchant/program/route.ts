@@ -1,6 +1,7 @@
 import { requireMerchantAdmin, requireMutatingRequest } from "@/lib/api-guard";
 import { writeAudit } from "@/lib/audit";
 import { clientIp, jsonError, jsonOk, readJson, userAgent } from "@/lib/http";
+import { syncGoogleWalletMerchant } from "@/lib/google-wallet";
 import { buildCustomerProgramView, getActiveMerchantLoyaltyContext } from "@/lib/loyalty-context";
 import { programToConfig, rewardFromDb, validateTiers } from "@/lib/loyalty-program";
 import {
@@ -307,6 +308,10 @@ export async function POST(req: Request) {
     ip: clientIp(req),
     userAgent: userAgent(req),
   });
+
+  void syncGoogleWalletMerchant({ merchantId, includeObjects: true }).catch((error) =>
+    console.error("[google-wallet] sync après publication programme", error instanceof Error ? error.message : error),
+  );
 
   return jsonOk({
     ok: true,

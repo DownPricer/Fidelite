@@ -8,6 +8,7 @@ import {
 import { jsonError, jsonOk, readJson } from "@/lib/http";
 import { prisma } from "@/lib/prisma";
 import { profileUpdateSchema, zodErrorMessage } from "@/lib/validation";
+import { syncGoogleWalletUserObjects } from "@/lib/google-wallet";
 
 export async function GET(req: Request) {
   const auth = await requireUser(req);
@@ -49,6 +50,10 @@ export async function PATCH(req: Request) {
       ...(data.country !== undefined ? { country: data.country || null } : {}),
     },
   });
+
+  void syncGoogleWalletUserObjects(auth.user.id).catch((error) =>
+    console.error("[google-wallet] sync après mise à jour profil", error instanceof Error ? error.message : error),
+  );
 
   return jsonOk({ profile: serializeProfile(updated) });
 }

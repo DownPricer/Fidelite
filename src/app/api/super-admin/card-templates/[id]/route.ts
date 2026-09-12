@@ -5,6 +5,7 @@ import { writeAudit } from "@/lib/audit";
 import { cardTemplateConfigSchema } from "@/lib/card-template-schema";
 import { validateCardTemplateForPublishDetailed } from "@/lib/card-template-validation";
 import { clientIp, jsonError, jsonOk, readJson, userAgent } from "@/lib/http";
+import { syncGoogleWalletMerchant } from "@/lib/google-wallet";
 import {
   adaptTemplateConfigForCardSlot,
   duplicateTemplateToSlots,
@@ -84,6 +85,10 @@ export async function PATCH(
       ip: clientIp(req),
       userAgent: userAgent(req),
     });
+
+    void syncGoogleWalletMerchant({ merchantId: existing.merchantId, includeObjects: true }).catch((error) =>
+      console.error("[google-wallet] sync après publication gabarit", error instanceof Error ? error.message : error),
+    );
 
     return jsonOk({ template: updated });
   }
