@@ -88,12 +88,17 @@ export function readImageDimensions(buffer: Buffer, mime: string) {
   return null;
 }
 
-function assertRatio(input: { width: number; height: number; expected: number; tolerance?: number }) {
-  const ratio = input.width / input.height;
-  return Math.abs(ratio - input.expected) <= (input.tolerance ?? 0.04);
+function assertExactDimensions(input: { width: number; height: number; expectedWidth: number; expectedHeight: number }) {
+  return input.width === input.expectedWidth && input.height === input.expectedHeight;
 }
 
 export type GoogleWalletMediaKind = "hero" | "logo" | "wideLogo";
+
+export function normalizeGoogleWalletMediaKind(kind: string): GoogleWalletMediaKind | null {
+  if (kind === "hero" || kind === "logo" || kind === "wideLogo") return kind;
+  if (kind === "wide-logo") return "wideLogo";
+  return null;
+}
 
 export function validateGoogleWalletMedia(kind: GoogleWalletMediaKind, buffer: Buffer, mime: string) {
   if (!["image/png", "image/jpeg", "image/webp"].includes(mime)) {
@@ -103,14 +108,14 @@ export function validateGoogleWalletMedia(kind: GoogleWalletMediaKind, buffer: B
   if (!dims || dims.width < 1 || dims.height < 1 || dims.width > CARD_BG_MAX_DIMENSION || dims.height > CARD_BG_MAX_DIMENSION) {
     return { ok: false as const, error: "Dimensions d'image invalides ou trop grandes (max 4096 px)." };
   }
-  if (kind === "hero" && !assertRatio({ ...dims, expected: 1032 / 812 })) {
-    return { ok: false as const, error: "L'image principale doit respecter le ratio Google Wallet 1032:812." };
+  if (kind === "hero" && !assertExactDimensions({ ...dims, expectedWidth: 1032, expectedHeight: 812 })) {
+    return { ok: false as const, error: "L'image principale doit mesurer exactement 1032 × 812 px." };
   }
-  if (kind === "logo" && !assertRatio({ ...dims, expected: 1, tolerance: 0.02 })) {
-    return { ok: false as const, error: "Le logo carré doit respecter un ratio 1:1." };
+  if (kind === "logo" && !assertExactDimensions({ ...dims, expectedWidth: 660, expectedHeight: 660 })) {
+    return { ok: false as const, error: "Le logo carré doit mesurer exactement 660 × 660 px." };
   }
-  if (kind === "wideLogo" && !assertRatio({ ...dims, expected: 1280 / 400 })) {
-    return { ok: false as const, error: "Le logo large doit respecter le ratio 16:5." };
+  if (kind === "wideLogo" && !assertExactDimensions({ ...dims, expectedWidth: 1280, expectedHeight: 400 })) {
+    return { ok: false as const, error: "Le logo large doit mesurer exactement 1280 × 400 px." };
   }
   return { ok: true as const, dimensions: dims };
 }

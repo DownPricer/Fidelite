@@ -20,7 +20,7 @@ import {
   resetGoogleWalletConfig,
 } from "@/lib/google-wallet-appearance";
 import { clientIp, jsonError, jsonOkPrivate, readJson, userAgent } from "@/lib/http";
-import { getUploadsRoot, saveGoogleWalletMerchantMedia } from "@/lib/media-storage";
+import { getUploadsRoot, normalizeGoogleWalletMediaKind, saveGoogleWalletMerchantMedia } from "@/lib/media-storage";
 import { prisma } from "@/lib/prisma";
 import { stat } from "fs/promises";
 import { join, normalize } from "path";
@@ -38,7 +38,7 @@ const schema = z.discriminatedUnion("action", [
   }),
   z.object({
     action: z.literal("uploadMedia"),
-    kind: z.enum(["hero", "logo", "wideLogo"]),
+    kind: z.enum(["hero", "logo", "wideLogo", "wide-logo"]),
     dataUrl: z.string().min(30).max(7_000_000),
   }),
 ]);
@@ -173,7 +173,8 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
 
   if (parsed.data.action === "uploadMedia") {
     const walletClass = await ensureWalletClassRecord(id);
-    const mediaKind = parsed.data.kind;
+    const mediaKind = normalizeGoogleWalletMediaKind(parsed.data.kind);
+    if (!mediaKind) return jsonError("Type de média Google Wallet invalide.", 400);
     try {
       const media = await saveGoogleWalletMerchantMedia({
         merchantId: id,

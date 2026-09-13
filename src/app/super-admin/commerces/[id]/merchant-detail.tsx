@@ -2,8 +2,10 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { GoogleWalletMediaCrop } from "@/components/super-admin/google-wallet-media-crop";
 import { SuperAdminShell } from "@/components/super-admin/layout-shell";
 import { Alert, Button, Card, Field, Input } from "@/components/ui";
+import type { GoogleWalletMediaKind } from "@/lib/google-wallet-media-crop";
 
 const RECOMMENDED_WALLET_COLORS = ["#0B0B12", "#123456", "#5B3FD8", "#0F766E", "#111827"];
 
@@ -22,6 +24,7 @@ export function MerchantDetailPage({ firstName, merchantId }: { firstName: strin
   const [walletMessage, setWalletMessage] = useState<string | null>(null);
   const [walletFailedAction, setWalletFailedAction] = useState<"sync" | "test" | "publishAppearance" | "resetAppearance" | null>(null);
   const [walletEditorOpen, setWalletEditorOpen] = useState(false);
+  const [walletCrop, setWalletCrop] = useState<{ kind: GoogleWalletMediaKind; file: File } | null>(null);
   const [walletAppearance, setWalletAppearance] = useState<WalletAppearance>({
     backgroundColor: "#0B0B12",
     appLinkLabel: "Voir ma carte",
@@ -118,8 +121,13 @@ export function MerchantDetailPage({ firstName, merchantId }: { firstName: strin
     await reloadMerchant();
   }
 
-  async function uploadWalletMedia(kind: "hero" | "logo" | "wideLogo", file: File | null) {
+  function selectWalletMedia(kind: GoogleWalletMediaKind, file: File | null) {
     if (!file) return;
+    setWalletMessage(null);
+    setWalletCrop({ kind, file });
+  }
+
+  async function uploadWalletMedia(kind: GoogleWalletMediaKind, file: File) {
     setWalletBusy(`upload-${kind}`);
     setWalletMessage(null);
     setWalletFailedAction(null);
@@ -139,8 +147,8 @@ export function MerchantDetailPage({ firstName, merchantId }: { firstName: strin
     }
     const next = json.config?.draftAppearance ?? {};
     setWalletAppearance((current) => ({ ...current, ...next }));
+    setWalletCrop(null);
     setWalletMessage("Média ajouté au brouillon Google Wallet.");
-    await reloadMerchant();
   }
 
   async function reloadMerchant() {
@@ -157,6 +165,15 @@ export function MerchantDetailPage({ firstName, merchantId }: { firstName: strin
 
   return (
     <SuperAdminShell firstName={firstName}>
+      {walletCrop ? (
+        <GoogleWalletMediaCrop
+          file={walletCrop.file}
+          kind={walletCrop.kind}
+          busy={walletBusy === `upload-${walletCrop.kind}`}
+          onCancel={() => setWalletCrop(null)}
+          onConfirm={(file) => uploadWalletMedia(walletCrop.kind, file)}
+        />
+      ) : null}
       <div className="mx-auto max-w-6xl space-y-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
@@ -292,13 +309,28 @@ export function MerchantDetailPage({ firstName, merchantId }: { firstName: strin
                     </div>
                     <div className="grid gap-3 md:grid-cols-3">
                       <Field label="Hero image 1032:812" hint="PNG/JPEG/WebP, max 5 Mo, ratio verrouillé côté serveur.">
-                        <Input type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => void uploadWalletMedia("hero", event.target.files?.[0] ?? null)} />
+                        <Input
+                          type="file"
+                          accept="image/png,image/jpeg,image/webp"
+                          onChange={(event) => selectWalletMedia("hero", event.target.files?.[0] ?? null)}
+                          disabled={Boolean(walletBusy)}
+                        />
                       </Field>
                       <Field label="Logo carré 1:1" hint="Google masque le logo en cercle.">
-                        <Input type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => void uploadWalletMedia("logo", event.target.files?.[0] ?? null)} />
+                        <Input
+                          type="file"
+                          accept="image/png,image/jpeg,image/webp"
+                          onChange={(event) => selectWalletMedia("logo", event.target.files?.[0] ?? null)}
+                          disabled={Boolean(walletBusy)}
+                        />
                       </Field>
                       <Field label="Logo large 16:5" hint="Facultatif.">
-                        <Input type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => void uploadWalletMedia("wideLogo", event.target.files?.[0] ?? null)} />
+                        <Input
+                          type="file"
+                          accept="image/png,image/jpeg,image/webp"
+                          onChange={(event) => selectWalletMedia("wide-logo", event.target.files?.[0] ?? null)}
+                          disabled={Boolean(walletBusy)}
+                        />
                       </Field>
                     </div>
                     <div className="flex flex-wrap gap-2">

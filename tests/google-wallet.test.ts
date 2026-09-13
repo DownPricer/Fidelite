@@ -269,15 +269,22 @@ describe("Google Wallet appearance validation", () => {
     expect(isReadableGoogleWalletColor("#FFFFFF")).toBe(false);
   });
 
-  it("valide les ratios média Google Wallet", async () => {
-    const { validateGoogleWalletMedia } = await import("../src/lib/media-storage");
+  it("valide les dimensions exactes média Google Wallet", async () => {
+    const { normalizeGoogleWalletMediaKind, validateGoogleWalletMedia } = await import("../src/lib/media-storage");
     const png = Buffer.alloc(24);
     png.writeUInt8(0x89, 0);
     png.write("PNG", 1, "ascii");
     png.writeUInt32BE(1032, 16);
     png.writeUInt32BE(812, 20);
     expect(validateGoogleWalletMedia("hero", png, "image/png").ok).toBe(true);
-    png.writeUInt32BE(900, 20);
+    png.writeUInt32BE(900, 16);
     expect(validateGoogleWalletMedia("hero", png, "image/png").ok).toBe(false);
+    png.writeUInt32BE(660, 16);
+    png.writeUInt32BE(660, 20);
+    expect(validateGoogleWalletMedia("logo", png, "image/png").ok).toBe(true);
+    png.writeUInt32BE(1280, 16);
+    png.writeUInt32BE(400, 20);
+    expect(validateGoogleWalletMedia("wideLogo", png, "image/png").ok).toBe(true);
+    expect(normalizeGoogleWalletMediaKind("wide-logo")).toBe("wideLogo");
   });
 });
