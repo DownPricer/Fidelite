@@ -100,7 +100,9 @@ describe("QR agrandissable", () => {
 
     expect(walletHome).toContain("wallet-primary-actions");
     expect(walletHome).toContain("<WalletQrAction");
-    expect(walletHome).toContain('endpoint="/api/customer/google-wallet/global"');
+    expect(walletHome).toContain("googleWalletEndpoint");
+    expect(walletHome).toContain("/api/customer/google-wallet/global");
+    expect(walletHome).toContain("/api/customer/google-wallet/merchant/");
     expect(merchantDetail).toContain("<WalletQrAction");
     expect(merchantDetail).toContain("/api/customer/google-wallet/merchant/");
     expect(qrAction).toContain("data-no-card-expand");
@@ -108,15 +110,47 @@ describe("QR agrandissable", () => {
     expect(qrAction).not.toMatch(/<button[\s\S]*<button/);
   });
 
-  it("rend le wallet mobile scrollable et limite l'activité avant les avantages", () => {
+  it("rend le wallet mobile scrollable et garde l'accueil centré sur carte/actions/récompense/flèche", () => {
     const css = readFileSync(resolve(process.cwd(), "src/app/globals.css"), "utf8");
     const walletHome = readFileSync(resolve(process.cwd(), "src/components/fife-life/wallet-home.tsx"), "utf8");
 
     expect(css).toContain("min-height: 100dvh");
     expect(css).not.toContain("body:has(.wallet-shell) {\n  overflow: hidden");
-    expect(walletHome.indexOf("wallet-cards-rail")).toBeLessThan(walletHome.indexOf("wallet-activity-block"));
-    expect(walletHome).toContain("recentActivity.slice(0, 3)");
-    expect(walletHome).toContain("Voir toute l’activité");
+    expect(walletHome).not.toContain("wallet-cards-rail");
+    expect(walletHome).not.toContain("wallet-activity-block");
+    expect(walletHome).not.toContain("Activité récente");
+    expect(walletHome.indexOf("wallet-primary-actions")).toBeLessThan(walletHome.indexOf("wallet-reward-block"));
+    expect(walletHome.indexOf("wallet-reward-block")).toBeLessThan(walletHome.indexOf("wallet-sheet-trigger"));
+    expect(walletHome).toContain("setSheetOpen(true)");
+    const sheet = readFileSync(resolve(process.cwd(), "src/components/fife-life/cards-sheet.tsx"), "utf8");
+    expect(sheet).toContain("enablePublicSearch={false}");
+  });
+
+  it("conserve l'activité et les avantages utilisés dans le profil", () => {
+    const profile = readFileSync(resolve(process.cwd(), "src/components/fife-life/profile/profile-page.tsx"), "utf8");
+    expect(profile).toContain("/api/customer/history");
+    expect(profile).toContain("/api/customer/benefits");
+    expect(profile).toContain("Historique général");
+    expect(profile).toContain("Avantages utilisés");
+  });
+
+  it("publie l'apparence Google Wallet sans retour aux valeurs par défaut", () => {
+    const api = readFileSync(
+      resolve(process.cwd(), "src/app/api/super-admin/merchants/[id]/google-wallet/route.ts"),
+      "utf8",
+    );
+    const detail = readFileSync(
+      resolve(process.cwd(), "src/app/super-admin/commerces/[id]/merchant-detail.tsx"),
+      "utf8",
+    );
+    expect(api).toContain("parseWalletAction(req).catch");
+    expect(api).toContain("jsonError(\"Requête Google Wallet illisible.\"");
+    expect(api).toContain("publishedMediaExists");
+    expect(detail).toContain("FormData");
+    expect(detail).toContain('action: kind, appearance: walletAppearance');
+    expect(detail).toContain("walletFailedAction");
+    expect(detail).toContain("Réessayer");
+    expect(detail).toContain("config.draftAppearance ?? config.publishedAppearance");
   });
 });
 

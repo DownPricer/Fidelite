@@ -20,12 +20,18 @@ import {
   resetGoogleWalletConfig,
 } from "@/lib/google-wallet-appearance";
 import { clientIp, jsonError, jsonOkPrivate, readJson, userAgent } from "@/lib/http";
-import { saveGoogleWalletMerchantMedia } from "@/lib/media-storage";
+import { getUploadsRoot, saveGoogleWalletMerchantMedia } from "@/lib/media-storage";
 import { prisma } from "@/lib/prisma";
+import { stat } from "fs/promises";
+import { join, normalize } from "path";
 import { z } from "zod";
 
 const schema = z.discriminatedUnion("action", [
-  z.object({ action: z.enum(["test", "sync", "preview", "publishAppearance", "resetAppearance"]) }),
+  z.object({ action: z.enum(["test", "sync", "preview", "resetAppearance"]) }),
+  z.object({
+    action: z.literal("publishAppearance"),
+    appearance: googleWalletAppearanceSchema.optional(),
+  }),
   z.object({
     action: z.literal("saveAppearance"),
     appearance: googleWalletAppearanceSchema,
@@ -52,13 +58,69 @@ async function ensureWalletClassRecord(merchantId: string) {
   });
 }
 
+async function parseWalletAction(req: Request) {
+  const contentType = req.headers.get("content-type") ?? "";
+  if (!contentType.includes("multipart/form-data")) {
+    return schema.safeParse(await readJson(req));
+  }
+  const form = await req.formData();
+  const action = form.get("action");
+  if (action !== "uploadMedia") {
+    return schema.safeParse({ action });
+  }
+  const kind = form.get("kind");
+  const file = form.get("file");
+  if (!(file instanceof File)) {
+    return schema.safeParse({ action, kind, dataUrl: "" });
+  }
+  if (file.size > 5 * 1024 * 1024) {
+    return schema.safeParse({ action, kind, dataUrl: "" });
+  }
+  const buffer = Buffer.from(await file.arrayBuffer());
+  const dataUrl = `data:${file.type};base64,${buffer.toString("base64")}`;
+  return schema.safeParse({ action, kind, dataUrl });
+}
+
+async function publishedMediaExists(input: { merchantId: string; config: ReturnType<typeof parseGoogleWalletConfig> }) {
+  const appearance = input.config.draftAppearance ?? {};
+  const urls = [appearance.heroImageUrl, appearance.logoUrl, appearance.wideLogoUrl].filter(Boolean) as string[];
+  for (const url of urls) {
+    if (!url.startsWith(`/google-wallet/media/merchant/${input.merchantId}/`)) continue;
+    const item = (input.config.mediaGallery ?? []).find((entry) => entry.publicUrl === url);
+    if (!item || !item.path.startsWith(`google-wallet/merchant/${input.merchantId}/`)) {
+      return { ok: false as const, url };
+    }
+    const root = getUploadsRoot();
+    const filepath = normalize(join(root, item.path));
+    const allowedRoot = normalize(join(root, "google-wallet", "merchant", input.merchantId));
+    if (!filepath.startsWith(allowedRoot)) return { ok: false as const, url };
+    try {
+      await stat(filepath);
+    } catch {
+      return { ok: false as const, url };
+    }
+  }
+  return { ok: true as const };
+}
+
+function validateAppearanceColor(appearance: { backgroundColor?: string | null }) {
+  const color = appearance.backgroundColor;
+  if (!color) return null;
+  const hex = googleWalletHexSchema.parse(color);
+  if (!isReadableGoogleWalletColor(hex)) {
+    return "Couleur trop claire : le texte Google Wallet risque d'être illisible.";
+  }
+  return null;
+}
+
 export async function POST(req: Request, context: { params: Promise<{ id: string }> }) {
   const csrf = await requireMutatingRequest(req);
   if (csrf.error) return csrf.error;
   const admin = await requireSuperAdmin(req);
   if (admin.error || !admin.user) return admin.error ?? jsonError("Accès refusé.", 403);
   const { id } = await context.params;
-  const parsed = schema.safeParse(await readJson(req));
+  const parsed = await parseWalletAction(req).catch(() => null);
+  if (!parsed) return jsonError("Requête Google Wallet illisible.", 400);
   if (!parsed.success) return jsonError("Action Google Wallet invalide.", 400);
 
   const merchant = await prisma.merchant.findUnique({
@@ -87,13 +149,8 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
   }
 
   if (parsed.data.action === "saveAppearance") {
-    const color = parsed.data.appearance.backgroundColor;
-    if (color) {
-      const hex = googleWalletHexSchema.parse(color);
-      if (!isReadableGoogleWalletColor(hex)) {
-        return jsonError("Couleur trop claire : le texte Google Wallet risque d'être illisible.", 400);
-      }
-    }
+    const colorError = validateAppearanceColor(parsed.data.appearance);
+    if (colorError) return jsonError(colorError, 400);
     const walletClass = await ensureWalletClassRecord(id);
     const config = mergeGoogleWalletDraftConfig({
       existing: walletClass.configByMode,
@@ -127,7 +184,7 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
       const gallery = current.mediaGallery ?? [];
       const item = {
         id: media.version,
-        kind: parsed.data.kind,
+        kind: mediaKind,
         publicUrl: media.publicUrl,
         path: media.path,
         version: media.version,
@@ -169,9 +226,27 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
   try {
     if (parsed.data.action === "publishAppearance") {
       const walletClass = await ensureWalletClassRecord(id);
+      const colorError = parsed.data.appearance ? validateAppearanceColor(parsed.data.appearance) : null;
+      if (colorError) return jsonError(colorError, 400);
+      const withDraft = parsed.data.appearance
+        ? await prisma.googleWalletClass.update({
+            where: { id: walletClass.id },
+            data: {
+              configByMode: mergeGoogleWalletDraftConfig({
+                existing: walletClass.configByMode,
+                appearance: parsed.data.appearance,
+              }),
+            },
+          })
+        : walletClass;
+      const nextConfig = parseGoogleWalletConfig(withDraft.configByMode);
+      const mediaCheck = await publishedMediaExists({ merchantId: id, config: nextConfig });
+      if (!mediaCheck.ok) {
+        return jsonError("Média Google Wallet publié introuvable.", 400, { url: mediaCheck.url });
+      }
       await prisma.googleWalletClass.update({
-        where: { id: walletClass.id },
-        data: { configByMode: publishGoogleWalletConfig(walletClass.configByMode), syncStatus: "PENDING", lastError: null },
+        where: { id: withDraft.id },
+        data: { configByMode: publishGoogleWalletConfig(withDraft.configByMode), syncStatus: "PENDING", lastError: null },
       });
     }
     await testGoogleWalletMerchantConfig(id);

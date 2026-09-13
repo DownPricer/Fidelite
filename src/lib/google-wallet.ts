@@ -113,6 +113,10 @@ export function publicGoogleWalletImageUrl(pathOrUrl: string | null | undefined)
   return isPublicHttpsImageUrl(url) ? url : null;
 }
 
+function publicMerchantLogoUrl(pathOrUrl: string | null | undefined) {
+  return isPublicHttpsImageUrl(pathOrUrl) ? pathOrUrl : null;
+}
+
 function localized(value: string) {
   return { defaultValue: { language: "fr-FR" as const, value } };
 }
@@ -294,9 +298,9 @@ export function merchantClassBody(input: {
 }) {
   const logoUrl =
     publicGoogleWalletImageUrl(input.appearance?.logoUrl) ??
-    publicGoogleWalletImageUrl(input.merchant.logoUrl) ??
+    publicMerchantLogoUrl(input.merchant.logoUrl) ??
     googleWalletLogoUrl();
-  const wideLogoUrl = publicGoogleWalletImageUrl(input.appearance?.wideLogoUrl) ?? logoUrl;
+  const wideLogoUrl = publicGoogleWalletImageUrl(input.appearance?.wideLogoUrl);
   const heroUrl = publicGoogleWalletImageUrl(input.appearance?.heroImageUrl) ?? publicGoogleWalletImageUrl(input.heroImageUrl);
   const appLabel = input.appearance?.appLinkLabel ?? "Voir ma carte";
   return {

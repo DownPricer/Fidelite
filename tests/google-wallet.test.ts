@@ -155,6 +155,37 @@ describe("Google Wallet payloads", () => {
     expect(body.appLinkData.displayText.defaultValue.value).toBe("Carte Nova");
   });
 
+  it("omet hero et logo large absents, avec fallback logo principal", async () => {
+    const { merchantClassBody } = await walletModule();
+    const merchant = { ...merchantContext("VISITS").merchant, logoUrl: null };
+    const body = merchantClassBody({
+      classId: "3388000000023198536.merchant_hash",
+      merchant,
+      mode: "VISITS",
+      rewardLabel: "Café offert",
+      heroImageUrl: null,
+      appearance: { backgroundColor: "#000000" },
+    }) as any;
+    expect(body.hexBackgroundColor).toBe("#000000");
+    expect(body.heroImage).toBeUndefined();
+    expect(body.wideProgramLogo).toBeUndefined();
+    expect(body.programLogo.sourceUri.uri).toContain("/google-wallet/fife-life-logo.png");
+  });
+
+  it("ignore un logo commerce relatif nu pour éviter une URL 404 Google", async () => {
+    const { merchantClassBody } = await walletModule();
+    const merchant = { ...merchantContext("VISITS").merchant, logoUrl: "/cmtx76vmw0000lc0104evr5rd" };
+    const body = merchantClassBody({
+      classId: "3388000000023198536.merchant_hash",
+      merchant,
+      mode: "VISITS",
+      rewardLabel: "Café offert",
+      heroImageUrl: null,
+    }) as any;
+    expect(body.programLogo.sourceUri.uri).toContain("/google-wallet/fife-life-logo.png");
+    expect(body.programLogo.sourceUri.uri).not.toContain("/cmtx76vmw0000lc0104evr5rd");
+  });
+
   it("la carte globale varie par niveau via l'objet, jamais par la classe", async () => {
     const { globalClassPatchBody, globalObjectBody } = await walletModule();
     const bronze = (await globalObjectBody({
@@ -233,6 +264,7 @@ describe("Google Wallet appearance validation", () => {
   it("valide les couleurs lisibles et rejette les couleurs trop claires", async () => {
     const { googleWalletHexSchema, isReadableGoogleWalletColor } = await import("../src/lib/google-wallet-appearance");
     expect(googleWalletHexSchema.parse("#5b3fd8")).toBe("#5B3FD8");
+    expect(isReadableGoogleWalletColor("#000000")).toBe(true);
     expect(isReadableGoogleWalletColor("#0B0B12")).toBe(true);
     expect(isReadableGoogleWalletColor("#FFFFFF")).toBe(false);
   });

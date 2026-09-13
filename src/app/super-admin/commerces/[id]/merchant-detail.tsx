@@ -20,6 +20,7 @@ export function MerchantDetailPage({ firstName, merchantId }: { firstName: strin
   const [error, setError] = useState<string | null>(null);
   const [walletBusy, setWalletBusy] = useState<string | null>(null);
   const [walletMessage, setWalletMessage] = useState<string | null>(null);
+  const [walletFailedAction, setWalletFailedAction] = useState<"sync" | "test" | "publishAppearance" | "resetAppearance" | null>(null);
   const [walletEditorOpen, setWalletEditorOpen] = useState(false);
   const [walletAppearance, setWalletAppearance] = useState<WalletAppearance>({
     backgroundColor: "#0B0B12",
@@ -66,17 +67,20 @@ export function MerchantDetailPage({ firstName, merchantId }: { firstName: strin
   async function walletAction(kind: "preview" | "sync" | "test" | "publishAppearance" | "resetAppearance") {
     setWalletBusy(kind);
     setWalletMessage(null);
+    setWalletFailedAction(null);
     const response = await fetch(`/api/super-admin/merchants/${merchantId}/google-wallet`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: kind }),
+      body: JSON.stringify(kind === "publishAppearance" ? { action: kind, appearance: walletAppearance } : { action: kind }),
     });
     const json = await response.json();
     setWalletBusy(null);
     if (!response.ok) {
       setWalletMessage(json.error ?? "Action Google Wallet impossible.");
+      if (kind !== "preview") setWalletFailedAction(kind);
       return;
     }
+    setWalletFailedAction(null);
     if (kind === "preview") {
       setWalletMessage(json.preview?.note ?? "Aperçu prêt.");
       return;
@@ -98,6 +102,7 @@ export function MerchantDetailPage({ firstName, merchantId }: { firstName: strin
   async function saveWalletDraft() {
     setWalletBusy("saveAppearance");
     setWalletMessage(null);
+    setWalletFailedAction(null);
     const response = await fetch(`/api/super-admin/merchants/${merchantId}/google-wallet`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -117,16 +122,14 @@ export function MerchantDetailPage({ firstName, merchantId }: { firstName: strin
     if (!file) return;
     setWalletBusy(`upload-${kind}`);
     setWalletMessage(null);
-    const dataUrl = await new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(String(reader.result));
-      reader.onerror = () => reject(new Error("Lecture du fichier impossible."));
-      reader.readAsDataURL(file);
-    });
+    setWalletFailedAction(null);
+    const form = new FormData();
+    form.set("action", "uploadMedia");
+    form.set("kind", kind);
+    form.set("file", file);
     const response = await fetch(`/api/super-admin/merchants/${merchantId}/google-wallet`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "uploadMedia", kind, dataUrl }),
+      body: form,
     });
     const json = await response.json();
     setWalletBusy(null);
@@ -305,6 +308,11 @@ export function MerchantDetailPage({ firstName, merchantId }: { firstName: strin
                       <Button variant="success" onClick={() => void walletAction("publishAppearance")} disabled={Boolean(walletBusy)}>
                         {walletBusy === "publishAppearance" ? "Publication…" : "Publier et synchroniser"}
                       </Button>
+                      {walletFailedAction ? (
+                        <Button variant="secondary" onClick={() => void walletAction(walletFailedAction)} disabled={Boolean(walletBusy)}>
+                          Réessayer
+                        </Button>
+                      ) : null}
                       <Button variant="secondary" onClick={() => void walletAction("resetAppearance")} disabled={Boolean(walletBusy)}>
                         Réinitialiser
                       </Button>
@@ -321,7 +329,12 @@ export function MerchantDetailPage({ firstName, merchantId }: { firstName: strin
                       <div className="grid h-14 w-14 place-items-center overflow-hidden rounded-full bg-white/20 ring-1 ring-white/30">
                         {walletAppearance.logoUrl ? (
                           // eslint-disable-next-line @next/next/no-img-element
-                          <img src={walletAppearance.logoUrl} alt="" className="h-full w-full object-cover" />
+                          <img
+                            src={walletAppearance.logoUrl}
+                            alt=""
+                            className="h-full w-full object-cover"
+                            onError={() => setWalletAppearance((current) => ({ ...current, logoUrl: null }))}
+                          />
                         ) : (
                           <span className="text-lg font-black text-white">{merchant.name.slice(0, 1)}</span>
                         )}
@@ -334,7 +347,12 @@ export function MerchantDetailPage({ firstName, merchantId }: { firstName: strin
                     <div className="mt-4 aspect-[1032/812] overflow-hidden rounded-xl bg-black/20">
                       {walletAppearance.heroImageUrl ? (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={walletAppearance.heroImageUrl} alt="" className="h-full w-full object-cover" />
+                        <img
+                          src={walletAppearance.heroImageUrl}
+                          alt=""
+                          className="h-full w-full object-cover"
+                          onError={() => setWalletAppearance((current) => ({ ...current, heroImageUrl: null }))}
+                        />
                       ) : (
                         <div className="grid h-full place-items-center text-xs font-semibold text-white/60">Hero automatique</div>
                       )}

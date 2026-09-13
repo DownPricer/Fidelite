@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 const BADGE_SRC = "/google-wallet/add-to-google-wallet-fr.svg";
 
@@ -15,13 +15,25 @@ export function AddToGoogleWalletButton({
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const endpointRef = useRef(endpoint);
+  const requestSeq = useRef(0);
+
+  useEffect(() => {
+    endpointRef.current = endpoint;
+    requestSeq.current += 1;
+    setBusy(false);
+    setError(null);
+  }, [endpoint]);
 
   async function addToWallet() {
     if (busy || disabled) return;
+    const requestEndpoint = endpoint;
+    const requestId = requestSeq.current + 1;
+    requestSeq.current = requestId;
     setBusy(true);
     setError(null);
     try {
-      const response = await fetch(endpoint, {
+      const response = await fetch(requestEndpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         cache: "no-store",
@@ -33,8 +45,10 @@ export function AddToGoogleWalletButton({
       if (!response.ok || !data.saveUrl) {
         throw new Error(data.error ?? "Google Wallet est temporairement indisponible.");
       }
+      if (requestSeq.current !== requestId || endpointRef.current !== requestEndpoint) return;
       window.location.href = data.saveUrl;
     } catch (err) {
+      if (requestSeq.current !== requestId || endpointRef.current !== requestEndpoint) return;
       setError(err instanceof Error ? err.message : "Google Wallet est temporairement indisponible.");
       setBusy(false);
     }
