@@ -22,6 +22,7 @@ import {
 } from "./merchant-reward-progress-panel";
 import type { CustomerMerchantRewardProgress } from "@/lib/customer-reward-progress-types";
 import { AddToGoogleWalletButton } from "./add-to-google-wallet-button";
+import { WalletQrAction } from "./wallet-qr-action";
 
 type CustomerProgramView = ReturnType<typeof buildCustomerProgramView>;
 
@@ -64,7 +65,7 @@ export function MerchantCardDetail({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [conditionsExpanded, setConditionsExpanded] = useState(false);
-  const { qrSrc: personalizedQr } = usePersonalizedQr(!preview);
+  const { qrSrc: personalizedQr, qrFailed, reload: reloadQr } = usePersonalizedQr(!preview);
 
   const mode = programView?.mode ?? card.loyaltyMode ?? "VISITS";
   const remaining = programView?.upcomingRemaining ?? Math.max(0, card.visitsRequired - card.points);
@@ -82,7 +83,7 @@ export function MerchantCardDetail({
     if (preview) return;
     try {
       const response = await fetch(
-        `/api/customer/loyalty/overview?merchantSlug=${encodeURIComponent(slug)}&activityLimit=5`,
+        `/api/customer/loyalty/overview?merchantSlug=${encodeURIComponent(slug)}&activityLimit=3`,
         { cache: "no-store" },
       );
       if (!response.ok) throw new Error("overview");
@@ -152,7 +153,7 @@ export function MerchantCardDetail({
       });
       setRecentActivity((prev) => {
         if (prev.some((row) => row.id === activityItem.id)) return prev;
-        return [activityItem, ...prev].slice(0, 5);
+        return [activityItem, ...prev].slice(0, 3);
       });
       setActivityTotal((prev) => prev + 1);
       void refreshOverview();
@@ -318,14 +319,24 @@ Le commerçant se réserve le droit de modifier ou d'annuler le programme de fid
             preview={preview}
           />
 
-          {/* Actions: Add to Wallet & Share */}
-          <section className="merchant-actions-block mt-5 flex gap-3">
+          {/* Actions: QR & Google Wallet */}
+          <section className="merchant-actions-block wallet-primary-actions mt-5">
+            <WalletQrAction
+              qrSrc={personalizedQr}
+              qrFailed={qrFailed}
+              onRetry={() => void reloadQr()}
+              clientNumber={clientNumber}
+              merchantName={card.name}
+            />
             {!preview && walletEnabled ? (
               <AddToGoogleWalletButton
                 endpoint={`/api/customer/google-wallet/merchant/${encodeURIComponent(slug)}`}
-                className="flex-1"
+                className="wallet-google-action"
               />
             ) : null}
+          </section>
+
+          <section className="merchant-actions-block mt-3 flex gap-3">
             <button
               type="button"
               onClick={() => void shareCard()}
@@ -346,7 +357,7 @@ Le commerçant se réserve le droit de modifier ou d'annuler le programme de fid
                   <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                     <path d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
                   </svg>
-                  Partager
+                  Partager la carte
                 </>
               )}
             </button>
@@ -398,10 +409,10 @@ Le commerçant se réserve le droit de modifier ou d'annuler le programme de fid
             ) : (
               <>
                 <ul className="mt-4 divide-y divide-white/8">
-                  {recentActivity.map((row) => (
-                    <li key={row.id} className="flex items-start justify-between gap-4 py-3 first:pt-0">
+                  {recentActivity.slice(0, 3).map((row) => (
+                    <li key={row.id} className="flex items-start justify-between gap-4 py-2.5 first:pt-0">
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-semibold text-[var(--ink)]">{row.detail}</p>
+                        <p className="truncate text-sm font-semibold text-[var(--ink)]">{row.detail}</p>
                         <p className="text-xs text-[var(--muted)] mt-0.5">{row.formattedDate}</p>
                       </div>
                       <span
@@ -414,13 +425,13 @@ Le commerçant se réserve le droit de modifier ou d'annuler le programme de fid
                     </li>
                   ))}
                 </ul>
-                {activityTotal > recentActivity.length && !showFullHistory ? (
+                {(activityTotal > 3 || recentActivity.length > 3) && !showFullHistory ? (
                   <button
                     type="button"
                     onClick={() => setShowFullHistory(true)}
                     className="mt-3 text-xs font-semibold text-[var(--violet-bright)] hover:underline"
                   >
-                    Voir tout
+                    Voir toute l’activité
                   </button>
                 ) : null}
               </>

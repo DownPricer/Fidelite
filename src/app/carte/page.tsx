@@ -59,7 +59,7 @@ export default async function CarteIndexPage({
   ).filter((card): card is NonNullable<typeof card> => card !== null);
 
   const cards = await attachPublishedTemplates(baseCards);
-  const overview = await getCustomerLoyaltyOverview({ userId: user.id, activityLimit: 5 });
+  const overview = await getCustomerLoyaltyOverview({ userId: user.id, activityLimit: 3 });
 
   return (
     <WalletHome

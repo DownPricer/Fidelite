@@ -21,6 +21,7 @@ import { usePersonalizedQr } from "./use-personalized-qr";
 import { useWalletUnlockAnimation } from "./use-wallet-unlock-animation";
 import { WalletMotionRoot } from "./wallet-motion-root";
 import { AddToGoogleWalletButton } from "./add-to-google-wallet-button";
+import { WalletQrAction } from "./wallet-qr-action";
 import {
   activityFromWalletEvent,
   buildFifeLifeNextReward,
@@ -80,7 +81,7 @@ export function WalletHome({
   const [overviewError, setOverviewError] = useState<string | null>(null);
   const [sheetOpen, setSheetOpen] = useState(initialSheetOpen);
   const [enlargedCard, setEnlargedCard] = useState<MerchantCardData | null>(null);
-  const { qrSrc: personalizedQr } = usePersonalizedQr(!preview);
+  const { qrSrc: personalizedQr, qrFailed, reload: reloadQr } = usePersonalizedQr(!preview);
   const {
     unlockPhase,
     unlockCard,
@@ -137,7 +138,7 @@ export function WalletHome({
   const refreshOverview = useCallback(async () => {
     if (preview) return;
     try {
-      const response = await fetch("/api/customer/loyalty/overview?activityLimit=5", { cache: "no-store" });
+      const response = await fetch("/api/customer/loyalty/overview?activityLimit=3", { cache: "no-store" });
       if (!response.ok) throw new Error("overview");
       const data = (await response.json()) as CustomerLoyaltyOverview;
       setCardRewards(data.cardRewards);
@@ -253,7 +254,7 @@ export function WalletHome({
         });
         setRecentActivity((prev) => {
           if (prev.some((row) => row.id === activityItem.id)) return prev;
-          return [activityItem, ...prev].slice(0, 5);
+          return [activityItem, ...prev].slice(0, 3);
         });
         setActivityTotal((prev) => prev + 1);
 
@@ -389,12 +390,18 @@ export function WalletHome({
               onActiveCardChange={handleActiveCardChange}
               demoVisual={preview}
             />
-            {!preview && walletEnabled ? (
-              <AddToGoogleWalletButton
-                endpoint="/api/customer/google-wallet/global"
-                className="mt-3"
+            <section className="wallet-primary-actions mt-4" aria-label="Actions QR et Google Wallet">
+              <WalletQrAction
+                qrSrc={personalizedQr}
+                qrFailed={qrFailed}
+                onRetry={() => void reloadQr()}
+                clientNumber={clientNumber}
+                merchantName="Fife Life"
               />
-            ) : null}
+              {!preview && walletEnabled ? (
+                <AddToGoogleWalletButton endpoint="/api/customer/google-wallet/global" className="wallet-google-action" />
+              ) : null}
+            </section>
           </div>
         </div>
 
@@ -431,6 +438,11 @@ export function WalletHome({
             )}
           </section>
 
+          <aside className="wallet-cards-rail glass-panel" aria-label="Mes cartes et mes avantages">
+            <h3 className="section-title mb-4">Mes cartes et avantages</h3>
+            <WalletCardsList cards={cards} onOpenCard={openCard} compact desktopGrid />
+          </aside>
+
           <div className="wallet-activity-block wallet-lower mt-4 shrink-0 lg:mt-0">
             <section className="glass-panel p-4">
               <h3 className="section-title mb-3">Activité récente</h3>
@@ -452,8 +464,8 @@ export function WalletHome({
               ) : (
                 <>
                   <ul className="space-y-2">
-                    {recentActivity.map((row) => (
-                      <li key={row.id} className="flex items-center justify-between gap-3 text-[11px]">
+                    {recentActivity.slice(0, 3).map((row) => (
+                      <li key={row.id} className="flex items-center justify-between gap-3 text-[11px] leading-tight">
                         <span className="flex min-w-0 items-center gap-2 text-[var(--ink-soft)]">
                           <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--violet-bright)]" />
                           <span className="truncate">{row.lineLabel}</span>
@@ -468,23 +480,18 @@ export function WalletHome({
                       </li>
                     ))}
                   </ul>
-                  {activityTotal > recentActivity.length ? (
+                  {activityTotal > 3 || recentActivity.length > 3 ? (
                     <Link
                       href={preview ? "/compte?demo=1" : "/compte"}
                       className="mt-3 inline-block text-xs font-semibold text-[var(--violet-bright)] hover:underline"
                     >
-                      Voir tout
+                      Voir toute l’activité
                     </Link>
                   ) : null}
                 </>
               )}
             </section>
           </div>
-
-          <aside className="wallet-cards-rail glass-panel" aria-label="Mes cartes et mes avantages">
-            <h3 className="section-title mb-4">Mes cartes et avantages</h3>
-            <WalletCardsList cards={cards} onOpenCard={openCard} compact desktopGrid />
-          </aside>
         </aside>
 
         <div className="wallet-sheet-trigger mt-auto flex flex-col items-center gap-3 pb-6">

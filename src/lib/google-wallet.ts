@@ -16,6 +16,9 @@ import { formatUnitCount, loyaltyUnitForMode, progressBalanceLabel } from "./loy
 import { signQrToken } from "./qr";
 import { prisma } from "./prisma";
 import { getCustomerLoyaltyOverview } from "./customer-loyalty-overview";
+import { parseGoogleWalletConfig, type GoogleWalletAppearance } from "./google-wallet-appearance";
+import { resolveTier } from "@/components/fife-life/tier";
+import { getLoyaltyCardBackground, getLoyaltyCardTierLabel } from "./loyalty-card-assets";
 
 const WALLET_SCOPE = "https://www.googleapis.com/auth/wallet_object.issuer";
 const WALLET_API = "https://walletobjects.googleapis.com/walletobjects/v1";
@@ -287,9 +290,15 @@ export function merchantClassBody(input: {
   mode: LoyaltyMode;
   rewardLabel: string;
   heroImageUrl?: string | null;
+  appearance?: GoogleWalletAppearance | null;
 }) {
-  const logoUrl = publicGoogleWalletImageUrl(input.merchant.logoUrl) ?? googleWalletLogoUrl();
-  const heroUrl = publicGoogleWalletImageUrl(input.heroImageUrl);
+  const logoUrl =
+    publicGoogleWalletImageUrl(input.appearance?.logoUrl) ??
+    publicGoogleWalletImageUrl(input.merchant.logoUrl) ??
+    googleWalletLogoUrl();
+  const wideLogoUrl = publicGoogleWalletImageUrl(input.appearance?.wideLogoUrl) ?? logoUrl;
+  const heroUrl = publicGoogleWalletImageUrl(input.appearance?.heroImageUrl) ?? publicGoogleWalletImageUrl(input.heroImageUrl);
+  const appLabel = input.appearance?.appLinkLabel ?? "Voir ma carte";
   return {
     id: input.classId,
     issuerName: input.merchant.name,
@@ -297,9 +306,9 @@ export function merchantClassBody(input: {
     programName: `Fidélité ${input.merchant.name}`,
     localizedProgramName: localized(`Fidélité ${input.merchant.name}`),
     programLogo: imageData(logoUrl, `Logo ${input.merchant.name}`),
-    wideProgramLogo: imageData(logoUrl, `Logo ${input.merchant.name}`),
+    wideProgramLogo: imageData(wideLogoUrl, `Logo ${input.merchant.name}`),
     heroImage: imageData(heroUrl, `Carte ${input.merchant.name}`),
-    hexBackgroundColor: input.merchant.primaryColor || "#1a1a1a",
+    hexBackgroundColor: input.appearance?.backgroundColor ?? input.merchant.primaryColor ?? "#1a1a1a",
     reviewStatus: "UNDER_REVIEW",
     countryCode: "FR",
     rewardsTierLabel: "Prochain avantage",
@@ -316,7 +325,7 @@ export function merchantClassBody(input: {
     localizedSecondaryRewardsTier: localized(loyaltyPointLabel(input.mode)),
     multipleDevicesAndHoldersAllowedStatus: "MULTIPLE_HOLDERS",
     classTemplateInfo: classTemplateInfo(),
-    appLinkData: appLinkData(cardUrl(input.merchant.slug), "Voir ma carte"),
+    appLinkData: appLinkData(cardUrl(input.merchant.slug), appLabel),
   };
 }
 
@@ -350,6 +359,8 @@ async function ensureMerchantClass(input: {
       configByMode: {},
     },
   });
+  const walletConfig = parseGoogleWalletConfig(classRecord.configByMode);
+  const publishedAppearance = walletConfig.publishedAppearance ?? null;
 
   try {
     const body = merchantClassBody({
@@ -358,6 +369,7 @@ async function ensureMerchantClass(input: {
       mode: context.mode,
       rewardLabel: primaryRewardLabel(context),
       heroImageUrl: context.cardTemplateMeta?.backgroundUrl ?? null,
+      appearance: publishedAppearance,
     });
     await upsertGoogleResource({
       kind: "loyaltyClass",
@@ -374,13 +386,14 @@ async function ensureMerchantClass(input: {
         lastSyncedAt: new Date(),
         lastError: null,
         configByMode: {
+          ...walletConfig,
           activeMode: context.mode,
           activeProfile: profile,
           templateId: context.cardTemplateMeta?.id ?? null,
           templateVersion: context.cardTemplateMeta?.version ?? null,
           templateUsedFallback: context.cardTemplateMeta?.usedFallback ?? false,
           reviewStatus: remote.body?.reviewStatus ?? null,
-          heroImageUrl: body.heroImage ? context.cardTemplateMeta?.backgroundUrl ?? null : null,
+          heroImageUrl: publishedAppearance?.heroImageUrl ?? (body.heroImage ? context.cardTemplateMeta?.backgroundUrl ?? null : null),
         },
       },
     });
@@ -406,7 +419,10 @@ async function ensureGlobalClassRecord(db: Prisma.TransactionClient | typeof pri
     method: "PATCH",
     body: JSON.stringify(globalClassPatchBody({ classId })),
   });
+  const existingRecord = await db.googleWalletClass.findUnique({ where: { googleClassId: classId } });
+  const existingConfig = parseGoogleWalletConfig(existingRecord?.configByMode);
   const remoteSnapshot = {
+    ...existingConfig,
     id: remote.id ?? classId,
     reviewStatus: remote.reviewStatus ?? null,
     programName: remote.programName ?? null,
@@ -443,6 +459,8 @@ export async function globalObjectBody(input: {
 }) {
   const displayName = [input.user.firstName, input.user.lastName].filter(Boolean).join(" ") || input.user.firstName;
   const clientNumber = resolveClientNumber({ clientNumber: input.user.clientNumber, userId: input.user.id });
+  const tier = resolveTier(input.user.fifeLifePoints);
+  const tierHero = publicGoogleWalletImageUrl(getLoyaltyCardBackground(tier.name));
   return {
     id: input.objectId,
     classId: buildGoogleWalletIds({}).globalClassId,
@@ -458,13 +476,22 @@ export async function globalObjectBody(input: {
       label: "Points Fife Life",
       balance: { int: input.user.fifeLifePoints },
     },
+    heroImage: imageData(tierHero, `Niveau ${getLoyaltyCardTierLabel(tier.name)} Fife Life`),
     textModulesData: [
+      textModule("tier", "Niveau", `Niveau ${getLoyaltyCardTierLabel(tier.name)}`),
       textModule("cards", "Cartes actives", `${input.activeCardCount}`),
       textModule("next_reward", "Prochain avantage", input.nextReward ?? "Aucun avantage global disponible"),
       textModule(
         "available_rewards",
         "Avantages disponibles",
         input.availableRewardsCount == null ? null : `${input.availableRewardsCount}`,
+      ),
+      textModule(
+        "tier_progress",
+        "Progression",
+        tier.nextName == null
+          ? "Palier maximum atteint"
+          : `Encore ${formatUnitCount(tier.remaining, "points")} avant ${tier.nextName}`,
       ),
     ].filter(Boolean),
     appLinkData: appLinkData(cardUrl(), "Ouvrir mon wallet"),

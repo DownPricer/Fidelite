@@ -130,6 +130,56 @@ describe("Google Wallet payloads", () => {
     expect(body.appLinkData.displayText.defaultValue.value).toBe("Voir ma carte");
   });
 
+  it("la personnalisation publiée du commerce surcharge couleur, hero et libellé", async () => {
+    const { merchantClassBody } = await walletModule();
+    const body = merchantClassBody({
+      classId: "3388000000023198536.merchant_hash",
+      merchant: merchantContext("VISITS").merchant,
+      mode: "VISITS",
+      rewardLabel: "Café offert",
+      heroImageUrl: "/api/media/card-backgrounds/merchant-a/bg.png",
+      appearance: {
+        backgroundColor: "#5B3FD8",
+        heroImageUrl: "/google-wallet/media/merchant/merchant-a/hero?v=1",
+        logoUrl: "/google-wallet/media/merchant/merchant-a/logo?v=1",
+        appLinkLabel: "Carte Nova",
+      },
+    }) as any;
+    expect(body.hexBackgroundColor).toBe("#5B3FD8");
+    expect(body.heroImage.sourceUri.uri).toBe(
+      "https://fidelite.sitereadyshd.fr/google-wallet/media/merchant/merchant-a/hero?v=1",
+    );
+    expect(body.programLogo.sourceUri.uri).toBe(
+      "https://fidelite.sitereadyshd.fr/google-wallet/media/merchant/merchant-a/logo?v=1",
+    );
+    expect(body.appLinkData.displayText.defaultValue.value).toBe("Carte Nova");
+  });
+
+  it("la carte globale varie par niveau via l'objet, jamais par la classe", async () => {
+    const { globalClassPatchBody, globalObjectBody } = await walletModule();
+    const bronze = (await globalObjectBody({
+      user: { id: "u1", firstName: "Ada", lastName: null, clientNumber: "100001", fifeLifePoints: 20, isActive: true },
+      objectId: "3388000000023198536.user_bronze",
+      qrValue: "qr",
+      activeCardCount: 1,
+      nextReward: "Niveau Silver",
+      availableRewardsCount: 0,
+    })) as any;
+    const gold = (await globalObjectBody({
+      user: { id: "u2", firstName: "Lina", lastName: null, clientNumber: "100002", fifeLifePoints: 300, isActive: true },
+      objectId: "3388000000023198536.user_gold",
+      qrValue: "qr",
+      activeCardCount: 2,
+      nextReward: "Niveau Diamond",
+      availableRewardsCount: 1,
+    })) as any;
+    expect(bronze.heroImage.sourceUri.uri).toContain("/cards/bronze-good.png");
+    expect(gold.heroImage.sourceUri.uri).toContain("/cards/or-good.png");
+    expect(bronze.textModulesData).toEqual(expect.arrayContaining([expect.objectContaining({ id: "tier", body: "Niveau Bronze" })]));
+    expect(gold.textModulesData).toEqual(expect.arrayContaining([expect.objectContaining({ id: "tier", body: "Niveau Or" })]));
+    expect(globalClassPatchBody({ classId: "global" })).not.toHaveProperty("heroImage");
+  });
+
   it("les liens de l'objet commerce ne sont pas dupliqués", async () => {
     const { merchantObjectBody } = await walletModule();
     const body = merchantObjectBody({
@@ -176,5 +226,26 @@ describe("Google Wallet payloads", () => {
       context: merchantContext("VISITS"),
     }) as any;
     expect(body.barcode).toMatchObject({ type: "QR_CODE", value: "signed.qr.token" });
+  });
+});
+
+describe("Google Wallet appearance validation", () => {
+  it("valide les couleurs lisibles et rejette les couleurs trop claires", async () => {
+    const { googleWalletHexSchema, isReadableGoogleWalletColor } = await import("../src/lib/google-wallet-appearance");
+    expect(googleWalletHexSchema.parse("#5b3fd8")).toBe("#5B3FD8");
+    expect(isReadableGoogleWalletColor("#0B0B12")).toBe(true);
+    expect(isReadableGoogleWalletColor("#FFFFFF")).toBe(false);
+  });
+
+  it("valide les ratios média Google Wallet", async () => {
+    const { validateGoogleWalletMedia } = await import("../src/lib/media-storage");
+    const png = Buffer.alloc(24);
+    png.writeUInt8(0x89, 0);
+    png.write("PNG", 1, "ascii");
+    png.writeUInt32BE(1032, 16);
+    png.writeUInt32BE(812, 20);
+    expect(validateGoogleWalletMedia("hero", png, "image/png").ok).toBe(true);
+    png.writeUInt32BE(900, 20);
+    expect(validateGoogleWalletMedia("hero", png, "image/png").ok).toBe(false);
   });
 });

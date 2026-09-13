@@ -92,6 +92,32 @@ describe("QR agrandissable", () => {
     expect(css).toMatch(/padding:\s*2%/);
     expect(css).toContain("width: 18cqw");
   });
+
+  it("affiche les actions QR et Google Wallet sans bouton imbriqué sur le wallet", () => {
+    const walletHome = readFileSync(resolve(process.cwd(), "src/components/fife-life/wallet-home.tsx"), "utf8");
+    const merchantDetail = readFileSync(resolve(process.cwd(), "src/components/fife-life/merchant-detail.tsx"), "utf8");
+    const qrAction = readFileSync(resolve(process.cwd(), "src/components/fife-life/wallet-qr-action.tsx"), "utf8");
+
+    expect(walletHome).toContain("wallet-primary-actions");
+    expect(walletHome).toContain("<WalletQrAction");
+    expect(walletHome).toContain('endpoint="/api/customer/google-wallet/global"');
+    expect(merchantDetail).toContain("<WalletQrAction");
+    expect(merchantDetail).toContain("/api/customer/google-wallet/merchant/");
+    expect(qrAction).toContain("data-no-card-expand");
+    expect(qrAction).toContain("QrEnlargedView");
+    expect(qrAction).not.toMatch(/<button[\s\S]*<button/);
+  });
+
+  it("rend le wallet mobile scrollable et limite l'activité avant les avantages", () => {
+    const css = readFileSync(resolve(process.cwd(), "src/app/globals.css"), "utf8");
+    const walletHome = readFileSync(resolve(process.cwd(), "src/components/fife-life/wallet-home.tsx"), "utf8");
+
+    expect(css).toContain("min-height: 100dvh");
+    expect(css).not.toContain("body:has(.wallet-shell) {\n  overflow: hidden");
+    expect(walletHome.indexOf("wallet-cards-rail")).toBeLessThan(walletHome.indexOf("wallet-activity-block"));
+    expect(walletHome).toContain("recentActivity.slice(0, 3)");
+    expect(walletHome).toContain("Voir toute l’activité");
+  });
 });
 
 describe("vignette jauge", () => {

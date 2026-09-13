@@ -76,12 +76,71 @@ function readWebpDimensions(buffer: Buffer) {
 }
 
 export function validateImageDimensions(buffer: Buffer, mime: string) {
-  let dims: { width: number; height: number } | null = null;
-  if (mime === "image/png") dims = readPngDimensions(buffer);
-  else if (mime === "image/jpeg") dims = readJpegDimensions(buffer);
-  else if (mime === "image/webp") dims = readWebpDimensions(buffer);
+  const dims = readImageDimensions(buffer, mime);
   if (!dims || dims.width < 1 || dims.height < 1) return false;
   return dims.width <= CARD_BG_MAX_DIMENSION && dims.height <= CARD_BG_MAX_DIMENSION;
+}
+
+export function readImageDimensions(buffer: Buffer, mime: string) {
+  if (mime === "image/png") return readPngDimensions(buffer);
+  if (mime === "image/jpeg") return readJpegDimensions(buffer);
+  if (mime === "image/webp") return readWebpDimensions(buffer);
+  return null;
+}
+
+function assertRatio(input: { width: number; height: number; expected: number; tolerance?: number }) {
+  const ratio = input.width / input.height;
+  return Math.abs(ratio - input.expected) <= (input.tolerance ?? 0.04);
+}
+
+export type GoogleWalletMediaKind = "hero" | "logo" | "wideLogo";
+
+export function validateGoogleWalletMedia(kind: GoogleWalletMediaKind, buffer: Buffer, mime: string) {
+  if (!["image/png", "image/jpeg", "image/webp"].includes(mime)) {
+    return { ok: false as const, error: "Image invalide (PNG, JPEG ou WebP uniquement)." };
+  }
+  const dims = readImageDimensions(buffer, mime);
+  if (!dims || dims.width < 1 || dims.height < 1 || dims.width > CARD_BG_MAX_DIMENSION || dims.height > CARD_BG_MAX_DIMENSION) {
+    return { ok: false as const, error: "Dimensions d'image invalides ou trop grandes (max 4096 px)." };
+  }
+  if (kind === "hero" && !assertRatio({ ...dims, expected: 1032 / 812 })) {
+    return { ok: false as const, error: "L'image principale doit respecter le ratio Google Wallet 1032:812." };
+  }
+  if (kind === "logo" && !assertRatio({ ...dims, expected: 1, tolerance: 0.02 })) {
+    return { ok: false as const, error: "Le logo carré doit respecter un ratio 1:1." };
+  }
+  if (kind === "wideLogo" && !assertRatio({ ...dims, expected: 1280 / 400 })) {
+    return { ok: false as const, error: "Le logo large doit respecter le ratio 16:5." };
+  }
+  return { ok: true as const, dimensions: dims };
+}
+
+export async function saveGoogleWalletMerchantMedia(input: {
+  merchantId: string;
+  kind: GoogleWalletMediaKind;
+  dataUrl: string;
+}) {
+  if (!/^[\w-]+$/.test(input.merchantId)) {
+    throw new Error("Identifiant commerce invalide.");
+  }
+  const parsed = parseImageDataUrl(input.dataUrl);
+  if (!parsed) throw new Error("Image invalide (PNG, JPEG ou WebP, max 5 Mo).");
+  const validation = validateGoogleWalletMedia(input.kind, parsed.buffer, parsed.mime);
+  if (!validation.ok) throw new Error(validation.error);
+
+  const version = `${Date.now()}-${randomSuffix()}`;
+  const dir = join(getUploadsRoot(), "google-wallet", "merchant", input.merchantId);
+  await mkdir(dir, { recursive: true });
+  const filename = `${input.kind}-${version}.${parsed.ext}`;
+  const filepath = join(dir, filename);
+  await writeFile(filepath, parsed.buffer);
+  return {
+    path: `google-wallet/merchant/${input.merchantId}/${filename}`,
+    publicUrl: `/google-wallet/media/merchant/${input.merchantId}/${input.kind}?v=${version}`,
+    version,
+    mime: parsed.mime,
+    dimensions: validation.dimensions,
+  };
 }
 
 export async function saveCardBackground(merchantId: string, dataUrl: string) {

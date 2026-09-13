@@ -73,7 +73,7 @@ export default async function CardPage({
     getCustomerLoyaltyOverview({
       userId: user.id,
       merchantId: membership.merchantId,
-      activityLimit: 5,
+      activityLimit: 3,
     }),
     getCustomerMerchantRewardProgress({
       userId: user.id,
