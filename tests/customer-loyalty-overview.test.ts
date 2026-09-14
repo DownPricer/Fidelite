@@ -5,6 +5,7 @@ import {
   buildNextRewardCandidates,
   formatActivityDate,
   formatActivityFromTransaction,
+  googleWalletEndpointForActiveCard,
   resolveNextRewardForActiveCard,
   selectBestNextReward,
   type CardNextRewardEntry,
@@ -346,6 +347,29 @@ describe("customer loyalty overview", () => {
 
   it("Fife Life max tier → aucune récompense globale inventée", () => {
     expect(buildFifeLifeNextReward(600)).toBeNull();
+  });
+
+  it("Google Wallet actif — Fife Life vers global, commerce vers slug commerce", () => {
+    expect(
+      googleWalletEndpointForActiveCard({
+        cardType: "global",
+        cardKey: "global",
+        membershipId: null,
+        merchantId: null,
+        slug: "fife-life",
+        activeIndex: 0,
+      }),
+    ).toBe("/api/customer/google-wallet/global");
+    expect(
+      googleWalletEndpointForActiveCard({
+        cardType: "merchant",
+        cardKey: "mem-cafe",
+        membershipId: "mem-cafe",
+        merchantId: "cafe",
+        slug: "café-nova",
+        activeIndex: 1,
+      }),
+    ).toBe("/api/customer/google-wallet/merchant/caf%C3%A9-nova");
   });
 
   it("récompense disponible → Disponible maintenant", () => {

@@ -95,14 +95,16 @@ describe("QR agrandissable", () => {
 
   it("affiche les actions QR et Google Wallet sans bouton imbriqué sur le wallet", () => {
     const walletHome = readFileSync(resolve(process.cwd(), "src/components/fife-life/wallet-home.tsx"), "utf8");
+    const overview = readFileSync(resolve(process.cwd(), "src/lib/customer-loyalty-overview.ts"), "utf8");
     const merchantDetail = readFileSync(resolve(process.cwd(), "src/components/fife-life/merchant-detail.tsx"), "utf8");
     const qrAction = readFileSync(resolve(process.cwd(), "src/components/fife-life/wallet-qr-action.tsx"), "utf8");
 
     expect(walletHome).toContain("wallet-primary-actions");
+    expect(walletHome).toContain("wallet-desktop-actions");
     expect(walletHome).toContain("<WalletQrAction");
     expect(walletHome).toContain("googleWalletEndpoint");
-    expect(walletHome).toContain("/api/customer/google-wallet/global");
-    expect(walletHome).toContain("/api/customer/google-wallet/merchant/");
+    expect(overview).toContain("/api/customer/google-wallet/global");
+    expect(overview).toContain("/api/customer/google-wallet/merchant/");
     expect(merchantDetail).toContain("<WalletQrAction");
     expect(merchantDetail).toContain("/api/customer/google-wallet/merchant/");
     expect(qrAction).toContain("data-no-card-expand");
@@ -116,9 +118,10 @@ describe("QR agrandissable", () => {
 
     expect(css).toContain("min-height: 100dvh");
     expect(css).not.toContain("body:has(.wallet-shell) {\n  overflow: hidden");
-    expect(walletHome).not.toContain("wallet-cards-rail");
-    expect(walletHome).not.toContain("wallet-activity-block");
-    expect(walletHome).not.toContain("Activité récente");
+    expect(walletHome).toContain("wallet-cards-rail glass-panel");
+    expect(walletHome).toContain("wallet-activity-block glass-panel");
+    expect(walletHome).toContain("hidden lg:flex");
+    expect(walletHome).toContain("lg:hidden");
     expect(walletHome.indexOf("wallet-primary-actions")).toBeLessThan(walletHome.indexOf("wallet-reward-block"));
     expect(walletHome.indexOf("wallet-reward-block")).toBeLessThan(walletHome.indexOf("wallet-sheet-trigger"));
     expect(walletHome).toContain("setSheetOpen(true)");

@@ -1,6 +1,9 @@
 import { requireMutatingRequest, requireSuperAdmin, requireSuperAdminReauth } from "@/lib/api-guard";
 import { writeAudit } from "@/lib/audit";
 import { clientIp, jsonError, jsonOk, readJson, userAgent } from "@/lib/http";
+import { buildGoogleWalletMerchantView, isGoogleWalletConfigured } from "@/lib/google-wallet";
+import { getActiveMerchantLoyaltyContext } from "@/lib/loyalty-context";
+import { parseGoogleWalletConfig } from "@/lib/google-wallet-appearance";
 import { syncIsActiveFromStatus } from "@/lib/merchant-status";
 import { prisma } from "@/lib/prisma";
 import { merchantDeleteSchema, merchantStatusActionSchema, zodErrorMessage } from "@/lib/super-admin-validation";
@@ -21,7 +24,7 @@ export async function GET(
       subscription: true,
       contracts: { orderBy: { createdAt: "desc" } },
       payments: { orderBy: { createdAt: "desc" }, take: 20 },
-      memberships: { include: { user: true } },
+      customerMemberships: { include: { user: true } },
       cardTemplates: { orderBy: { updatedAt: "desc" } },
       googleWalletClasses: { orderBy: { updatedAt: "desc" } },
       googleWalletObjects: { select: { id: true, syncStatus: true, needsSync: true, lastSyncedAt: true, lastError: true } },
@@ -30,13 +33,47 @@ export async function GET(
           customerMemberships: true,
           transactions: true,
           caisseGrants: true,
-      auditLogs: true,
+          auditLogs: true,
           googleWalletObjects: true,
         },
       },
     },
   });
   if (!merchant) return jsonError("Commerce introuvable.", 404);
+
+  const loyaltyContext = await getActiveMerchantLoyaltyContext(id);
+  const walletClass = merchant.googleWalletClasses[0] ?? null;
+  const walletConfig = parseGoogleWalletConfig(walletClass?.configByMode);
+  const walletAppearance = walletConfig.draftAppearance ?? walletConfig.publishedAppearance ?? null;
+  const previewMemberships =
+    loyaltyContext?.isOperational
+      ? merchant.customerMemberships
+          .filter((membership) => !membership.removedAt)
+          .map((membership) => ({
+            membershipId: membership.id,
+            label:
+              [membership.user.firstName, membership.user.lastName].filter(Boolean).join(" ") ||
+              membership.user.firstName,
+            view: buildGoogleWalletMerchantView({
+              context: loyaltyContext,
+              membership,
+              customer: membership.user,
+              appearance: walletAppearance,
+              demoOnly: !isGoogleWalletConfigured(),
+            }),
+          }))
+      : [];
+  const modelPreview =
+    loyaltyContext?.isOperational
+      ? buildGoogleWalletMerchantView({
+          context: loyaltyContext,
+          membership: null,
+          customer: null,
+          appearance: walletAppearance,
+          demoOnly: !isGoogleWalletConfigured(),
+          example: true,
+        })
+      : null;
 
   const recentAudit = await prisma.auditLog.findMany({
     where: { merchantId: id },
@@ -47,6 +84,11 @@ export async function GET(
 
   return jsonOk({
     merchant,
+    walletPreview: {
+      customers: previewMemberships,
+      model: modelPreview,
+      hasOperationalProgram: Boolean(loyaltyContext?.isOperational),
+    },
     stats: {
       customers: merchant._count.customerMemberships,
       transactions: merchant._count.transactions,

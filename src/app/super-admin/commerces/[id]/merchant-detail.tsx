@@ -24,6 +24,33 @@ type WalletMediaPreview = {
   publicUrl: string;
 };
 
+type WalletPreviewView = {
+  programName: string;
+  issuerName: string;
+  backgroundColor: string;
+  logoUrl: string | null;
+  wideLogoUrl: string | null;
+  heroImageUrl: string | null;
+  appLinkLabel: string;
+  demoOnly: boolean;
+  decorativeQrValue: string;
+  customer: { name: string; clientNumber: string; isExample: boolean };
+  loyalty: {
+    mode: string;
+    modeLabel: string;
+    programDescription: string;
+    balance: number;
+    balanceLabel: string;
+    target: number;
+    targetLabel: string;
+    unit: "points" | "passages";
+    nextRewardName: string | null;
+    remainingLabel: string | null;
+    availableRewardsCount: number;
+    availableRewardNames: string[];
+  };
+};
+
 const MEDIA_TO_APPEARANCE_KEY: Record<WalletMediaKey, keyof Pick<WalletAppearance, "heroImageUrl" | "logoUrl" | "wideLogoUrl">> = {
   hero: "heroImageUrl",
   logo: "logoUrl",
@@ -47,6 +74,7 @@ export function MerchantDetailPage({ firstName, merchantId }: { firstName: strin
   const [walletMessage, setWalletMessage] = useState<string | null>(null);
   const [walletFailedAction, setWalletFailedAction] = useState<"sync" | "test" | "publishAppearance" | "resetAppearance" | null>(null);
   const [walletEditorOpen, setWalletEditorOpen] = useState(false);
+  const [walletPreviewMembershipId, setWalletPreviewMembershipId] = useState<string>("model");
   const [walletCrop, setWalletCrop] = useState<{ kind: GoogleWalletMediaKind; file: File } | null>(null);
   const [walletMediaPreviews, setWalletMediaPreviews] = useState<Partial<Record<WalletMediaKey, WalletMediaPreview>>>({});
   const [walletMediaErrors, setWalletMediaErrors] = useState<Partial<Record<WalletMediaKey, string>>>({});
@@ -239,6 +267,16 @@ export function MerchantDetailPage({ firstName, merchantId }: { firstName: strin
   }
 
   const merchant = data?.merchant;
+  const walletPreviewCustomers = (data?.walletPreview?.customers ?? []) as Array<{
+    membershipId: string;
+    label: string;
+    view: WalletPreviewView;
+  }>;
+  const walletPreviewModel = (data?.walletPreview?.model ?? null) as WalletPreviewView | null;
+  const walletPreviewView =
+    walletPreviewCustomers.find((item) => item.membershipId === walletPreviewMembershipId)?.view ??
+    walletPreviewCustomers[0]?.view ??
+    walletPreviewModel;
   const walletClass = merchant?.googleWalletClasses?.[0] ?? null;
   const walletObjects = merchant?.googleWalletObjects ?? [];
   const walletConfig = (walletClass?.configByMode ?? {}) as Record<string, unknown>;
@@ -377,6 +415,31 @@ export function MerchantDetailPage({ firstName, merchantId }: { firstName: strin
               {walletEditorOpen ? (
                 <div className="grid gap-4 rounded-2xl border border-white/10 bg-black/20 p-4 lg:grid-cols-[1fr_360px]">
                   <div className="space-y-4">
+                    <Field
+                      label="Client d'aperçu"
+                      hint="Le QR reste décoratif : aucun QR personnel réel n'est affiché ici."
+                    >
+                      <select
+                        value={walletPreviewCustomers.length ? walletPreviewMembershipId : "model"}
+                        onChange={(event) => setWalletPreviewMembershipId(event.target.value)}
+                        className="w-full rounded-xl border border-[var(--stroke)] bg-white/80 px-3 py-3 text-sm font-semibold text-[var(--ink)] outline-none focus:ring-2 focus:ring-[var(--violet-bright)]"
+                      >
+                        {walletPreviewCustomers.map((item) => (
+                          <option key={item.membershipId} value={item.membershipId}>
+                            {item.label}
+                          </option>
+                        ))}
+                        <option value="model">
+                          {walletPreviewCustomers.length ? "Exemple modèle" : "Aucun client disponible pour un aperçu réel"}
+                        </option>
+                      </select>
+                    </Field>
+                    {!walletPreviewCustomers.length ? (
+                      <Alert>
+                        Aucun client disponible pour un aperçu réel. L'aperçu ci-dessous utilise un exemple généré
+                        depuis les seuils du programme actif.
+                      </Alert>
+                    ) : null}
                     <div className="grid gap-3 md:grid-cols-2">
                       <Field label="Couleur Google Wallet" hint="Format strict #RRGGBB. Publiée sur la classe commerce.">
                         <div className="flex gap-2">
@@ -463,75 +526,108 @@ export function MerchantDetailPage({ firstName, merchantId }: { firstName: strin
                       </Button>
                     </div>
                   </div>
-                  <div
-                    className="overflow-hidden rounded-2xl border border-white/15 p-4"
-                    style={{ backgroundColor: walletAppearance.backgroundColor ?? merchant.primaryColor ?? "#0B0B12" }}
-                  >
-                    <p className="mb-3 text-xs font-semibold text-white/70">
-                      Aperçu indicatif — Google Wallet contrôle la mise en page finale.
-                    </p>
-                    <div className="flex items-center gap-3">
-                      <div className="grid h-14 w-14 place-items-center overflow-hidden rounded-full bg-white/20 ring-1 ring-white/30">
-                        {walletMediaState("logo").src ? (
+                  {walletPreviewView ? (
+                    <div
+                      className="overflow-hidden rounded-[28px] border border-white/15 p-4 shadow-2xl"
+                      style={{ backgroundColor: walletAppearance.backgroundColor ?? walletPreviewView.backgroundColor }}
+                    >
+                      <p className="mb-3 text-xs font-semibold text-white/70">
+                        Aperçu indicatif — Google Wallet contrôle la mise en page finale.
+                      </p>
+                      <div className="flex items-center gap-3">
+                        <div className="grid h-12 w-12 place-items-center overflow-hidden rounded-full bg-white/20 ring-1 ring-white/30">
+                          {walletMediaState("logo").src || walletPreviewView.logoUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={walletMediaState("logo").src ?? walletPreviewView.logoUrl ?? ""}
+                              alt=""
+                              className="h-full w-full object-cover"
+                              onError={() => markWalletMediaError("logo", "Erreur d'upload")}
+                            />
+                          ) : (
+                            <span className="text-lg font-black text-white">{merchant.name.slice(0, 1)}</span>
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-black text-white">{walletPreviewView.issuerName}</p>
+                          <p className="truncate text-xs text-white/72">{walletPreviewView.programName}</p>
+                        </div>
+                      </div>
+                      {walletPreviewView.demoOnly ? (
+                        <p className="mt-3 text-center text-[11px] font-black uppercase tracking-[0.18em] text-white/70">
+                          TESTS UNIQUEMENT
+                        </p>
+                      ) : null}
+                      <div className="mx-auto mt-4 grid h-28 w-28 grid-cols-5 gap-1 rounded-xl bg-white p-3">
+                        {Array.from({ length: 25 }).map((_, index) => (
+                          <span
+                            key={index}
+                            className={
+                              index % 2 === 0 || index % 7 === 0 || index === 18
+                                ? "rounded-[2px] bg-black"
+                                : "rounded-[2px] bg-white"
+                            }
+                          />
+                        ))}
+                      </div>
+                      <p className="mt-2 text-center text-[11px] font-semibold text-white/75">
+                        N° client {walletPreviewView.customer.clientNumber}
+                      </p>
+                      <p className="mt-1 text-center text-[11px] text-white/55">
+                        {walletPreviewView.customer.isExample ? "Exemple" : walletPreviewView.customer.name}
+                      </p>
+                      <div className="mt-4 grid grid-cols-2 gap-2 text-xs text-white">
+                        <div className="rounded-xl bg-white/12 p-3">
+                          <p className="text-white/60">Solde ({walletPreviewView.loyalty.unit})</p>
+                          <p className="text-lg font-black">{walletPreviewView.loyalty.balance}</p>
+                        </div>
+                        <div className="rounded-xl bg-white/12 p-3">
+                          <p className="text-white/60">Objectif ({walletPreviewView.loyalty.unit})</p>
+                          <p className="text-lg font-black">{walletPreviewView.loyalty.target}</p>
+                        </div>
+                      </div>
+                      <div className="mt-3 rounded-xl bg-white/12 p-3 text-xs text-white">
+                        <p className="font-bold">{walletPreviewView.loyalty.nextRewardName ?? "Aucun avantage configuré"}</p>
+                        <p className="mt-1 text-white/65">
+                          {walletPreviewView.loyalty.remainingLabel ?? "Aucun seuil suivant"} · {walletPreviewView.loyalty.modeLabel}
+                        </p>
+                        <p className="mt-1 text-white/65">
+                          Avantages disponibles : {walletPreviewView.loyalty.availableRewardsCount}
+                        </p>
+                      </div>
+                      <div className="mt-3 rounded-xl bg-white/92 px-3 py-2 text-center text-xs font-black text-black">
+                        {walletAppearance.appLinkLabel ?? walletPreviewView.appLinkLabel}
+                      </div>
+                      {walletMediaState("wideLogo").src || walletPreviewView.wideLogoUrl ? (
+                        <div className="mt-3 flex justify-center">
+                          <div className="h-10 max-w-48 overflow-hidden rounded-xl bg-white/12 px-3 py-2">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={walletMediaState("wideLogo").src ?? walletPreviewView.wideLogoUrl ?? ""}
+                              alt=""
+                              className="h-full w-full object-contain"
+                              onError={() => markWalletMediaError("wideLogo", "Erreur d'upload")}
+                            />
+                          </div>
+                        </div>
+                      ) : null}
+                      <div className="mt-3 aspect-[1032/812] overflow-hidden rounded-2xl bg-black/20">
+                        {walletMediaState("hero").src || walletPreviewView.heroImageUrl ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img
-                            src={walletMediaState("logo").src ?? ""}
+                            src={walletMediaState("hero").src ?? walletPreviewView.heroImageUrl ?? ""}
                             alt=""
                             className="h-full w-full object-cover"
-                            onError={() => markWalletMediaError("logo", "Erreur d'upload")}
+                            onError={() => markWalletMediaError("hero", "Erreur d'upload")}
                           />
                         ) : (
-                          <span className="text-lg font-black text-white">{merchant.name.slice(0, 1)}</span>
+                          <WalletMediaPlaceholder label="Image principale" status={walletMediaState("hero").status} />
                         )}
                       </div>
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-black text-white">Fidélité {merchant.name}</p>
-                        <p className="truncate text-xs text-white/72">{merchant.program?.mode ?? "GENERAL"} · Démo aperçu</p>
-                      </div>
                     </div>
-                    <p className="mt-2 text-[11px] font-semibold text-white/60">{walletMediaState("logo").status}</p>
-                    <div className="mt-4 aspect-[1032/812] overflow-hidden rounded-xl bg-black/20">
-                      {walletMediaState("hero").src ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={walletMediaState("hero").src ?? ""}
-                          alt=""
-                          className="h-full w-full object-cover"
-                          onError={() => markWalletMediaError("hero", "Erreur d'upload")}
-                        />
-                      ) : (
-                        <WalletMediaPlaceholder label="Hero automatique" status={walletMediaState("hero").status} />
-                      )}
-                    </div>
-                    <p className="mt-2 text-[11px] font-semibold text-white/60">{walletMediaState("hero").status}</p>
-                    <div className="mt-3 aspect-[16/5] overflow-hidden rounded-xl bg-black/20">
-                      {walletMediaState("wideLogo").src ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={walletMediaState("wideLogo").src ?? ""}
-                          alt=""
-                          className="h-full w-full object-contain"
-                          onError={() => markWalletMediaError("wideLogo", "Erreur d'upload")}
-                        />
-                      ) : (
-                        <WalletMediaPlaceholder label="Logo large facultatif" status={walletMediaState("wideLogo").status} />
-                      )}
-                    </div>
-                    <p className="mt-2 text-[11px] font-semibold text-white/60">{walletMediaState("wideLogo").status}</p>
-                    <div className="mt-4 grid grid-cols-2 gap-2 text-xs text-white">
-                      <div className="rounded-xl bg-white/12 p-3">
-                        <p className="text-white/60">Solde</p>
-                        <p className="text-lg font-black">128</p>
-                      </div>
-                      <div className="rounded-xl bg-white/12 p-3">
-                        <p className="text-white/60">Prochain avantage</p>
-                        <p className="truncate font-bold">{merchant.program?.rewardLabel ?? "Avantage"}</p>
-                      </div>
-                    </div>
-                    <div className="mt-3 rounded-xl bg-white/14 px-3 py-2 text-center text-xs font-black text-white">
-                      {walletAppearance.appLinkLabel ?? "Voir ma carte"}
-                    </div>
-                  </div>
+                  ) : (
+                    <Alert>Programme actif indisponible pour l'aperçu Google Wallet.</Alert>
+                  )}
                 </div>
               ) : null}
             </Card>

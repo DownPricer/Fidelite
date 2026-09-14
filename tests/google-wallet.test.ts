@@ -83,6 +83,14 @@ describe("Google Wallet payloads", () => {
       },
       mode,
       programTitle: mode === "VISITS" ? "Par passages" : "Points selon le montant",
+      programDescription:
+        mode === "POINTS_BY_AMOUNT"
+          ? "2 point(s) pour 1 € d'achat"
+          : mode === "FIXED_POINTS"
+            ? "20 points par achat"
+            : mode === "AMOUNT_TIERS"
+              ? "Gain selon le palier de montant"
+              : "1 passage par validation",
       primaryRewardLabel: "Café offert",
       cardTemplateMeta: {
         id: "tpl-1",
@@ -93,7 +101,17 @@ describe("Google Wallet payloads", () => {
         version: 7,
         usedFallback: false,
       },
-      config: { mode, rules: {}, rewards },
+      config: {
+        mode,
+        rules:
+          mode === "POINTS_BY_AMOUNT"
+            ? { pointsPerAmount: 2, amountForPoints: 1 }
+            : mode === "FIXED_POINTS"
+              ? { fixedPointsPerPurchase: 20 }
+              : {},
+        rewards,
+      },
+      unit: mode === "VISITS" || mode === "AMOUNT_TIERS" ? "passages" : "points",
       rewards,
     } as any;
   }
@@ -257,6 +275,49 @@ describe("Google Wallet payloads", () => {
       context: merchantContext("VISITS"),
     }) as any;
     expect(body.barcode).toMatchObject({ type: "QR_CODE", value: "signed.qr.token" });
+  });
+
+  it.each([
+    ["VISITS", "passages", "8 passages", "10 passages", "Encore 2 passages"],
+    ["FIXED_POINTS", "points", "8 points", "10 points", "Encore 2 points"],
+    ["POINTS_BY_AMOUNT", "points", "8 points", "10 points", "Encore 2 points"],
+    ["AMOUNT_TIERS", "passages", "8 passages", "10 passages", "Encore 2 passages"],
+  ] as const)("la vue partagée %s expose l'unité, le vrai seuil et la progression", async (mode, unit, balance, target, remaining) => {
+    const { buildGoogleWalletMerchantView } = await walletModule();
+    const view = buildGoogleWalletMerchantView({
+      context: merchantContext(mode),
+      membership,
+      customer: membership.user,
+      demoOnly: true,
+    });
+    expect(view.loyalty.unit).toBe(unit);
+    expect(view.loyalty.balanceLabel).toBe(balance);
+    expect(view.loyalty.targetLabel).toBe(target);
+    expect(view.loyalty.remainingLabel).toBe(remaining);
+    expect(view.loyalty.nextRewardName).toBe("Café offert");
+    expect(view.decorativeQrValue).toBe("PREVIEW-QR-DECORATIVE-ONLY");
+    expect(view.decorativeQrValue).not.toBe("signed.qr.token");
+  });
+
+  it("la vue partagée n'invente aucune récompense quand le programme n'en a pas", async () => {
+    const { buildGoogleWalletMerchantView } = await walletModule();
+    const context = {
+      ...merchantContext("FIXED_POINTS"),
+      rewards: [],
+      primaryRewardLabel: null,
+      config: { ...merchantContext("FIXED_POINTS").config, rewards: [] },
+    };
+    const view = buildGoogleWalletMerchantView({
+      context,
+      membership: { points: 0 },
+      customer: null,
+      example: true,
+    });
+    expect(view.loyalty.nextRewardName).toBeNull();
+    expect(view.textModulesData).toEqual(
+      expect.arrayContaining([expect.objectContaining({ id: "next_reward", body: "Aucun avantage configuré" })]),
+    );
+    expect(view.customer.isExample).toBe(true);
   });
 });
 

@@ -3,6 +3,7 @@ import { clientIp, jsonError, jsonOk, readJson, userAgent } from "@/lib/http";
 import { LoyaltyError } from "@/lib/loyalty";
 import { commitLoyaltyTransaction } from "@/lib/loyalty-commit";
 import { MoneyError } from "@/lib/money";
+import { syncGoogleWalletMembershipObject } from "@/lib/google-wallet";
 import { caisseCommitSchema, zodErrorMessage } from "@/lib/validation";
 
 export async function POST(req: Request) {
@@ -33,6 +34,11 @@ export async function POST(req: Request) {
       ip: clientIp(req),
       userAgent: userAgent(req),
     });
+    if (view.customerMembershipId) {
+      void syncGoogleWalletMembershipObject(view.customerMembershipId).catch((error) =>
+        console.error("[google-wallet] sync après transaction fidélité", error instanceof Error ? error.message : error),
+      );
+    }
     return jsonOk(view);
   } catch (error) {
     if (error instanceof LoyaltyError || error instanceof MoneyError) {

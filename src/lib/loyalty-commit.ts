@@ -71,6 +71,7 @@ export type LoyaltyTransactionView = {
   snapshot: { progressLabel: string; rewardAvailable: boolean };
   merchantName: string;
   grantExpiresAt: string;
+  customerMembershipId?: string;
   redeem?: {
     rewardId: string;
     rewardName: string;
@@ -251,6 +252,7 @@ function buildView(input: {
   unlockedRewards?: EvaluatedReward[];
   redeem?: LoyaltyTransactionView["redeem"];
   block?: LoyaltyBlock | null;
+  customerMembershipId: string;
 }): LoyaltyTransactionView {
   const config = programToConfig(input.program, { activeOnly: true, filterByMode: true });
   const threshold = progressTargetForBalance(config, input.points);
@@ -332,6 +334,7 @@ function buildView(input: {
     },
     merchantName: input.merchantName,
     grantExpiresAt: input.grantExpiresAt.toISOString(),
+    customerMembershipId: input.customerMembershipId,
     redeem: input.redeem,
   };
 }
@@ -488,6 +491,7 @@ async function assembleView(input: {
     program: input.program,
     merchantName: input.membership.merchant.name,
     grantExpiresAt: input.grant.expiresAt,
+    customerMembershipId: input.membership.id,
     purchaseAmountCents: input.purchaseAmountCents ?? 0,
     evaluation: input.action === "EARN" ? evaluation : undefined,
     rewards,

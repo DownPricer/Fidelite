@@ -79,6 +79,16 @@ export type ActiveWalletCard = {
   activeIndex: number;
 };
 
+export function googleWalletEndpointForActiveCard(activeCard: ActiveWalletCard) {
+  if (activeCard.cardType === "global" || activeCard.cardType === "global-tier") {
+    return "/api/customer/google-wallet/global";
+  }
+  if (activeCard.cardType === "merchant" && activeCard.slug) {
+    return `/api/customer/google-wallet/merchant/${encodeURIComponent(activeCard.slug)}`;
+  }
+  return "/api/customer/google-wallet/global";
+}
+
 export type NextRewardCandidate = NextRewardOverview & {
   sortAvailable: number;
   sortProgress: number;

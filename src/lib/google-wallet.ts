@@ -246,6 +246,119 @@ function primaryRewardLabel(context: ActiveMerchantLoyaltyContext) {
   return context.primaryRewardLabel ?? "Aucun avantage configuré";
 }
 
+export type GoogleWalletMerchantView = {
+  programName: string;
+  issuerName: string;
+  backgroundColor: string;
+  logoUrl: string | null;
+  wideLogoUrl: string | null;
+  heroImageUrl: string | null;
+  appLinkLabel: string;
+  appLinkUrl: string;
+  demoOnly: boolean;
+  decorativeQrValue: string;
+  customer: {
+    name: string;
+    clientNumber: string;
+    isExample: boolean;
+  };
+  loyalty: {
+    mode: LoyaltyMode;
+    modeLabel: string;
+    programDescription: string;
+    balance: number;
+    balanceLabel: string;
+    target: number;
+    targetLabel: string;
+    unit: ReturnType<typeof loyaltyUnitForMode>;
+    nextRewardName: string | null;
+    remaining: number | null;
+    remainingLabel: string | null;
+    availableRewardsCount: number;
+    availableRewardNames: string[];
+  };
+  textModulesData: Array<{ id: string; header: string; body: string }>;
+};
+
+export function buildGoogleWalletMerchantView(input: {
+  context: ActiveMerchantLoyaltyContext;
+  membership?: { points: number } | null;
+  customer?: { id?: string; firstName: string; lastName?: string | null; clientNumber?: string | null } | null;
+  appearance?: GoogleWalletAppearance | null;
+  demoOnly?: boolean;
+  example?: boolean;
+}): GoogleWalletMerchantView {
+  const context = input.context;
+  const balance = Math.max(0, Math.trunc(input.membership?.points ?? 0));
+  const programView = buildCustomerProgramView(context, balance);
+  const unit = loyaltyUnitForMode(context.mode);
+  const target = progressTargetForBalance(context.config, balance);
+  const availableRewards = context.rewards.filter((reward) => reward.isActive !== false && balance >= reward.threshold);
+  const remaining =
+    programView.upcomingRemaining == null ? null : Math.max(0, Math.trunc(programView.upcomingRemaining));
+  const customerName = input.customer
+    ? [input.customer.firstName, input.customer.lastName].filter(Boolean).join(" ") || input.customer.firstName
+    : "Client exemple";
+  const clientNumber =
+    input.customer && !input.example
+      ? resolveClientNumber({ clientNumber: input.customer.clientNumber ?? null, userId: input.customer.id ?? "preview" })
+      : "EXEMPLE";
+  const nextRewardName = programView.upcomingRewardName ?? context.primaryRewardLabel;
+  const remainingLabel = remaining == null ? null : `Encore ${formatUnitCount(remaining, unit)}`;
+  const logoUrl =
+    publicGoogleWalletImageUrl(input.appearance?.logoUrl) ??
+    publicMerchantLogoUrl(context.merchant.logoUrl) ??
+    googleWalletLogoUrl();
+  const wideLogoUrl = publicGoogleWalletImageUrl(input.appearance?.wideLogoUrl) ?? null;
+  const heroImageUrl =
+    publicGoogleWalletImageUrl(input.appearance?.heroImageUrl) ??
+    publicGoogleWalletImageUrl(context.cardTemplateMeta?.backgroundUrl ?? null);
+  const appLinkLabel = input.appearance?.appLinkLabel ?? "Voir ma carte";
+  const balanceLabel = formatUnitCount(balance, unit);
+  const targetLabel = formatUnitCount(target, unit);
+  const modeLabel = context.programTitle;
+  const modules = [
+    textModule("next_reward", "Prochain avantage", nextRewardName ?? "Aucun avantage configuré"),
+    textModule("progress", "Progression", remainingLabel ?? "Aucun seuil suivant"),
+    textModule("available_rewards", "Avantages disponibles", `${availableRewards.length}`),
+    textModule("loyalty_mode", "Mode de fidélité", modeLabel),
+  ].filter((item): item is { id: string; header: string; body: string } => Boolean(item));
+
+  return {
+    programName: `Fidélité ${context.merchant.name}`,
+    issuerName: context.merchant.name,
+    backgroundColor: input.appearance?.backgroundColor ?? context.merchant.primaryColor ?? "#1a1a1a",
+    logoUrl,
+    wideLogoUrl,
+    heroImageUrl,
+    appLinkLabel,
+    appLinkUrl: cardUrl(context.merchant.slug),
+    demoOnly: input.demoOnly ?? !isGoogleWalletConfigured(),
+    decorativeQrValue: "PREVIEW-QR-DECORATIVE-ONLY",
+    customer: {
+      name: customerName,
+      clientNumber,
+      isExample: input.example ?? !input.customer,
+    },
+    loyalty: {
+      mode: context.mode,
+      modeLabel,
+      programDescription: context.programDescription,
+      balance,
+      balanceLabel,
+      target,
+      targetLabel,
+      unit,
+      nextRewardName,
+      remaining,
+      remainingLabel,
+      availableRewardsCount: availableRewards.length,
+      availableRewardNames: availableRewards.map((reward) => reward.name),
+    },
+    textModulesData: modules,
+  };
+}
+
 function classTemplateInfo() {
   return {
     cardTemplateOverride: {
@@ -532,19 +645,16 @@ export function merchantObjectBody(input: {
   qrValue: string;
   context: ActiveMerchantLoyaltyContext;
 }) {
-  const programView = buildCustomerProgramView(input.context, input.membership.points);
-  const displayName =
-    [input.membership.user.firstName, input.membership.user.lastName].filter(Boolean).join(" ") ||
-    input.membership.user.firstName;
-  const clientNumber = resolveClientNumber({
-    clientNumber: input.membership.user.clientNumber,
-    userId: input.membership.user.id,
+  const view = buildGoogleWalletMerchantView({
+    context: input.context,
+    membership: input.membership,
+    customer: input.membership.user,
+    demoOnly: false,
   });
-  const nextName = programView.upcomingRewardName ?? input.context.primaryRewardLabel ?? "Avantage";
-  const remaining =
-    programView.upcomingRemaining == null
-      ? null
-      : `Encore ${formatUnitCount(programView.upcomingRemaining, loyaltyUnitForMode(input.context.mode))}`;
+  const displayName = view.customer.name;
+  const clientNumber = view.customer.clientNumber;
+  const nextName = view.loyalty.nextRewardName ?? "Avantage";
+  const remaining = view.loyalty.remainingLabel;
   const pointLabel = loyaltyPointLabel(input.context.mode);
   const availableModules = availableRewardModules({ balance: input.membership.points, context: input.context });
   const hasAvailableReward = availableModules.length > 0;
@@ -568,14 +678,11 @@ export function merchantObjectBody(input: {
       balance: { int: progressTargetForBalance(input.context.config, input.membership.points) },
     },
     textModulesData: [
-      textModule("program", "Type de fidélité", input.context.programTitle),
+      textModule("program", "Mode de fidélité", view.loyalty.modeLabel),
       textModule("next_reward", hasAvailableReward ? "À utiliser" : "Prochain avantage", nextName),
-      textModule("remaining", "Reste", hasAvailableReward ? "Avantage disponible" : remaining),
-      textModule(
-        "progress",
-        "Solde",
-        progressBalanceLabel(input.context.mode, input.membership.points, programView.progressTarget),
-      ),
+      textModule("remaining", "Progression", hasAvailableReward ? "Avantage disponible" : remaining),
+      textModule("available_rewards", "Avantages disponibles", `${view.loyalty.availableRewardsCount}`),
+      textModule("progress", "Solde", progressBalanceLabel(input.context.mode, input.membership.points, view.loyalty.target)),
       ...availableModules,
     ].filter(Boolean),
     appLinkData: appLinkData(cardUrl(input.membership.merchant.slug), "Voir ma carte"),

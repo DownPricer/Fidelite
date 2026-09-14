@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { CardDeck } from "./card-deck";
 import { CardEnlargedView } from "./card-enlarged-view";
 import { CardsSheet } from "./cards-sheet";
+import { WalletCardsList } from "./wallet-cards-list";
 import { NewCardToast } from "./new-card-toast";
 import { resolveTier } from "./tier";
 import type { MerchantCardData, WalletEventPayload } from "./types";
@@ -26,6 +27,7 @@ import {
   resolveNextRewardForActiveCard,
   selectBestNextReward,
   buildNextRewardCandidates,
+  googleWalletEndpointForActiveCard,
   type ActiveWalletCard,
   type CardNextRewardEntry,
   type CustomerLoyaltyOverview,
@@ -65,6 +67,7 @@ export function WalletHome({
   const [points, setPoints] = useState(fifeLifePoints);
   const [cards, setCards] = useState(initialCards);
   const [cardRewards, setCardRewards] = useState<CardNextRewardEntry[]>(initialOverview?.cardRewards ?? []);
+  const [recentActivity, setRecentActivity] = useState(initialOverview?.recentActivity ?? []);
   const [activeCard, setActiveCard] = useState<ActiveWalletCard>({
     cardType: "global",
     cardKey: "global",
@@ -88,13 +91,7 @@ export function WalletHome({
   const tier = resolveTier(points);
 
   const googleWalletEndpoint = useMemo(() => {
-    if (activeCard.cardType === "global" || activeCard.cardType === "global-tier") {
-      return "/api/customer/google-wallet/global";
-    }
-    if (activeCard.cardType === "merchant" && activeCard.slug) {
-      return `/api/customer/google-wallet/merchant/${encodeURIComponent(activeCard.slug)}`;
-    }
-    return "/api/customer/google-wallet/global";
+    return googleWalletEndpointForActiveCard(activeCard);
   }, [activeCard]);
 
   useEffect(() => {
@@ -108,6 +105,7 @@ export function WalletHome({
   useEffect(() => {
     if (initialOverview) {
       setCardRewards(initialOverview.cardRewards);
+      setRecentActivity(initialOverview.recentActivity);
     }
   }, [initialOverview]);
 
@@ -132,6 +130,17 @@ export function WalletHome({
     () => (activeCard.membershipId ? cards.find((card) => card.id === activeCard.membershipId) : null),
     [activeCard.membershipId, cards],
   );
+  const activeCardRewardEntry = useMemo(
+    () =>
+      cardRewards.find((entry) => entry.membershipId === activeCard.membershipId) ??
+      cardRewards.find((entry) => entry.cardKey === activeCard.cardKey) ??
+      null,
+    [activeCard, cardRewards],
+  );
+  const activeAvailableRewards = useMemo(
+    () => (activeCardRewardEntry?.availableReward ? [activeCardRewardEntry.availableReward] : []),
+    [activeCardRewardEntry],
+  );
 
   useEffect(() => {
     setSheetOpen(initialSheetOpen);
@@ -144,6 +153,7 @@ export function WalletHome({
       if (!response.ok) throw new Error("overview");
       const data = (await response.json()) as CustomerLoyaltyOverview;
       setCardRewards(data.cardRewards);
+      setRecentActivity(data.recentActivity);
     } catch {
       // L'accueil conserve les dernières récompenses connues si l'overview échoue.
     }
@@ -359,7 +369,7 @@ export function WalletHome({
                 onActiveCardChange={handleActiveCardChange}
                 demoVisual={preview}
               />
-              <section className="wallet-primary-actions mt-4" aria-label="Actions QR et Google Wallet">
+              <section className="wallet-primary-actions mt-4 lg:hidden" aria-label="Actions QR et Google Wallet">
                 <WalletQrAction
                   qrSrc={personalizedQr}
                   qrFailed={qrFailed}
@@ -371,10 +381,23 @@ export function WalletHome({
                   <AddToGoogleWalletButton endpoint={googleWalletEndpoint} className="wallet-google-action" />
                 ) : null}
               </section>
+              <section className="wallet-desktop-actions mt-4 hidden items-center justify-center gap-3 lg:flex" aria-label="Actions QR et Google Wallet">
+                <WalletQrAction
+                  qrSrc={personalizedQr}
+                  qrFailed={qrFailed}
+                  onRetry={() => void reloadQr()}
+                  clientNumber={clientNumber}
+                  merchantName={activeMerchantCard?.name ?? "Fife Life"}
+                  className="wallet-desktop-qr-action"
+                />
+                {!preview && walletEnabled ? (
+                  <AddToGoogleWalletButton endpoint={googleWalletEndpoint} className="wallet-google-action wallet-desktop-google-action" />
+                ) : null}
+              </section>
             </div>
           </div>
 
-          <section className="wallet-reward-block glass-panel mt-4 shrink-0 p-4">
+          <section className="wallet-reward-block glass-panel mt-4 shrink-0 p-4 lg:hidden">
             <h3 className="section-title mb-2">Prochaine récompense</h3>
             {activeNextReward ? (
               <>
@@ -451,6 +474,83 @@ export function WalletHome({
               </svg>
             </button>
           </div>
+
+          <aside className="wallet-sidebar-column hidden lg:flex">
+            <section className="wallet-reward-block glass-panel p-4">
+              <h3 className="section-title mb-2">Prochaine récompense</h3>
+              {activeNextReward ? (
+                <>
+                  <p className="text-sm font-semibold text-[var(--ink)]">{activeNextReward.rewardName}</p>
+                  <p className="mt-1 text-xs text-[var(--muted-strong)]">{activeNextReward.statusLabel}</p>
+                  {!activeNextReward.available ? (
+                    <p className="mt-1 text-[10px] text-[var(--muted)]">
+                      {progressBalanceLabel(
+                        activeNextReward.mode as LoyaltyMode,
+                        activeNextReward.progressCurrent,
+                        activeNextReward.progressTarget,
+                      )}{" "}
+                      · {activeNextReward.progressPercent} %
+                    </p>
+                  ) : null}
+                </>
+              ) : activeCard.cardType === "global" || activeCard.cardType === "global-tier" ? (
+                <p className="text-xs text-[var(--muted-strong)]">
+                  Aucun prochain avantage Fife Life pour le moment.
+                </p>
+              ) : (
+                <p className="text-xs text-[var(--muted-strong)]">
+                  {activeMerchantCard
+                    ? `Aucun avantage configuré chez ${activeMerchantCard.name}.`
+                    : "Aucun prochain avantage disponible pour le moment."}
+                </p>
+              )}
+            </section>
+
+            <section className="wallet-cards-rail glass-panel">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <h3 className="section-title">Mes cartes et avantages</h3>
+                <div className="flex gap-2 text-xs font-semibold">
+                  <Link href={profileHref} className="rounded-full border border-white/10 px-3 py-2 text-[var(--ink-soft)] hover:text-[var(--ink)] focus:outline-none focus:ring-2 focus:ring-[var(--violet-bright)]">
+                    Profil
+                  </Link>
+                  <Link href="/compte?tab=historique" className="rounded-full border border-white/10 px-3 py-2 text-[var(--ink-soft)] hover:text-[var(--ink)] focus:outline-none focus:ring-2 focus:ring-[var(--violet-bright)]">
+                    Historique
+                  </Link>
+                </div>
+              </div>
+              {activeAvailableRewards.length ? (
+                <div className="mb-3 rounded-2xl border border-white/10 bg-white/5 p-3">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--muted)]">Avantages disponibles</p>
+                  <ul className="mt-2 space-y-1 text-xs font-semibold text-[var(--ink)]">
+                    {activeAvailableRewards.map((reward) => (
+                      <li key={`${reward.merchantId}-${reward.rewardName}`}>
+                        {reward.rewardName} · {reward.merchantName}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : (
+                <p className="mb-3 rounded-2xl border border-white/10 bg-white/5 p-3 text-xs text-[var(--muted-strong)]">
+                  Aucun avantage disponible sur la carte active.
+                </p>
+              )}
+              <WalletCardsList cards={cards} onOpenCard={openCard} compact desktopGrid enablePublicSearch />
+            </section>
+
+            {recentActivity.length ? (
+              <section className="wallet-activity-block glass-panel p-4">
+                <h3 className="section-title mb-3">Activité récente</h3>
+                <ul className="space-y-2">
+                  {recentActivity.slice(0, 3).map((item) => (
+                    <li key={item.id} className="flex items-center justify-between gap-3 text-xs">
+                      <span className="min-w-0 truncate text-[var(--ink-soft)]">{item.lineLabel}</span>
+                      <span className="shrink-0 font-bold text-[var(--ink)]">{item.deltaLabel}</span>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ) : null}
+          </aside>
         </div>
 
         <CardsSheet open={sheetOpen} cards={cards} onClose={() => setSheetOpen(false)} onOpenCard={openCard} />
