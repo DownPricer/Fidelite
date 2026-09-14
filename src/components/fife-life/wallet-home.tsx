@@ -316,7 +316,7 @@ export function WalletHome({
 
   return (
     <WalletMotionRoot>
-      <main className="wallet-shell fife-page-shell obsidian-scene mx-auto flex w-full max-w-md flex-col px-5 pb-8 pt-3 lg:max-w-none">
+      <main className="wallet-shell fife-page-shell obsidian-scene flex w-full flex-col px-5 pb-8 pt-3">
         <div className="wallet-page-body flex min-h-0 flex-1 flex-col">
           <header className="wallet-page-header relative z-50 flex shrink-0 items-center justify-between">
             <Link

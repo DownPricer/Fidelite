@@ -101,14 +101,34 @@ body {
   touch-action: pan-y pinch-zoom;
   padding-bottom: calc(5.5rem + env(safe-area-inset-bottom));
   --wallet-card-width: 320px;
-  --wallet-card-height: calc(var(--wallet-card-width) / (1427 / 863));
+  --wallet-card-aspect: 1.586;
+  --wallet-card-height: calc(var(--wallet-card-width) / var(--wallet-card-aspect));
   --wallet-spread: 32px;
+}
+
+@media (min-width: 424px) and (max-width: 767px) {
+  .wallet-shell {
+    --wallet-card-width: clamp(330px, 84vw, 390px);
+    --wallet-spread: clamp(32px, 7vw, 38px);
+  }
+
+  .wallet-page-body {
+    width: 100%;
+    max-width: min(100%, 640px);
+    margin-inline: auto;
+  }
 }
 
 @media (min-width: 768px) and (max-width: 1023px) {
   .wallet-shell {
-    --wallet-card-width: clamp(320px, 52vw, 440px);
+    --wallet-card-width: clamp(390px, 58vw, 500px);
     --wallet-spread: clamp(32px, 4vw, 40px);
+  }
+
+  .wallet-page-body {
+    width: 100%;
+    max-width: min(100%, 760px);
+    margin-inline: auto;
   }
 }
 
@@ -256,13 +276,13 @@ body:has(.wallet-shell) {
 
 .deck-scene {
   perspective: 1300px;
-  height: 300px;
-  max-width: 360px;
+  height: var(--wallet-card-height);
+  max-width: var(--wallet-card-width);
 }
 
 .deck-scene-solo {
-  height: 220px;
-  max-width: 340px;
+  height: var(--wallet-card-height);
+  max-width: var(--wallet-card-width);
 }
 
 .deck-halo {
@@ -514,8 +534,8 @@ body:has(.wallet-shell) {
 }
 
 .fife-deck-scene .merchant-interactive-card {
-  aspect-ratio: 1427 / 863;
-  height: auto;
+  aspect-ratio: var(--wallet-card-aspect) / 1;
+  height: 100%;
   box-sizing: border-box;
   max-width: 100%;
 }
@@ -525,6 +545,7 @@ body:has(.wallet-shell) {
 .fife-deck-scene .deck-card-slot,
 .fife-deck-scene .loyalty-card {
   width: 100%;
+  height: 100%;
   max-width: 100%;
   box-sizing: border-box;
 }
@@ -539,7 +560,7 @@ body:has(.wallet-shell) {
 .merchant-card-shell.interactive-card-shell,
 .merchant-card-shell .interactive-card-depth {
   width: 100%;
-  height: auto;
+  height: 100%;
   background: transparent;
   overflow: visible;
   border-radius: 0;
@@ -614,6 +635,8 @@ body:has(.wallet-shell) {
   --card-radius-y: 3.7%;
   display: grid;
   width: 100%;
+  height: 100%;
+  aspect-ratio: var(--wallet-card-aspect) / 1;
   position: relative;
   isolation: isolate;
   overflow: visible;
@@ -655,7 +678,8 @@ body:has(.wallet-shell) {
 
 .loyalty-card__background {
   width: 100%;
-  height: auto;
+  height: 100%;
+  object-fit: cover;
   display: block;
   z-index: 0;
   pointer-events: none;
@@ -962,7 +986,7 @@ body:has(.wallet-shell) {
 }
 
 .card-enlarged-merchant-card {
-  aspect-ratio: 1427 / 863;
+  aspect-ratio: 1.586 / 1;
 }
 
 .card-enlarged-loyalty-card,
@@ -970,7 +994,7 @@ body:has(.wallet-shell) {
   width: 100%;
   max-width: 100%;
   display: grid;
-  aspect-ratio: 1427 / 863;
+  aspect-ratio: 1.586 / 1;
   transform: none !important;
   rotate: 0deg !important;
 }
@@ -978,8 +1002,8 @@ body:has(.wallet-shell) {
 .card-enlarged-loyalty-card .loyalty-card__background,
 .loyalty-card--enlarged .loyalty-card__background {
   width: 100%;
-  height: auto;
-  aspect-ratio: 1427 / 863;
+  height: 100%;
+  aspect-ratio: 1.586 / 1;
   object-fit: cover;
 }
 
@@ -1542,7 +1566,7 @@ body:has(.wallet-shell) {
   isolation: isolate;
   overflow: hidden;
   border-radius: 12px;
-  aspect-ratio: 1427 / 863;
+  aspect-ratio: 1.586 / 1;
 }
 
 .wallet-card-preview .interactive-card-shell {
@@ -2444,7 +2468,7 @@ body:has(.wallet-shell) {
     max-width: none !important;
     padding: clamp(1.25rem, 2.5vw, 3.5rem) clamp(1.25rem, 4vw, 3.5rem) clamp(1.5rem, 2.5vw, 2.5rem);
     --wallet-card-width: clamp(480px, 36vw, 560px);
-    --wallet-card-height: calc(var(--wallet-card-width) / (1427 / 863));
+    --wallet-card-height: calc(var(--wallet-card-width) / var(--wallet-card-aspect));
     --wallet-spread: clamp(34px, 2.5vw, 42px);
   }
 
@@ -2958,7 +2982,7 @@ body:has(.wallet-shell) {
 
   .fife-deck-scene,
   .deck-scene.fife-deck-scene {
-    height: min(500px, 55vh) !important;
+    height: var(--wallet-card-height) !important;
   }
 
   .wallet-page-body {

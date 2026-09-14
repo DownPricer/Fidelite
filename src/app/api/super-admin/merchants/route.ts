@@ -54,16 +54,18 @@ export async function GET(req: Request) {
         program: { select: { mode: true, rewardLabel: true, visitsRequired: true } },
         subscription: true,
         cardTemplates: {
-          where: { status: "PUBLISHED" },
           orderBy: [{ isDefault: "desc" }, { publishedAt: "desc" }, { updatedAt: "desc" }],
-          take: 5,
           select: {
             id: true,
             cardSlot: true,
             loyaltyMode: true,
+            status: true,
             backgroundUrl: true,
             config: true,
             version: true,
+            isDefault: true,
+            publishedAt: true,
+            updatedAt: true,
           },
         },
         _count: {
@@ -100,7 +102,8 @@ export async function GET(req: Request) {
       customers: m._count.customerMemberships,
       scans: m._count.caisseGrants,
       transactions: m._count.transactions,
-      publishedCardTemplates: m.cardTemplates,
+      cardTemplates: m.cardTemplates,
+      publishedCardTemplates: m.cardTemplates.filter((template) => template.status === "PUBLISHED"),
       lastActivityAt: activityMap.get(m.id)?.toISOString() ?? null,
       monthlyContractual:
         m.subscription ? normalizeToMrr(m.subscription.amount, m.subscription.frequency) : 0,

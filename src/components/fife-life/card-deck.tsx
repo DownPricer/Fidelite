@@ -25,7 +25,8 @@ function readDeckMetrics(root: HTMLElement | null) {
   if (!root) return { spread: 32, offsetY: 105 };
   const style = getComputedStyle(root);
   const cardW = parseFloat(style.getPropertyValue("--wallet-card-width")) || 320;
-  const cardH = parseFloat(style.getPropertyValue("--wallet-card-height")) || cardW / (1427 / 863);
+  const cardAspect = parseFloat(style.getPropertyValue("--wallet-card-aspect")) || 1.586;
+  const cardH = parseFloat(style.getPropertyValue("--wallet-card-height")) || cardW / cardAspect;
   const spread = parseFloat(style.getPropertyValue("--wallet-spread")) || Math.round(32 * (cardW / 320));
   return { spread, offsetY: cardH / 2 };
 }

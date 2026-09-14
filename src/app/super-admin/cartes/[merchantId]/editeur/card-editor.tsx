@@ -91,7 +91,6 @@ export function CardEditorPage({
   const [previewScenario, setPreviewScenario] = useState<PreviewScenario>("midProgress");
   const [progressTestPct, setProgressTestPct] = useState(50);
   const [recentColors, setRecentColors] = useState<string[]>([]);
-  const [mobilePropsOpen, setMobilePropsOpen] = useState(false);
   const [cropBackgroundMode, setCropBackgroundMode] = useState(false);
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
   const [resetBusy, setResetBusy] = useState(false);
@@ -524,7 +523,7 @@ export function CardEditorPage({
 
   return (
     <SuperAdminShell firstName={firstName}>
-      <div className="mx-auto max-w-[1800px] space-y-4">
+      <div className="mx-auto w-full max-w-[1800px] space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <Link href={galleryHref} className="text-xs font-semibold text-[var(--violet-bright)] hover:underline">
@@ -540,7 +539,7 @@ export function CardEditorPage({
             </p>
             {history.dirty ? <p className="text-xs text-amber-300">Modifications non enregistrées</p> : savedAt ? <p className="text-xs text-green-300">Brouillon enregistré</p> : null}
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex min-w-0 flex-wrap gap-2">
             <Button variant="secondary" disabled={resetBusy} onClick={() => setResetDialogOpen(true)}>
               Réinitialiser
             </Button>
@@ -637,7 +636,7 @@ export function CardEditorPage({
           </div>
         ) : null}
 
-        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px] xl:grid-cols-[200px_minmax(0,1fr)_360px]">
+        <div className="grid min-w-0 gap-4 xl:grid-cols-[200px_minmax(0,1fr)_360px]">
           <Card className="hidden space-y-2 p-3 xl:block">
             <h2 className="text-xs font-bold uppercase tracking-widest text-[var(--muted-text)]">Éléments</h2>
             <p className="text-[10px] text-[var(--muted-text)]">Ajouter un élément</p>
@@ -681,15 +680,15 @@ export function CardEditorPage({
             </Card>
 
             <Card className="p-3">
-              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                <div className="flex flex-wrap items-center gap-1">
+              <div className="mb-3 flex min-w-0 flex-wrap items-center justify-between gap-2">
+                <div className="flex min-w-0 flex-wrap items-center gap-1">
                   <Button variant="secondary" className="text-xs" onClick={fitToScreen}>Ajuster à l&apos;écran</Button>
                   <Button variant="secondary" className="px-2 text-xs" onClick={() => setZoom((z) => Math.max(50, z - 10))}>−</Button>
                   <span className="min-w-[3rem] text-center text-xs font-bold">{zoom} %</span>
                   <Button variant="secondary" className="px-2 text-xs" onClick={() => setZoom((z) => Math.min(200, z + 10))}>+</Button>
                   <Button variant="secondary" className="text-xs" onClick={() => setZoom(100)}>100 %</Button>
                 </div>
-                <div className="min-w-[180px]">
+                <div className="min-w-0 flex-1 basis-48">
                   <Field label="Scénario aperçu">
                     <select
                       className="w-full rounded-lg border border-white/10 bg-transparent px-2 py-1 text-xs"
@@ -726,7 +725,7 @@ export function CardEditorPage({
                 />
               </div>
 
-              <div ref={canvasViewportRef} className="overflow-x-auto overflow-y-visible py-2">
+              <div ref={canvasViewportRef} className="overflow-x-hidden overflow-y-visible py-2">
                 {cropBackgroundMode && config && backgroundUrl ? (
                   <CardEditorBackgroundCrop
                     backgroundUrl={backgroundUrl}
@@ -762,7 +761,7 @@ export function CardEditorPage({
             </Card>
           </div>
 
-          <div className="space-y-3">
+          <div className="min-w-0 space-y-3">
             <Card className="space-y-2 p-3">
               <h2 className="text-xs font-bold uppercase tracking-widest text-[var(--muted-text)]">Calques</h2>
               <div className="max-h-48 space-y-1 overflow-y-auto xl:max-h-64">
@@ -779,25 +778,10 @@ export function CardEditorPage({
               </div>
             </Card>
 
-            <Card className="hidden p-3 lg:block">
+            <Card className="p-3">
               <h2 className="mb-2 text-xs font-bold uppercase tracking-widest text-[var(--muted-text)]">Propriétés</h2>
               {propertiesPanel}
             </Card>
-
-            <div className="lg:hidden">
-              <Button variant="secondary" className="w-full" onClick={() => setMobilePropsOpen(true)}>
-                Propriétés {selected ? `· ${selected.label ?? elementLabel(selected.type)}` : ""}
-              </Button>
-              {mobilePropsOpen ? (
-                <div className="fixed inset-x-0 bottom-0 z-50 max-h-[70vh] overflow-y-auto rounded-t-2xl border border-white/15 bg-[var(--surface)] p-4 shadow-2xl">
-                  <div className="mb-3 flex items-center justify-between">
-                    <h2 className="text-sm font-bold">Propriétés</h2>
-                    <button type="button" className="text-xs" onClick={() => setMobilePropsOpen(false)}>Fermer</button>
-                  </div>
-                  {propertiesPanel}
-                </div>
-              ) : null}
-            </div>
           </div>
         </div>
       </div>
