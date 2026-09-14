@@ -1,5 +1,5 @@
-import { mkdir, unlink, writeFile } from "fs/promises";
-import { join } from "path";
+import { mkdir, stat, unlink, writeFile } from "fs/promises";
+import { join, relative, resolve } from "path";
 import { env } from "./env";
 
 /**
@@ -93,11 +93,95 @@ function assertExactDimensions(input: { width: number; height: number; expectedW
 }
 
 export type GoogleWalletMediaKind = "hero" | "logo" | "wideLogo";
+export type GoogleWalletPublicMediaKind = GoogleWalletMediaKind;
+
+export type GoogleWalletPublishedMediaConfig = {
+  publishedAppearance?: {
+    heroImageUrl?: string | null;
+    logoUrl?: string | null;
+    wideLogoUrl?: string | null;
+  } | null;
+};
 
 export function normalizeGoogleWalletMediaKind(kind: string): GoogleWalletMediaKind | null {
   if (kind === "hero" || kind === "logo" || kind === "wideLogo") return kind;
   if (kind === "wide-logo") return "wideLogo";
   return null;
+}
+
+function appearanceKeyForGoogleWalletMedia(kind: GoogleWalletMediaKind) {
+  return kind === "hero" ? "heroImageUrl" : kind === "logo" ? "logoUrl" : "wideLogoUrl";
+}
+
+function publicGoogleWalletMediaUrl(input: { merchantId: string; kind: GoogleWalletMediaKind; version: string }) {
+  return `/google-wallet/media/merchant/${input.merchantId}/${input.kind}?v=${input.version}`;
+}
+
+export function resolvePublishedGoogleWalletMedia(input: {
+  merchantId: string;
+  kind: string;
+  version: string | null;
+  config: GoogleWalletPublishedMediaConfig;
+  uploadsRoot?: string;
+}) {
+  const kind = normalizeGoogleWalletMediaKind(input.kind);
+  if (!/^[\w-]+$/.test(input.merchantId)) {
+    return { ok: false as const, reason: "commerce absent" as const };
+  }
+  if (!kind || input.kind === "wide-logo") {
+    return { ok: false as const, reason: "mauvais kind" as const };
+  }
+  if (!input.version || !/^\d{10,16}-[a-z0-9]{8}$/.test(input.version)) {
+    return { ok: false as const, reason: "version invalide" as const };
+  }
+
+  const publishedUrl = input.config.publishedAppearance?.[appearanceKeyForGoogleWalletMedia(kind)] ?? null;
+  const expectedUrl = publicGoogleWalletMediaUrl({
+    merchantId: input.merchantId,
+    kind,
+    version: input.version,
+  });
+  if (!publishedUrl) {
+    return { ok: false as const, reason: "média non publié" as const };
+  }
+  if (publishedUrl !== expectedUrl) {
+    return { ok: false as const, reason: "version différente" as const, publishedUrl, expectedUrl };
+  }
+
+  const root = resolve(input.uploadsRoot ?? getUploadsRoot());
+  const mediaDir = resolve(root, "google-wallet", "merchant", input.merchantId);
+  const filename = `${kind}-${input.version}.png`;
+  const filepath = resolve(mediaDir, filename);
+  const relativePath = relative(mediaDir, filepath);
+  if (relativePath.startsWith("..") || relativePath === "" || relativePath.includes(":")) {
+    return { ok: false as const, reason: "traversée de chemin" as const };
+  }
+  return {
+    ok: true as const,
+    kind,
+    version: input.version,
+    publishedUrl,
+    mediaDir,
+    filename,
+    filepath,
+    mime: "image/png",
+  };
+}
+
+export async function assertPublishedGoogleWalletMediaReadable(input: {
+  merchantId: string;
+  kind: GoogleWalletMediaKind;
+  version: string;
+  config: GoogleWalletPublishedMediaConfig;
+}) {
+  const resolved = resolvePublishedGoogleWalletMedia(input);
+  if (!resolved.ok) return resolved;
+  try {
+    await stat(resolved.filepath);
+    return resolved;
+  } catch {
+    return { ok: false as const, reason: "fichier absent" as const, filepath: resolved.filepath };
+  }
 }
 
 export function validateGoogleWalletMedia(kind: GoogleWalletMediaKind, buffer: Buffer, mime: string) {

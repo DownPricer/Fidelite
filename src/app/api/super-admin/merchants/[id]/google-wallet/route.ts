@@ -20,10 +20,12 @@ import {
   resetGoogleWalletConfig,
 } from "@/lib/google-wallet-appearance";
 import { clientIp, jsonError, jsonOkPrivate, readJson, userAgent } from "@/lib/http";
-import { getUploadsRoot, normalizeGoogleWalletMediaKind, saveGoogleWalletMerchantMedia } from "@/lib/media-storage";
+import {
+  assertPublishedGoogleWalletMediaReadable,
+  normalizeGoogleWalletMediaKind,
+  saveGoogleWalletMerchantMedia,
+} from "@/lib/media-storage";
 import { prisma } from "@/lib/prisma";
-import { stat } from "fs/promises";
-import { join, normalize } from "path";
 import { z } from "zod";
 
 const schema = z.discriminatedUnion("action", [
@@ -86,19 +88,17 @@ async function publishedMediaExists(input: { merchantId: string; config: ReturnT
   const urls = [appearance.heroImageUrl, appearance.logoUrl, appearance.wideLogoUrl].filter(Boolean) as string[];
   for (const url of urls) {
     if (!url.startsWith(`/google-wallet/media/merchant/${input.merchantId}/`)) continue;
-    const item = (input.config.mediaGallery ?? []).find((entry) => entry.publicUrl === url);
-    if (!item || !item.path.startsWith(`google-wallet/merchant/${input.merchantId}/`)) {
+    const match = new RegExp(`^/google-wallet/media/merchant/${input.merchantId}/(hero|logo|wideLogo)\\?v=([^&]+)$`).exec(url);
+    if (!match) {
       return { ok: false as const, url };
     }
-    const root = getUploadsRoot();
-    const filepath = normalize(join(root, item.path));
-    const allowedRoot = normalize(join(root, "google-wallet", "merchant", input.merchantId));
-    if (!filepath.startsWith(allowedRoot)) return { ok: false as const, url };
-    try {
-      await stat(filepath);
-    } catch {
-      return { ok: false as const, url };
-    }
+    const mediaCheck = await assertPublishedGoogleWalletMediaReadable({
+      merchantId: input.merchantId,
+      kind: match[1] as "hero" | "logo" | "wideLogo",
+      version: match[2],
+      config: { publishedAppearance: appearance },
+    });
+    if (!mediaCheck.ok) return { ok: false as const, url };
   }
   return { ok: true as const };
 }
