@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { GoogleWalletMediaCrop } from "@/components/super-admin/google-wallet-media-crop";
 import { SuperAdminShell } from "@/components/super-admin/layout-shell";
 import { Alert, Button, Card, Field, Input } from "@/components/ui";
@@ -17,6 +17,29 @@ type WalletAppearance = {
   wideLogoUrl?: string | null;
 };
 
+type WalletMediaKey = "hero" | "logo" | "wideLogo";
+
+type WalletMediaPreview = {
+  objectUrl: string;
+  publicUrl: string;
+};
+
+const MEDIA_TO_APPEARANCE_KEY: Record<WalletMediaKey, keyof Pick<WalletAppearance, "heroImageUrl" | "logoUrl" | "wideLogoUrl">> = {
+  hero: "heroImageUrl",
+  logo: "logoUrl",
+  wideLogo: "wideLogoUrl",
+};
+
+function walletMediaKey(kind: GoogleWalletMediaKind): WalletMediaKey {
+  return kind === "wide-logo" ? "wideLogo" : kind;
+}
+
+function revokeWalletPreviews(previews: Partial<Record<WalletMediaKey, WalletMediaPreview>>) {
+  for (const preview of Object.values(previews)) {
+    if (preview?.objectUrl) URL.revokeObjectURL(preview.objectUrl);
+  }
+}
+
 export function MerchantDetailPage({ firstName, merchantId }: { firstName: string; merchantId: string }) {
   const [data, setData] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
@@ -25,6 +48,9 @@ export function MerchantDetailPage({ firstName, merchantId }: { firstName: strin
   const [walletFailedAction, setWalletFailedAction] = useState<"sync" | "test" | "publishAppearance" | "resetAppearance" | null>(null);
   const [walletEditorOpen, setWalletEditorOpen] = useState(false);
   const [walletCrop, setWalletCrop] = useState<{ kind: GoogleWalletMediaKind; file: File } | null>(null);
+  const [walletMediaPreviews, setWalletMediaPreviews] = useState<Partial<Record<WalletMediaKey, WalletMediaPreview>>>({});
+  const [walletMediaErrors, setWalletMediaErrors] = useState<Partial<Record<WalletMediaKey, string>>>({});
+  const walletMediaPreviewsRef = useRef<Partial<Record<WalletMediaKey, WalletMediaPreview>>>({});
   const [walletAppearance, setWalletAppearance] = useState<WalletAppearance>({
     backgroundColor: "#0B0B12",
     appLinkLabel: "Voir ma carte",
@@ -38,6 +64,14 @@ export function MerchantDetailPage({ firstName, merchantId }: { firstName: strin
         else setData(json);
       });
   }, [merchantId]);
+
+  useEffect(() => {
+    walletMediaPreviewsRef.current = walletMediaPreviews;
+  }, [walletMediaPreviews]);
+
+  useEffect(() => {
+    return () => revokeWalletPreviews(walletMediaPreviewsRef.current);
+  }, []);
 
   useEffect(() => {
     const merchant = data?.merchant;
@@ -67,6 +101,20 @@ export function MerchantDetailPage({ firstName, merchantId }: { firstName: strin
     else window.location.reload();
   }
 
+  const publishedAppearance = useMemo(() => {
+    const walletClass = data?.merchant?.googleWalletClasses?.[0] ?? null;
+    const config = (walletClass?.configByMode ?? {}) as any;
+    return (config.publishedAppearance ?? {}) as WalletAppearance;
+  }, [data]);
+
+  function clearWalletLocalPreviews() {
+    setWalletMediaPreviews((current) => {
+      revokeWalletPreviews(current);
+      return {};
+    });
+    setWalletMediaErrors({});
+  }
+
   async function walletAction(kind: "preview" | "sync" | "test" | "publishAppearance" | "resetAppearance") {
     setWalletBusy(kind);
     setWalletMessage(null);
@@ -80,6 +128,14 @@ export function MerchantDetailPage({ firstName, merchantId }: { firstName: strin
     setWalletBusy(null);
     if (!response.ok) {
       setWalletMessage(json.error ?? "Action Google Wallet impossible.");
+      if (kind === "publishAppearance") {
+        setWalletMediaErrors((current) => ({
+          ...current,
+          hero: "Erreur de synchronisation Google",
+          logo: "Erreur de synchronisation Google",
+          wideLogo: "Erreur de synchronisation Google",
+        }));
+      }
       if (kind !== "preview") setWalletFailedAction(kind);
       return;
     }
@@ -95,6 +151,19 @@ export function MerchantDetailPage({ firstName, merchantId }: { firstName: strin
           ? "Apparence Google Wallet réinitialisée."
           : "Configuration valide.",
     );
+    if (kind === "resetAppearance") {
+      clearWalletLocalPreviews();
+      setWalletAppearance({
+        backgroundColor: merchant?.primaryColor ?? "#0B0B12",
+        appLinkLabel: "Voir ma carte",
+        heroImageUrl: null,
+        logoUrl: null,
+        wideLogoUrl: null,
+      });
+    }
+    if (kind === "publishAppearance") {
+      clearWalletLocalPreviews();
+    }
     void fetch(`/api/super-admin/merchants/${merchantId}`)
       .then((r) => r.json())
       .then((next) => {
@@ -128,9 +197,11 @@ export function MerchantDetailPage({ firstName, merchantId }: { firstName: strin
   }
 
   async function uploadWalletMedia(kind: GoogleWalletMediaKind, file: File) {
+    const mediaKey = walletMediaKey(kind);
     setWalletBusy(`upload-${kind}`);
     setWalletMessage(null);
     setWalletFailedAction(null);
+    setWalletMediaErrors((current) => ({ ...current, [mediaKey]: undefined }));
     const form = new FormData();
     form.set("action", "uploadMedia");
     form.set("kind", kind);
@@ -143,10 +214,21 @@ export function MerchantDetailPage({ firstName, merchantId }: { firstName: strin
     setWalletBusy(null);
     if (!response.ok) {
       setWalletMessage(json.error ?? "Upload Google Wallet impossible.");
+      setWalletMediaErrors((current) => ({ ...current, [mediaKey]: "Erreur d'upload" }));
       return;
     }
     const next = json.config?.draftAppearance ?? {};
     setWalletAppearance((current) => ({ ...current, ...next }));
+    const appearanceKey = MEDIA_TO_APPEARANCE_KEY[mediaKey];
+    const publicUrl = next[appearanceKey];
+    if (typeof publicUrl === "string" && publicUrl) {
+      const objectUrl = URL.createObjectURL(file);
+      setWalletMediaPreviews((current) => {
+        const previous = current[mediaKey];
+        if (previous?.objectUrl) URL.revokeObjectURL(previous.objectUrl);
+        return { ...current, [mediaKey]: { objectUrl, publicUrl } };
+      });
+    }
     setWalletCrop(null);
     setWalletMessage("Média ajouté au brouillon Google Wallet.");
   }
@@ -162,6 +244,37 @@ export function MerchantDetailPage({ firstName, merchantId }: { firstName: strin
   const walletConfig = (walletClass?.configByMode ?? {}) as Record<string, unknown>;
   const walletError =
     walletClass?.lastError ?? walletObjects.find((item: any) => item.lastError)?.lastError ?? null;
+
+  function walletMediaState(key: WalletMediaKey) {
+    const appearanceKey = MEDIA_TO_APPEARANCE_KEY[key];
+    const local = walletMediaPreviews[key];
+    const currentUrl = walletAppearance[appearanceKey] ?? null;
+    const publishedUrl = publishedAppearance[appearanceKey] ?? null;
+    const error = walletMediaErrors[key] ?? null;
+    if (error) return { status: error, src: null as string | null };
+    if (local && local.publicUrl === currentUrl) {
+      return { status: "Image prête — non publiée", src: local.objectUrl };
+    }
+    if (currentUrl && currentUrl === publishedUrl) {
+      return { status: "Image publiée", src: currentUrl };
+    }
+    if (currentUrl && currentUrl !== publishedUrl) {
+      return { status: "Image prête — non publiée", src: null as string | null };
+    }
+    return { status: "Aucune image", src: null as string | null };
+  }
+
+  function markWalletMediaError(key: WalletMediaKey, message: string) {
+    setWalletMediaErrors((current) => ({ ...current, [key]: message }));
+  }
+
+  function WalletMediaPlaceholder({ label, status }: { label: string; status: string }) {
+    return (
+      <div className="grid h-full min-h-16 place-items-center bg-white/10 px-3 text-center text-xs font-semibold text-white/65">
+        <span>{status === "Aucune image" ? label : status}</span>
+      </div>
+    );
+  }
 
   return (
     <SuperAdminShell firstName={firstName}>
@@ -359,13 +472,13 @@ export function MerchantDetailPage({ firstName, merchantId }: { firstName: strin
                     </p>
                     <div className="flex items-center gap-3">
                       <div className="grid h-14 w-14 place-items-center overflow-hidden rounded-full bg-white/20 ring-1 ring-white/30">
-                        {walletAppearance.logoUrl ? (
+                        {walletMediaState("logo").src ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img
-                            src={walletAppearance.logoUrl}
+                            src={walletMediaState("logo").src ?? ""}
                             alt=""
                             className="h-full w-full object-cover"
-                            onError={() => setWalletAppearance((current) => ({ ...current, logoUrl: null }))}
+                            onError={() => markWalletMediaError("logo", "Erreur d'upload")}
                           />
                         ) : (
                           <span className="text-lg font-black text-white">{merchant.name.slice(0, 1)}</span>
@@ -376,19 +489,35 @@ export function MerchantDetailPage({ firstName, merchantId }: { firstName: strin
                         <p className="truncate text-xs text-white/72">{merchant.program?.mode ?? "GENERAL"} · Démo aperçu</p>
                       </div>
                     </div>
+                    <p className="mt-2 text-[11px] font-semibold text-white/60">{walletMediaState("logo").status}</p>
                     <div className="mt-4 aspect-[1032/812] overflow-hidden rounded-xl bg-black/20">
-                      {walletAppearance.heroImageUrl ? (
+                      {walletMediaState("hero").src ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
-                          src={walletAppearance.heroImageUrl}
+                          src={walletMediaState("hero").src ?? ""}
                           alt=""
                           className="h-full w-full object-cover"
-                          onError={() => setWalletAppearance((current) => ({ ...current, heroImageUrl: null }))}
+                          onError={() => markWalletMediaError("hero", "Erreur d'upload")}
                         />
                       ) : (
-                        <div className="grid h-full place-items-center text-xs font-semibold text-white/60">Hero automatique</div>
+                        <WalletMediaPlaceholder label="Hero automatique" status={walletMediaState("hero").status} />
                       )}
                     </div>
+                    <p className="mt-2 text-[11px] font-semibold text-white/60">{walletMediaState("hero").status}</p>
+                    <div className="mt-3 aspect-[16/5] overflow-hidden rounded-xl bg-black/20">
+                      {walletMediaState("wideLogo").src ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={walletMediaState("wideLogo").src ?? ""}
+                          alt=""
+                          className="h-full w-full object-contain"
+                          onError={() => markWalletMediaError("wideLogo", "Erreur d'upload")}
+                        />
+                      ) : (
+                        <WalletMediaPlaceholder label="Logo large facultatif" status={walletMediaState("wideLogo").status} />
+                      )}
+                    </div>
+                    <p className="mt-2 text-[11px] font-semibold text-white/60">{walletMediaState("wideLogo").status}</p>
                     <div className="mt-4 grid grid-cols-2 gap-2 text-xs text-white">
                       <div className="rounded-xl bg-white/12 p-3">
                         <p className="text-white/60">Solde</p>

@@ -91,6 +91,43 @@ describe("GET /google-wallet/media/merchant/[merchantId]/[kind]", () => {
     expect(response.headers.get("content-type")).toBe("image/png");
   });
 
+  it("après publication, les trois URLs publiques répondent 200 image/png", async () => {
+    await createPublishedFile(uploadsRoot, "hero");
+    await createPublishedFile(uploadsRoot, "logo");
+    await createPublishedFile(uploadsRoot, "wideLogo");
+    const route = await loadRoute({
+      uploadsRoot,
+      configByMode: config({
+        heroImageUrl: `/google-wallet/media/merchant/${MERCHANT_ID}/hero?v=${VERSION}`,
+        logoUrl: `/google-wallet/media/merchant/${MERCHANT_ID}/logo?v=${VERSION}`,
+        wideLogoUrl: `/google-wallet/media/merchant/${MERCHANT_ID}/wideLogo?v=${VERSION}`,
+      }),
+    });
+
+    const testedUrls = [
+      `/google-wallet/media/merchant/${MERCHANT_ID}/hero?v=${VERSION}`,
+      `/google-wallet/media/merchant/${MERCHANT_ID}/logo?v=${VERSION}`,
+      `/google-wallet/media/merchant/${MERCHANT_ID}/wideLogo?v=${VERSION}`,
+    ];
+    const responses = await Promise.all([
+      get(route, "hero"),
+      get(route, "logo"),
+      get(route, "wideLogo"),
+    ]);
+
+    expect(testedUrls).toEqual([
+      `/google-wallet/media/merchant/${MERCHANT_ID}/hero?v=${VERSION}`,
+      `/google-wallet/media/merchant/${MERCHANT_ID}/logo?v=${VERSION}`,
+      `/google-wallet/media/merchant/${MERCHANT_ID}/wideLogo?v=${VERSION}`,
+    ]);
+    expect(responses.map((response) => response.status)).toEqual([200, 200, 200]);
+    expect(responses.map((response) => response.headers.get("content-type"))).toEqual([
+      "image/png",
+      "image/png",
+      "image/png",
+    ]);
+  });
+
   it("ne sert pas publiquement un brouillon non publié", async () => {
     await createPublishedFile(uploadsRoot, "hero");
     const route = await loadRoute({
