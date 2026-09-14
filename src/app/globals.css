@@ -2509,17 +2509,21 @@ body:has(.wallet-shell) {
     width: 100%;
   }
 
-  .wallet-desktop-actions {
+  .wallet-primary-actions {
     width: min(100%, 520px);
     align-self: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
   }
 
-  .wallet-desktop-actions .wallet-qr-action-wrap,
-  .wallet-desktop-actions .google-wallet-action {
+  .wallet-primary-actions .wallet-qr-action-wrap,
+  .wallet-primary-actions .google-wallet-action {
     width: auto;
   }
 
-  .wallet-desktop-actions .wallet-qr-action {
+  .wallet-primary-actions .wallet-qr-action {
     min-height: 48px;
     width: auto;
     min-width: 190px;
@@ -2527,17 +2531,17 @@ body:has(.wallet-shell) {
     border-radius: 0.9rem;
   }
 
-  .wallet-desktop-actions .google-wallet-action > button {
+  .wallet-primary-actions .google-wallet-action > button {
     min-height: 48px;
     border-radius: 0.9rem;
     outline-offset: 3px;
   }
 
-  .wallet-desktop-actions .google-wallet-action > button:focus-visible {
+  .wallet-primary-actions .google-wallet-action > button:focus-visible {
     outline: 2px solid var(--violet-bright);
   }
 
-  .wallet-desktop-google-action img {
+  .wallet-primary-actions .wallet-google-action img {
     height: 48px;
   }
 

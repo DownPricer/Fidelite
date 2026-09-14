@@ -100,7 +100,8 @@ describe("QR agrandissable", () => {
     const qrAction = readFileSync(resolve(process.cwd(), "src/components/fife-life/wallet-qr-action.tsx"), "utf8");
 
     expect(walletHome).toContain("wallet-primary-actions");
-    expect(walletHome).toContain("wallet-desktop-actions");
+    expect(walletHome).not.toContain("wallet-desktop-actions");
+    expect(walletHome.match(/wallet-primary-actions/g)?.length).toBe(1);
     expect(walletHome).toContain("<WalletQrAction");
     expect(walletHome).toContain("googleWalletEndpoint");
     expect(overview).toContain("/api/customer/google-wallet/global");
@@ -121,7 +122,7 @@ describe("QR agrandissable", () => {
     expect(walletHome).toContain("wallet-cards-rail glass-panel");
     expect(walletHome).toContain("wallet-activity-block glass-panel");
     expect(walletHome).toContain("hidden lg:flex");
-    expect(walletHome).toContain("lg:hidden");
+    expect(walletHome).not.toContain("wallet-desktop-actions");
     expect(walletHome.indexOf("wallet-primary-actions")).toBeLessThan(walletHome.indexOf("wallet-reward-block"));
     expect(walletHome.indexOf("wallet-reward-block")).toBeLessThan(walletHome.indexOf("wallet-sheet-trigger"));
     expect(walletHome).toContain("setSheetOpen(true)");

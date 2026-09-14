@@ -369,29 +369,16 @@ export function WalletHome({
                 onActiveCardChange={handleActiveCardChange}
                 demoVisual={preview}
               />
-              <section className="wallet-primary-actions mt-4 lg:hidden" aria-label="Actions QR et Google Wallet">
-                <WalletQrAction
-                  qrSrc={personalizedQr}
-                  qrFailed={qrFailed}
-                  onRetry={() => void reloadQr()}
-                  clientNumber={clientNumber}
-                  merchantName="Fife Life"
-                />
-                {!preview && walletEnabled ? (
-                  <AddToGoogleWalletButton endpoint={googleWalletEndpoint} className="wallet-google-action" />
-                ) : null}
-              </section>
-              <section className="wallet-desktop-actions mt-4 hidden items-center justify-center gap-3 lg:flex" aria-label="Actions QR et Google Wallet">
+              <section className="wallet-primary-actions mt-4" aria-label="Actions QR et Google Wallet">
                 <WalletQrAction
                   qrSrc={personalizedQr}
                   qrFailed={qrFailed}
                   onRetry={() => void reloadQr()}
                   clientNumber={clientNumber}
                   merchantName={activeMerchantCard?.name ?? "Fife Life"}
-                  className="wallet-desktop-qr-action"
                 />
                 {!preview && walletEnabled ? (
-                  <AddToGoogleWalletButton endpoint={googleWalletEndpoint} className="wallet-google-action wallet-desktop-google-action" />
+                  <AddToGoogleWalletButton endpoint={googleWalletEndpoint} className="wallet-google-action" />
                 ) : null}
               </section>
             </div>
