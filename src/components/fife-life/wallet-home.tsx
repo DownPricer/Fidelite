@@ -294,7 +294,7 @@ export function WalletHome({
           </header>
 
           <div className="wallet-hero-column">
-            <section className="wallet-points-block mt-4 shrink-0 px-1">
+            <section className="wallet-points-block shrink-0 px-1">
               <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-[var(--muted-strong)]">Points Fife Life</p>
               <p className="wallet-points-value mt-1 text-[2.35rem] font-black leading-none tabular-nums text-[var(--ink)]">
                 {formatLoyaltyPoints(points)}
@@ -308,7 +308,7 @@ export function WalletHome({
               </p>
             </section>
 
-            <div className="wallet-deck-block mt-3 shrink-0">
+            <div className="wallet-deck-block shrink-0">
               <CardDeck
                 points={points}
                 customerName={displayName}
@@ -320,7 +320,7 @@ export function WalletHome({
                 onActiveCardChange={handleActiveCardChange}
                 demoVisual={preview}
               />
-              <section className="wallet-primary-actions mt-4" aria-label="Actions QR et Google Wallet">
+              <section className="wallet-primary-actions" aria-label="Actions QR et Google Wallet">
                 <WalletQrAction
                   qrSrc={personalizedQr}
                   qrFailed={qrFailed}
@@ -335,7 +335,7 @@ export function WalletHome({
             </div>
           </div>
 
-          <section className="wallet-reward-block glass-panel mt-4 shrink-0 p-4 lg:hidden">
+          <section className="wallet-reward-block glass-panel shrink-0 p-4 lg:hidden">
             <h3 className="section-title mb-2">Prochaine récompense</h3>
             {activeNextReward ? (
               <>

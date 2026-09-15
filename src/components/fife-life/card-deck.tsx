@@ -287,6 +287,8 @@ export function CardDeck({
                 <div
                   role="button"
                   tabIndex={0}
+                  data-card-kind="global"
+                  data-card-active={active ? "true" : "false"}
                   className="deck-card-slot deck-card-frame block w-full cursor-pointer border-0 bg-transparent p-0 text-left"
                   onClick={(event) => {
                     if (!onEnlargeCard) return;
@@ -322,6 +324,8 @@ export function CardDeck({
                 <div
                   role="button"
                   tabIndex={0}
+                  data-card-kind="merchant"
+                  data-card-active={active ? "true" : "false"}
                   className="deck-card-slot deck-card-frame block w-full cursor-pointer border-0 bg-transparent p-0 text-left"
                   onClick={(event) => {
                     if (active && onEnlargeCard) {

@@ -199,10 +199,7 @@ body:has(.wallet-shell) {
   gap: clamp(0.85rem, 2.4dvh, 1.5rem);
 }
 
-.wallet-points-block {
-  margin-top: 0 !important;
-}
-
+.wallet-points-block,
 .wallet-deck-block {
   margin-top: 0 !important;
 }
@@ -213,6 +210,29 @@ body:has(.wallet-shell) {
 
 .wallet-sheet-trigger {
   margin-top: clamp(0.9rem, 2.8dvh, 1.6rem) !important;
+}
+
+@media (max-width: 1023px) {
+  .wallet-page-body {
+    gap: 0;
+  }
+
+  .wallet-hero-column {
+    gap: 0;
+  }
+
+  .wallet-deck-block {
+    margin-top: clamp(20px, 5vw, 24px) !important;
+  }
+
+  .wallet-primary-actions {
+    margin-top: clamp(20px, 5vw, 24px);
+    margin-bottom: clamp(18px, 4vw, 24px);
+  }
+
+  .wallet-reward-block {
+    margin-top: 0 !important;
+  }
 }
 
 .wallet-qr-action-wrap {
@@ -602,12 +622,21 @@ body:has(.wallet-shell) {
 }
 
 .deck-card-slot {
+  display: block;
   width: 100%;
+  aspect-ratio: 1.586 / 1;
 }
 
 .deck-card-frame {
   width: 100%;
   aspect-ratio: 1.586 / 1;
+}
+
+.deck-card-slot > .interactive-card-shell,
+.deck-card-slot > .merchant-card-renderer-shell {
+  width: 100%;
+  height: 100%;
+  aspect-ratio: auto;
 }
 
 .loyalty-card-shell.interactive-card-shell,
@@ -2564,6 +2593,34 @@ body:has(.wallet-shell) {
     max-width: none !important;
     height: 100% !important;
     padding: 0 !important;
+  }
+
+  .deck-card-slot > .interactive-card-shell,
+  .deck-card-slot > .merchant-card-renderer-shell {
+    width: 100% !important;
+    max-width: none !important;
+    height: 100% !important;
+    aspect-ratio: auto !important;
+  }
+
+  .deck-card-slot[data-card-kind="global"] > .interactive-card-shell,
+  .deck-card-slot[data-card-kind="global"] .interactive-card-depth,
+  .deck-card-slot[data-card-kind="global"] .loyalty-card,
+  .deck-card-slot[data-card-kind="global"] .loyalty-card--large {
+    width: 100% !important;
+    max-width: none !important;
+    height: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    aspect-ratio: auto !important;
+    transform: none !important;
+  }
+
+  .deck-card-slot[data-card-kind="global"] .loyalty-card__background {
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
   }
 
   .wallet-page-body {
