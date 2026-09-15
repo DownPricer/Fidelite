@@ -106,7 +106,8 @@ export function MerchantHome({
             {[
               ["Clients", "/app/clients", "Liste et recherche"],
               ["Équipe", "/app/employes", "Rôles et accès"],
-              ["Programme", "/app/parametres/programme", "Fidélité et avantages"],
+              ["Programme", "/app/parametres/programme", "Règles de fidélité"],
+              ["Avantages", "/app/parametres/avantages", "Catalogue et limites"],
             ].map(([label, href, hint]) => (
               <Link key={href} href={href} className="metric-card block p-4 transition hover:-translate-y-0.5">
                 <p className="font-bold text-[var(--ink)]">{label}</p>

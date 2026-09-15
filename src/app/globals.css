@@ -117,6 +117,10 @@ body {
     max-width: min(100%, 640px);
     margin-inline: auto;
   }
+
+  .wallet-primary-actions {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
 }
 
 @media (min-width: 768px) and (max-width: 1023px) {
@@ -129,6 +133,19 @@ body {
     width: 100%;
     max-width: min(100%, 760px);
     margin-inline: auto;
+  }
+
+  .wallet-shell.fife-page-shell {
+    padding-inline: clamp(1.5rem, 5vw, 3rem);
+  }
+
+  .wallet-hero-column {
+    align-items: stretch;
+  }
+
+  .wallet-primary-actions {
+    width: min(100%, 560px);
+    align-self: center;
   }
 }
 
@@ -162,6 +179,40 @@ body:has(.wallet-shell) {
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: start;
   gap: 0.75rem;
+}
+
+.wallet-shell.fife-page-shell {
+  min-height: 100dvh;
+  height: auto;
+  overflow: visible;
+  padding-top: clamp(0.9rem, 3.5dvh, 2rem);
+}
+
+.wallet-page-body {
+  min-height: calc(100dvh - clamp(1.8rem, 7dvh, 4rem));
+  gap: clamp(0.85rem, 2.5dvh, 1.6rem);
+}
+
+.wallet-hero-column {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(0.85rem, 2.4dvh, 1.5rem);
+}
+
+.wallet-points-block {
+  margin-top: 0 !important;
+}
+
+.wallet-deck-block {
+  margin-top: 0 !important;
+}
+
+.wallet-reward-block {
+  margin-top: clamp(0.8rem, 2.5dvh, 1.4rem) !important;
+}
+
+.wallet-sheet-trigger {
+  margin-top: clamp(0.9rem, 2.8dvh, 1.6rem) !important;
 }
 
 .wallet-qr-action-wrap {
@@ -652,6 +703,10 @@ body:has(.wallet-shell) {
   text-shadow: 0 0.07cqw 0.13cqw #0009;
   -webkit-font-smoothing: antialiased;
   filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.38));
+}
+
+.fife-deck-scene .loyalty-card__background {
+  object-fit: cover;
 }
 
 .fife-deck-scene .loyalty-card {
@@ -2481,14 +2536,18 @@ body:has(.wallet-shell) {
   .fife-deck-scene .deck-stage,
   .fife-deck-scene .deck-card-layer,
   .fife-deck-scene .deck-card-slot,
+  .fife-deck-scene .deck-card-frame,
   .fife-deck-scene .interactive-card-shell,
   .fife-deck-scene .interactive-card-depth,
   .fife-deck-scene .loyalty-card-shell,
+  .fife-deck-scene .loyalty-card,
   .fife-deck-scene .merchant-card-renderer-shell,
   .fife-deck-scene .merchant-card-renderer {
     width: var(--wallet-card-width) !important;
     max-width: var(--wallet-card-width) !important;
     height: var(--wallet-card-height) !important;
+    aspect-ratio: 1.586 / 1 !important;
+    box-sizing: border-box;
   }
 
   .fife-deck-scene .loyalty-card--large {
@@ -2502,6 +2561,7 @@ body:has(.wallet-shell) {
   .fife-deck-scene .loyalty-card-shell .interactive-card-depth,
   .fife-deck-scene .loyalty-card-shell .loyalty-card {
     width: 100% !important;
+    max-width: none !important;
     height: 100% !important;
     padding: 0 !important;
   }

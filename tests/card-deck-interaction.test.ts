@@ -54,4 +54,12 @@ describe("card-deck interaction", () => {
     expect(css).toContain(".fife-deck-scene .loyalty-card-shell .interactive-card-depth");
     expect(css).toContain(".fife-deck-scene .loyalty-card-shell .loyalty-card");
   });
+
+  it("floute légèrement seulement les cartes inactives du deck", () => {
+    const source = readFileSync(join(process.cwd(), "src/components/fife-life/card-deck.tsx"), "utf8");
+
+    expect(source).toContain("const blur = active ? 0 : Math.min(1, 0.6");
+    expect(source).toContain("filter: `blur(${blur}px) brightness(${brightness})`");
+    expect(source).toContain("const brightness = active ? 1");
+  });
 });

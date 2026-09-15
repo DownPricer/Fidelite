@@ -273,6 +273,7 @@ export function CardDeck({
             const opacity = active ? 1 : Math.max(0.55, 1 - dist * 0.22);
             const zIndex = active ? 50 : behind ? 40 - dist * 5 : 45 - dist * 5;
             const brightness = active ? 1 : Math.max(0.7, 1 - dist * 0.18);
+            const blur = active ? 0 : Math.min(1, 0.6 + Math.max(0, dist - 1) * 0.2);
 
             const key =
               item.kind === "global"
@@ -374,7 +375,7 @@ export function CardDeck({
                 <motion.div
                   className="w-full"
                   style={{
-                    filter: `brightness(${brightness})`,
+                    filter: `blur(${blur}px) brightness(${brightness})`,
                     transformStyle: "preserve-3d",
                     willChange: active ? "transform, opacity" : "auto",
                   }}

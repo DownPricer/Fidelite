@@ -238,10 +238,6 @@ export function WalletHome({
           }),
         );
 
-        const membershipId =
-          event.customerMembershipId ??
-          cards.find((card) => card.merchantId === event.merchantId)?.id ??
-          null;
         void refreshOverview();
       }
       if (event.type === "CARD_REMOVED") {

@@ -39,11 +39,29 @@ export async function GET(req: Request) {
       }
     : null;
 
-  const [customerCount, totalPoints] = await Promise.all([
+  const [customerCount, totalPoints, historicalEntitlements] = await Promise.all([
     prisma.customerMembership.count({ where: { merchantId: staff.membership.merchantId } }),
     prisma.customerMembership.aggregate({
       where: { merchantId: staff.membership.merchantId },
       _sum: { points: true },
+    }),
+    prisma.customerRewardEntitlement.findMany({
+      where: {
+        merchantId: staff.membership.merchantId,
+        status: "AVAILABLE",
+        OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+      },
+      orderBy: { createdAt: "desc" },
+      take: 50,
+      select: {
+        id: true,
+        originalRewardName: true,
+        originalDescription: true,
+        originalThreshold: true,
+        originalUnit: true,
+        expiresAt: true,
+        historicalBalance: true,
+      },
     }),
   ]);
 
@@ -59,6 +77,15 @@ export async function GET(req: Request) {
       totalPoints: totalPoints._sum.points ?? 0,
       rewardsUnlocked: active.rewards.filter((r) => r.isActive).length,
     },
+    historicalEntitlements: historicalEntitlements.map((entitlement) => ({
+      id: entitlement.id,
+      rewardName: entitlement.originalRewardName,
+      rewardDescription: entitlement.originalDescription,
+      threshold: entitlement.originalThreshold,
+      thresholdUnit: entitlement.originalUnit,
+      expiresAt: entitlement.expiresAt,
+      historicalBalance: entitlement.historicalBalance,
+    })),
   });
 }
 
