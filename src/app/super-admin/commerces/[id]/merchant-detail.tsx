@@ -387,10 +387,31 @@ export function MerchantDetailPage({ firstName, merchantId }: { firstName: strin
               <p><strong>Adresse :</strong> {[merchant.addressLine1, merchant.postalCode, merchant.city].filter(Boolean).join(", ") || "—"}</p>
             </Card>
             <Card className="p-5 space-y-2 text-sm">
-              <h2 className="font-bold">Programme et avantages</h2>
-              <p><strong>Mode :</strong> {merchant.program?.mode}</p>
-              <p><strong>Récompense :</strong> {merchant.program?.rewardLabel}</p>
-              <p><strong>Avantages configurés :</strong> {merchant.program?.rewards?.filter((reward: any) => !reward.archivedAt).length ?? 0}</p>
+              <h2 className="font-bold">Fidélité et avantages</h2>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <p><strong>Mode actif :</strong> {data.loyalty?.mode ?? "—"}</p>
+                <p><strong>Version :</strong> {data.loyalty?.version ?? "—"}</p>
+                <p><strong>Unité :</strong> {data.loyalty?.unit === "visits" ? "passages" : data.loyalty?.unit ?? "—"}</p>
+                <p><strong>Avantages actifs :</strong> {data.loyalty?.activeRewardsCount ?? 0} / {data.loyalty?.activeRewardsLimit ?? 10}</p>
+                <p><strong>Droits historiques disponibles :</strong> {data.loyalty?.historicalEntitlementsAvailable ?? 0}</p>
+              </div>
+              {data.loyalty?.conversionIncomplete ? (
+                <p className="rounded-xl border border-amber-300/25 bg-amber-400/10 p-3 text-xs font-semibold text-amber-100">
+                  Certains avantages appartiennent à votre ancien programme. Choisissez un équivalent pour terminer leur conversion.
+                </p>
+              ) : null}
+              {(data.loyalty?.activeRewards ?? []).length ? (
+                <ul className="space-y-1 text-xs text-[var(--muted-text)]">
+                  {data.loyalty.activeRewards.map((reward: any) => (
+                    <li key={reward.id}>{reward.threshold} {reward.thresholdUnit === "visits" ? "passages" : "points"} · {reward.name}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-xs text-[var(--muted-text)]">Aucun avantage actif compatible.</p>
+              )}
+              <Link href="/app/parametres/programme" className="inline-flex text-xs font-bold text-[var(--violet-bright)] hover:underline">
+                Ouvrir la gestion fidélité
+              </Link>
             </Card>
             <Card className="p-5 space-y-2 text-sm">
               <h2 className="font-bold">Cartes</h2>

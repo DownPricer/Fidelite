@@ -172,7 +172,7 @@ describe("customer loyalty overview", () => {
     const picked = selectBestNextReward([...almost, ...available]);
     expect(picked?.available).toBe(true);
     expect(picked?.rewardName).toBe("Boisson offerte");
-    expect(picked?.statusLabel).toBe("Disponible maintenant");
+    expect(picked?.statusLabel).toBe("Avantage disponible : Boisson offerte");
 
     const tieA = buildNextRewardCandidates({
       merchantId: "a",
@@ -253,6 +253,8 @@ describe("customer loyalty overview", () => {
         slug: "fife-life",
         nextReward: buildFifeLifeNextReward(180),
         availableReward: null,
+        currentRewards: [],
+        conservedRewards: [],
         progress: { current: 180, target: 250, percent: 53, unit: "points" },
       },
       {
@@ -274,6 +276,8 @@ describe("customer loyalty overview", () => {
           }),
         ),
         availableReward: null,
+        currentRewards: [],
+        conservedRewards: [],
         progress: { current: 80, target: 100, percent: 80, unit: "points" },
       },
       {
@@ -295,6 +299,8 @@ describe("customer loyalty overview", () => {
           }),
         ),
         availableReward: null,
+        currentRewards: [],
+        conservedRewards: [],
         progress: { current: 9, target: 10, percent: 90, unit: "passages" },
       },
     ];
@@ -372,7 +378,7 @@ describe("customer loyalty overview", () => {
     ).toBe("/api/customer/google-wallet/merchant/caf%C3%A9-nova");
   });
 
-  it("récompense disponible → Disponible maintenant", () => {
+  it("récompense disponible → libellé avantage disponible", () => {
     const reward = selectBestNextReward(
       buildNextRewardCandidates({
         merchantId: "cafe",
@@ -385,7 +391,7 @@ describe("customer loyalty overview", () => {
         rewards: [{ id: "r1", name: "Boisson offerte", threshold: 100, thresholdUnit: "points", isActive: true }],
       }),
     );
-    expect(reward?.statusLabel).toBe("Disponible maintenant");
+    expect(reward?.statusLabel).toBe("Avantage disponible : Boisson offerte");
   });
 
   it("ignore les récompenses inactives ou unité incompatible", () => {
@@ -405,5 +411,73 @@ describe("customer loyalty overview", () => {
     });
     expect(candidates).toHaveLength(1);
     expect(candidates[0]?.rewardName).toBe("Boisson");
+  });
+
+  it("priorise l'entrée de carte par membershipId avant une clé de carte obsolète", () => {
+    const staleReward = selectBestNextReward(
+      buildNextRewardCandidates({
+        merchantId: "old",
+        merchantName: "Ancien Commerce",
+        merchantSlug: "ancien-commerce",
+        merchantLogoUrl: null,
+        mode: "VISITS",
+        unit: "passages",
+        balance: 3,
+        rewards: [{ id: "old-visits", name: "Ancien passage", threshold: 5, thresholdUnit: "visits", isActive: true }],
+      }),
+    );
+    const activeReward = selectBestNextReward(
+      buildNextRewardCandidates({
+        merchantId: "active",
+        merchantName: "Commerce actif",
+        merchantSlug: "commerce-actif",
+        merchantLogoUrl: null,
+        mode: "FIXED_POINTS",
+        unit: "points",
+        balance: 90,
+        rewards: [{ id: "active-points", name: "Avantage points", threshold: 100, thresholdUnit: "points", isActive: true }],
+      }),
+    );
+    const cardRewards: CardNextRewardEntry[] = [
+      {
+        cardKey: "shared-key",
+        cardType: "merchant",
+        membershipId: "old-member",
+        merchantId: "old",
+        slug: "ancien-commerce",
+        nextReward: staleReward,
+        availableReward: null,
+        currentRewards: staleReward ? [staleReward] : [],
+        conservedRewards: [],
+        progress: { current: 3, target: 5, percent: 60, unit: "passages" },
+      },
+      {
+        cardKey: "active-key",
+        cardType: "merchant",
+        membershipId: "active-member",
+        merchantId: "active",
+        slug: "commerce-actif",
+        nextReward: activeReward,
+        availableReward: null,
+        currentRewards: activeReward ? [activeReward] : [],
+        conservedRewards: [],
+        progress: { current: 90, target: 100, percent: 90, unit: "points" },
+      },
+    ];
+
+    expect(
+      resolveNextRewardForActiveCard({
+        cardRewards,
+        activeCard: {
+          cardType: "merchant",
+          cardKey: "shared-key",
+          membershipId: "active-member",
+          merchantId: "active",
+          slug: "commerce-actif",
+          activeIndex: 1,
+        },
+        fifeLifePoints: 0,
+      }),
+    ).toMatchObject({ rewardName: "Avantage points", unit: "points" });
   });
 });

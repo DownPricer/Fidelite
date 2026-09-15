@@ -26,18 +26,75 @@ export type ModeChangeDecision =
 
 type ProgramWithRewards = LoyaltyProgram & { rewards: LoyaltyReward[] };
 
-export function countConfiguredRewards(rewards: Array<{ archivedAt?: string | Date | null }>) {
-  return rewards.filter((reward) => !reward.archivedAt).length;
+export function countConfiguredRewards(
+  rewards: Array<{ archivedAt?: string | Date | null; thresholdUnit?: string }>,
+  mode?: LoyaltyMode,
+) {
+  const unit = mode ? thresholdUnitForMode(mode) : null;
+  return rewards.filter((reward) => !reward.archivedAt && (!unit || reward.thresholdUnit === unit)).length;
 }
 
-export function assertRewardLimit(rewards: Array<{ archivedAt?: string | Date | null }>) {
-  if (countConfiguredRewards(rewards) > MAX_CONFIGURED_REWARDS) {
+export function assertRewardLimit(
+  rewards: Array<{ archivedAt?: string | Date | null; thresholdUnit?: string }>,
+  mode?: LoyaltyMode,
+) {
+  if (countConfiguredRewards(rewards, mode) > MAX_CONFIGURED_REWARDS) {
     throw new Error(REWARD_LIMIT_MESSAGE);
   }
 }
 
 export function modeChangeRequiresRewardDecision(previousMode: LoyaltyMode, nextMode: LoyaltyMode) {
   return previousMode !== nextMode;
+}
+
+export function convertLoyaltyBalance(input: {
+  oldBalance: number;
+  oldThreshold: number;
+  newThreshold: number;
+}) {
+  if (!Number.isFinite(input.oldBalance) || !Number.isFinite(input.oldThreshold) || !Number.isFinite(input.newThreshold)) {
+    throw new Error("Les valeurs de conversion doivent être des nombres finis.");
+  }
+  const oldBalance = Math.max(0, Math.trunc(input.oldBalance));
+  const oldThreshold = Math.trunc(input.oldThreshold);
+  const newThreshold = Math.max(0, Math.trunc(input.newThreshold));
+  if (oldThreshold <= 0) {
+    throw new Error("Le seuil d'origine doit être strictement positif.");
+  }
+  if (newThreshold <= 0 || oldBalance === 0) return 0;
+  return Math.max(0, Math.ceil((oldBalance / oldThreshold) * newThreshold));
+}
+
+function buildConversionMappings(program: ProgramWithRewards, rewards: LoyaltyDraftReward[]) {
+  const byId = new Map(program.rewards.map((reward) => [reward.id, reward]));
+  const mappings = rewards
+    .map((reward) => {
+      const oldReward = reward.id ? byId.get(reward.id) : undefined;
+      if (!oldReward) return null;
+      return { oldReward, newReward: reward };
+    })
+    .filter((row): row is NonNullable<typeof row> => Boolean(row))
+    .sort((a, b) => a.oldReward.threshold - b.oldReward.threshold);
+
+  for (let i = 1; i < mappings.length; i += 1) {
+    const prev = mappings[i - 1]!;
+    const current = mappings[i]!;
+    if (current.newReward.threshold <= prev.newReward.threshold) {
+      throw new Error("Les nouveaux seuils doivent conserver l'ordre croissant des anciens avantages.");
+    }
+  }
+  return mappings;
+}
+
+function conversionReference(
+  mappings: ReturnType<typeof buildConversionMappings>,
+  oldBalance: number,
+) {
+  return (
+    mappings.find((mapping) => mapping.oldReward.threshold > oldBalance) ??
+    mappings[mappings.length - 1] ??
+    null
+  );
 }
 
 function activeEligibleRewards(program: ProgramWithRewards, now: Date) {
@@ -197,17 +254,82 @@ export async function publishLoyaltyProgram(input: {
       ? input.decision.rewards
       : []
     : input.draft.rewards;
-  assertRewardLimit(rewardsToValidate);
+  assertRewardLimit(rewardsToValidate, input.draft.mode);
 
   const nextVersion = input.program.version + 1;
   const firstReward = rewardsToValidate.find((reward) => !reward.archivedAt);
   let entitlementCount = 0;
 
-  if (modeChanged) {
+  if (modeChanged && input.decision?.action === "ARCHIVE_OLD") {
     entitlementCount = await createAcquiredRewardEntitlements(input.tx, {
       program: input.program,
       merchantId: input.program.merchantId,
       now,
+    });
+  }
+
+  if (modeChanged && input.decision?.action === "CONVERT") {
+    const nextUnit = thresholdUnitForMode(input.draft.mode);
+    const incompatibleConvertedReward = input.decision.rewards.find(
+      (reward) => !reward.archivedAt && reward.thresholdUnit !== nextUnit,
+    );
+    if (incompatibleConvertedReward) {
+      throw new Error("Certains avantages appartiennent à votre ancien programme. Choisissez un équivalent pour terminer leur conversion.");
+    }
+    const mappings = buildConversionMappings(input.program, input.decision.rewards);
+    const activeOldRewards = activeEligibleRewards(input.program, now);
+    const missingTimeless = activeOldRewards.find(
+      (reward) => !reward.validUntil && !mappings.some((mapping) => mapping.oldReward.id === reward.id),
+    );
+    if (missingTimeless) {
+      throw new Error("Certains avantages appartiennent à votre ancien programme. Choisissez un équivalent pour terminer leur conversion.");
+    }
+    if (!mappings.length && activeOldRewards.length) {
+      throw new Error("Certains avantages appartiennent à votre ancien programme. Choisissez un équivalent pour terminer leur conversion.");
+    }
+
+    const memberships = await input.tx.customerMembership.findMany({
+      where: { merchantId: input.program.merchantId, removedAt: null },
+      select: { id: true, points: true },
+    });
+    const auditRows = [];
+    for (const membership of memberships) {
+      const reference = conversionReference(mappings, membership.points);
+      if (!reference) continue;
+      const result = convertLoyaltyBalance({
+        oldBalance: membership.points,
+        oldThreshold: reference.oldReward.threshold,
+        newThreshold: reference.newReward.threshold,
+      });
+      await input.tx.customerMembership.update({
+        where: { id: membership.id },
+        data: { points: result },
+      });
+      auditRows.push({
+        membershipId: membership.id,
+        oldBalance: membership.points,
+        oldThreshold: reference.oldReward.threshold,
+        newThreshold: reference.newReward.threshold,
+        ratio: membership.points / reference.oldReward.threshold,
+        result,
+      });
+    }
+    await input.tx.auditLog.create({
+      data: {
+        actorId: input.actorId,
+        merchantId: input.program.merchantId,
+        action: "LOYALTY_PROGRAM_BALANCE_CONVERSION",
+        metadata: {
+          previousMode: input.program.mode,
+          nextMode: input.draft.mode,
+          mappings: mappings.map((mapping) => ({
+            oldRewardId: mapping.oldReward.id,
+            oldThreshold: mapping.oldReward.threshold,
+            newThreshold: mapping.newReward.threshold,
+          })),
+          balances: auditRows,
+        },
+      },
     });
   }
 

@@ -77,7 +77,7 @@ export async function PUT(req: Request) {
     if (err) return jsonError(err);
   }
   try {
-    assertRewardLimit(parsed.data.rewards);
+    assertRewardLimit(parsed.data.rewards, parsed.data.mode);
   } catch (error) {
     return jsonError(error instanceof Error ? error.message : REWARD_LIMIT_MESSAGE, 400);
   }

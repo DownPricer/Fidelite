@@ -10,6 +10,11 @@ import {
 } from "./loyalty-labels";
 import { formatEurosFromCents } from "./money";
 import { prisma } from "./prisma";
+import {
+  entitlementToEvaluatedReward,
+  listAvailableRewardEntitlements,
+  markExpiredRewardEntitlements,
+} from "./reward-entitlements";
 
 export type ActivityItem = {
   id: string;
@@ -41,6 +46,7 @@ export type NextRewardOverview = {
   unit: LoyaltyUnit;
   available: boolean;
   mode: LoyaltyMode;
+  historical?: boolean;
 };
 
 export type CardRewardProgress = {
@@ -58,6 +64,8 @@ export type CardNextRewardEntry = {
   slug: string | null;
   nextReward: NextRewardOverview | null;
   availableReward: NextRewardOverview | null;
+  currentRewards: NextRewardOverview[];
+  conservedRewards: NextRewardOverview[];
   progress: CardRewardProgress | null;
 };
 
@@ -187,7 +195,7 @@ export function buildNextRewardCandidates(input: {
       reward.threshold > 0 ? Math.min(100, Math.round((input.balance / reward.threshold) * 100)) : 0;
 
     const statusLabel = available
-      ? "Disponible maintenant"
+      ? `Avantage disponible : ${reward.name}`
       : `Encore ${formatUnitCount(remaining, unit)} chez ${input.merchantName}`;
 
     return {
@@ -203,6 +211,7 @@ export function buildNextRewardCandidates(input: {
       unit,
       available,
       mode: input.mode,
+      historical: false,
       sortAvailable: available ? 0 : 1,
       sortProgress: -progressPercent,
       sortRemaining: remaining,
@@ -230,6 +239,31 @@ export function buildFifeLifeNextReward(fifeLifePoints: number): NextRewardOverv
   };
 }
 
+export function buildHistoricalRewardOverview(input: {
+  merchantId: string;
+  merchantName: string;
+  merchantSlug: string;
+  merchantLogoUrl: string | null;
+  mode: LoyaltyMode;
+  reward: ReturnType<typeof entitlementToEvaluatedReward>;
+}): NextRewardOverview {
+  return {
+    rewardName: input.reward.name,
+    merchantId: input.merchantId,
+    merchantName: input.merchantName,
+    merchantSlug: input.merchantSlug,
+    merchantLogoUrl: input.merchantLogoUrl,
+    statusLabel: "Avantage conservé de votre ancien programme",
+    progressCurrent: input.reward.threshold,
+    progressTarget: input.reward.threshold,
+    progressPercent: 100,
+    unit: input.reward.thresholdUnit === "visits" ? "passages" : "points",
+    available: true,
+    mode: input.mode,
+    historical: true,
+  };
+}
+
 export function toCardRewardProgress(reward: NextRewardOverview | null): CardRewardProgress | null {
   if (!reward) return null;
   return {
@@ -248,17 +282,22 @@ export function buildCardNextRewardEntry(input: {
   slug: string | null;
   nextReward: NextRewardOverview | null;
   candidates: NextRewardCandidate[];
+  conservedRewards?: NextRewardOverview[];
 }): CardNextRewardEntry {
   const availableCandidates = input.candidates.filter((candidate) => candidate.available);
+  const availableReward = selectBestNextReward(availableCandidates);
+  const displayReward = availableReward ?? input.nextReward ?? input.conservedRewards?.[0] ?? null;
   return {
     cardKey: input.cardKey,
     cardType: input.cardType,
     membershipId: input.membershipId,
     merchantId: input.merchantId,
     slug: input.slug,
-    nextReward: input.nextReward,
-    availableReward: selectBestNextReward(availableCandidates),
-    progress: toCardRewardProgress(input.nextReward),
+    nextReward: displayReward,
+    availableReward,
+    currentRewards: input.candidates.map(({ sortAvailable: _sa, sortProgress: _sp, sortRemaining: _sr, ...candidate }) => candidate),
+    conservedRewards: input.conservedRewards ?? [],
+    progress: toCardRewardProgress(displayReward),
   };
 }
 
@@ -273,7 +312,7 @@ export function resolveNextRewardForActiveCard(input: {
   const entry =
     input.cardRewards.find((row) => row.membershipId === input.activeCard.membershipId) ??
     input.cardRewards.find((row) => row.cardKey === input.activeCard.cardKey);
-  return entry?.nextReward ?? null;
+  return entry?.availableReward ?? entry?.nextReward ?? entry?.conservedRewards[0] ?? null;
 }
 
 export function cardRewardsMap(entries: CardNextRewardEntry[]): Record<string, CardNextRewardEntry> {
@@ -405,6 +444,7 @@ export async function getCustomerLoyaltyOverview(input: {
 
   const cardRewards: CardNextRewardEntry[] = [];
   const merchantCandidates: NextRewardCandidate[] = [];
+  const merchantConservedRewards: NextRewardOverview[] = [];
 
   if (!merchantId) {
     const globalReward = buildFifeLifeNextReward(fifeLifePoints);
@@ -417,6 +457,7 @@ export async function getCustomerLoyaltyOverview(input: {
         slug: "fife-life",
         nextReward: globalReward,
         candidates: [],
+        conservedRewards: [],
       }),
     );
   }
@@ -434,25 +475,38 @@ export async function getCustomerLoyaltyOverview(input: {
       rewards: context.rewards,
     });
     const nextReward = selectBestNextReward(candidates);
+    await markExpiredRewardEntitlements(prisma, { customerMembershipId: membership.id });
+    const conservedRewards = (
+      await listAvailableRewardEntitlements(prisma, { customerMembershipId: membership.id })
+    ).map((entitlement) =>
+      buildHistoricalRewardOverview({
+        merchantId: membership.merchantId,
+        merchantName: membership.merchant.name,
+        merchantSlug: membership.merchant.slug,
+        merchantLogoUrl: membership.merchant.logoUrl,
+        mode: context.mode,
+        reward: entitlementToEvaluatedReward(entitlement, membership.merchant.name),
+      }),
+    );
+    merchantConservedRewards.push(...conservedRewards);
     merchantCandidates.push(...candidates);
 
-    if (!merchantId) {
-      cardRewards.push(
-        buildCardNextRewardEntry({
-          cardKey: membership.id,
-          cardType: "merchant",
-          membershipId: membership.id,
-          merchantId: membership.merchantId,
-          slug: membership.merchant.slug,
-          nextReward,
-          candidates,
-        }),
-      );
-    }
+    cardRewards.push(
+      buildCardNextRewardEntry({
+        cardKey: membership.id,
+        cardType: "merchant",
+        membershipId: membership.id,
+        merchantId: membership.merchantId,
+        slug: membership.merchant.slug,
+        nextReward,
+        candidates,
+        conservedRewards,
+      }),
+    );
   }
 
   const nextReward = merchantId
-    ? selectBestNextReward(merchantCandidates)
+    ? selectBestNextReward(merchantCandidates) ?? merchantConservedRewards[0] ?? null
     : null;
 
   const activity = await getCustomerLoyaltyActivity({

@@ -35,6 +35,7 @@ export default async function CarteIndexPage({
     include: { merchant: true },
     orderBy: { updatedAt: "desc" },
   });
+  const overview = await getCustomerLoyaltyOverview({ userId: user.id, activityLimit: 3 });
 
   const baseCards = (
     await Promise.all(
@@ -42,6 +43,8 @@ export default async function CarteIndexPage({
         const loyaltyContext = await getActiveMerchantLoyaltyContext(item.merchantId);
         if (!loyaltyContext || !loyaltyContext.isOperational) return null;
         const programView = buildCustomerProgramView(loyaltyContext, item.points);
+        const cardRewardEntry = overview.cardRewards.find((entry) => entry.membershipId === item.id);
+        const cardReward = cardRewardEntry?.nextReward ?? null;
         return {
           id: item.id,
           merchantId: item.merchantId,
@@ -50,8 +53,8 @@ export default async function CarteIndexPage({
           logoUrl: item.merchant.logoUrl,
           primaryColor: item.merchant.primaryColor,
           points: item.points,
-          visitsRequired: programView.progressTarget,
-          rewardLabel: programView.rewards[0]?.name ?? "Avantage",
+          visitsRequired: cardReward?.progressTarget ?? programView.progressTarget,
+          rewardLabel: cardReward?.rewardName ?? "Avantage",
           loyaltyMode: loyaltyContext.mode,
         };
       }),
@@ -59,7 +62,6 @@ export default async function CarteIndexPage({
   ).filter((card): card is NonNullable<typeof card> => card !== null);
 
   const cards = await attachPublishedTemplates(baseCards);
-  const overview = await getCustomerLoyaltyOverview({ userId: user.id, activityLimit: 3 });
 
   return (
     <WalletHome

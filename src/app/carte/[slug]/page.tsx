@@ -81,6 +81,9 @@ export default async function CardPage({
     }),
   ]);
 
+  const detailRewardEntry = overview.cardRewards.find((entry) => entry.membershipId === membership.id);
+  const detailReward = detailRewardEntry?.nextReward ?? overview.nextReward;
+
   const [merchantCard] = await attachPublishedTemplates([
     {
       id: membership.id,
@@ -90,8 +93,8 @@ export default async function CardPage({
       logoUrl: membership.merchant.logoUrl,
       primaryColor: membership.merchant.primaryColor,
       points: membership.points,
-      visitsRequired: programView.progressTarget,
-      rewardLabel: programView.rewards[0]?.name ?? "Avantage",
+      visitsRequired: detailReward?.progressTarget ?? programView.progressTarget,
+      rewardLabel: detailReward?.rewardName ?? "Avantage",
       loyaltyMode: loyaltyContext.mode,
     },
   ]);

@@ -286,7 +286,7 @@ export function CardDeck({
                 <div
                   role="button"
                   tabIndex={0}
-                  className="deck-card-slot block w-full cursor-pointer border-0 bg-transparent p-0 text-left"
+                  className="deck-card-slot deck-card-frame block w-full cursor-pointer border-0 bg-transparent p-0 text-left"
                   onClick={(event) => {
                     if (!onEnlargeCard) return;
                     handleCardExpand(event, () => {
@@ -321,7 +321,7 @@ export function CardDeck({
                 <div
                   role="button"
                   tabIndex={0}
-                  className="deck-card-slot block w-full cursor-pointer border-0 bg-transparent p-0 text-left"
+                  className="deck-card-slot deck-card-frame block w-full cursor-pointer border-0 bg-transparent p-0 text-left"
                   onClick={(event) => {
                     if (active && onEnlargeCard) {
                       handleCardExpand(event, () => onEnlargeCard(item.card), active);

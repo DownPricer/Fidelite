@@ -1,5 +1,7 @@
 // @vitest-environment happy-dom
 
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   shouldIgnoreCardExpand,
@@ -39,5 +41,17 @@ describe("card-deck interaction", () => {
     expect(
       shouldProceedWithCardExpand({ target: qr, active: true, suppressNextClick: false }),
     ).toBe(false);
+  });
+
+  it("cadre les cartes PC avec le même ratio et des enfants à 100%", () => {
+    const root = process.cwd();
+    const component = readFileSync(join(root, "src/components/fife-life/card-deck.tsx"), "utf8");
+    const css = readFileSync(join(root, "src/app/globals.css"), "utf8");
+
+    expect(component.match(/deck-card-frame/g)?.length).toBeGreaterThanOrEqual(2);
+    expect(css).toContain(".deck-card-frame");
+    expect(css).toContain("aspect-ratio: 1.586 / 1");
+    expect(css).toContain(".fife-deck-scene .loyalty-card-shell .interactive-card-depth");
+    expect(css).toContain(".fife-deck-scene .loyalty-card-shell .loyalty-card");
   });
 });

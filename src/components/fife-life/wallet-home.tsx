@@ -25,8 +25,6 @@ import { WalletQrAction } from "./wallet-qr-action";
 import {
   buildFifeLifeNextReward,
   resolveNextRewardForActiveCard,
-  selectBestNextReward,
-  buildNextRewardCandidates,
   googleWalletEndpointForActiveCard,
   type ActiveWalletCard,
   type CardNextRewardEntry,
@@ -141,6 +139,8 @@ export function WalletHome({
     () => (activeCardRewardEntry?.availableReward ? [activeCardRewardEntry.availableReward] : []),
     [activeCardRewardEntry],
   );
+  const activeCurrentRewards = activeCardRewardEntry?.currentRewards ?? [];
+  const activeConservedRewards = activeCardRewardEntry?.conservedRewards ?? [];
 
   useEffect(() => {
     setSheetOpen(initialSheetOpen);
@@ -242,51 +242,6 @@ export function WalletHome({
           event.customerMembershipId ??
           cards.find((card) => card.merchantId === event.merchantId)?.id ??
           null;
-        if (membershipId && typeof nextPoints === "number") {
-          setCardRewards((prev) => {
-            const current = prev.find((entry) => entry.membershipId === membershipId);
-            if (!current?.nextReward) return prev;
-            const card = cards.find((item) => item.id === membershipId);
-            if (!card) return prev;
-
-            const candidates = buildNextRewardCandidates({
-              merchantId: card.merchantId,
-              merchantName: card.name,
-              merchantSlug: card.slug,
-              merchantLogoUrl: card.logoUrl,
-              mode: current.nextReward.mode,
-              unit: current.nextReward.unit,
-              balance: nextPoints,
-              rewards: [
-                {
-                  id: "active-reward",
-                  name: current.nextReward.rewardName,
-                  threshold: current.nextReward.progressTarget,
-                  thresholdUnit: current.nextReward.unit === "passages" ? "visits" : "points",
-                  isActive: true,
-                },
-              ],
-            });
-            const updatedReward = selectBestNextReward(candidates);
-            return prev.map((entry) =>
-              entry.membershipId === membershipId
-                ? {
-                    ...entry,
-                    nextReward: updatedReward,
-                    availableReward: updatedReward?.available ? updatedReward : entry.availableReward,
-                    progress: updatedReward
-                      ? {
-                          current: updatedReward.progressCurrent,
-                          target: updatedReward.progressTarget,
-                          percent: updatedReward.progressPercent,
-                          unit: updatedReward.unit,
-                        }
-                      : entry.progress,
-                  }
-                : entry,
-            );
-          });
-        }
         void refreshOverview();
       }
       if (event.type === "CARD_REMOVED") {
@@ -521,6 +476,30 @@ export function WalletHome({
                   Aucun avantage disponible sur la carte active.
                 </p>
               )}
+              {activeCurrentRewards.length ? (
+                <div className="mb-3 rounded-2xl border border-white/10 bg-white/5 p-3">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--muted)]">Avantages du programme actuel</p>
+                  <ul className="mt-2 space-y-1 text-xs text-[var(--ink-soft)]">
+                    {activeCurrentRewards.map((reward) => (
+                      <li key={`${reward.merchantId}-${reward.rewardName}-${reward.progressTarget}`}>
+                        {reward.progressTarget} {reward.unit} · {reward.rewardName}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+              {activeConservedRewards.length ? (
+                <div className="mb-3 rounded-2xl border border-amber-300/20 bg-amber-400/10 p-3">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-amber-100">Avantages conservés</p>
+                  <ul className="mt-2 space-y-1 text-xs text-[var(--ink-soft)]">
+                    {activeConservedRewards.map((reward) => (
+                      <li key={`${reward.merchantId}-${reward.rewardName}-${reward.progressTarget}`}>
+                        {reward.rewardName}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
               <WalletCardsList cards={cards} onOpenCard={openCard} compact desktopGrid enablePublicSearch />
             </section>
 

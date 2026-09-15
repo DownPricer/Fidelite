@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   REWARD_LIMIT_MESSAGE,
   assertRewardLimit,
+  convertLoyaltyBalance,
   createAcquiredRewardEntitlements,
   modeChangeRequiresRewardDecision,
   publishLoyaltyProgram,
@@ -106,6 +107,7 @@ function tx(overrides: Record<string, unknown> = {}) {
         { id: "member-eligible", userId: "user-1", points: 12 },
         { id: "member-low", userId: "user-2", points: 8 },
       ]),
+      update: vi.fn(async () => ({})),
     },
     customerRewardEntitlement: {
       upsert: vi.fn(async () => ({})),
@@ -125,6 +127,9 @@ function tx(overrides: Record<string, unknown> = {}) {
     walletEvent: {
       create: vi.fn(async () => ({})),
     },
+    auditLog: {
+      create: vi.fn(async () => ({})),
+    },
     ...overrides,
   } as any;
 }
@@ -137,6 +142,14 @@ describe("publication programme fidélité", () => {
     expect(() =>
       assertRewardLimit([...Array.from({ length: 10 }, () => ({ archivedAt: null })), { archivedAt: new Date() }]),
     ).not.toThrow();
+  });
+
+  it("convertit proportionnellement un solde vers le nouveau seuil arrondi au supérieur", () => {
+    expect(convertLoyaltyBalance({ oldBalance: 10, oldThreshold: 20, newThreshold: 5 })).toBe(3);
+    expect(convertLoyaltyBalance({ oldBalance: 30, oldThreshold: 40, newThreshold: 10 })).toBe(8);
+    expect(() => convertLoyaltyBalance({ oldBalance: 10, oldThreshold: 0, newThreshold: 5 })).toThrow(
+      "Le seuil d'origine doit être strictement positif.",
+    );
   });
 
   it("ne demande pas de conversion et conserve l'identifiant si le mode ne change pas", async () => {
@@ -180,6 +193,7 @@ describe("publication programme fidélité", () => {
     expect(db.loyaltyReward.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ isActive: false }) }),
     );
+    expect(db.customerRewardEntitlement.upsert).toHaveBeenCalledTimes(1);
   });
 
   it("crée les avantages convertis explicitement lors d'une conversion", async () => {
@@ -190,10 +204,21 @@ describe("publication programme fidélité", () => {
       merchant: null,
       draft: { ...draft, mode: "VISITS" },
       actorId: "admin-1",
-      decision: { action: "CONVERT", rewards: [{ ...draft.rewards[0]!, id: undefined, threshold: 3, thresholdUnit: "visits" }] },
+      decision: { action: "CONVERT", rewards: [{ ...draft.rewards[0]!, id: "old-reward", threshold: 3, thresholdUnit: "visits" }] },
     });
     expect(db.loyaltyReward.create).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ threshold: 3, thresholdUnit: "visits" }) }),
+    );
+    expect(db.customerMembership.update).toHaveBeenCalledWith({ where: { id: "member-eligible" }, data: { points: 4 } });
+    expect(db.customerMembership.update).toHaveBeenCalledWith({ where: { id: "member-low" }, data: { points: 3 } });
+    expect(db.customerRewardEntitlement.upsert).not.toHaveBeenCalled();
+    expect(db.auditLog.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          action: "LOYALTY_PROGRAM_BALANCE_CONVERSION",
+          metadata: expect.objectContaining({ previousMode: "FIXED_POINTS", nextMode: "VISITS" }),
+        }),
+      }),
     );
   });
 

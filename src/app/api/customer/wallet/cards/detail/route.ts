@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { requireUser } from "@/lib/api-guard";
 import { jsonError } from "@/lib/http";
+import { getCustomerLoyaltyOverview } from "@/lib/customer-loyalty-overview";
 import {
   buildCustomerProgramView,
   getActiveMerchantLoyaltyContext,
@@ -47,6 +48,13 @@ export async function GET(req: Request) {
   }
 
   const programView = buildCustomerProgramView(loyaltyContext, membership.points);
+  const overview = await getCustomerLoyaltyOverview({
+    userId: auth.user.id,
+    merchantId: membership.merchantId,
+    activityLimit: 0,
+  });
+  const detailRewardEntry = overview.cardRewards.find((entry) => entry.membershipId === membership.id);
+  const detailReward = detailRewardEntry?.nextReward ?? overview.nextReward;
 
   const [cardBase] = await attachPublishedTemplates([
     {
@@ -57,8 +65,8 @@ export async function GET(req: Request) {
       logoUrl: membership.merchant.logoUrl,
       primaryColor: membership.merchant.primaryColor,
       points: membership.points,
-      visitsRequired: programView.progressTarget,
-      rewardLabel: programView.rewards[0]?.name ?? "Avantage",
+      visitsRequired: detailReward?.progressTarget ?? programView.progressTarget,
+      rewardLabel: detailReward?.rewardName ?? "Avantage",
       loyaltyMode: loyaltyContext.mode,
     },
   ]);

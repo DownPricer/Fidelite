@@ -6,6 +6,7 @@ import { getActiveMerchantLoyaltyContext } from "@/lib/loyalty-context";
 import { parseGoogleWalletConfig } from "@/lib/google-wallet-appearance";
 import { syncIsActiveFromStatus } from "@/lib/merchant-status";
 import { prisma } from "@/lib/prisma";
+import { thresholdUnitForMode } from "@/lib/loyalty-program";
 import { merchantDeleteSchema, merchantStatusActionSchema, zodErrorMessage } from "@/lib/super-admin-validation";
 import { SessionKind } from "@prisma/client";
 
@@ -81,6 +82,16 @@ export async function GET(
     take: 30,
     include: { actor: { select: { firstName: true, email: true } } },
   });
+  const activeUnit = merchant.program ? thresholdUnitForMode(merchant.program.mode) : null;
+  const activeRewards = merchant.program?.rewards.filter(
+    (reward) => !reward.archivedAt && reward.isActive && reward.thresholdUnit === activeUnit,
+  ) ?? [];
+  const staleRewards = merchant.program?.rewards.filter(
+    (reward) => !reward.archivedAt && reward.thresholdUnit !== activeUnit,
+  ) ?? [];
+  const historicalEntitlementsAvailable = await prisma.customerRewardEntitlement.count({
+    where: { merchantId: id, status: "AVAILABLE", OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] },
+  });
 
   return jsonOk({
     merchant,
@@ -95,6 +106,21 @@ export async function GET(
       scans: merchant._count.caisseGrants,
       auditEntries: merchant._count.auditLogs,
       googleWalletObjects: merchant._count.googleWalletObjects,
+    },
+    loyalty: {
+      mode: merchant.program?.mode ?? null,
+      version: merchant.program?.version ?? null,
+      unit: activeUnit,
+      activeRewardsCount: activeRewards.length,
+      activeRewardsLimit: 10,
+      activeRewards: activeRewards.map((reward) => ({
+        id: reward.id,
+        name: reward.name,
+        threshold: reward.threshold,
+        thresholdUnit: reward.thresholdUnit,
+      })),
+      historicalEntitlementsAvailable,
+      conversionIncomplete: staleRewards.length > 0,
     },
     recentAudit,
   });

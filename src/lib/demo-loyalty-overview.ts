@@ -12,6 +12,8 @@ export const DEMO_LOYALTY_OVERVIEW: CustomerLoyaltyOverview = {
       slug: "fife-life",
       nextReward: buildFifeLifeNextReward(180),
       availableReward: null,
+      currentRewards: [],
+      conservedRewards: [],
       progress: { current: 180, target: 250, percent: 53, unit: "points" },
     },
     {
@@ -35,6 +37,8 @@ export const DEMO_LOYALTY_OVERVIEW: CustomerLoyaltyOverview = {
         mode: "VISITS",
       },
       availableReward: null,
+      currentRewards: [],
+      conservedRewards: [],
       progress: { current: 7, target: 10, percent: 70, unit: "passages" },
     },
     {
@@ -58,6 +62,8 @@ export const DEMO_LOYALTY_OVERVIEW: CustomerLoyaltyOverview = {
         mode: "VISITS",
       },
       availableReward: null,
+      currentRewards: [],
+      conservedRewards: [],
       progress: { current: 7, target: 10, percent: 70, unit: "passages" },
     },
     {
@@ -81,6 +87,8 @@ export const DEMO_LOYALTY_OVERVIEW: CustomerLoyaltyOverview = {
         mode: "VISITS",
       },
       availableReward: null,
+      currentRewards: [],
+      conservedRewards: [],
       progress: { current: 4, target: 8, percent: 50, unit: "passages" },
     },
     {
@@ -104,6 +112,8 @@ export const DEMO_LOYALTY_OVERVIEW: CustomerLoyaltyOverview = {
         mode: "VISITS",
       },
       availableReward: null,
+      currentRewards: [],
+      conservedRewards: [],
       progress: { current: 9, target: 10, percent: 90, unit: "passages" },
     },
   ],

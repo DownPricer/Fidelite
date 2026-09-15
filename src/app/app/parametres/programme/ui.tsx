@@ -214,7 +214,7 @@ export function ProgramConfigurator({ demo = false }: { demo?: boolean }) {
   }
 
   function addReward() {
-    if (rewards.filter((reward) => !reward.archivedAt).length >= 10) {
+    if (rewards.filter(isCurrentReward).length >= 10) {
       setError("Vous avez atteint la limite de 10 avantages pour ce programme.");
       return;
     }
@@ -232,6 +232,14 @@ export function ProgramConfigurator({ demo = false }: { demo?: boolean }) {
         archivedAt: null,
       },
     ]);
+  }
+
+  function unitForMode(value: LoyaltyMode) {
+    return value === "VISITS" || value === "AMOUNT_TIERS" ? "visits" : "points";
+  }
+
+  function isCurrentReward(reward: RewardConfig) {
+    return reward.thresholdUnit === unitForMode(mode) && !reward.archivedAt;
   }
 
   function rewardStatus(reward: RewardConfig) {
@@ -302,12 +310,6 @@ export function ProgramConfigurator({ demo = false }: { demo?: boolean }) {
                 type="button"
                 onClick={() => {
                   setMode(m.id);
-                  setRewards((current) =>
-                    current.map((reward) => ({
-                      ...reward,
-                      thresholdUnit: m.id === "VISITS" || m.id === "AMOUNT_TIERS" ? "visits" : "points",
-                    })),
-                  );
                   markDirty();
                 }}
                 className={cn("program-mode-option", mode === m.id && "program-mode-option-active")}
@@ -330,8 +332,8 @@ export function ProgramConfigurator({ demo = false }: { demo?: boolean }) {
                   templateVersion={templateVersion}
                   fallbackNotice={templateFallbackNotice}
                   points={Number(simBalance) || 320}
-                  visitsRequired={rewards.find((r) => r.isActive)?.threshold ?? 500}
-                  rewardLabel={rewards.find((r) => r.isActive)?.name ?? "Récompense"}
+                  visitsRequired={rewards.find((r) => r.isActive && isCurrentReward(r))?.threshold ?? 500}
+                  rewardLabel={rewards.find((r) => r.isActive && isCurrentReward(r))?.name ?? "Récompense"}
                   cardTemplate={cardTemplate}
                 />
               </div>
@@ -421,14 +423,21 @@ export function ProgramConfigurator({ demo = false }: { demo?: boolean }) {
           <div className="program-step-card space-y-1">
             <h2 className="text-base font-black text-[var(--ink)]">Avantages</h2>
             <p className="text-sm text-[var(--muted-strong)]">
-              {rewards.filter((reward) => !reward.archivedAt).length} / 10 avantages configurés non archivés.
+              {rewards.filter(isCurrentReward).length} / 10 avantages configurés non archivés.
             </p>
+            {rewards.some((reward) => !reward.archivedAt && reward.thresholdUnit !== unitForMode(mode)) ? (
+              <p className="mt-2 rounded-xl border border-amber-300/25 bg-amber-400/10 p-3 text-xs font-semibold text-amber-100">
+                Certains avantages appartiennent à votre ancien programme. Choisissez un équivalent pour terminer leur conversion.
+              </p>
+            ) : null}
           </div>
           {rewards.map((r, i) => (
             <div key={r.id} className="program-step-card space-y-3">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--muted)]">Avantage {i + 1}</p>
+                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--muted)]">
+                    {isCurrentReward(r) ? "Avantage du programme actuel" : "Ancien avantage"} {i + 1}
+                  </p>
                   <p className="mt-1 text-sm font-semibold text-[var(--ink)]">{r.name}</p>
                 </div>
                 <span className={cn(
