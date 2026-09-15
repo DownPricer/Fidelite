@@ -10,6 +10,8 @@ const loyaltyTransactionCreate = vi.fn();
 const walletEventCreate = vi.fn();
 const userUpdate = vi.fn();
 const fifeLifeLedgerCreate = vi.fn();
+const entitlementFindMany = vi.fn();
+const entitlementUpdateMany = vi.fn();
 
 vi.mock("../src/lib/prisma", () => {
   const tx = {
@@ -22,6 +24,10 @@ vi.mock("../src/lib/prisma", () => {
     },
     walletEvent: {
       create: (...args: unknown[]) => walletEventCreate(...args),
+    },
+    customerRewardEntitlement: {
+      findMany: (...args: unknown[]) => entitlementFindMany(...args),
+      updateMany: (...args: unknown[]) => entitlementUpdateMany(...args),
     },
     user: {
       update: (...args: unknown[]) => userUpdate(...args),
@@ -39,7 +45,7 @@ vi.mock("../src/lib/prisma", () => {
 
   return {
     prisma: {
-      $transaction: async (callback: (tx: typeof tx) => Promise<unknown>) => callback(tx),
+      $transaction: async (callback: (client: unknown) => Promise<unknown>) => callback(tx),
       ...tx,
     },
   };
@@ -110,6 +116,8 @@ describe("points Fife Life globaux", () => {
     });
     loyaltyProgramFindUnique.mockResolvedValue(activeProgram);
     merchantCardTemplateFindFirst.mockResolvedValue(null);
+    entitlementFindMany.mockResolvedValue([]);
+    entitlementUpdateMany.mockResolvedValue({ count: 0 });
     customerMembershipFindFirst.mockResolvedValue({
       ...baseMembership,
       points: 3,
@@ -149,6 +157,8 @@ describe("points Fife Life globaux", () => {
     });
     loyaltyProgramFindUnique.mockResolvedValue(activeProgram);
     merchantCardTemplateFindFirst.mockResolvedValue(null);
+    entitlementFindMany.mockResolvedValue([]);
+    entitlementUpdateMany.mockResolvedValue({ count: 0 });
     customerMembershipFindFirst.mockResolvedValue({
       ...baseMembership,
       points: 10,

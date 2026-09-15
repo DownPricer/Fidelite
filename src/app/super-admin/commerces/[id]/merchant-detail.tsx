@@ -325,46 +325,76 @@ export function MerchantDetailPage({ firstName, merchantId }: { firstName: strin
           onConfirm={(file) => uploadWalletMedia(walletCrop.kind, file)}
         />
       ) : null}
-      <div className="mx-auto max-w-6xl space-y-6">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-black text-[var(--ink)]">{merchant?.name ?? "Commerce"}</h1>
-            <p className="text-sm text-[var(--muted-text)]">/{merchant?.slug} · {merchant?.status}</p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Link href={`/super-admin/commerces/${merchantId}/cartes`}>
-              <Button variant="secondary">Cartes</Button>
-            </Link>
-            <Button variant="danger" onClick={() => void action("suspend")}>Suspendre</Button>
-            <Button onClick={() => void action("reactivate")}>Réactiver</Button>
-            <Button variant="secondary" onClick={() => void action("archive")}>Archiver</Button>
+      <div className="mx-auto max-w-7xl space-y-6">
+        <div className="rounded-2xl border border-white/10 bg-white/[0.055] p-4 shadow-[0_22px_70px_rgba(0,0,0,0.22)] backdrop-blur-2xl sm:p-5">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="flex min-w-0 items-center gap-4">
+              <div className="grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-2xl text-xl font-black text-white ring-1 ring-white/20" style={{ backgroundColor: merchant?.primaryColor ?? "#8557ff" }}>
+                {merchant?.logoUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={merchant.logoUrl} alt="" className="h-full w-full object-cover" />
+                ) : merchant?.name?.slice(0, 1) ?? "C"}
+              </div>
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h1 className="truncate text-2xl font-black text-[var(--ink)]">{merchant?.name ?? "Commerce"}</h1>
+                  <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[10px] font-black uppercase text-[var(--muted-text)]">
+                    {merchant?.status ?? "—"}
+                  </span>
+                </div>
+                <p className="mt-1 truncate text-sm text-[var(--muted-text)]">/{merchant?.slug ?? "slug"}</p>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button variant="secondary" disabled>Modifier</Button>
+              <Link href={`/super-admin/commerces/${merchantId}/cartes`}>
+                <Button variant="secondary">Gérer mes cartes</Button>
+              </Link>
+              <details className="relative">
+                <summary className="inline-flex h-full cursor-pointer list-none items-center rounded-xl border border-[var(--stroke)] bg-[var(--surface-raised)] px-4 py-3 text-sm font-bold text-[var(--ink-soft)] [&::-webkit-details-marker]:hidden">
+                  Actions
+                </summary>
+                <div className="absolute right-0 z-20 mt-2 w-44 rounded-2xl border border-white/10 bg-[#171225] p-2 text-xs shadow-2xl">
+                  <button type="button" className="block w-full rounded-xl px-3 py-2 text-left text-[var(--danger)] hover:bg-white/5" onClick={() => void action("suspend")}>Suspendre</button>
+                  <button type="button" className="block w-full rounded-xl px-3 py-2 text-left hover:bg-white/5" onClick={() => void action("reactivate")}>Réactiver</button>
+                  <button type="button" className="block w-full rounded-xl px-3 py-2 text-left hover:bg-white/5" onClick={() => void action("archive")}>Archiver</button>
+                </div>
+              </details>
+            </div>
           </div>
         </div>
 
         {error ? <Alert>{error}</Alert> : null}
         {!merchant ? <p className="text-sm text-[var(--muted-text)]">Chargement…</p> : (
+          <div className="space-y-4">
+            <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+              <Card className="p-4"><p className="text-xs text-[var(--muted-text)]">Programme actif</p><p className="mt-1 text-sm font-black">{merchant.program?.mode ?? "—"}</p></Card>
+              <Card className="p-4"><p className="text-xs text-[var(--muted-text)]">Clients</p><p className="mt-1 text-sm font-black">{data.stats.customers}</p></Card>
+              <Card className="p-4"><p className="text-xs text-[var(--muted-text)]">Employés</p><p className="mt-1 text-sm font-black">{data.stats.employees ?? "—"}</p></Card>
+              <Card className="p-4"><p className="text-xs text-[var(--muted-text)]">Cartes publiées</p><p className="mt-1 text-sm font-black">{data.stats.publishedCardTemplates ?? merchant.cardTemplates?.filter((item: any) => item.status === "PUBLISHED").length ?? "—"}</p></Card>
+              <Card className="p-4"><p className="text-xs text-[var(--muted-text)]">Google Wallet</p><p className="mt-1 text-sm font-black">{walletClass?.syncStatus ?? "—"}</p></Card>
+              <Card className="p-4"><p className="text-xs text-[var(--muted-text)]">Abonnement</p><p className="mt-1 text-sm font-black">{merchant.subscription?.plan ?? "—"}</p></Card>
+            </section>
+
           <div className="grid gap-4 lg:grid-cols-2">
             <Card className="p-5 space-y-2 text-sm">
-              <h2 className="font-bold">Informations publiques</h2>
+              <h2 className="font-bold">Informations du commerce</h2>
               <p>{merchant.shortDescription || merchant.description || "—"}</p>
               <p><strong>Catégorie :</strong> {merchant.category || "—"}</p>
               <p><strong>Visible recherche :</strong> {merchant.visibleInSearch ? "Oui" : "Non"}</p>
-            </Card>
-            <Card className="p-5 space-y-2 text-sm">
-              <h2 className="font-bold">Informations légales</h2>
               <p><strong>Nom légal :</strong> {merchant.legalName || "—"}</p>
               <p><strong>Responsable :</strong> {merchant.ownerName || "—"}</p>
               <p><strong>Adresse :</strong> {[merchant.addressLine1, merchant.postalCode, merchant.city].filter(Boolean).join(", ") || "—"}</p>
             </Card>
             <Card className="p-5 space-y-2 text-sm">
-              <h2 className="font-bold">Programme actif</h2>
+              <h2 className="font-bold">Programme et avantages</h2>
               <p><strong>Mode :</strong> {merchant.program?.mode}</p>
               <p><strong>Récompense :</strong> {merchant.program?.rewardLabel}</p>
-              <p><strong>Récompenses configurées :</strong> {merchant.program?.rewards?.length ?? 0}</p>
+              <p><strong>Avantages configurés :</strong> {merchant.program?.rewards?.filter((reward: any) => !reward.archivedAt).length ?? 0}</p>
             </Card>
             <Card className="p-5 space-y-2 text-sm">
-              <h2 className="font-bold">Statistiques</h2>
-              <p><strong>Clients :</strong> {data.stats.customers}</p>
+              <h2 className="font-bold">Cartes</h2>
+              <p><strong>Publiées :</strong> {data.stats.publishedCardTemplates ?? merchant.cardTemplates?.filter((item: any) => item.status === "PUBLISHED").length ?? "—"}</p>
               <p><strong>Scans :</strong> {data.stats.scans}</p>
               <p><strong>Transactions :</strong> {data.stats.transactions}</p>
             </Card>
@@ -638,7 +668,7 @@ export function MerchantDetailPage({ firstName, merchantId }: { firstName: strin
               <p><strong>Contrats :</strong> {merchant.contracts?.length ?? 0}</p>
             </Card>
             <Card className="p-5 lg:col-span-2">
-              <h2 className="mb-3 font-bold">Journal d&apos;audit récent</h2>
+              <h2 className="mb-3 font-bold">Actions sensibles et audit récent</h2>
               <div className="max-h-64 overflow-auto text-xs">
                 {(data.recentAudit ?? []).map((log: any) => (
                   <div key={log.id} className="border-b border-white/5 py-2">
@@ -648,6 +678,7 @@ export function MerchantDetailPage({ firstName, merchantId }: { firstName: strin
                 ))}
               </div>
             </Card>
+          </div>
           </div>
         )}
       </div>

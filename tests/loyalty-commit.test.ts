@@ -16,6 +16,9 @@ const membershipUpdate = vi.fn();
 const txCreate = vi.fn();
 const walletEventCreate = vi.fn();
 const merchantMembershipUpdateMany = vi.fn();
+const entitlementFindMany = vi.fn();
+const entitlementUpdate = vi.fn();
+const entitlementUpdateMany = vi.fn();
 
 vi.mock("../src/lib/prisma", () => {
   const tx = {
@@ -36,6 +39,11 @@ vi.mock("../src/lib/prisma", () => {
       create: (...args: unknown[]) => txCreate(...args),
     },
     walletEvent: { create: (...args: unknown[]) => walletEventCreate(...args) },
+    customerRewardEntitlement: {
+      findMany: (...args: unknown[]) => entitlementFindMany(...args),
+      update: (...args: unknown[]) => entitlementUpdate(...args),
+      updateMany: (...args: unknown[]) => entitlementUpdateMany(...args),
+    },
     merchantMembership: { updateMany: (...args: unknown[]) => merchantMembershipUpdateMany(...args) },
     merchant: { findUnique: (...args: unknown[]) => merchantFindUnique(...args) },
     loyaltyProgram: { findUnique: (...args: unknown[]) => loyaltyProgramFindUnique(...args) },
@@ -85,6 +93,9 @@ const program = {
       reuseDelayDays: null,
       globalLimit: null,
       conditions: null,
+      archivedAt: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
     },
   ],
 };
@@ -133,6 +144,9 @@ describe("preview et commit caisse", () => {
     txCreate.mockResolvedValue({ id: "tx1" });
     grantUpdate.mockResolvedValue({ ...grant, earnCommittedAt: new Date() });
     walletEventCreate.mockResolvedValue({ id: "we1" });
+    entitlementFindMany.mockResolvedValue([]);
+    entitlementUpdate.mockResolvedValue({ id: "ent1" });
+    entitlementUpdateMany.mockResolvedValue({ count: 0 });
     merchantMembershipUpdateMany.mockResolvedValue({ count: 1 });
     merchantFindUnique.mockResolvedValue({
       id: "m1",
@@ -227,5 +241,57 @@ describe("preview et commit caisse", () => {
         action: "EARN",
       }),
     ).rejects.toThrow(/expir/);
+  });
+
+  it("utilise un droit acquis conservé sans diminuer le solde du nouveau programme", async () => {
+    entitlementFindMany.mockResolvedValue([
+      {
+        id: "ent1",
+        customerMembershipId: "cm1",
+        merchantId: "m1",
+        originalRewardId: "old-r1",
+        originalRewardName: "10 % de réduction",
+        originalDescription: "Ancien programme",
+        originalMode: "FIXED_POINTS",
+        originalUnit: "points",
+        originalThreshold: 10,
+        historicalBalance: 12,
+        originalProgramId: "old-program",
+        originalProgramVersion: 2,
+        acquiredAt: new Date("2026-09-01"),
+        expiresAt: null,
+        status: "AVAILABLE",
+        redeemedAt: null,
+        ineligibleAt: null,
+        metadata: null,
+        createdAt: new Date("2026-09-01"),
+        updatedAt: new Date("2026-09-01"),
+      },
+    ]);
+
+    const view = await commitLoyaltyTransaction({
+      grantId: "g1",
+      actorUserId: "staff1",
+      merchantId: "m1",
+      action: "REDEEM",
+      rewardId: "entitlement:ent1",
+      idempotencyKey: "historic-redeem-1",
+    });
+
+    expect(view.points).toBe(membership.points);
+    expect(entitlementUpdate).toHaveBeenCalledWith({
+      where: { id: "ent1" },
+      data: { status: "REDEEMED", redeemedAt: expect.any(Date) },
+    });
+    expect(txCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          pointsDelta: 0,
+          balanceBefore: membership.points,
+          balanceAfter: membership.points,
+          metadata: expect.objectContaining({ entitlementId: "ent1", historicalReward: true }),
+        }),
+      }),
+    );
   });
 });

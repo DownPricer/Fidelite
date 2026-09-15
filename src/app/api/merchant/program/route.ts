@@ -2,12 +2,14 @@ import { requireMerchantAdmin, requireMutatingRequest } from "@/lib/api-guard";
 import { writeAudit } from "@/lib/audit";
 import { clientIp, jsonError, jsonOk, readJson, userAgent } from "@/lib/http";
 import { syncGoogleWalletMerchant } from "@/lib/google-wallet";
-import { buildCustomerProgramView, getActiveMerchantLoyaltyContext } from "@/lib/loyalty-context";
-import { programToConfig, rewardFromDb, validateTiers } from "@/lib/loyalty-program";
+import { programToConfig, validateTiers } from "@/lib/loyalty-program";
 import {
-  normalizeResolvedPublishedTemplate,
-  resolvePublishedMerchantCardTemplate,
-} from "@/lib/merchant-card-template-service";
+  REWARD_LIMIT_MESSAGE,
+  assertRewardLimit,
+  modeChangeRequiresRewardDecision,
+  publishLoyaltyProgram,
+  type ModeChangeDecision,
+} from "@/lib/loyalty-program-publication";
 import { logMerchantCardSwitch } from "@/lib/merchant-card-switch-log";
 import { prisma } from "@/lib/prisma";
 import { loyaltyDraftSchema, programSimulateSchema, zodErrorMessage } from "@/lib/validation";
@@ -27,7 +29,7 @@ export async function GET(req: Request) {
   const program = await loadProgram(staff.membership.merchantId);
   if (!program) return jsonError("Programme introuvable.", 404);
 
-  const active = programToConfig(program);
+  const active = programToConfig(program, { activeOnly: false, filterByMode: false });
   const draftRaw = program.draftConfig as { mode?: LoyaltyMode; rules?: Record<string, unknown>; rewards?: unknown[] } | null;
   const draft = draftRaw
     ? {
@@ -73,6 +75,11 @@ export async function PUT(req: Request) {
     const tiers = (parsed.data.rules.amountTiers as { minAmount: number; maxAmount: number | null; earnValue: number; id: string }[]) ?? [];
     const err = validateTiers(tiers);
     if (err) return jsonError(err);
+  }
+  try {
+    assertRewardLimit(parsed.data.rewards);
+  } catch (error) {
+    return jsonError(error instanceof Error ? error.message : REWARD_LIMIT_MESSAGE, 400);
   }
 
   await prisma.loyaltyProgram.update({
@@ -142,6 +149,7 @@ export async function POST(req: Request) {
       maxUsesPerCustomer?: number | null;
       reuseDelayDays?: number | null;
       globalLimit?: number | null;
+      archivedAt?: string | null;
     }>;
   } | null;
 
@@ -149,12 +157,12 @@ export async function POST(req: Request) {
 
   const merchantId = staff.membership.merchantId;
   const body = await readJson(req).catch(() => ({}));
-  const confirmImpact = (body as { confirmImpact?: boolean }).confirmImpact;
+  const decision = (body as { modeChangeDecision?: ModeChangeDecision }).modeChangeDecision;
   const modeChanged = draft.mode !== program.mode;
   logMerchantCardSwitch("mode sélectionné", { merchantId, mode: draft.mode });
   logMerchantCardSwitch("mode actif en base", { merchantId, mode: program.mode });
 
-  if (modeChanged && !confirmImpact) {
+  if (modeChangeRequiresRewardDecision(program.mode, draft.mode) && !decision) {
     const [customers, sum] = await Promise.all([
       prisma.customerMembership.count({ where: { merchantId: staff.membership.merchantId, points: { gt: 0 } } }),
       prisma.customerMembership.aggregate({
@@ -164,131 +172,72 @@ export async function POST(req: Request) {
     ]);
     return jsonOk({
       requiresConfirmation: true,
+      requiresRewardDecision: true,
       impact: {
         customersWithBalance: customers,
         totalPoints: sum._sum.points ?? 0,
         previousMode: program.mode,
         newMode: draft.mode,
-        message:
-          "Changer de mode de fidélité n'efface pas les soldes existants. Confirmez pour publier la nouvelle règle pour les prochaines transactions.",
+        message: "Que souhaitez-vous faire des avantages actuels ?",
       },
     });
   }
 
-  const nextVersion = program.version + 1;
-  const firstReward = draft.rewards[0];
-
   const merchant = await prisma.merchant.findUnique({
     where: { id: merchantId },
-    select: { slug: true, name: true },
+    select: { id: true, slug: true, name: true },
   });
+  const normalizeDraftRewards = (rewards: typeof draft.rewards) =>
+    rewards.map((reward) => ({
+      ...reward,
+      rewardType: reward.rewardType ?? "CUSTOM",
+      isActive: reward.isActive ?? true,
+      sortOrder: reward.sortOrder ?? 0,
+      description: reward.description ?? null,
+      value: reward.value ?? null,
+      minPurchase: reward.minPurchase ?? null,
+      maxDiscount: reward.maxDiscount ?? null,
+      validFrom: reward.validFrom ?? null,
+      validUntil: reward.validUntil ?? null,
+      maxUsesPerCustomer: reward.maxUsesPerCustomer ?? null,
+      reuseDelayDays: reward.reuseDelayDays ?? null,
+      globalLimit: reward.globalLimit ?? null,
+      archivedAt: reward.archivedAt ?? null,
+      iconUrl: null,
+      conditions: null,
+    }));
+  const publicationDraft = {
+    ...draft,
+    rewards: normalizeDraftRewards(draft.rewards),
+  };
+  const publicationDecision =
+    decision?.action === "CONVERT"
+      ? { action: "CONVERT" as const, rewards: normalizeDraftRewards(decision.rewards as typeof draft.rewards) }
+      : decision;
 
-  await prisma.$transaction(async (tx) => {
-    await tx.loyaltyProgram.update({
-      where: { id: program.id },
-      data: {
-        mode: draft.mode,
-        config: draft.rules as Prisma.InputJsonValue,
-        draftConfig: Prisma.JsonNull,
-        status: "ACTIVE",
-        version: nextVersion,
-        publishedAt: new Date(),
-        visitsRequired: firstReward?.threshold ?? program.visitsRequired,
-        rewardLabel: firstReward?.name ?? program.rewardLabel,
-      },
-    });
-
-    await tx.loyaltyReward.deleteMany({ where: { programId: program.id } });
-    for (const [i, r] of draft.rewards.entries()) {
-      await tx.loyaltyReward.create({
-        data: {
-          programId: program.id,
-          name: r.name,
-          description: r.description,
-          rewardType: (r.rewardType as "CUSTOM") ?? "CUSTOM",
-          threshold: r.threshold,
-          thresholdUnit: r.thresholdUnit,
-          value: r.value,
-          minPurchase: r.minPurchase,
-          maxDiscount: r.maxDiscount,
-          isActive: r.isActive ?? true,
-          sortOrder: r.sortOrder ?? i,
-          validFrom: r.validFrom ? new Date(r.validFrom) : null,
-          validUntil: r.validUntil ? new Date(r.validUntil) : null,
-          maxUsesPerCustomer: r.maxUsesPerCustomer,
-          reuseDelayDays: r.reuseDelayDays,
-          globalLimit: r.globalLimit,
-        },
-      });
-    }
-
-    const fresh = await tx.loyaltyProgram.findUnique({
-      where: { id: program.id },
-      include: { rewards: true },
-    });
-
-    await tx.loyaltyProgramVersion.create({
-      data: {
-        programId: program.id,
-        version: nextVersion,
-        mode: draft.mode,
-        config: draft.rules as Prisma.InputJsonValue,
-        rewards: (fresh?.rewards.map(rewardFromDb) ?? []) as Prisma.InputJsonValue,
-        publishedBy: staff.user!.id,
-      },
-    });
-
-    if (merchant) {
-      const loyaltyContext = await getActiveMerchantLoyaltyContext(merchantId, tx);
-      const publishedCardTemplate = await resolvePublishedMerchantCardTemplate(
-        merchantId,
-        draft.mode,
+  let published: Awaited<ReturnType<typeof publishLoyaltyProgram>>;
+  try {
+    published = await prisma.$transaction((tx) =>
+      publishLoyaltyProgram({
         tx,
-      );
-      const cardTemplatePayload = normalizeResolvedPublishedTemplate(publishedCardTemplate);
-      logMerchantCardSwitch(modeChanged ? "mode publié" : "programme publié", {
-        merchantId,
-        mode: draft.mode,
-        templateId: publishedCardTemplate?.id ?? null,
-        templateVersion: publishedCardTemplate?.version ?? null,
-        usedFallback: publishedCardTemplate?.usedFallback ?? false,
-        cardSlot: publishedCardTemplate?.cardSlot,
-      });
+        program,
+        merchant,
+        draft: publicationDraft,
+        actorId: staff.user!.id,
+        decision: publicationDecision,
+      }),
+    );
+  } catch (error) {
+    return jsonError(error instanceof Error ? error.message : "Publication impossible.", 400);
+  }
 
-      const memberships = await tx.customerMembership.findMany({
-        where: { merchantId, removedAt: null },
-        select: { id: true, userId: true, points: true },
-      });
-      for (const membership of memberships) {
-        const programView = loyaltyContext
-          ? buildCustomerProgramView(loyaltyContext, membership.points)
-          : null;
-        await tx.walletEvent.create({
-          data: {
-            userId: membership.userId,
-            merchantId,
-            customerMembershipId: membership.id,
-            type: "MERCHANT_CARD_UPDATED",
-            payload: {
-              slug: merchant.slug,
-              merchantName: merchant.name,
-              loyaltyMode: draft.mode,
-              programVersion: nextVersion,
-              points: membership.points,
-              visitsRequired: programView?.progressTarget ?? firstReward?.threshold ?? program.visitsRequired,
-              rewardLabel: programView?.rewards[0]?.name ?? firstReward?.name ?? program.rewardLabel,
-              programTitle: programView?.programTitle ?? null,
-              programDescription: programView?.programDescription ?? null,
-              minimumPurchaseLabel: programView?.minimumPurchaseLabel ?? null,
-              templateId: publishedCardTemplate?.id ?? null,
-              templateVersion: publishedCardTemplate?.version ?? null,
-              usedFallback: publishedCardTemplate?.usedFallback ?? false,
-              cardTemplate: cardTemplatePayload,
-            },
-          },
-        });
-      }
-    }
+  if (published.requiresRewardDecision) {
+    return jsonOk({ requiresConfirmation: true, requiresRewardDecision: true });
+  }
+
+  logMerchantCardSwitch(modeChanged ? "mode publié" : "programme publié", {
+    merchantId,
+    mode: draft.mode,
   });
 
   const activeProgram = await loadProgram(merchantId);
@@ -304,7 +253,13 @@ export async function POST(req: Request) {
     actorId: staff.user.id,
     merchantId: staff.membership.merchantId,
     action: "LOYALTY_PROGRAM_PUBLISH",
-    metadata: { version: nextVersion, mode: draft.mode },
+    metadata: {
+      version: published.version,
+      mode: draft.mode,
+      modeChanged,
+      modeChangeDecision: decision?.action ?? null,
+      entitlementsCreated: published.entitlementCount,
+    },
     ip: clientIp(req),
     userAgent: userAgent(req),
   });
@@ -316,8 +271,9 @@ export async function POST(req: Request) {
   return jsonOk({
     ok: true,
     published: true,
-    version: nextVersion,
+    version: published.version,
     activeMode: activeProgram.mode,
     modeChanged,
+    entitlementsCreated: published.entitlementCount,
   });
 }

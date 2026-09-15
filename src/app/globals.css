@@ -2472,6 +2472,20 @@ body:has(.wallet-shell) {
     --wallet-spread: clamp(34px, 2.5vw, 42px);
   }
 
+  .fife-deck-scene,
+  .fife-deck-scene .deck-stage,
+  .fife-deck-scene .deck-card-layer,
+  .fife-deck-scene .deck-card-slot,
+  .fife-deck-scene .interactive-card-shell,
+  .fife-deck-scene .interactive-card-depth,
+  .fife-deck-scene .loyalty-card-shell,
+  .fife-deck-scene .merchant-card-renderer-shell,
+  .fife-deck-scene .merchant-card-renderer {
+    width: var(--wallet-card-width) !important;
+    max-width: var(--wallet-card-width) !important;
+    height: var(--wallet-card-height) !important;
+  }
+
   .wallet-page-body {
     display: grid;
     grid-template-columns: minmax(0, 1.6fr) minmax(340px, 0.9fr);

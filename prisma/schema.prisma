@@ -158,6 +158,13 @@ enum GoogleWalletSyncStatus {
   DISABLED
 }
 
+enum CustomerRewardEntitlementStatus {
+  AVAILABLE
+  REDEEMED
+  EXPIRED
+  INELIGIBLE
+}
+
 model User {
   id                 String       @id @default(cuid())
   email              String       @unique
@@ -288,6 +295,7 @@ model Merchant {
   caisseGrants        CaisseGrant[]
   walletEvents        WalletEvent[]
   cardTemplates       MerchantCardTemplate[]
+  rewardEntitlements  CustomerRewardEntitlement[]
   subscription        MerchantSubscription?
   contracts           MerchantContract[]
   payments            MerchantPayment[]
@@ -373,12 +381,15 @@ model LoyaltyReward {
   reuseDelayDays     Int?
   globalLimit        Int?
   conditions         Json?
+  archivedAt         DateTime?
   program            LoyaltyProgram       @relation(fields: [programId], references: [id], onDelete: Cascade)
   transactions       LoyaltyTransaction[]
+  entitlements        CustomerRewardEntitlement[]
   createdAt          DateTime             @default(now())
   updatedAt          DateTime             @updatedAt
 
   @@index([programId, sortOrder])
+  @@index([programId, archivedAt])
 }
 
 model LoyaltyProgramVersion {
@@ -412,9 +423,41 @@ model CustomerMembership {
   caisseGrants         CaisseGrant[]
   walletEvents         WalletEvent[]
   googleWalletObject   GoogleWalletObject?
+  rewardEntitlements   CustomerRewardEntitlement[]
 
   @@unique([userId, merchantId])
   @@index([merchantId])
+}
+
+model CustomerRewardEntitlement {
+  id                    String                          @id @default(cuid())
+  customerMembershipId  String
+  merchantId            String
+  originalRewardId      String?
+  originalRewardName    String
+  originalDescription   String?
+  originalMode          LoyaltyMode
+  originalUnit          String
+  originalThreshold     Int
+  historicalBalance     Int
+  originalProgramId     String
+  originalProgramVersion Int
+  acquiredAt            DateTime
+  expiresAt             DateTime?
+  status                CustomerRewardEntitlementStatus @default(AVAILABLE)
+  redeemedAt            DateTime?
+  ineligibleAt          DateTime?
+  metadata              Json?
+  createdAt             DateTime                        @default(now())
+  updatedAt             DateTime                        @updatedAt
+
+  membership            CustomerMembership              @relation(fields: [customerMembershipId], references: [id], onDelete: Cascade)
+  merchant              Merchant                        @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  originalReward        LoyaltyReward?                  @relation(fields: [originalRewardId], references: [id], onDelete: SetNull)
+
+  @@unique([customerMembershipId, originalRewardId, originalProgramVersion])
+  @@index([merchantId, status])
+  @@index([customerMembershipId, status])
 }
 
 model LoyaltyTransaction {

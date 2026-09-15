@@ -30,6 +30,7 @@ export type CustomerMerchantRewardProgress = {
   unit: LoyaltyUnit;
   nextTarget: MerchantRewardProgressTarget | null;
   availableRewards: EvaluatedReward[];
+  conservedRewards?: EvaluatedReward[];
   upcomingRewards: EvaluatedReward[];
   laterRewards: EvaluatedReward[];
 };

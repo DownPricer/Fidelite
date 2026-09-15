@@ -76,6 +76,7 @@ export function MerchantRewardProgressPanel({
 
   const target = progress?.nextTarget ?? null;
   const available = progress?.availableRewards ?? [];
+  const conserved = progress?.conservedRewards ?? [];
   const upcoming = progress?.upcomingRewards ?? [];
   const later = progress?.laterRewards ?? [];
 
@@ -100,7 +101,7 @@ export function MerchantRewardProgressPanel({
         {available.length > 0 ? (
           <div className="mt-5 border-t border-white/8 pt-4">
             <h3 className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--muted)]">
-              Mes récompenses disponibles
+              Disponible maintenant
             </h3>
             <ul className="mt-3 space-y-3">
               {available.map((reward) => (
@@ -140,7 +141,7 @@ export function MerchantRewardProgressPanel({
 
         {(upcoming.length > 0 || later.length > 0) && target ? (
           <div className="mt-4 space-y-2 border-t border-white/8 pt-4">
-            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--muted)]">Prochains paliers</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--muted)]">Avantages suivants</p>
             <ul className="space-y-2">
               {[...upcoming, ...later]
                 .filter((reward) => reward.id !== target.id)
@@ -151,6 +152,38 @@ export function MerchantRewardProgressPanel({
                     <span className="shrink-0 tabular-nums">{reward.costLabel}</span>
                   </li>
                 ))}
+            </ul>
+          </div>
+        ) : null}
+
+        {conserved.length > 0 ? (
+          <div className="mt-4 border-t border-white/8 pt-4">
+            <h3 className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--muted)]">
+              Ancien avantage conservé
+            </h3>
+            <ul className="mt-3 space-y-3">
+              {conserved.map((reward) => (
+                <li key={reward.id} className="rounded-2xl border border-white/10 bg-white/[0.025] p-3">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">
+                    Avantage conservé de votre ancien programme
+                  </p>
+                  <p className="mt-1 text-sm font-semibold text-[var(--ink)]">{reward.name}</p>
+                  {reward.description ? (
+                    <p className="mt-1 text-xs text-[var(--muted-strong)]">{reward.description}</p>
+                  ) : null}
+                  <p className="mt-1 text-[11px] text-[var(--muted)]">{reward.costLabel}</p>
+                  {reward.expiresLabel ? (
+                    <p className="mt-0.5 text-[11px] text-[var(--muted)]">{reward.expiresLabel}</p>
+                  ) : null}
+                  <button
+                    type="button"
+                    className="reward-use-btn mt-3 w-full rounded-xl px-4 py-3 text-sm font-semibold text-[var(--ink)]"
+                    onClick={() => setSheetReward(reward)}
+                  >
+                    Utiliser cet avantage
+                  </button>
+                </li>
+              ))}
             </ul>
           </div>
         ) : null}

@@ -4,6 +4,11 @@ import { evaluateCustomerRewards } from "./loyalty-commit";
 import { formatUnitCount, loyaltyUnitForMode, type LoyaltyUnit } from "./loyalty-labels";
 import { nextReward, programToConfig } from "./loyalty-program";
 import { prisma } from "./prisma";
+import {
+  entitlementToEvaluatedReward,
+  listAvailableRewardEntitlements,
+  markExpiredRewardEntitlements,
+} from "./reward-entitlements";
 import type { EvaluatedReward } from "./loyalty-rewards";
 import {
   REWARD_ALMOST_THRESHOLD_PERCENT,
@@ -140,6 +145,10 @@ export async function getCustomerMerchantRewardProgress(input: {
     (reward) => reward.status === "Bientôt disponible" || reward.status === "En attente",
   );
   const laterRewards = locked.filter((reward) => !upcomingRewards.some((row) => row.id === reward.id));
+  await markExpiredRewardEntitlements(prisma, { customerMembershipId: membership.id });
+  const conservedRewards = (
+    await listAvailableRewardEntitlements(prisma, { customerMembershipId: membership.id })
+  ).map((entitlement) => entitlementToEvaluatedReward(entitlement, membership.merchant.name));
 
   return {
     merchantId: membership.merchant.id,
@@ -150,6 +159,7 @@ export async function getCustomerMerchantRewardProgress(input: {
     unit,
     nextTarget,
     availableRewards,
+    conservedRewards,
     upcomingRewards,
     laterRewards,
   };

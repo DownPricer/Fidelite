@@ -30,6 +30,11 @@ import {
   type EvaluatedReward,
   type RewardUsage,
 } from "./loyalty-rewards";
+import {
+  entitlementToEvaluatedReward,
+  listAvailableRewardEntitlements,
+  markExpiredRewardEntitlements,
+} from "./reward-entitlements";
 import { formatEurosFromCents, purchaseAmountCentsFromUnknown } from "./money";
 import { prisma } from "./prisma";
 
@@ -223,6 +228,11 @@ export async function evaluateCustomerRewards(input: {
       }),
     );
   }
+  await markExpiredRewardEntitlements(db, { customerMembershipId: input.customerMembershipId, now });
+  const entitlements = await listAvailableRewardEntitlements(db, {
+    customerMembershipId: input.customerMembershipId,
+  });
+  evaluated.push(...entitlements.map((entitlement) => entitlementToEvaluatedReward(entitlement, input.merchantName)));
   return sortEvaluatedRewards(evaluated);
 }
 
@@ -706,21 +716,74 @@ export async function commitLoyaltyTransaction(input: {
 
     let persisted;
     try {
-      persisted = await applyLoyaltyAction({
-        tx,
-        membershipId: membership.id,
-        merchantId: input.merchantId,
-        actorId: input.actorUserId,
-        type: LoyaltyTxType.REDEEM_REWARD,
-        rewardId: preview.redeem.rewardId,
-        purchaseAmountCents: cents,
-        idempotencyKey: input.idempotencyKey,
-        ruleApplied: `Utilisation de « ${preview.redeem.rewardName} »`,
-        precomputedDelta: -preview.redeem.cost,
-        reason: `Utilisation de « ${preview.redeem.rewardName} »`,
-        ip: input.ip,
-        userAgent: input.userAgent,
-      });
+      if (preview.redeem.rewardId.startsWith("entitlement:")) {
+        const entitlementId = preview.redeem.rewardId.slice("entitlement:".length);
+        const loyaltyTx = await tx.loyaltyTransaction.create({
+          data: {
+            customerMembershipId: membership.id,
+            merchantId: input.merchantId,
+            type: LoyaltyTxType.REDEEM_REWARD,
+            pointsDelta: 0,
+            purchaseAmount: cents !== undefined ? cents / 100 : null,
+            purchaseAmountCents: cents ?? null,
+            balanceBefore: membership.points,
+            balanceAfter: membership.points,
+            ruleApplied: `Utilisation de « ${preview.redeem.rewardName} »`,
+            idempotencyKey: input.idempotencyKey,
+            reason: `Utilisation de « ${preview.redeem.rewardName} »`,
+            rewardId: null,
+            programVersion: program.version,
+            performedByUserId: input.actorUserId,
+            metadata: {
+              entitlementId,
+              historicalReward: true,
+              mode: program.mode,
+              programVersion: program.version,
+            },
+          },
+        });
+        await tx.customerRewardEntitlement.update({
+          where: { id: entitlementId },
+          data: { status: "REDEEMED", redeemedAt: new Date() },
+        });
+        await tx.walletEvent.create({
+          data: {
+            userId: membership.userId,
+            merchantId: input.merchantId,
+            customerMembershipId: membership.id,
+            type: "REWARD_REDEEMED",
+            payload: {
+              txId: loyaltyTx.id,
+              rewardLabel: preview.redeem.rewardName,
+              historicalReward: true,
+              points: membership.points,
+              merchantName: membership.merchant.name,
+              merchantSlug: membership.merchant.slug,
+              refreshOnly: true,
+            },
+          },
+        });
+        persisted = {
+          points: membership.points,
+          previousPoints: membership.points,
+        };
+      } else {
+        persisted = await applyLoyaltyAction({
+          tx,
+          membershipId: membership.id,
+          merchantId: input.merchantId,
+          actorId: input.actorUserId,
+          type: LoyaltyTxType.REDEEM_REWARD,
+          rewardId: preview.redeem.rewardId,
+          purchaseAmountCents: cents,
+          idempotencyKey: input.idempotencyKey,
+          ruleApplied: `Utilisation de « ${preview.redeem.rewardName} »`,
+          precomputedDelta: -preview.redeem.cost,
+          reason: `Utilisation de « ${preview.redeem.rewardName} »`,
+          ip: input.ip,
+          userAgent: input.userAgent,
+        });
+      }
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
         throw new LoyaltyError("Cette validation a déjà été enregistrée.");

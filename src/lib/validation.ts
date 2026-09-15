@@ -204,6 +204,7 @@ export const loyaltyDraftSchema = z.object({
       maxUsesPerCustomer: z.number().int().optional().nullable(),
       reuseDelayDays: z.number().int().optional().nullable(),
       globalLimit: z.number().int().optional().nullable(),
+      archivedAt: z.string().optional().nullable(),
     }),
   ),
   confirmImpact: z.boolean().optional(),

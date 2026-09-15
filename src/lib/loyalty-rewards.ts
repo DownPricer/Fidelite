@@ -26,6 +26,7 @@ export type RewardUsage = {
 
 export type EvaluatedReward = {
   id: string;
+  source?: "ACTIVE_PROGRAM" | "ENTITLEMENT";
   name: string;
   description: string | null;
   cost: number;
@@ -114,6 +115,7 @@ export function evaluateReward(input: {
 
   const base = {
     id: reward.id,
+    source: "ACTIVE_PROGRAM" as const,
     name: reward.name,
     description: reward.description ?? null,
     cost: reward.threshold,

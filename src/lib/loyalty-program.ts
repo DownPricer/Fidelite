@@ -55,6 +55,7 @@ export type RewardConfig = {
   maxUsesPerCustomer?: number | null;
   reuseDelayDays?: number | null;
   globalLimit?: number | null;
+  archivedAt?: string | null;
   conditions?: {
     stackable?: boolean;
     earnOnRedeem?: boolean;
@@ -144,6 +145,7 @@ export function rewardFromDb(r: LoyaltyReward): RewardConfig {
     maxUsesPerCustomer: r.maxUsesPerCustomer,
     reuseDelayDays: r.reuseDelayDays,
     globalLimit: r.globalLimit,
+    archivedAt: r.archivedAt?.toISOString() ?? null,
     conditions: parseRewardConditionsField(r.conditions),
   };
 }
@@ -166,6 +168,7 @@ export function rewardsForProgramMode(
   return rewards
     .filter((reward) => {
       if (options?.activeOnly !== false && !reward.isActive) return false;
+      if (reward.archivedAt) return false;
       return normalizeThresholdUnit(reward.thresholdUnit) === thresholdUnit;
     })
     .sort((a, b) => a.sortOrder - b.sortOrder)

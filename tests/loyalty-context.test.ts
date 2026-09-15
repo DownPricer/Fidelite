@@ -48,6 +48,9 @@ function mockProgram(mode: LoyaltyMode, rewards: Partial<LoyaltyReward>[]): Loya
       reuseDelayDays: null,
       globalLimit: null,
       conditions: null,
+      archivedAt: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
     })),
   };
 }

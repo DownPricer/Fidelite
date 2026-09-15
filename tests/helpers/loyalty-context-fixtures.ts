@@ -35,6 +35,7 @@ export function mockLoyaltyProgram(
     reuseDelayDays: null,
     globalLimit: null,
     conditions: null,
+    archivedAt: null,
     createdAt: now,
     updatedAt: now,
   }));

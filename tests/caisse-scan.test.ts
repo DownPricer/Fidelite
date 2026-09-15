@@ -12,6 +12,8 @@ const customerMembershipUpdate = vi.fn();
 const caisseGrantCreate = vi.fn();
 const walletEventCreate = vi.fn();
 const merchantCardTemplateFindFirst = vi.fn();
+const entitlementFindMany = vi.fn();
+const entitlementUpdateMany = vi.fn();
 
 vi.mock("../src/lib/prisma", () => {
   const tx = {
@@ -40,6 +42,10 @@ vi.mock("../src/lib/prisma", () => {
     merchantCardTemplate: {
       findFirst: (...args: unknown[]) => merchantCardTemplateFindFirst(...args),
     },
+    customerRewardEntitlement: {
+      findMany: (...args: unknown[]) => entitlementFindMany(...args),
+      updateMany: (...args: unknown[]) => entitlementUpdateMany(...args),
+    },
     loyaltyTransaction: {
       count: vi.fn(async () => 0),
       findFirst: vi.fn(async () => null),
@@ -48,7 +54,7 @@ vi.mock("../src/lib/prisma", () => {
 
   return {
     prisma: {
-      $transaction: async (callback: (tx: typeof tx) => Promise<unknown>) => callback(tx),
+      $transaction: async (callback: (client: unknown) => Promise<unknown>) => callback(tx),
       ...tx,
     },
   };
@@ -78,6 +84,8 @@ const membership = {
 describe("processCaisseScan — QR global Fife Life", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    entitlementFindMany.mockResolvedValue([]);
+    entitlementUpdateMany.mockResolvedValue({ count: 0 });
     fifeLifeQrTokenFindUnique.mockResolvedValue({
       id: qrGlobalId,
       jti,
@@ -143,6 +151,9 @@ describe("processCaisseScan — QR global Fife Life", () => {
           reuseDelayDays: null,
           globalLimit: null,
           conditions: null,
+          archivedAt: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
         },
       ],
     });

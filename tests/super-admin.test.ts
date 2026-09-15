@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import {
   CARD_ASPECT_RATIO,
   CARD_SCHEMA_VERSION,
@@ -95,5 +97,13 @@ describe("gabarits de carte", () => {
         elements: [{ ...config.elements[0], x: 1.5 }],
       }),
     ).toThrow();
+  });
+});
+
+describe("navigation cartes super-admin", () => {
+  it("dirige le bouton général vers la galerie cartes du commerce", () => {
+    const source = readFileSync(join(process.cwd(), "src/app/super-admin/cartes/cards-index.tsx"), "utf8");
+    expect(source).toContain("/super-admin/commerces/${merchant.id}/cartes");
+    expect(source).not.toContain("/super-admin/cartes/${merchant.id}/visits/editeur");
   });
 });

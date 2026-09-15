@@ -30,6 +30,7 @@ const DEMO_CONFIG: ProgramConfig = {
 export function ProgramConfigurator({ demo = false }: { demo?: boolean }) {
   const [step, setStep] = useState(0);
   const [mode, setMode] = useState<LoyaltyMode>("VISITS");
+  const [activeMode, setActiveMode] = useState<LoyaltyMode>("VISITS");
   const [rules, setRules] = useState<ProgramRules>(DEFAULT_RULES.VISITS);
   const [rewards, setRewards] = useState<RewardConfig[]>([]);
   const [status, setStatus] = useState("ACTIVE");
@@ -40,6 +41,7 @@ export function ProgramConfigurator({ demo = false }: { demo?: boolean }) {
   const [simBalance, setSimBalance] = useState("480");
   const [simResult, setSimResult] = useState<string | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [modeDecision, setModeDecision] = useState<"ARCHIVE_OLD" | "CONVERT">("ARCHIVE_OLD");
   const [cardTemplate, setCardTemplate] = useState<MerchantCardData["cardTemplate"]>(null);
   const [templateVersion, setTemplateVersion] = useState<number | null>(null);
   const [templateFallbackNotice, setTemplateFallbackNotice] = useState<string | null>(null);
@@ -94,6 +96,7 @@ export function ProgramConfigurator({ demo = false }: { demo?: boolean }) {
     if (!programRes.ok) return;
     const src = data.draft ?? data.active;
     setMode(src.mode);
+    setActiveMode(data.active.mode);
     setRules(src.rules);
     setRewards(src.rewards);
     setStatus(data.status);
@@ -127,6 +130,10 @@ export function ProgramConfigurator({ demo = false }: { demo?: boolean }) {
   }
 
   async function saveDraft() {
+    if (rewards.filter((reward) => !reward.archivedAt).length > 10) {
+      setError("Vous avez atteint la limite de 10 avantages pour ce programme.");
+      return;
+    }
     if (demo) {
       setOk("Brouillon enregistré (démo).");
       setDirty(false);
@@ -180,7 +187,16 @@ export function ProgramConfigurator({ demo = false }: { demo?: boolean }) {
     const res = await fetch("/api/merchant/program?action=publish", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ confirmImpact: confirmed }),
+      body: JSON.stringify(
+        confirmed
+          ? {
+              modeChangeDecision:
+                modeDecision === "CONVERT"
+                  ? { action: "CONVERT", rewards: rewards.filter((reward) => !reward.archivedAt) }
+                  : { action: "ARCHIVE_OLD" },
+            }
+          : {},
+      ),
     });
     const data = await res.json();
     if (data.requiresConfirmation) {
@@ -198,6 +214,10 @@ export function ProgramConfigurator({ demo = false }: { demo?: boolean }) {
   }
 
   function addReward() {
+    if (rewards.filter((reward) => !reward.archivedAt).length >= 10) {
+      setError("Vous avez atteint la limite de 10 avantages pour ce programme.");
+      return;
+    }
     markDirty();
     setRewards((r) => [
       ...r,
@@ -209,8 +229,36 @@ export function ProgramConfigurator({ demo = false }: { demo?: boolean }) {
         rewardType: "CUSTOM",
         isActive: true,
         sortOrder: r.length,
+        archivedAt: null,
       },
     ]);
+  }
+
+  function rewardStatus(reward: RewardConfig) {
+    const now = Date.now();
+    if (reward.archivedAt) return "Archivé";
+    if (!reward.isActive) return "Désactivé";
+    if (reward.validUntil && new Date(reward.validUntil).getTime() < now) return "Expiré";
+    if (reward.validFrom && new Date(reward.validFrom).getTime() > now) return "Futur";
+    return "Actif";
+  }
+
+  function updateReward(index: number, patch: Partial<RewardConfig>) {
+    const next = [...rewards];
+    next[index] = { ...next[index]!, ...patch };
+    setRewards(next);
+    markDirty();
+  }
+
+  function moveReward(index: number, direction: -1 | 1) {
+    const next = [...rewards];
+    const target = index + direction;
+    if (target < 0 || target >= next.length) return;
+    const current = next[index]!;
+    next[index] = next[target]!;
+    next[target] = current;
+    setRewards(next.map((reward, i) => ({ ...reward, sortOrder: i })));
+    markDirty();
   }
 
   return (
@@ -254,6 +302,12 @@ export function ProgramConfigurator({ demo = false }: { demo?: boolean }) {
                 type="button"
                 onClick={() => {
                   setMode(m.id);
+                  setRewards((current) =>
+                    current.map((reward) => ({
+                      ...reward,
+                      thresholdUnit: m.id === "VISITS" || m.id === "AMOUNT_TIERS" ? "visits" : "points",
+                    })),
+                  );
                   markDirty();
                 }}
                 className={cn("program-mode-option", mode === m.id && "program-mode-option-active")}
@@ -364,24 +418,68 @@ export function ProgramConfigurator({ demo = false }: { demo?: boolean }) {
 
       {step === 2 && (
         <div className="space-y-3">
+          <div className="program-step-card space-y-1">
+            <h2 className="text-base font-black text-[var(--ink)]">Avantages</h2>
+            <p className="text-sm text-[var(--muted-strong)]">
+              {rewards.filter((reward) => !reward.archivedAt).length} / 10 avantages configurés non archivés.
+            </p>
+          </div>
           {rewards.map((r, i) => (
-            <div key={r.id} className="program-step-card space-y-2">
-              <Field label="Nom">
-                <Input value={r.name} onChange={(e) => {
-                  const next = [...rewards];
-                  next[i] = { ...r, name: e.target.value };
-                  setRewards(next);
-                  markDirty();
-                }} />
-              </Field>
-              <Field label="Seuil">
-                <Input type="number" value={r.threshold} onChange={(e) => {
-                  const next = [...rewards];
-                  next[i] = { ...r, threshold: Number(e.target.value) };
-                  setRewards(next);
-                  markDirty();
-                }} />
-              </Field>
+            <div key={r.id} className="program-step-card space-y-3">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--muted)]">Avantage {i + 1}</p>
+                  <p className="mt-1 text-sm font-semibold text-[var(--ink)]">{r.name}</p>
+                </div>
+                <span className={cn(
+                  "rounded-full border px-2.5 py-1 text-[10px] font-black uppercase",
+                  rewardStatus(r) === "Actif" ? "border-emerald-300/25 bg-emerald-400/10 text-emerald-100" :
+                  rewardStatus(r) === "Futur" ? "border-violet-300/25 bg-violet-400/10 text-violet-100" :
+                  "border-white/10 bg-white/5 text-[var(--muted)]",
+                )}>{rewardStatus(r)}</span>
+              </div>
+              <div className="grid gap-3 md:grid-cols-2">
+                <Field label="Nom">
+                  <Input value={r.name} onChange={(e) => updateReward(i, { name: e.target.value })} />
+                </Field>
+                <Field label={`Seuil (${r.thresholdUnit === "points" ? "points" : "passages"})`}>
+                  <Input type="number" min={1} value={r.threshold} onChange={(e) => updateReward(i, { threshold: Number(e.target.value) })} />
+                </Field>
+                <Field label="Description">
+                  <Input value={r.description ?? ""} onChange={(e) => updateReward(i, { description: e.target.value })} />
+                </Field>
+                <Field label="Unité réelle">
+                  <select className="merchant-search-input !pl-3" value={r.thresholdUnit} onChange={(e) => updateReward(i, { thresholdUnit: e.target.value as "visits" | "points" })}>
+                    <option value="visits">Passages</option>
+                    <option value="points">Points</option>
+                  </select>
+                </Field>
+                <Field label="Début de validité">
+                  <Input type="date" value={r.validFrom?.slice(0, 10) ?? ""} onChange={(e) => updateReward(i, { validFrom: e.target.value || null })} />
+                </Field>
+                <Field label="Fin de validité">
+                  <Input type="date" value={r.validUntil?.slice(0, 10) ?? ""} onChange={(e) => updateReward(i, { validUntil: e.target.value || null })} />
+                </Field>
+                <Field label="Limite par client">
+                  <Input type="number" min={0} placeholder="Illimité" value={r.maxUsesPerCustomer ?? ""} onChange={(e) => updateReward(i, { maxUsesPerCustomer: e.target.value ? Number(e.target.value) : null })} />
+                </Field>
+                <Field label="Limite globale">
+                  <Input type="number" min={0} placeholder="Illimité" value={r.globalLimit ?? ""} onChange={(e) => updateReward(i, { globalLimit: e.target.value ? Number(e.target.value) : null })} />
+                </Field>
+                <Field label="Délai de réutilisation (jours)">
+                  <Input type="number" min={0} placeholder="Aucun" value={r.reuseDelayDays ?? ""} onChange={(e) => updateReward(i, { reuseDelayDays: e.target.value ? Number(e.target.value) : null })} />
+                </Field>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button variant="secondary" className="h-9 px-3 text-xs" disabled={i === 0} onClick={() => moveReward(i, -1)}>Monter</Button>
+                <Button variant="secondary" className="h-9 px-3 text-xs" disabled={i === rewards.length - 1} onClick={() => moveReward(i, 1)}>Descendre</Button>
+                <Button variant="secondary" className="h-9 px-3 text-xs" onClick={() => updateReward(i, { isActive: !r.isActive })}>
+                  {r.isActive ? "Désactiver" : "Activer"}
+                </Button>
+                <Button variant="danger" className="h-9 px-3 text-xs" onClick={() => updateReward(i, { archivedAt: new Date().toISOString(), isActive: false })}>
+                  Archiver
+                </Button>
+              </div>
             </div>
           ))}
           <Button variant="secondary" className="w-full" onClick={addReward}>
@@ -459,13 +557,30 @@ export function ProgramConfigurator({ demo = false }: { demo?: boolean }) {
             <li>Les soldes clients existants ne seront pas effacés.</li>
           </ul>
           {confirmOpen ? (
-            <Alert>Changement de mode détecté. Confirmez pour appliquer aux prochaines transactions.</Alert>
+            <div className="rounded-2xl border border-violet-300/20 bg-violet-400/10 p-4">
+              <h4 className="font-black text-[var(--ink)]">Que souhaitez-vous faire des avantages actuels ?</h4>
+              <div className="mt-3 grid gap-2">
+                <label className="flex gap-3 rounded-xl border border-white/10 bg-white/5 p-3 text-sm">
+                  <input type="radio" checked={modeDecision === "ARCHIVE_OLD"} onChange={() => setModeDecision("ARCHIVE_OLD")} />
+                  <span>Archiver les anciens avantages. Ils ne seront plus proposés aux nouveaux clients et l'historique reste conservé.</span>
+                </label>
+                <label className="flex gap-3 rounded-xl border border-white/10 bg-white/5 p-3 text-sm">
+                  <input type="radio" checked={modeDecision === "CONVERT"} onChange={() => setModeDecision("CONVERT")} />
+                  <span>Convertir les avantages. Les équivalences ci-dessus seront publiées comme nouveau catalogue.</span>
+                </label>
+              </div>
+              {modeDecision === "CONVERT" ? (
+                <p className="mt-3 text-xs text-[var(--muted-strong)]">
+                  Vérifiez chaque nom, seuil, unité, activation et validité dans l'étape Avantages avant de confirmer.
+                </p>
+              ) : null}
+            </div>
           ) : null}
           <div className="flex flex-wrap gap-2">
             <Button variant="secondary" onClick={() => void saveDraft()}>
               Enregistrer le brouillon
             </Button>
-            <Button onClick={() => void publish(confirmOpen)}>
+            <Button onClick={() => void publish(confirmOpen || activeMode !== mode)}>
               Publier les modifications
             </Button>
           </div>

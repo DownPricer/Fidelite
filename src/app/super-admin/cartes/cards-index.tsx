@@ -259,7 +259,7 @@ export function CardsIndexPage({ firstName }: { firstName: string }) {
                     <p className="text-xs text-[var(--muted-text)]">
                       {currentTemplate ? `Carte utilisée : ${CARD_SLOT_TITLES[currentTemplate.cardSlot]} · v${currentTemplate.version}` : "Aucune carte publiée"}
                     </p>
-                    <Link href={`/super-admin/cartes/${merchant.id}/editeur`} className="shrink-0 rounded-full bg-white px-4 py-2 text-xs font-black text-black transition hover:bg-[var(--violet-bright)] hover:text-white">
+                    <Link href={`/super-admin/commerces/${merchant.id}/cartes`} className="shrink-0 rounded-full bg-white px-4 py-2 text-xs font-black text-black transition hover:bg-[var(--violet-bright)] hover:text-white">
                       Gérer les cartes
                     </Link>
                   </div>
