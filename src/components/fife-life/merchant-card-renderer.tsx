@@ -30,7 +30,7 @@ import { getPersonalizedQr, loadPersonalizedQr } from "./qr-cache";
 import type { MerchantCardData } from "./types";
 import { ExpandableQrCode } from "./expandable-qr-code";
 import { NextRewardView } from "./next-reward-view";
-import { LoyaltyWidgetView, type LoyaltyWidgetProgress } from "./loyalty-widget-view";
+import { LoyaltyWidgetView, type LoyaltyWidgetProgress, type LoyaltyWidgetProgressInput } from "./loyalty-widget-view";
 
 export type MerchantCardDisplayMode = "personalized" | "publicPreview" | "adminPreview" | "compact";
 
@@ -51,7 +51,7 @@ export type MerchantCardRendererProps = {
   slug: string;
   clientName?: string;
   clientNumber?: string | null;
-  progress?: LoyaltyWidgetProgress;
+  progress?: LoyaltyWidgetProgressInput;
   /** Force une valeur de progression (0–100 %) pour l'aperçu éditeur. */
   progressPercentOverride?: number;
   displayMode?: MerchantCardDisplayMode;
@@ -175,6 +175,17 @@ function ElementView({
 }) {
   if (element.hidden || shouldHideElement(element.type, displayMode)) return null;
 
+  // Repli sûr (target non nul) pour les éléments de carte "historiques"
+  // (visitsCount, progressBar, nextReward…) qui font des calculs
+  // numériques directs sur progress.target. Le widget de fidélité
+  // consolidé ("loyaltyWidget") gère lui-même l'absence d'objectif (voir
+  // LoyaltyWidgetView) et reçoit `progress` tel quel, avec un target
+  // éventuellement nul — jamais ce repli.
+  const legacyProgress: LoyaltyWidgetProgress = {
+    ...progress,
+    target: progress.target ?? progress.current,
+  };
+
   const rect = resolveElementRect(element);
   const style = elementShellStyle(element, rect);
   const textStyle = element.style;
@@ -264,7 +275,7 @@ function ElementView({
         <div style={style} className="font-black">
           <TextBlock
             element={element}
-            text={`${progress.current}/${progress.target}`}
+            text={progress.target === null ? `${progress.current}` : `${progress.current}/${progress.target}`}
           />
         </div>
       );
@@ -279,7 +290,7 @@ function ElementView({
         <div style={style}>
           <NextRewardView
             style={element.nextRewardStyle}
-            progress={progress}
+            progress={legacyProgress}
             primaryColor={merchant.primaryColor}
             loyaltyMode={loyaltyMode ?? null}
             masked={masked}
@@ -310,7 +321,9 @@ function ElementView({
           ? progressPercentOverride
           : masked
             ? 35
-            : Math.min(100, Math.max(0, (progress.current / Math.max(1, progress.target)) * 100));
+            : progress.target === null
+              ? 0
+              : Math.min(100, Math.max(0, (progress.current / Math.max(1, progress.target)) * 100));
       const pc = element.progressColors;
       const isVertical = pc?.orientation === "vertical";
       const radius = pc?.radius ?? 8;

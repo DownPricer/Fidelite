@@ -81,10 +81,9 @@ export function MerchantCardDetail({
     ? hasProgramReward && programView.rewards.some((reward) => card.points >= reward.threshold)
     : card.points >= card.visitsRequired;
   // Progression affichée sur la carte elle-même. Sans récompense compatible
-  // avec le mode actif, on affiche le solde réel (pas de dénominateur
-  // fabriqué type "/1") et un libellé explicite plutôt qu'un ancien
-  // avantage. Le style/gabarit de la carte n'est pas modifié : seule la
-  // donnée transmise au widget de fidélité change.
+  // avec le mode actif, target est explicitement null (jamais le solde, ni
+  // "1", ni aucune autre valeur fabriquée) : LoyaltyWidgetView masque alors
+  // le dénominateur et la progression sans modifier le gabarit/style.
   const cardProgress = programView
     ? hasProgramReward
       ? {
@@ -95,7 +94,7 @@ export function MerchantCardDetail({
         }
       : {
           current: card.points,
-          target: card.points,
+          target: null,
           label: "Aucun objectif configuré",
           nextReward: null,
         }

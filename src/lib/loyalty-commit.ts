@@ -17,7 +17,7 @@ import {
   getActiveMerchantLoyaltyContext,
   progressTargetForBalance,
 } from "./loyalty-context";
-import { earnActionLabel, earnGainLabel, progressBalanceLabel } from "./loyalty-labels";
+import { balanceLabel, earnActionLabel, earnGainLabel, progressBalanceLabel } from "./loyalty-labels";
 import {
   computeEarnFromCents,
   programToConfig,
@@ -51,7 +51,8 @@ export type LoyaltyTransactionView = {
   customerName: string;
   points: number;
   previousPoints: number;
-  visitsRequired: number;
+  visitsRequired: number | null;
+  hasObjective: boolean;
   rewardLabel: string;
   progressLabel: string;
   unitLabel: string;
@@ -265,9 +266,15 @@ function buildView(input: {
   customerMembershipId: string;
 }): LoyaltyTransactionView {
   const config = programToConfig(input.program, { activeOnly: true, filterByMode: true });
-  const threshold = progressTargetForBalance(config, input.points);
+  // Aucun seuil fabriqué : un objectif n'existe que si une récompense est
+  // réellement compatible avec le mode actif (config.rewards est déjà
+  // filtré par programToConfig({ filterByMode: true })).
+  const hasObjective = config.rewards.length > 0;
+  const threshold = hasObjective ? progressTargetForBalance(config, input.points) : null;
   const unit = unitLabel(config.mode);
-  const progress = progressBalanceLabel(config.mode, input.points, threshold);
+  const progress = hasObjective
+    ? progressBalanceLabel(config.mode, input.points, threshold!)
+    : balanceLabel(config.mode, input.points);
   const primaryReward = config.rewards[0] ?? null;
   const evaluation = input.evaluation;
   const earned = evaluation?.ok ? evaluation.earned : 0;
@@ -316,7 +323,8 @@ function buildView(input: {
     points: input.points,
     previousPoints: input.previousPoints,
     visitsRequired: threshold,
-    rewardLabel: primaryReward?.name ?? "Avantage",
+    hasObjective,
+    rewardLabel: hasObjective ? (primaryReward?.name ?? "Avantage") : "",
     progressLabel: progress,
     unitLabel: unit,
     programMode: config.mode,
@@ -325,7 +333,7 @@ function buildView(input: {
       input.purchaseAmountCents > 0 ? formatEurosFromCents(input.purchaseAmountCents) : null,
     earned,
     earnLabel: evaluation?.ok ? earnGainLabel(config.mode, evaluation.earned) : null,
-    newBalanceLabel: progressBalanceLabel(config.mode, input.points, threshold),
+    newBalanceLabel: progress,
     ruleApplied: evaluation?.ruleApplied ?? input.block?.title ?? null,
     block: input.block ?? evaluation?.block ?? null,
     previewLines,

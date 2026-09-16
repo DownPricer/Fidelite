@@ -17,6 +17,40 @@ function modeTitle(value: LoyaltyMode) {
   return MODES.find((m) => m.id === value)?.title ?? value;
 }
 
+/**
+ * Description de la règle de gain pour le bloc "Programme actuellement
+ * publié". Construite localement (plutôt que réutiliser
+ * programEarnDescription du lib partagé) pour ne pas toucher un texte déjà
+ * utilisé ailleurs et pour éviter le "(s)" littéral de ce dernier.
+ */
+function publishedEarnDescription(value: LoyaltyMode, rules: ProgramRules): string {
+  switch (value) {
+    case "VISITS": {
+      const perScan = Math.max(1, Math.trunc(rules.visitsPerScan ?? 1));
+      return perScan === 1 ? "1 passage par validation" : `${perScan} passages par validation`;
+    }
+    case "POINTS_BY_AMOUNT": {
+      const pts = Math.max(1, Math.trunc(rules.pointsPerAmount ?? 1));
+      const amount = (rules.amountForPoints ?? 1).toLocaleString("fr-FR");
+      return pts === 1 ? `1 point pour ${amount} € d'achat` : `${pts} points pour ${amount} € d'achat`;
+    }
+    case "FIXED_POINTS": {
+      const pts = Math.max(0, Math.trunc(rules.fixedPointsPerPurchase ?? 0));
+      return pts === 1 ? "1 point par achat" : `${pts} points par achat`;
+    }
+    case "AMOUNT_TIERS":
+      return "Gain selon le palier de montant";
+    default:
+      return "";
+  }
+}
+
+function publishedMinimumPurchaseLabel(rules: ProgramRules): string | null {
+  const min = rules.minPurchase ?? 0;
+  if (min <= 0) return null;
+  return `Minimum d'achat : ${min.toLocaleString("fr-FR")} €`;
+}
+
 const MODES: { id: LoyaltyMode; title: string; hint: string }[] = [
   { id: "VISITS", title: "Passages / visites", hint: "1 achat = 1 passage · idéal restauration, cafés" },
   { id: "POINTS_BY_AMOUNT", title: "Points selon montant", hint: "Ex : 1 € = 1 point" },
@@ -53,6 +87,8 @@ export function ProgramConfigurator({
   const [step, setStep] = useState(0);
   const [mode, setMode] = useState<LoyaltyMode>("VISITS");
   const [activeMode, setActiveMode] = useState<LoyaltyMode>("VISITS");
+  const [activeRules, setActiveRules] = useState<ProgramRules>(DEFAULT_RULES.VISITS);
+  const [activeVersion, setActiveVersion] = useState<number | null>(null);
   const [rules, setRules] = useState<ProgramRules>(DEFAULT_RULES.VISITS);
   const [rewards, setRewards] = useState<RewardConfig[]>([]);
   const [status, setStatus] = useState("ACTIVE");
@@ -120,7 +156,11 @@ export function ProgramConfigurator({
     if (!programRes.ok) return;
     const src = data.draft ?? data.active;
     setMode(src.mode);
+    // Le bloc "Programme actuellement publié" est construit exclusivement
+    // depuis data.active — jamais depuis le brouillon ni un état local.
     setActiveMode(data.active.mode);
+    setActiveRules(data.active.rules);
+    setActiveVersion(typeof data.version === "number" ? data.version : null);
     setHasDraft(Boolean(data.draft));
     setRules(src.rules);
     setRewards(src.rewards);
@@ -481,11 +521,34 @@ export function ProgramConfigurator({
 
       {error ? <Alert>{error}</Alert> : null}
       {ok ? <Alert tone="ok">{ok}</Alert> : null}
+
+      {/* Bloc "Programme actuellement publié" : construit exclusivement
+          depuis data.active (activeMode/activeRules/activeVersion), jamais
+          depuis le brouillon, un état local ou une valeur par défaut. */}
+      <section className="program-step-card space-y-1">
+        <p className="text-xs font-bold uppercase tracking-widest text-[var(--muted)]">Programme actuellement publié</p>
+        <p className="text-lg font-black text-[var(--ink)]">{modeTitle(activeMode)}</p>
+        <p className="text-sm text-[var(--muted-strong)]">Version {activeVersion ?? "—"}</p>
+        <p className="text-sm text-[var(--muted-strong)]">{publishedEarnDescription(activeMode, activeRules)}</p>
+        {publishedMinimumPurchaseLabel(activeRules) ? (
+          <p className="text-sm text-[var(--muted-strong)]">{publishedMinimumPurchaseLabel(activeRules)}</p>
+        ) : null}
+        <p className="text-xs font-bold uppercase tracking-widest text-[var(--positive)]">Statut : Publié</p>
+      </section>
+
       {hasDraft ? (
-        <p className="rounded-xl border border-amber-300/25 bg-amber-400/10 p-3 text-xs font-semibold text-amber-100">
-          Vous modifiez un brouillon ({modeTitle(mode)}), non encore publié.
-          Programme actuellement publié : {modeTitle(activeMode)}.
-        </p>
+        <section className="rounded-xl border border-amber-300/25 bg-amber-400/10 p-4 space-y-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="text-sm font-black text-amber-100">Brouillon non publié</h2>
+            <span className="rounded-full bg-amber-400/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-100">
+              Brouillon
+            </span>
+          </div>
+          <p className="text-xs text-amber-100/90">
+            Ce brouillon n&apos;est pas encore visible par les clients.
+            Le programme actuellement publié reste « {modeTitle(activeMode)} ».
+          </p>
+        </section>
       ) : null}
 
       <Link
@@ -525,6 +588,11 @@ export function ProgramConfigurator({
         <div className="space-y-6">
       {step === 0 && (
         <div className="space-y-4">
+          {hasDraft ? (
+            <p className="text-xs font-bold uppercase tracking-widest text-amber-300">
+              Brouillon non publié — mode sélectionné dans le formulaire
+            </p>
+          ) : null}
           <div className="program-mode-grid space-y-3 lg:space-y-0">
             {MODES.map((m) => (
               <button

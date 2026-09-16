@@ -18,7 +18,8 @@ export type CashierScanResult = {
   lastName?: string;
   customerName?: string;
   points: number;
-  visitsRequired: number;
+  visitsRequired: number | null;
+  hasObjective?: boolean;
   rewardLabel: string;
   rewardAvailable: boolean;
   progressLabel: string;
@@ -176,6 +177,7 @@ export function CashierCheckout({
         points: result.points + 1,
         previousPoints: result.points,
         visitsRequired: result.visitsRequired,
+        hasObjective: true,
         rewardLabel: result.rewardLabel,
         progressLabel: `${result.points + 1} / ${result.visitsRequired} passages`,
         unitLabel: result.unitLabel ?? "passages",

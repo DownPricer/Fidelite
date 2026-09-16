@@ -18,9 +18,19 @@ export type LoyaltyWidgetProgress = {
   tiers?: Array<{ threshold: number; reward: string; reached: boolean }>;
 };
 
+// Entrée publique du composant : le seuil peut être absent (aucune
+// récompense compatible avec le mode actif, aucun droit acquis). Les
+// sous-composants de rendu (StampGrid, ProgressBar, etc.) continuent de
+// recevoir un LoyaltyWidgetProgress avec un `target` non nul : la
+// progression n'est déléguée à ces variantes que lorsqu'un objectif réel
+// existe (voir LoyaltyWidgetView ci-dessous).
+export type LoyaltyWidgetProgressInput = Omit<LoyaltyWidgetProgress, "target"> & {
+  target: number | null;
+};
+
 type Props = {
   config: CardLoyaltyWidgetConfig;
-  progress: LoyaltyWidgetProgress;
+  progress: LoyaltyWidgetProgressInput;
   primaryColor: string;
   masked?: boolean;
   progressPercentOverride?: number;
@@ -533,12 +543,36 @@ export function LoyaltyWidgetView({
   masked = false,
   progressPercentOverride,
 }: Props) {
-  const pctValue = pct(progress, progressPercentOverride, masked);
   const colors = {
     ...config.colors,
     fill: config.colors.fill || primaryColor,
   };
   const merged = { ...config, colors };
+
+  // Aucun objectif réel (aucune récompense compatible avec le mode actif,
+  // aucun droit acquis) : on masque le dénominateur et la progression au
+  // lieu de fabriquer un seuil. Le gabarit/style de la carte n'est pas
+  // modifié — seul ce cas, qui ne devrait normalement pas se produire pour
+  // un programme correctement configuré, reçoit un rendu dédié.
+  if (progress.target === null) {
+    return (
+      <div
+        className="flex h-full w-full flex-col items-center justify-center gap-1 text-center"
+        data-loyalty-widget={config.loyaltyMode}
+        data-style-variant={config.styleVariant}
+      >
+        <p className="text-lg font-black" style={{ color: colors.fill }}>
+          {masked ? "•••" : `${progress.current} ${progress.current > 1 ? "pts" : "pt"}`}
+        </p>
+        <p className="text-[10px] font-semibold opacity-80" style={{ color: colors.fill }}>
+          Aucun objectif configuré
+        </p>
+      </div>
+    );
+  }
+
+  const resolvedProgress: LoyaltyWidgetProgress = { ...progress, target: progress.target };
+  const pctValue = pct(resolvedProgress, progressPercentOverride, masked);
 
   return (
     <div
@@ -546,7 +580,7 @@ export function LoyaltyWidgetView({
       data-loyalty-widget={config.loyaltyMode}
       data-style-variant={config.styleVariant}
     >
-      {renderVariant(config.styleVariant as LoyaltyStyleVariant, merged, progress, pctValue, masked)}
+      {renderVariant(config.styleVariant as LoyaltyStyleVariant, merged, resolvedProgress, pctValue, masked)}
     </div>
   );
 }

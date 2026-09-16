@@ -319,7 +319,11 @@ export function evaluateEarn(input: {
           "no_earn_rounded",
           "Aucun point gagné",
           `Aucun point gagné pour ${formatEurosFromCents(purchaseAmountCents)}. Il faut atteindre ${formatEurosFromCents(neededCents)} pour gagner ${pointsPerAmount} point${pointsPerAmount > 1 ? "s" : ""}.`,
+          // Le composant caisse affiche details[0] en priorité sur message :
+          // on répète donc le message complet en details[0] pour que le
+          // texte précis ne soit jamais remplacé par un fragment.
           [
+            `Aucun point gagné pour ${formatEurosFromCents(purchaseAmountCents)}. Il faut atteindre ${formatEurosFromCents(neededCents)} pour gagner ${pointsPerAmount} point${pointsPerAmount > 1 ? "s" : ""}.`,
             `Montant saisi : ${formatEurosFromCents(purchaseAmountCents)}`,
             `Seuil pour 1 point : ${formatEurosFromCents(neededCents)}`,
           ],

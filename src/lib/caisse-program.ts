@@ -25,7 +25,8 @@ import type { EvaluatedReward } from "./loyalty-rewards";
 export type CaisseProgramSnapshot = {
   mode: LoyaltyMode;
   points: number;
-  threshold: number;
+  threshold: number | null;
+  hasObjective: boolean;
   rewardLabel: string;
   rewardAvailable: boolean;
   progressLabel: string;
@@ -40,9 +41,13 @@ export function buildProgramSnapshot(
   program: LoyaltyProgram & { rewards?: LoyaltyReward[] },
 ): CaisseProgramSnapshot {
   const config = programToConfig(program, { activeOnly: true, filterByMode: true });
-  const threshold = progressTargetForBalance(config, points);
+  // Aucun seuil fabriqué : un objectif n'existe que si une récompense est
+  // réellement compatible avec le mode actif (déjà filtrée par
+  // programToConfig({ filterByMode: true })).
+  const hasObjective = config.rewards.length > 0;
+  const threshold = hasObjective ? progressTargetForBalance(config, points) : null;
   const primaryReward = config.rewards[0] ?? null;
-  const rewardLabel = primaryReward?.name ?? "Avantage";
+  const rewardLabel = hasObjective ? (primaryReward?.name ?? "Avantage") : "";
   const unit = config.mode === "VISITS" || config.mode === "AMOUNT_TIERS" ? "passages" : "points";
   const upcoming = config.rewards.find((reward) => reward.isActive && points < reward.threshold) ?? null;
 
@@ -50,9 +55,10 @@ export function buildProgramSnapshot(
     mode: config.mode,
     points,
     threshold,
+    hasObjective,
     rewardLabel,
-    rewardAvailable: config.rewards.some((reward) => reward.isActive && points >= reward.threshold),
-    progressLabel: progressBalanceLabel(config.mode, points, threshold),
+    rewardAvailable: hasObjective && config.rewards.some((reward) => reward.isActive && points >= reward.threshold),
+    progressLabel: hasObjective ? progressBalanceLabel(config.mode, points, threshold!) : balanceLabel(config.mode, points),
     unitLabel: unit,
     requirePurchaseAmount: isPurchaseAmountRequired(config.mode, config.rules),
     earnPreviewLabel: earnActionLabel(config.mode),
@@ -67,6 +73,10 @@ export function buildProgramSnapshotFromContext(
   context: ActiveMerchantLoyaltyContext,
 ): CaisseProgramSnapshot {
   const view = buildCustomerProgramView(context, points);
+  // Idem : aucun seuil fabriqué quand aucune récompense n'est compatible
+  // avec le mode actif (context.rewards est déjà filtré).
+  const hasObjective = context.rewards.length > 0;
+  const threshold = hasObjective ? view.progressTarget : null;
   const primaryReward = context.rewards[0] ?? null;
   const fixedPreview =
     context.mode === "FIXED_POINTS"
@@ -76,14 +86,15 @@ export function buildProgramSnapshotFromContext(
   return {
     mode: context.mode,
     points,
-    threshold: view.progressTarget,
-    rewardLabel: primaryReward?.name ?? "Avantage",
-    rewardAvailable: context.rewards.some((reward) => reward.isActive && points >= reward.threshold),
-    progressLabel: progressBalanceLabel(context.mode, points, view.progressTarget),
+    threshold,
+    hasObjective,
+    rewardLabel: hasObjective ? (primaryReward?.name ?? "Avantage") : "",
+    rewardAvailable: hasObjective && context.rewards.some((reward) => reward.isActive && points >= reward.threshold),
+    progressLabel: hasObjective ? progressBalanceLabel(context.mode, points, threshold!) : balanceLabel(context.mode, points),
     unitLabel: context.unit,
     requirePurchaseAmount: isPurchaseAmountRequired(context.mode, context.config.rules),
     earnPreviewLabel: fixedPreview,
-    nextRewardLabel: view.upcomingRewardName
+    nextRewardLabel: hasObjective && view.upcomingRewardName
       ? `Encore ${view.upcomingRemaining ?? 0} ${context.unit} avant « ${view.upcomingRewardName} »`
       : null,
   };
@@ -109,6 +120,7 @@ export function publicScanPayload(input: {
     customerName: [input.firstName, lastName].filter(Boolean).join(" ").trim(),
     points: snapshot.points,
     visitsRequired: snapshot.threshold,
+    hasObjective: snapshot.hasObjective,
     rewardLabel: snapshot.rewardLabel,
     rewardAvailable: snapshot.rewardAvailable,
     progressLabel: snapshot.progressLabel,
@@ -162,6 +174,7 @@ export async function assertEarnProgramRules(input: {
     (early.block?.code === "amount_required" ||
       early.block?.code === "min_purchase" ||
       early.block?.code === "no_earn" ||
+      early.block?.code === "no_earn_rounded" ||
       early.block?.code === "no_tier" ||
       early.block?.code === "tiers_invalid")
   ) {
