@@ -6,6 +6,7 @@ import { resolveClientNumber } from "@/lib/client-number";
 import {
   buildCustomerProgramView,
   getActiveMerchantLoyaltyContext,
+  resolveWalletCardObjective,
 } from "@/lib/loyalty-context";
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/session";
@@ -45,6 +46,7 @@ export default async function CarteIndexPage({
         const programView = buildCustomerProgramView(loyaltyContext, item.points);
         const cardRewardEntry = overview.cardRewards.find((entry) => entry.membershipId === item.id);
         const cardReward = cardRewardEntry?.nextReward ?? null;
+        const objective = resolveWalletCardObjective(programView, item.points, cardReward);
         return {
           id: item.id,
           merchantId: item.merchantId,
@@ -53,8 +55,8 @@ export default async function CarteIndexPage({
           logoUrl: item.merchant.logoUrl,
           primaryColor: item.merchant.primaryColor,
           points: item.points,
-          visitsRequired: cardReward?.progressTarget ?? programView.progressTarget,
-          rewardLabel: cardReward?.rewardName ?? "Avantage",
+          visitsRequired: objective.visitsRequired,
+          rewardLabel: objective.rewardLabel,
           loyaltyMode: loyaltyContext.mode,
         };
       }),

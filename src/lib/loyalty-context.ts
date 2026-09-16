@@ -95,6 +95,32 @@ export function buildCustomerProgramView(
   };
 }
 
+/**
+ * Objectif "carte" (visitsRequired / rewardLabel) pour l'affichage wallet.
+ *
+ * Ne fabrique jamais de seuil ni de libellé : si aucune récompense n'est
+ * compatible avec le mode actif du programme (aucune récompense réelle,
+ * disponible ou à venir), l'objectif renvoyé est le solde réel du client
+ * (aucune progression fabriquée) et aucun libellé d'avantage n'est renvoyé.
+ */
+export function resolveWalletCardObjective(
+  programView: ReturnType<typeof buildCustomerProgramView>,
+  balance: number,
+  detailReward?: { progressTarget: number; rewardName: string } | null,
+): { visitsRequired: number; rewardLabel: string; hasObjective: boolean } {
+  if (detailReward) {
+    return { visitsRequired: detailReward.progressTarget, rewardLabel: detailReward.rewardName, hasObjective: true };
+  }
+  if (programView.rewards.length > 0) {
+    return {
+      visitsRequired: programView.progressTarget,
+      rewardLabel: programView.upcomingRewardName ?? programView.rewards[0]!.name,
+      hasObjective: true,
+    };
+  }
+  return { visitsRequired: balance, rewardLabel: "", hasObjective: false };
+}
+
 function logContext(context: ActiveMerchantLoyaltyContext) {
   console.info(LOG_PREFIX, "commerce", {
     merchantId: context.merchant.id,

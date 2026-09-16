@@ -2,6 +2,7 @@ import type { LoyaltyMode } from "@prisma/client";
 import { earnActionLabel } from "./loyalty-labels";
 import { LoyaltyError } from "./loyalty";
 import {
+  amountForPointsCents,
   computeEarnFromCents,
   minPurchaseCents,
   nextAmountTier,
@@ -304,6 +305,25 @@ export function evaluateEarn(input: {
       return fail(
         block("no_tier", "Aucun palier", "Aucun palier ne correspond à ce montant."),
         { appliedTier: computed.tier },
+      );
+    }
+    if (input.mode === "POINTS_BY_AMOUNT") {
+      // Montant valide et au-dessus du minimum d'achat, mais insuffisant
+      // pour générer un point une fois arrondi : message explicite au lieu
+      // du message générique "Aucun gain applicable". Le calcul du gain
+      // lui-même (computeEarnFromCents) n'est pas modifié.
+      const pointsPerAmount = Math.max(1, Math.trunc(input.rules.pointsPerAmount ?? 1));
+      const neededCents = Math.max(1, Math.ceil(amountForPointsCents(input.rules) / pointsPerAmount));
+      return fail(
+        block(
+          "no_earn_rounded",
+          "Aucun point gagné",
+          `Aucun point gagné pour ${formatEurosFromCents(purchaseAmountCents)}. Il faut atteindre ${formatEurosFromCents(neededCents)} pour gagner ${pointsPerAmount} point${pointsPerAmount > 1 ? "s" : ""}.`,
+          [
+            `Montant saisi : ${formatEurosFromCents(purchaseAmountCents)}`,
+            `Seuil pour 1 point : ${formatEurosFromCents(neededCents)}`,
+          ],
+        ),
       );
     }
     return fail(block("no_earn", "Aucun gain", "Aucun gain applicable pour cette transaction."));

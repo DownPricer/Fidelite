@@ -6,6 +6,7 @@ import { getCustomerLoyaltyOverview } from "@/lib/customer-loyalty-overview";
 import {
   buildCustomerProgramView,
   getActiveMerchantLoyaltyContext,
+  resolveWalletCardObjective,
 } from "@/lib/loyalty-context";
 import { prisma } from "@/lib/prisma";
 import { attachPublishedTemplates } from "@/lib/wallet-cards";
@@ -55,6 +56,7 @@ export async function GET(req: Request) {
   });
   const detailRewardEntry = overview.cardRewards.find((entry) => entry.membershipId === membership.id);
   const detailReward = detailRewardEntry?.nextReward ?? overview.nextReward;
+  const objective = resolveWalletCardObjective(programView, membership.points, detailReward);
 
   const [cardBase] = await attachPublishedTemplates([
     {
@@ -65,8 +67,8 @@ export async function GET(req: Request) {
       logoUrl: membership.merchant.logoUrl,
       primaryColor: membership.merchant.primaryColor,
       points: membership.points,
-      visitsRequired: detailReward?.progressTarget ?? programView.progressTarget,
-      rewardLabel: detailReward?.rewardName ?? "Avantage",
+      visitsRequired: objective.visitsRequired,
+      rewardLabel: objective.rewardLabel,
       loyaltyMode: loyaltyContext.mode,
     },
   ]);

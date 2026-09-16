@@ -13,6 +13,10 @@ import { DEFAULT_RULES } from "@/lib/loyalty-program";
 const PROGRAM_STEPS = ["Mode", "Règle", "Limites", "Aperçu", "Publication"];
 const PROGRAM_STEP_TARGETS = [0, 1, 3, 4, 5];
 
+function modeTitle(value: LoyaltyMode) {
+  return MODES.find((m) => m.id === value)?.title ?? value;
+}
+
 const MODES: { id: LoyaltyMode; title: string; hint: string }[] = [
   { id: "VISITS", title: "Passages / visites", hint: "1 achat = 1 passage · idéal restauration, cafés" },
   { id: "POINTS_BY_AMOUNT", title: "Points selon montant", hint: "Ex : 1 € = 1 point" },
@@ -52,6 +56,7 @@ export function ProgramConfigurator({
   const [rules, setRules] = useState<ProgramRules>(DEFAULT_RULES.VISITS);
   const [rewards, setRewards] = useState<RewardConfig[]>([]);
   const [status, setStatus] = useState("ACTIVE");
+  const [hasDraft, setHasDraft] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
@@ -116,6 +121,7 @@ export function ProgramConfigurator({
     const src = data.draft ?? data.active;
     setMode(src.mode);
     setActiveMode(data.active.mode);
+    setHasDraft(Boolean(data.draft));
     setRules(src.rules);
     setRewards(src.rewards);
     setHistoricalEntitlements(data.historicalEntitlements ?? []);
@@ -470,11 +476,17 @@ export function ProgramConfigurator({
         backHref="/app/parametres"
         eyebrow="Configurateur"
         title="Programme de fidélité"
-        subtitle={dirty ? "Modifications non enregistrées" : status === "DRAFT" ? "Brouillon" : "Programme actif"}
+        subtitle={dirty ? "Modifications non enregistrées" : hasDraft ? "Brouillon" : "Programme actif"}
       />
 
       {error ? <Alert>{error}</Alert> : null}
       {ok ? <Alert tone="ok">{ok}</Alert> : null}
+      {hasDraft ? (
+        <p className="rounded-xl border border-amber-300/25 bg-amber-400/10 p-3 text-xs font-semibold text-amber-100">
+          Vous modifiez un brouillon ({modeTitle(mode)}), non encore publié.
+          Programme actuellement publié : {modeTitle(activeMode)}.
+        </p>
+      ) : null}
 
       <Link
         href="/app/parametres/avantages"

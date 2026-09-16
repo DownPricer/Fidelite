@@ -68,10 +68,38 @@ export function MerchantCardDetail({
   const { qrSrc: personalizedQr, qrFailed, reload: reloadQr } = usePersonalizedQr(!preview);
 
   const mode = programView?.mode ?? card.loyaltyMode ?? "VISITS";
-  const remaining = programView?.upcomingRemaining ?? Math.max(0, card.visitsRequired - card.points);
+  // En présence d'un programView réel (client connecté), l'existence d'un
+  // objectif se juge sur les récompenses réellement compatibles avec le
+  // mode actif — jamais sur card.visitsRequired, qui peut être un simple
+  // solde de repli lorsqu'aucune récompense n'est compatible (voir
+  // resolveWalletCardObjective).
+  const hasProgramReward = programView ? programView.rewards.length > 0 : true;
+  const remaining = programView
+    ? (hasProgramReward ? (programView.upcomingRemaining ?? 0) : 0)
+    : Math.max(0, card.visitsRequired - card.points);
   const rewardAvailable = programView
-    ? programView.rewards.some((reward) => card.points >= reward.threshold)
+    ? hasProgramReward && programView.rewards.some((reward) => card.points >= reward.threshold)
     : card.points >= card.visitsRequired;
+  // Progression affichée sur la carte elle-même. Sans récompense compatible
+  // avec le mode actif, on affiche le solde réel (pas de dénominateur
+  // fabriqué type "/1") et un libellé explicite plutôt qu'un ancien
+  // avantage. Le style/gabarit de la carte n'est pas modifié : seule la
+  // donnée transmise au widget de fidélité change.
+  const cardProgress = programView
+    ? hasProgramReward
+      ? {
+          current: card.points,
+          target: card.visitsRequired,
+          label: rewardAvailable ? `${card.rewardLabel} disponible` : `Encore ${remaining} · ${card.rewardLabel}`,
+          nextReward: card.rewardLabel,
+        }
+      : {
+          current: card.points,
+          target: card.points,
+          label: "Aucun objectif configuré",
+          nextReward: null,
+        }
+    : undefined;
 
   useEffect(() => {
     setNextReward(initialNextReward);
@@ -229,14 +257,18 @@ export function MerchantCardDetail({
     }
   }
 
-  const rewards =
-    programView?.rewards.length
-      ? programView.rewards.map((reward) => ({
-          threshold: reward.threshold,
-          thresholdUnit: reward.thresholdUnit,
-          reward: reward.name,
-        }))
-      : [{ threshold: card.visitsRequired, thresholdUnit: "visits" as const, reward: card.rewardLabel }];
+  // Un programView présent (client connecté, programme réellement actif)
+  // fait foi : s'il ne contient aucune récompense compatible, il n'y a
+  // simplement aucun avantage à afficher (pas de repli fabriqué depuis un
+  // ancien avantage incompatible). Le repli sur card.* ne sert qu'en
+  // aperçu (pas de programView, ex. carte de démonstration).
+  const rewards = programView
+    ? programView.rewards.map((reward) => ({
+        threshold: reward.threshold,
+        thresholdUnit: reward.thresholdUnit,
+        reward: reward.name,
+      }))
+    : [{ threshold: card.visitsRequired, thresholdUnit: "visits" as const, reward: card.rewardLabel }];
 
   const conditions = `Les points sont crédités lors de chaque achat validé par le commerçant. 
   
@@ -298,6 +330,7 @@ Le commerçant se réserve le droit de modifier ou d'annuler le programme de fid
                 displayMode={preview ? "adminPreview" : "personalized"}
                 showQr
                 qrSrc={personalizedQr}
+                progress={cardProgress}
                 className="h-auto aspect-[1.586/1] w-full"
               />
 
