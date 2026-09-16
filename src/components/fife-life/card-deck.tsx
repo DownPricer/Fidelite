@@ -273,7 +273,7 @@ export function CardDeck({
             const opacity = active ? 1 : Math.max(0.55, 1 - dist * 0.22);
             const zIndex = active ? 50 : behind ? 40 - dist * 5 : 45 - dist * 5;
             const brightness = active ? 1 : Math.max(0.7, 1 - dist * 0.18);
-            const blur = active ? 0 : Math.min(1, 0.6 + Math.max(0, dist - 1) * 0.2);
+            const blur = active ? 0 : Math.min(2, 1.5 + Math.max(0, dist - 1) * 0.25);
 
             const key =
               item.kind === "global"
@@ -379,21 +379,35 @@ export function CardDeck({
                 <motion.div
                   className="w-full"
                   style={{
-                    filter: `blur(${blur}px) brightness(${brightness})`,
                     transformStyle: "preserve-3d",
                     willChange: active ? "transform, opacity" : "auto",
                   }}
                   initial={false}
                   animate={
                     prefersReduced || isDesktop
-                      ? { rotateX: 0, y: translateY, z: 0, scale: 1, opacity }
-                      : { rotateX, y: translateY, z: translateZ, scale, opacity }
+                      ? {
+                          rotateX: 0,
+                          y: translateY,
+                          z: 0,
+                          scale: 1,
+                          opacity,
+                          filter: `blur(${blur}px) brightness(${brightness})`,
+                        }
+                      : {
+                          rotateX,
+                          y: translateY,
+                          z: translateZ,
+                          scale,
+                          opacity,
+                          filter: `blur(${blur}px) brightness(${brightness})`,
+                        }
                   }
                   transition={{
                     type: "spring",
                     stiffness: 340,
                     damping: 28,
                     mass: 0.7,
+                    filter: prefersReduced ? { duration: 0 } : { duration: 0.25, ease: "easeOut" },
                   }}
                   whileHover={active && !prefersReduced && !isDesktop ? { rotateX: -5, scale: 1.02 } : undefined}
                 >

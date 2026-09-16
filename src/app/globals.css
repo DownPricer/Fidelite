@@ -2561,17 +2561,18 @@ body:has(.wallet-shell) {
     --wallet-spread: clamp(34px, 2.5vw, 42px);
   }
 
+  /* ── Deck du wallet — conteneur canonique unique (ratio 1.586/1) ──
+     Seul .deck-card-slot porte la dimension réelle du deck
+     (var(--wallet-card-width) × var(--wallet-card-height)). Tous les
+     enfants (shell, depth, carte) sont forcés à 100% de ce conteneur,
+     quel que soit leur contenu (GlobalCard, MerchantCardRenderer ou
+     MerchantInteractiveCard) : plus aucune règle spécifique au type
+     de carte ne peut la rendre plus petite qu'une autre. */
   .fife-deck-scene,
   .fife-deck-scene .deck-stage,
   .fife-deck-scene .deck-card-layer,
   .fife-deck-scene .deck-card-slot,
-  .fife-deck-scene .deck-card-frame,
-  .fife-deck-scene .interactive-card-shell,
-  .fife-deck-scene .interactive-card-depth,
-  .fife-deck-scene .loyalty-card-shell,
-  .fife-deck-scene .loyalty-card,
-  .fife-deck-scene .merchant-card-renderer-shell,
-  .fife-deck-scene .merchant-card-renderer {
+  .fife-deck-scene .deck-card-frame {
     width: var(--wallet-card-width) !important;
     max-width: var(--wallet-card-width) !important;
     height: var(--wallet-card-height) !important;
@@ -2579,34 +2580,15 @@ body:has(.wallet-shell) {
     box-sizing: border-box;
   }
 
-  .fife-deck-scene .loyalty-card--large {
-    width: 100% !important;
-    max-width: none !important;
-    height: 100% !important;
-    transform: none !important;
-  }
-
-  .fife-deck-scene .loyalty-card-shell,
-  .fife-deck-scene .loyalty-card-shell .interactive-card-depth,
-  .fife-deck-scene .loyalty-card-shell .loyalty-card {
-    width: 100% !important;
-    max-width: none !important;
-    height: 100% !important;
-    padding: 0 !important;
-  }
-
-  .deck-card-slot > .interactive-card-shell,
-  .deck-card-slot > .merchant-card-renderer-shell {
-    width: 100% !important;
-    max-width: none !important;
-    height: 100% !important;
-    aspect-ratio: auto !important;
-  }
-
-  .deck-card-slot[data-card-kind="global"] > .interactive-card-shell,
-  .deck-card-slot[data-card-kind="global"] .interactive-card-depth,
-  .deck-card-slot[data-card-kind="global"] .loyalty-card,
-  .deck-card-slot[data-card-kind="global"] .loyalty-card--large {
+  .fife-deck-scene .deck-card-slot .interactive-card-shell,
+  .fife-deck-scene .deck-card-slot .interactive-card-depth,
+  .fife-deck-scene .deck-card-slot .loyalty-card-shell,
+  .fife-deck-scene .deck-card-slot .loyalty-card,
+  .fife-deck-scene .deck-card-slot .loyalty-card--large,
+  .fife-deck-scene .deck-card-slot .merchant-card-shell,
+  .fife-deck-scene .deck-card-slot .merchant-interactive-card,
+  .fife-deck-scene .deck-card-slot .merchant-card-renderer-shell,
+  .fife-deck-scene .deck-card-slot .merchant-card-renderer {
     width: 100% !important;
     max-width: none !important;
     height: 100% !important;
@@ -2614,9 +2596,10 @@ body:has(.wallet-shell) {
     padding: 0 !important;
     aspect-ratio: auto !important;
     transform: none !important;
+    box-sizing: border-box;
   }
 
-  .deck-card-slot[data-card-kind="global"] .loyalty-card__background {
+  .fife-deck-scene .deck-card-slot .loyalty-card__background {
     inset: 0;
     width: 100%;
     height: 100%;
