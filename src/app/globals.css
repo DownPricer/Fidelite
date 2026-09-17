@@ -222,16 +222,21 @@ body:has(.wallet-shell) {
   }
 
   .wallet-deck-block {
-    margin-top: clamp(20px, 5vw, 24px) !important;
+    margin-top: clamp(48px, 11vw, 64px) !important;
   }
 
   .wallet-primary-actions {
-    margin-top: clamp(20px, 5vw, 24px);
+    margin-top: clamp(28px, 7vw, 36px);
     margin-bottom: clamp(18px, 4vw, 24px);
   }
 
   .wallet-reward-block {
-    margin-top: 0 !important;
+    margin-top: clamp(48px, 12vw, 72px) !important;
+  }
+
+  .wallet-sheet-trigger {
+    margin-top: clamp(36px, 9vw, 56px) !important;
+    padding-bottom: clamp(32px, 8vw, 56px);
   }
 }
 
@@ -834,11 +839,12 @@ body:has(.wallet-shell) {
 
 .loyalty-card[data-tier="diamant"] {
   --background: url("/cards/diamant-good.png");
-  --ink: #f4f8ff;
-  --bar-light: #ffffff;
-  --bar-mid: #b7e6ff;
-  --bar-dark: #4ba2db;
-  --track: #263b50;
+  --ink: #16273f;
+  --bar-light: #eaf6ff;
+  --bar-mid: #7fc4ea;
+  --bar-dark: #245a82;
+  --track: #d7ecfb;
+  text-shadow: 0 0.09cqw 0.16cqw #ffffffb3, 0 0.02cqw 0.05cqw #0000004d;
 }
 
 .loyalty-card__heading {
