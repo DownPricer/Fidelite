@@ -222,11 +222,11 @@ body:has(.wallet-shell) {
   }
 
   .wallet-deck-block {
-    margin-top: clamp(48px, 11vw, 64px) !important;
+    margin-top: clamp(56px, 13vw, 76px) !important;
   }
 
   .wallet-primary-actions {
-    margin-top: clamp(28px, 7vw, 36px);
+    margin-top: clamp(56px, 14vw, 72px);
     margin-bottom: clamp(18px, 4vw, 24px);
   }
 

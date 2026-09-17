@@ -269,7 +269,7 @@ export function CardDeck({
             const translateY = rel * deckMetrics.spread;
             const translateZ = isDesktop || prefersReduced ? 0 : active ? 0 : -Math.abs(rel) * 35;
             const rotateX = isDesktop || prefersReduced ? 0 : active ? -3 : rel * 4;
-            const scale = isDesktop || prefersReduced ? 1 : active ? 1.0 : Math.max(0.88, 1 - dist * 0.08);
+            const scale = prefersReduced ? 1 : active ? 1.0 : Math.max(0.78, 1 - dist * 0.12);
             const opacity = active ? 1 : Math.max(0.55, 1 - dist * 0.22);
             const zIndex = active ? 50 : behind ? 40 - dist * 5 : 45 - dist * 5;
             const brightness = active ? 1 : Math.max(0.7, 1 - dist * 0.18);
@@ -389,7 +389,7 @@ export function CardDeck({
                           rotateX: 0,
                           y: translateY,
                           z: 0,
-                          scale: 1,
+                          scale,
                           opacity,
                           filter: `blur(${blur}px) brightness(${brightness})`,
                         }
