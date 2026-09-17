@@ -14,7 +14,7 @@ import type { MerchantCardData, WalletTier } from "./types";
 
 const SWIPE_THRESHOLD = 50;
 const VELOCITY_THRESHOLD = 500;
-const VISIBLE_RANGE = 2;
+const VISIBLE_RANGE = 1;
 
 type DeckItem =
   | { kind: "global" }
