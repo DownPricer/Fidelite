@@ -1080,6 +1080,30 @@ body:has(.wallet-shell) {
   max-width: none;
 }
 
+.card-enlarged-rotate-wrap {
+  width: 100%;
+}
+
+/* Sur mobile en portrait, on bascule la carte agrandie en paysage pour
+   l'utiliser bien plus grande (scan QR/barcode à distance). */
+@media (max-width: 1023px) and (orientation: portrait) {
+  .card-enlarged-rotate-wrap {
+    width: min(
+      calc(100dvh - max(2rem, env(safe-area-inset-top) + env(safe-area-inset-bottom))),
+      calc((100dvw - max(2rem, env(safe-area-inset-left) + env(safe-area-inset-right))) * 1.586),
+      760px
+    );
+    transform: rotate(90deg);
+  }
+
+  .card-enlarged-rotate-wrap .card-enlarged-loyalty-wrap,
+  .card-enlarged-rotate-wrap .card-enlarged-merchant-shell,
+  .card-enlarged-rotate-wrap .card-enlarged-merchant-card {
+    width: 100%;
+    max-width: none;
+  }
+}
+
 .card-enlarged-loyalty-wrap {
   width: min(calc(100dvw - max(1rem, env(safe-area-inset-left)) - max(1rem, env(safe-area-inset-right))), 760px);
   margin-inline: auto;

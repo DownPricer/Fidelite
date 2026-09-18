@@ -105,49 +105,51 @@ export function CardEnlargedView({
             transition={spring}
             onClick={onClose}
           >
-            {fifeLife ? (
-              <div className="card-enlarged-loyalty-wrap w-full">
-                <InteractiveLoyaltyCard
-                  tier={tier}
-                  name={customerName}
-                  points={fifeLifePoints ?? card.points}
+            <div className="card-enlarged-rotate-wrap">
+              {fifeLife ? (
+                <div className="card-enlarged-loyalty-wrap w-full">
+                  <InteractiveLoyaltyCard
+                    tier={tier}
+                    name={customerName}
+                    points={fifeLifePoints ?? card.points}
+                    showQr
+                    qrSrc={personalizedQr ?? qr}
+                    qrMode="standard"
+                    clientNumber={effectiveClientNumber}
+                    qrZoomEnabled
+                    qrFetchPriority="high"
+                    layout="enlarged"
+                    className="card-enlarged-loyalty-card"
+                  />
+                </div>
+              ) : (
+                <MerchantCardRenderer
+                  as="div"
+                  template={card.cardTemplate}
+                  merchant={{
+                    name: card.name,
+                    logoUrl: card.logoUrl,
+                    primaryColor: card.primaryColor,
+                  }}
+                  card={card}
+                  slug={slug}
+                  clientName={customerName}
+                  clientNumber={effectiveClientNumber}
+                  displayMode={preview ? "adminPreview" : "personalized"}
                   showQr
                   qrSrc={personalizedQr ?? qr}
-                  qrMode="standard"
-                  clientNumber={effectiveClientNumber}
-                  qrZoomEnabled
                   qrFetchPriority="high"
-                  layout="enlarged"
-                  className="card-enlarged-loyalty-card"
+                  qrZoomEnabled
+                  interactive={false}
+                  className="card-enlarged-merchant-card w-full"
+                  shellClassName="card-enlarged-merchant-shell"
                 />
-              </div>
-            ) : (
-              <MerchantCardRenderer
-                as="div"
-                template={card.cardTemplate}
-                merchant={{
-                  name: card.name,
-                  logoUrl: card.logoUrl,
-                  primaryColor: card.primaryColor,
-                }}
-                card={card}
-                slug={slug}
-                clientName={customerName}
-                clientNumber={effectiveClientNumber}
-                displayMode={preview ? "adminPreview" : "personalized"}
-                showQr
-                qrSrc={personalizedQr ?? qr}
-                qrFetchPriority="high"
-                qrZoomEnabled
-                interactive={false}
-                className="card-enlarged-merchant-card w-full"
-                shellClassName="card-enlarged-merchant-shell"
-              />
-            )}
+              )}
 
-            <p className="card-enlarged-hint mt-4 text-center text-xs text-[var(--muted)] sm:text-sm">
-              Touchez à nouveau pour fermer · touchez le QR pour l&apos;agrandir
-            </p>
+              <p className="card-enlarged-hint mt-4 text-center text-xs text-[var(--muted)] sm:text-sm">
+                Touchez à nouveau pour fermer · touchez le QR pour l&apos;agrandir
+              </p>
+            </div>
           </motion.div>
         </motion.div>
       ) : null}
