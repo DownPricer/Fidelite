@@ -164,6 +164,49 @@ describe("QA magic login", () => {
     expect(qa.parseQaLoginRole("admin")).toBeNull();
   });
 
+  it("utilise 5 minutes par défaut", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-09-18T12:00:00.000Z"));
+    try {
+      const qa = await loadQaLogin();
+      const created = await qa.createQaMagicLoginToken("customer");
+      expect(created.expiresAt.getTime() - Date.now()).toBe(5 * 60 * 1000);
+      expect(state.tokens[0].expiresAt.getTime() - Date.now()).toBe(5 * 60 * 1000);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("accepte une durée personnalisée de 90 minutes", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-09-18T12:00:00.000Z"));
+    try {
+      const qa = await loadQaLogin();
+      const created = await qa.createQaMagicLoginToken("customer", {}, { ttlMinutes: 90 });
+      expect(created.expiresAt.getTime() - Date.now()).toBe(90 * 60 * 1000);
+      expect(qa.parseQaLoginTtlMinutes("90")).toBe(90);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("refuse les TTL invalides", async () => {
+    const qa = await loadQaLogin();
+    expect(() => qa.parseQaLoginTtlMinutes("0")).toThrow(/minimum/i);
+    expect(() => qa.parseQaLoginTtlMinutes("-1")).toThrow(/entier positif/i);
+    expect(() => qa.parseQaLoginTtlMinutes("texte")).toThrow(/entier positif/i);
+    expect(() => qa.parseQaLoginTtlMinutes("121")).toThrow(/maximum/i);
+  });
+
+  it("refuse la création quand la fonctionnalité est désactivée", async () => {
+    vi.resetModules();
+    vi.stubEnv("QA_MAGIC_LOGIN_ENABLED", "false");
+    vi.stubEnv("QA_CUSTOMER_USER_ID", "customer-user");
+    installQaMocks();
+    const qa = await import("@/lib/qa-login");
+    await expect(qa.createQaMagicLoginToken("customer")).rejects.toThrow(/disabled/i);
+  });
+
   it("refuse un compte hors liste", async () => {
     const qa = await loadQaLogin();
     await expect(qa.isQaSubjectAllowed("customer", "someone-else")).resolves.toBe(false);
@@ -186,6 +229,30 @@ describe("QA magic login", () => {
     const second = await qa.exchangeQaMagicLoginToken(created.token);
     expect(second.ok).toBe(false);
     expect(second.status).toBe(401);
+  });
+
+  it("crée deux liens client successifs avec deux jetons distincts", async () => {
+    const qa = await loadQaLogin();
+    const first = await qa.createQaMagicLoginToken("customer");
+    const second = await qa.createQaMagicLoginToken("customer");
+
+    expect(first.token).not.toBe(second.token);
+    expect(first.url).not.toBe(second.url);
+    expect(state.tokens).toHaveLength(2);
+    expect(state.tokens[0].tokenHash).not.toBe(state.tokens[1].tokenHash);
+  });
+
+  it("consommer un lien client ne consomme pas l'autre", async () => {
+    const qa = await loadQaLogin();
+    const first = await qa.createQaMagicLoginToken("customer");
+    const second = await qa.createQaMagicLoginToken("customer");
+
+    const firstResult = await qa.exchangeQaMagicLoginToken(first.token);
+    const secondResult = await qa.exchangeQaMagicLoginToken(second.token);
+
+    expect(firstResult).toEqual({ ok: true, role: "customer", redirectTo: "/carte" });
+    expect(secondResult).toEqual({ ok: true, role: "customer", redirectTo: "/carte" });
+    expect(state.createSession).toHaveBeenCalledTimes(2);
   });
 
   it("refuse un token expiré", async () => {

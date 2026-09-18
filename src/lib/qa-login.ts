@@ -12,6 +12,9 @@ import { CLIENT_DEMO_COOKIE, EMPLOYEE_DEMO_COOKIE, MERCHANT_DEMO_COOKIE } from "
 import { prisma } from "@/lib/prisma";
 
 export const QA_LOGIN_TTL_MS = 5 * 60 * 1000;
+export const QA_LOGIN_DEFAULT_TTL_MINUTES = 5;
+export const QA_LOGIN_MIN_TTL_MINUTES = 1;
+export const QA_LOGIN_MAX_TTL_MINUTES = 120;
 export const QA_LOGIN_ROLES = ["merchant", "employee", "customer"] as const;
 
 export type QaLoginRoleName = (typeof QA_LOGIN_ROLES)[number];
@@ -19,6 +22,10 @@ export type QaLoginRoleName = (typeof QA_LOGIN_ROLES)[number];
 type RequestMeta = {
   ip?: string;
   userAgent?: string;
+};
+
+type CreateQaMagicLoginTokenOptions = {
+  ttlMinutes?: number;
 };
 
 type ResolvedQaSubject = {
@@ -47,6 +54,27 @@ export function isQaMagicLoginEnabled() {
 
 export function parseQaLoginRole(value: string | undefined): QaLoginRoleName | null {
   return QA_LOGIN_ROLES.includes(value as QaLoginRoleName) ? (value as QaLoginRoleName) : null;
+}
+
+export function assertQaLoginTtlMinutes(value = QA_LOGIN_DEFAULT_TTL_MINUTES) {
+  if (!Number.isInteger(value)) {
+    throw new Error("TTL QA invalide : utilisez un nombre entier de minutes.");
+  }
+  if (value < QA_LOGIN_MIN_TTL_MINUTES) {
+    throw new Error(`TTL QA invalide : minimum ${QA_LOGIN_MIN_TTL_MINUTES} minute.`);
+  }
+  if (value > QA_LOGIN_MAX_TTL_MINUTES) {
+    throw new Error(`TTL QA invalide : maximum strict ${QA_LOGIN_MAX_TTL_MINUTES} minutes.`);
+  }
+  return value;
+}
+
+export function parseQaLoginTtlMinutes(raw: string | undefined) {
+  if (raw === undefined) return QA_LOGIN_DEFAULT_TTL_MINUTES;
+  if (!/^\d+$/.test(raw)) {
+    throw new Error("TTL QA invalide : utilisez un nombre entier positif.");
+  }
+  return assertQaLoginTtlMinutes(Number(raw));
 }
 
 export function qaRedirectForRole(role: QaLoginRoleName) {
@@ -141,7 +169,11 @@ export async function isQaSubjectAllowed(role: QaLoginRoleName, subjectId: strin
   return Boolean(resolved && resolved.subjectId === subjectId);
 }
 
-export async function createQaMagicLoginToken(role: QaLoginRoleName, meta: RequestMeta = {}) {
+export async function createQaMagicLoginToken(
+  role: QaLoginRoleName,
+  meta: RequestMeta = {},
+  options: CreateQaMagicLoginTokenOptions = {},
+) {
   if (!isQaMagicLoginEnabled()) {
     await auditQaLogin("QA_MAGIC_LOGIN_CREATE_REFUSED", { role, reason: "disabled" }, meta);
     throw new Error("QA magic login is disabled.");
@@ -153,8 +185,9 @@ export async function createQaMagicLoginToken(role: QaLoginRoleName, meta: Reque
     throw new Error(`No allowed QA subject configured for role ${role}.`);
   }
 
+  const ttlMinutes = assertQaLoginTtlMinutes(options.ttlMinutes);
   const token = randomBytes(32).toString("base64url");
-  const expiresAt = new Date(Date.now() + QA_LOGIN_TTL_MS);
+  const expiresAt = new Date(Date.now() + ttlMinutes * 60 * 1000);
   await prisma.qaMagicLoginToken.create({
     data: {
       tokenHash: hashToken(token),
@@ -166,7 +199,7 @@ export async function createQaMagicLoginToken(role: QaLoginRoleName, meta: Reque
 
   await auditQaLogin(
     "QA_MAGIC_LOGIN_CREATE",
-    { role, subjectId: subject.subjectId, expiresAt: expiresAt.toISOString() },
+    { role, subjectId: subject.subjectId, expiresAt: expiresAt.toISOString(), ttlMinutes },
     meta,
     subject,
   );
