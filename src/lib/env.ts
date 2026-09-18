@@ -47,6 +47,11 @@ export const env = {
   googleCloudProjectId: read("GOOGLE_CLOUD_PROJECT_ID"),
   googleWalletOrigin: read("GOOGLE_WALLET_ORIGIN") || read("CUSTOMER_ORIGIN", "https://fidelite.sitereadyshd.fr"),
   googleWalletOrigins: read("GOOGLE_WALLET_ORIGINS"),
+  qaMagicLoginEnabled: read("QA_MAGIC_LOGIN_ENABLED", "false") === "true",
+  qaMerchantUserId: read("QA_MERCHANT_USER_ID"),
+  qaEmployeeId: read("QA_EMPLOYEE_ID"),
+  qaCustomerUserId: read("QA_CUSTOMER_USER_ID"),
+  qaMagicLoginOrigin: read("QA_MAGIC_LOGIN_ORIGIN", "https://fidelite.sitereadyshd.fr"),
 };
 
 export function isProduction() {

@@ -57,6 +57,12 @@ enum SessionKind {
   SUPER_ADMIN
 }
 
+enum QaLoginRole {
+  merchant
+  employee
+  customer
+}
+
 enum MerchantStatus {
   DRAFT
   TRIAL
@@ -243,6 +249,20 @@ model Session {
   @@index([userId])
   @@index([expiresAt])
   @@index([merchantMembershipId])
+}
+
+model QaMagicLoginToken {
+  id        String      @id @default(cuid())
+  tokenHash String      @unique
+  role      QaLoginRole
+  subjectId String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime    @default(now())
+
+  @@index([role, subjectId])
+  @@index([expiresAt])
+  @@index([usedAt])
 }
 
 model Merchant {

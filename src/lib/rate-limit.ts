@@ -35,4 +35,5 @@ export const LIMITS = {
   clientNumberLookup: { limit: 20, windowMs: 60 * 1000 },
   qr: { limit: 40, windowMs: 60 * 1000 },
   googleWallet: { limit: 10, windowMs: 60 * 1000 },
+  qaLoginExchange: { limit: 10, windowMs: 60 * 1000 },
 };
