@@ -681,6 +681,7 @@ Le commerçant se réserve le droit de modifier ou d'annuler le programme de fid
         slug={slug}
         personalizedQr={personalizedQr}
         preview={preview}
+        progress={cardProgress}
         onClose={() => setCardEnlarged(false)}
       />
     </>

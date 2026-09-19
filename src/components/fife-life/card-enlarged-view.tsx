@@ -11,6 +11,7 @@ import { MerchantCardRenderer } from "./merchant-card-renderer";
 import { resolveTier } from "./tier";
 import type { MerchantCardData, WalletTier } from "./types";
 import { useClientMounted, useHydrationSafeReducedMotion } from "./use-client-mounted";
+import type { LoyaltyWidgetProgressInput } from "./loyalty-widget-view";
 
 type CardEnlargedViewProps = {
   open: boolean;
@@ -21,6 +22,7 @@ type CardEnlargedViewProps = {
   fifeLifePoints?: number;
   personalizedQr?: string | null;
   preview?: boolean;
+  progress?: LoyaltyWidgetProgressInput;
   onClose: () => void;
 };
 
@@ -37,6 +39,7 @@ export function CardEnlargedView({
   fifeLifePoints,
   personalizedQr = null,
   preview = false,
+  progress,
   onClose,
 }: CardEnlargedViewProps) {
   const reduced = useHydrationSafeReducedMotion();
@@ -141,6 +144,7 @@ export function CardEnlargedView({
                   qrFetchPriority="high"
                   qrZoomEnabled
                   interactive={false}
+                  progress={progress}
                   className="card-enlarged-merchant-card w-full"
                   shellClassName="card-enlarged-merchant-shell"
                 />
