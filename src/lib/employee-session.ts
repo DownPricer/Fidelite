@@ -39,11 +39,14 @@ export async function createEmployeeSession(
   input: {
     userId: string;
     merchantMembershipId: string;
+    expiresAt?: Date;
+    isQaMagicLogin?: boolean;
+    qaMagicLoginTokenId?: string | null;
   },
   meta: { ip?: string; userAgent?: string } = {},
 ) {
   const rawToken = randomBytes(32).toString("hex");
-  const expiresAt = new Date(Date.now() + env.sessionDays * 24 * 60 * 60 * 1000);
+  const expiresAt = input.expiresAt ?? new Date(Date.now() + env.sessionDays * 24 * 60 * 60 * 1000);
 
   await prisma.session.create({
     data: {
@@ -52,6 +55,8 @@ export async function createEmployeeSession(
       kind: SessionKind.EMPLOYEE,
       tokenHash: hashToken(rawToken),
       expiresAt,
+      isQaMagicLogin: input.isQaMagicLogin ?? false,
+      qaMagicLoginTokenId: input.qaMagicLoginTokenId ?? null,
       ip: meta.ip,
       userAgent: meta.userAgent,
     },
@@ -95,6 +100,10 @@ export async function employeeFromToken(token: string) {
       },
     });
 
+    if (session?.isQaMagicLogin && !env.qaMagicLoginEnabled) {
+      await prisma.session.deleteMany({ where: { id: session.id } });
+      return null;
+    }
     if (!session || session.expiresAt < new Date()) return null;
     if (!session.merchantMembership) return null;
 

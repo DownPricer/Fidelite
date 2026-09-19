@@ -3,6 +3,7 @@ import { deriveClientNumber, normalizeCustomerNumber } from "@/lib/client-number
 import { publicScanPayload } from "@/lib/caisse-program";
 import type { CardTemplateConfig } from "@/lib/card-template-schema";
 import { getActiveMerchantLoyaltyContext } from "@/lib/loyalty-context";
+import { loyaltyBalanceForMode } from "@/lib/loyalty-balance";
 import { buildNextBenefit } from "@/lib/loyalty-engine";
 import { CAISSE_GRANT_TTL_MS, evaluateCustomerRewards } from "@/lib/loyalty-commit";
 import { computeEarnFromCents } from "@/lib/loyalty-program";
@@ -57,6 +58,7 @@ async function buildScanResult(input: {
           loyaltyMode: context.mode,
         }
       : null;
+    const activeBalance = loyaltyBalanceForMode(membership, context.mode);
 
     if (cardJustCreated) {
       logWalletUnlock("carte créée ou réactivée", {
@@ -75,7 +77,7 @@ async function buildScanResult(input: {
             slug: context.merchant.slug,
             logoUrl: context.merchant.logoUrl,
             primaryColor: context.merchant.primaryColor,
-            points: membership.points,
+            points: activeBalance,
             visitsRequired: context.progressTarget,
             rewardLabel: context.primaryRewardLabel ?? "Avantage",
             loyaltyMode: context.mode,
@@ -120,7 +122,7 @@ async function buildScanResult(input: {
 
     const rewards = await evaluateCustomerRewards({
       config: context.config,
-      balance: membership.points,
+      balance: activeBalance,
       merchantName: context.merchant.name,
       customerMembershipId: membership.id,
       merchantId: input.merchantId,
@@ -130,7 +132,7 @@ async function buildScanResult(input: {
     });
     const nextBenefit = buildNextBenefit(
       context.rewards,
-      membership.points,
+      activeBalance,
       context.mode,
       context.config.rules,
       computeEarnFromCents(context.mode, context.config.rules, 0).earned,
@@ -142,7 +144,7 @@ async function buildScanResult(input: {
         firstName: membership.user.firstName,
         lastName: membership.user.lastName,
         context,
-        points: membership.points,
+        points: activeBalance,
         expiresAt: grant.expiresAt.toISOString(),
         cardJustCreated,
         rewards,

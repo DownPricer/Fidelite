@@ -3,6 +3,7 @@ import { WalletHome } from "@/components/fife-life/wallet-home";
 import { demoWalletProps } from "@/lib/demo-visual";
 import { isClientDemoPage } from "@/lib/demo-visual-server";
 import { resolveClientNumber } from "@/lib/client-number";
+import { loyaltyBalanceForMode } from "@/lib/loyalty-balance";
 import {
   buildCustomerProgramView,
   getActiveMerchantLoyaltyContext,
@@ -43,10 +44,11 @@ export default async function CarteIndexPage({
       memberships.map(async (item) => {
         const loyaltyContext = await getActiveMerchantLoyaltyContext(item.merchantId);
         if (!loyaltyContext || !loyaltyContext.isOperational) return null;
-        const programView = buildCustomerProgramView(loyaltyContext, item.points);
+        const activeBalance = loyaltyBalanceForMode(item, loyaltyContext.mode);
+        const programView = buildCustomerProgramView(loyaltyContext, activeBalance);
         const cardRewardEntry = overview.cardRewards.find((entry) => entry.membershipId === item.id);
         const cardReward = cardRewardEntry?.nextReward ?? null;
-        const objective = resolveWalletCardObjective(programView, item.points, cardReward);
+        const objective = resolveWalletCardObjective(programView, activeBalance, cardReward);
         return {
           id: item.id,
           merchantId: item.merchantId,
@@ -54,7 +56,7 @@ export default async function CarteIndexPage({
           name: item.merchant.name,
           logoUrl: item.merchant.logoUrl,
           primaryColor: item.merchant.primaryColor,
-          points: item.points,
+          points: activeBalance,
           visitsRequired: objective.visitsRequired,
           rewardLabel: objective.rewardLabel,
           loyaltyMode: loyaltyContext.mode,

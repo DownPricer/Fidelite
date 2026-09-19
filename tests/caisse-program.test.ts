@@ -22,7 +22,10 @@ const baseProgram = {
 
 describe("programme caisse employé", () => {
   it("formate un programme par passages", () => {
-    const snapshot = buildProgramSnapshot(3, baseProgram);
+    const snapshot = buildProgramSnapshot(3, {
+      ...baseProgram,
+      rewards: [{ name: "Boisson offerte", threshold: 10, thresholdUnit: "visits", isActive: true }],
+    } as any);
     expect(snapshot.progressLabel).toBe("3 / 10 passages");
     expect(snapshot.earnPreviewLabel).toBe("Valider le passage");
     expect(snapshot.requirePurchaseAmount).toBe(false);

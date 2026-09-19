@@ -239,6 +239,8 @@ model Session {
   tokenHash            String              @unique
   kind                 SessionKind         @default(STANDARD)
   merchantMembershipId String?
+  isQaMagicLogin       Boolean             @default(false)
+  qaMagicLoginTokenId  String?
   expiresAt            DateTime
   userAgent            String?
   ip                   String?
@@ -249,6 +251,8 @@ model Session {
   @@index([userId])
   @@index([expiresAt])
   @@index([merchantMembershipId])
+  @@index([isQaMagicLogin])
+  @@index([qaMagicLoginTokenId])
 }
 
 model QaMagicLoginToken {
@@ -382,19 +386,19 @@ model LoyaltyProgram {
 }
 
 model LoyaltyReward {
-  id                 String               @id @default(cuid())
+  id                 String                      @id @default(cuid())
   programId          String
   name               String
   description        String?
   iconUrl            String?
-  rewardType         RewardType           @default(CUSTOM)
+  rewardType         RewardType                  @default(CUSTOM)
   threshold          Int
-  thresholdUnit      String               @default("visits")
+  thresholdUnit      String                      @default("visits")
   value              Float?
   minPurchase        Float?
   maxDiscount        Float?
-  isActive           Boolean              @default(true)
-  sortOrder          Int                  @default(0)
+  isActive           Boolean                     @default(true)
+  sortOrder          Int                         @default(0)
   validFrom          DateTime?
   validUntil         DateTime?
   maxUsesPerCustomer Int?
@@ -402,11 +406,11 @@ model LoyaltyReward {
   globalLimit        Int?
   conditions         Json?
   archivedAt         DateTime?
-  program            LoyaltyProgram       @relation(fields: [programId], references: [id], onDelete: Cascade)
+  program            LoyaltyProgram              @relation(fields: [programId], references: [id], onDelete: Cascade)
   transactions       LoyaltyTransaction[]
-  entitlements        CustomerRewardEntitlement[]
-  createdAt          DateTime             @default(now())
-  updatedAt          DateTime             @updatedAt
+  entitlements       CustomerRewardEntitlement[]
+  createdAt          DateTime                    @default(now())
+  updatedAt          DateTime                    @updatedAt
 
   @@index([programId, sortOrder])
   @@index([programId, archivedAt])
@@ -427,17 +431,19 @@ model LoyaltyProgramVersion {
 }
 
 model CustomerMembership {
-  id                   String               @id @default(cuid())
+  id                   String                      @id @default(cuid())
   userId               String
   merchantId           String
-  points               Int                  @default(0)
+  pointsBalance        Int                         @default(0)
+  visitsBalance        Int                         @default(0)
+  points               Int                         @default(0)
   googleWalletObjectId String?
   googleWalletClassId  String?
-  createdAt            DateTime             @default(now())
-  updatedAt            DateTime             @updatedAt
+  createdAt            DateTime                    @default(now())
+  updatedAt            DateTime                    @updatedAt
   removedAt            DateTime?
-  user                 User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
-  merchant             Merchant             @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  user                 User                        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  merchant             Merchant                    @relation(fields: [merchantId], references: [id], onDelete: Cascade)
   transactions         LoyaltyTransaction[]
   qrTokens             QrToken[]
   caisseGrants         CaisseGrant[]
@@ -450,30 +456,30 @@ model CustomerMembership {
 }
 
 model CustomerRewardEntitlement {
-  id                    String                          @id @default(cuid())
-  customerMembershipId  String
-  merchantId            String
-  originalRewardId      String?
-  originalRewardName    String
-  originalDescription   String?
-  originalMode          LoyaltyMode
-  originalUnit          String
-  originalThreshold     Int
-  historicalBalance     Int
-  originalProgramId     String
+  id                     String                          @id @default(cuid())
+  customerMembershipId   String
+  merchantId             String
+  originalRewardId       String?
+  originalRewardName     String
+  originalDescription    String?
+  originalMode           LoyaltyMode
+  originalUnit           String
+  originalThreshold      Int
+  historicalBalance      Int
+  originalProgramId      String
   originalProgramVersion Int
-  acquiredAt            DateTime
-  expiresAt             DateTime?
-  status                CustomerRewardEntitlementStatus @default(AVAILABLE)
-  redeemedAt            DateTime?
-  ineligibleAt          DateTime?
-  metadata              Json?
-  createdAt             DateTime                        @default(now())
-  updatedAt             DateTime                        @updatedAt
+  acquiredAt             DateTime
+  expiresAt              DateTime?
+  status                 CustomerRewardEntitlementStatus @default(AVAILABLE)
+  redeemedAt             DateTime?
+  ineligibleAt           DateTime?
+  metadata               Json?
+  createdAt              DateTime                        @default(now())
+  updatedAt              DateTime                        @updatedAt
 
-  membership            CustomerMembership              @relation(fields: [customerMembershipId], references: [id], onDelete: Cascade)
-  merchant              Merchant                        @relation(fields: [merchantId], references: [id], onDelete: Cascade)
-  originalReward        LoyaltyReward?                  @relation(fields: [originalRewardId], references: [id], onDelete: SetNull)
+  membership     CustomerMembership @relation(fields: [customerMembershipId], references: [id], onDelete: Cascade)
+  merchant       Merchant           @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  originalReward LoyaltyReward?     @relation(fields: [originalRewardId], references: [id], onDelete: SetNull)
 
   @@unique([customerMembershipId, originalRewardId, originalProgramVersion])
   @@index([merchantId, status])

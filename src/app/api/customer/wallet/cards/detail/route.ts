@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/api-guard";
 import { jsonError } from "@/lib/http";
 import { getCustomerLoyaltyOverview } from "@/lib/customer-loyalty-overview";
+import { loyaltyBalanceForMode } from "@/lib/loyalty-balance";
 import {
   buildCustomerProgramView,
   getActiveMerchantLoyaltyContext,
@@ -48,7 +49,8 @@ export async function GET(req: Request) {
     return jsonError("Programme indisponible.", 404);
   }
 
-  const programView = buildCustomerProgramView(loyaltyContext, membership.points);
+  const activeBalance = loyaltyBalanceForMode(membership, loyaltyContext.mode);
+  const programView = buildCustomerProgramView(loyaltyContext, activeBalance);
   const overview = await getCustomerLoyaltyOverview({
     userId: auth.user.id,
     merchantId: membership.merchantId,
@@ -56,7 +58,7 @@ export async function GET(req: Request) {
   });
   const detailRewardEntry = overview.cardRewards.find((entry) => entry.membershipId === membership.id);
   const detailReward = detailRewardEntry?.nextReward ?? overview.nextReward;
-  const objective = resolveWalletCardObjective(programView, membership.points, detailReward);
+  const objective = resolveWalletCardObjective(programView, activeBalance, detailReward);
 
   const [cardBase] = await attachPublishedTemplates([
     {
@@ -66,7 +68,7 @@ export async function GET(req: Request) {
       name: membership.merchant.name,
       logoUrl: membership.merchant.logoUrl,
       primaryColor: membership.merchant.primaryColor,
-      points: membership.points,
+      points: activeBalance,
       visitsRequired: objective.visitsRequired,
       rewardLabel: objective.rewardLabel,
       loyaltyMode: loyaltyContext.mode,

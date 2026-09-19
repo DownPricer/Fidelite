@@ -13,6 +13,7 @@ import {
   type ActiveMerchantLoyaltyContext,
 } from "./loyalty-context";
 import { formatUnitCount, loyaltyUnitForMode, progressBalanceLabel } from "./loyalty-labels";
+import { loyaltyBalanceForMode } from "./loyalty-balance";
 import { signQrToken } from "./qr";
 import { prisma } from "./prisma";
 import { getCustomerLoyaltyOverview } from "./customer-loyalty-overview";
@@ -637,6 +638,8 @@ export function merchantObjectBody(input: {
   membership: {
     id: string;
     points: number;
+    pointsBalance?: number | null;
+    visitsBalance?: number | null;
     user: { id: string; firstName: string; lastName: string | null; clientNumber: string | null; isActive: boolean };
     merchant: { name: string; slug: string; isActive: boolean; status: string };
   };
@@ -645,9 +648,10 @@ export function merchantObjectBody(input: {
   qrValue: string;
   context: ActiveMerchantLoyaltyContext;
 }) {
+  const activeBalance = loyaltyBalanceForMode(input.membership, input.context.mode);
   const view = buildGoogleWalletMerchantView({
     context: input.context,
-    membership: input.membership,
+    membership: { ...input.membership, points: activeBalance },
     customer: input.membership.user,
     demoOnly: false,
   });
@@ -656,7 +660,7 @@ export function merchantObjectBody(input: {
   const nextName = view.loyalty.nextRewardName ?? "Avantage";
   const remaining = view.loyalty.remainingLabel;
   const pointLabel = loyaltyPointLabel(input.context.mode);
-  const availableModules = availableRewardModules({ balance: input.membership.points, context: input.context });
+  const availableModules = availableRewardModules({ balance: activeBalance, context: input.context });
   const hasAvailableReward = availableModules.length > 0;
   return {
     id: input.objectId,
@@ -671,18 +675,18 @@ export function merchantObjectBody(input: {
     },
     loyaltyPoints: {
       label: pointLabel,
-      balance: { int: input.membership.points },
+      balance: { int: activeBalance },
     },
     secondaryLoyaltyPoints: {
       label: "Objectif",
-      balance: { int: progressTargetForBalance(input.context.config, input.membership.points) },
+      balance: { int: progressTargetForBalance(input.context.config, activeBalance) },
     },
     textModulesData: [
       textModule("program", "Mode de fidélité", view.loyalty.modeLabel),
       textModule("next_reward", hasAvailableReward ? "À utiliser" : "Prochain avantage", nextName),
       textModule("remaining", "Progression", hasAvailableReward ? "Avantage disponible" : remaining),
       textModule("available_rewards", "Avantages disponibles", `${view.loyalty.availableRewardsCount}`),
-      textModule("progress", "Solde", progressBalanceLabel(input.context.mode, input.membership.points, view.loyalty.target)),
+      textModule("progress", "Solde", progressBalanceLabel(input.context.mode, activeBalance, view.loyalty.target)),
       ...availableModules,
     ].filter(Boolean),
     appLinkData: appLinkData(cardUrl(input.membership.merchant.slug), "Voir ma carte"),

@@ -2,7 +2,6 @@ import { describe, expect, it, vi } from "vitest";
 import {
   REWARD_LIMIT_MESSAGE,
   assertRewardLimit,
-  convertLoyaltyBalance,
   createAcquiredRewardEntitlements,
   modeChangeRequiresRewardDecision,
   publishLoyaltyProgram,
@@ -104,8 +103,8 @@ function tx(overrides: Record<string, unknown> = {}) {
   return {
     customerMembership: {
       findMany: vi.fn(async () => [
-        { id: "member-eligible", userId: "user-1", points: 12 },
-        { id: "member-low", userId: "user-2", points: 8 },
+        { id: "member-eligible", userId: "user-1", points: 12, pointsBalance: 12, visitsBalance: 0 },
+        { id: "member-low", userId: "user-2", points: 8, pointsBalance: 8, visitsBalance: 0 },
       ]),
       update: vi.fn(async () => ({})),
     },
@@ -144,14 +143,6 @@ describe("publication programme fidélité", () => {
     ).not.toThrow();
   });
 
-  it("convertit proportionnellement un solde vers le nouveau seuil arrondi au supérieur", () => {
-    expect(convertLoyaltyBalance({ oldBalance: 10, oldThreshold: 20, newThreshold: 5 })).toBe(3);
-    expect(convertLoyaltyBalance({ oldBalance: 30, oldThreshold: 40, newThreshold: 10 })).toBe(8);
-    expect(() => convertLoyaltyBalance({ oldBalance: 10, oldThreshold: 0, newThreshold: 5 })).toThrow(
-      "Le seuil d'origine doit être strictement positif.",
-    );
-  });
-
   it("ne demande pas de conversion et conserve l'identifiant si le mode ne change pas", async () => {
     const db = tx();
     const result = await publishLoyaltyProgram({
@@ -179,7 +170,7 @@ describe("publication programme fidélité", () => {
     expect(result.requiresRewardDecision).toBe(true);
   });
 
-  it("archive les anciens avantages lors d'un changement de mode avec archivage", async () => {
+  it("archive les anciens avantages sans créer de droits si la politique le demande", async () => {
     const db = tx();
     await publishLoyaltyProgram({
       tx: db,
@@ -193,30 +184,35 @@ describe("publication programme fidélité", () => {
     expect(db.loyaltyReward.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ isActive: false }) }),
     );
-    expect(db.customerRewardEntitlement.upsert).toHaveBeenCalledTimes(1);
+    expect(db.customerRewardEntitlement.upsert).not.toHaveBeenCalled();
+    expect(db.customerMembership.update).not.toHaveBeenCalled();
   });
 
-  it("crée les avantages convertis explicitement lors d'une conversion", async () => {
+  it("convertit les avantages déjà acquis en droits conservés sans transformer les soldes", async () => {
     const db = tx();
     await publishLoyaltyProgram({
       tx: db,
       program,
       merchant: null,
-      draft: { ...draft, mode: "VISITS" },
+      draft: { ...draft, mode: "VISITS", rewards: [{ ...draft.rewards[0]!, id: undefined, thresholdUnit: "visits" }] },
       actorId: "admin-1",
-      decision: { action: "CONVERT", rewards: [{ ...draft.rewards[0]!, id: "old-reward", threshold: 3, thresholdUnit: "visits" }] },
+      decision: { action: "CONVERT", rewards: [] },
     });
     expect(db.loyaltyReward.create).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.objectContaining({ threshold: 3, thresholdUnit: "visits" }) }),
+      expect.objectContaining({ data: expect.objectContaining({ thresholdUnit: "visits" }) }),
     );
-    expect(db.customerMembership.update).toHaveBeenCalledWith({ where: { id: "member-eligible" }, data: { points: 4 } });
-    expect(db.customerMembership.update).toHaveBeenCalledWith({ where: { id: "member-low" }, data: { points: 3 } });
-    expect(db.customerRewardEntitlement.upsert).not.toHaveBeenCalled();
+    expect(db.customerRewardEntitlement.upsert).toHaveBeenCalledTimes(1);
+    expect(db.customerMembership.update).not.toHaveBeenCalled();
     expect(db.auditLog.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
-          action: "LOYALTY_PROGRAM_BALANCE_CONVERSION",
-          metadata: expect.objectContaining({ previousMode: "FIXED_POINTS", nextMode: "VISITS" }),
+          action: "LOYALTY_PROGRAM_UNIT_SWITCH",
+          metadata: expect.objectContaining({
+            previousMode: "FIXED_POINTS",
+            nextMode: "VISITS",
+            balancePolicy: "separate_unit_balances",
+            rewardPolicy: "CONVERT",
+          }),
         }),
       }),
     );

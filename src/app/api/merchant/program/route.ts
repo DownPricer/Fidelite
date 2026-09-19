@@ -197,7 +197,8 @@ export async function POST(req: Request) {
         _sum: { points: true },
       }),
     ]);
-    return jsonOk({
+    return jsonError("Politique de migration des avantages requise.", 409, {
+      code: "REWARD_MIGRATION_POLICY_REQUIRED",
       requiresConfirmation: true,
       requiresRewardDecision: true,
       impact: {

@@ -63,6 +63,14 @@ vi.mock("../src/lib/prisma", () => {
       })),
     },
     walletEvent: { create: vi.fn() },
+    customerRewardEntitlement: {
+      findMany: vi.fn(async () => []),
+      updateMany: vi.fn(async () => ({ count: 0 })),
+    },
+    loyaltyTransaction: {
+      count: vi.fn(async () => 0),
+      findFirst: vi.fn(async () => null),
+    },
     merchantCardTemplate: { findFirst: vi.fn(async () => null) },
   };
 

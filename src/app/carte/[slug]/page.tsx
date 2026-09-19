@@ -3,6 +3,7 @@ import { MerchantCardDetail } from "@/components/fife-life/merchant-detail";
 import { PREVIEW_CARDS, PREVIEW_HISTORY } from "@/components/fife-life/preview-data";
 import { isClientDemoPage } from "@/lib/demo-visual-server";
 import { isGoogleWalletConfigured } from "@/lib/google-wallet";
+import { loyaltyBalanceForMode } from "@/lib/loyalty-balance";
 import {
   buildCustomerProgramView,
   getActiveMerchantLoyaltyContext,
@@ -53,7 +54,8 @@ export default async function CardPage({
   const loyaltyContext = await getActiveMerchantLoyaltyContext(membership.merchantId);
   if (!loyaltyContext || !loyaltyContext.isOperational) redirect(`/c/${slug}`);
 
-  const programView = buildCustomerProgramView(loyaltyContext, membership.points);
+  const activeBalance = loyaltyBalanceForMode(membership, loyaltyContext.mode);
+  const programView = buildCustomerProgramView(loyaltyContext, activeBalance);
 
   const history = await prisma.loyaltyTransaction.findMany({
     where: { customerMembershipId: membership.id },
@@ -84,7 +86,7 @@ export default async function CardPage({
 
   const detailRewardEntry = overview.cardRewards.find((entry) => entry.membershipId === membership.id);
   const detailReward = detailRewardEntry?.nextReward ?? overview.nextReward;
-  const objective = resolveWalletCardObjective(programView, membership.points, detailReward);
+  const objective = resolveWalletCardObjective(programView, activeBalance, detailReward);
 
   const [merchantCard] = await attachPublishedTemplates([
     {
@@ -94,7 +96,7 @@ export default async function CardPage({
       name: membership.merchant.name,
       logoUrl: membership.merchant.logoUrl,
       primaryColor: membership.merchant.primaryColor,
-      points: membership.points,
+      points: activeBalance,
       visitsRequired: objective.visitsRequired,
       rewardLabel: objective.rewardLabel,
       loyaltyMode: loyaltyContext.mode,

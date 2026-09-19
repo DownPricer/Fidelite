@@ -25,6 +25,15 @@ export const PERMISSION_LABELS: Record<PermissionKey, string> = {
   sensitiveSettings: "Accès aux réglages sensibles",
 };
 
+export const PERMISSION_KEYS = Object.keys(PERMISSION_LABELS) as PermissionKey[];
+export const CRITICAL_PERMISSION_KEYS: PermissionKey[] = [
+  "caisse",
+  "addPoints",
+  "redeemReward",
+  "manageEmployees",
+  "sensitiveSettings",
+];
+
 const ADMIN_PERMISSIONS: StaffPermissions = {
   caisse: true,
   viewCustomers: true,
@@ -76,11 +85,30 @@ export function resolvePermissions(input: {
   const base = presetPermissions(input.staffPreset);
   if (input.permissions && typeof input.permissions === "object" && !Array.isArray(input.permissions)) {
     const raw = input.permissions as Partial<StaffPermissions>;
-    for (const key of Object.keys(PERMISSION_LABELS) as PermissionKey[]) {
+    for (const key of PERMISSION_KEYS) {
       if (typeof raw[key] === "boolean") base[key] = raw[key]!;
     }
   }
   return base;
+}
+
+export function sanitizeStaffPermissions(input: unknown): StaffPermissions {
+  if (!input || typeof input !== "object" || Array.isArray(input)) {
+    throw new Error("Permissions invalides.");
+  }
+  const raw = input as Record<string, unknown>;
+  const unknown = Object.keys(raw).filter((key) => !PERMISSION_KEYS.includes(key as PermissionKey));
+  if (unknown.length) {
+    throw new Error(`Permission inconnue : ${unknown[0]}`);
+  }
+  const next = { ...CASHIER_DEFAULT };
+  for (const key of PERMISSION_KEYS) {
+    if (typeof raw[key] !== "boolean") {
+      throw new Error(`Permission invalide : ${key}`);
+    }
+    next[key] = raw[key] as boolean;
+  }
+  return next;
 }
 
 export function hasPermission(

@@ -21,16 +21,18 @@ function cookieOptions(expires: Date) {
 
 export async function createSession(
   userId: string,
-  meta: { ip?: string; userAgent?: string } = {},
+  meta: { ip?: string; userAgent?: string; expiresAt?: Date; isQaMagicLogin?: boolean; qaMagicLoginTokenId?: string | null } = {},
 ) {
   const token = randomBytes(32).toString("hex");
-  const expiresAt = new Date(Date.now() + env.sessionDays * 24 * 60 * 60 * 1000);
+  const expiresAt = meta.expiresAt ?? new Date(Date.now() + env.sessionDays * 24 * 60 * 60 * 1000);
   await prisma.session.create({
     data: {
       userId,
       tokenHash: hashToken(token),
       kind: SessionKind.STANDARD,
       expiresAt,
+      isQaMagicLogin: meta.isQaMagicLogin ?? false,
+      qaMagicLoginTokenId: meta.qaMagicLoginTokenId ?? null,
       ip: meta.ip,
       userAgent: meta.userAgent,
     },
@@ -77,6 +79,10 @@ export async function userFromToken(token: string) {
         },
       },
     });
+    if (session?.isQaMagicLogin && !env.qaMagicLoginEnabled) {
+      await prisma.session.deleteMany({ where: { id: session.id } });
+      return null;
+    }
     if (!session || session.expiresAt < new Date() || !session.user.isActive) {
       return null;
     }

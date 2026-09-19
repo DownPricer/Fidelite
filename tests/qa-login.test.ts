@@ -218,7 +218,10 @@ describe("QA magic login", () => {
     const result = await qa.exchangeQaMagicLoginToken(created.token, { ip: "127.0.0.1" });
 
     expect(result).toEqual({ ok: true, role: "merchant", redirectTo: "/app" });
-    expect(state.createSession).toHaveBeenCalledWith("merchant-user", { ip: "127.0.0.1" });
+    expect(state.createSession).toHaveBeenCalledWith(
+      "merchant-user",
+      expect.objectContaining({ ip: "127.0.0.1", expiresAt: created.expiresAt, isQaMagicLogin: true }),
+    );
     expect(state.createEmployeeSession).not.toHaveBeenCalled();
   });
 
@@ -282,7 +285,10 @@ describe("QA magic login", () => {
     const result = await qa.exchangeQaMagicLoginToken(created.token);
 
     expect(result).toEqual({ ok: true, role: "customer", redirectTo: "/carte" });
-    expect(state.createSession).toHaveBeenCalledWith("customer-user", {});
+    expect(state.createSession).toHaveBeenCalledWith(
+      "customer-user",
+      expect.objectContaining({ expiresAt: created.expiresAt, isQaMagicLogin: true }),
+    );
     expect(state.createEmployeeSession).not.toHaveBeenCalled();
   });
 
@@ -303,7 +309,12 @@ describe("QA magic login", () => {
       expect(state.cookieSets.some((cookie) => cookie.name === name && cookie.options.maxAge === 0)).toBe(true);
     }
     expect(state.createEmployeeSession).toHaveBeenCalledWith(
-      { userId: "employee-user", merchantMembershipId: "employee-membership" },
+      expect.objectContaining({
+        userId: "employee-user",
+        merchantMembershipId: "employee-membership",
+        expiresAt: created.expiresAt,
+        isQaMagicLogin: true,
+      }),
       {},
     );
   });

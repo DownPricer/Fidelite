@@ -1,6 +1,7 @@
 import { LoyaltyTxType, WalletEventType, type Prisma } from "@prisma/client";
 import { writeAudit } from "./audit";
 import { updateWalletBalance } from "./google-wallet";
+import { incrementBalanceData, loyaltyBalanceForMode } from "./loyalty-balance";
 import { applyAdjustment, applyRedeemReward, LoyaltyError } from "./loyalty";
 import { getActiveMerchantLoyaltyContext, progressTargetForBalance } from "./loyalty-context";
 import { earnGainLabel, historyEntryLabel, loyaltyUnitForMode, progressBalanceLabel } from "./loyalty-labels";
@@ -47,7 +48,8 @@ async function persistLoyaltyAction(tx: LoyaltyDb, input: ApplyLoyaltyInput) {
   }
   const program = loyaltyContext.program;
   const config = loyaltyContext.config;
-  const required = progressTargetForBalance(config, membership.points);
+  const currentBalance = loyaltyBalanceForMode(membership, config.mode);
+  const required = progressTargetForBalance(config, currentBalance);
   let rewardLabel = config.rewards[0]?.name ?? "Avantage";
   const purchaseAmountCents = purchaseAmountCentsFromUnknown({
     purchaseAmountCents: input.purchaseAmountCents,
@@ -65,25 +67,25 @@ async function persistLoyaltyAction(tx: LoyaltyDb, input: ApplyLoyaltyInput) {
   } else if (input.type === "REDEEM_REWARD") {
     const selected = input.rewardId
       ? config.rewards.find((reward) => reward.id === input.rewardId)
-      : config.rewards.find((reward) => membership.points >= reward.threshold);
+      : config.rewards.find((reward) => currentBalance >= reward.threshold);
     const cost = selected?.threshold ?? required;
     if (selected) rewardLabel = selected.name;
-    const redeem = applyRedeemReward(membership.points, cost);
+    const redeem = applyRedeemReward(currentBalance, cost);
     delta = redeem.delta;
   } else if (input.type === "ADJUSTMENT") {
-    const adj = applyAdjustment(membership.points, input.adjustmentDelta ?? 0, input.reason ?? "", required);
+    const adj = applyAdjustment(currentBalance, input.adjustmentDelta ?? 0, input.reason ?? "", required);
     delta = adj.delta;
   } else if (input.type === "CANCEL") {
     delta = input.adjustmentDelta ?? 0;
     if (delta === 0) throw new LoyaltyError("Annulation invalide.");
   }
 
-  const nextPoints = membership.points + delta;
+  const nextPoints = currentBalance + delta;
   if (nextPoints < 0) throw new LoyaltyError("Le solde ne peut pas devenir négatif.");
 
   const updated = await tx.customerMembership.update({
     where: { id: membership.id },
-    data: { points: nextPoints },
+    data: incrementBalanceData(config.mode, delta),
   });
 
   const unit = loyaltyUnitForMode(config.mode);
@@ -111,7 +113,7 @@ async function persistLoyaltyAction(tx: LoyaltyDb, input: ApplyLoyaltyInput) {
       pointsDelta: delta,
       purchaseAmount,
       purchaseAmountCents: purchaseAmountCents ?? null,
-      balanceBefore: membership.points,
+      balanceBefore: currentBalance,
       balanceAfter: nextPoints,
       ruleApplied: input.ruleApplied,
       idempotencyKey: input.idempotencyKey,
@@ -149,7 +151,7 @@ async function persistLoyaltyAction(tx: LoyaltyDb, input: ApplyLoyaltyInput) {
     metadata: {
       membershipId: membership.id,
       delta,
-      balanceBefore: membership.points,
+      balanceBefore: currentBalance,
       balanceAfter: nextPoints,
       purchaseAmount,
       purchaseAmountCents: purchaseAmountCents ?? null,
@@ -252,7 +254,7 @@ async function persistLoyaltyAction(tx: LoyaltyDb, input: ApplyLoyaltyInput) {
     firstName: membership.user.firstName,
     lastName: membership.user.lastName ?? "",
     points: nextPoints,
-    previousPoints: membership.points,
+    previousPoints: currentBalance,
     visitsRequired: required,
     rewardLabel,
     snapshot,

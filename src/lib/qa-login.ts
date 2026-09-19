@@ -40,6 +40,7 @@ type ExchangeSuccess = {
   ok: true;
   role: QaLoginRoleName;
   redirectTo: string;
+  status?: never;
 };
 
 type ExchangeFailure = {
@@ -268,11 +269,22 @@ export async function exchangeQaMagicLoginToken(
       return { ok: false, status: 403, code: "subject_not_allowed" };
     }
     await createEmployeeSession(
-      { userId: subject.userId, merchantMembershipId: subject.merchantMembershipId },
+      {
+        userId: subject.userId,
+        merchantMembershipId: subject.merchantMembershipId,
+        expiresAt: record.expiresAt,
+        isQaMagicLogin: true,
+        qaMagicLoginTokenId: record.id,
+      },
       meta,
     );
   } else {
-    await createSession(subject.userId, meta);
+    await createSession(subject.userId, {
+      ...meta,
+      expiresAt: record.expiresAt,
+      isQaMagicLogin: true,
+      qaMagicLoginTokenId: record.id,
+    });
   }
 
   await auditQaLogin(

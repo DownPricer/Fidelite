@@ -1,5 +1,6 @@
 import { Prisma, type LoyaltyMode, type LoyaltyProgram, type LoyaltyReward } from "@prisma/client";
 import { buildCustomerProgramView, getActiveMerchantLoyaltyContext } from "./loyalty-context";
+import { loyaltyBalanceForMode } from "./loyalty-balance";
 import { rewardFromDb, thresholdUnitForMode, type RewardConfig } from "./loyalty-program";
 import {
   normalizeResolvedPublishedTemplate,
@@ -123,15 +124,15 @@ export async function createAcquiredRewardEntitlements(
     where: {
       merchantId: input.merchantId,
       removedAt: null,
-      points: { gte: Math.min(...rewards.map((reward) => reward.threshold)) },
     },
-    select: { id: true, points: true },
+    select: { id: true, points: true, pointsBalance: true, visitsBalance: true },
   });
 
   let created = 0;
   for (const membership of memberships) {
+    const historicalBalance = loyaltyBalanceForMode(membership, input.program.mode);
     for (const reward of rewards) {
-      if (membership.points < reward.threshold) continue;
+      if (historicalBalance < reward.threshold) continue;
       await tx.customerRewardEntitlement.upsert({
         where: {
           customerMembershipId_originalRewardId_originalProgramVersion: {
@@ -150,7 +151,7 @@ export async function createAcquiredRewardEntitlements(
           originalMode: input.program.mode,
           originalUnit: thresholdUnitForMode(input.program.mode),
           originalThreshold: reward.threshold,
-          historicalBalance: membership.points,
+          historicalBalance,
           originalProgramId: input.program.id,
           originalProgramVersion: input.program.version,
           acquiredAt: input.now,
@@ -218,7 +219,7 @@ async function publishRewardsAfterModeChange(
   tx: Prisma.TransactionClient,
   program: ProgramWithRewards,
   decision: ModeChangeDecision,
-  _fallbackRewards: LoyaltyDraftReward[],
+  fallbackRewards: LoyaltyDraftReward[],
   now: Date,
 ) {
   await tx.loyaltyReward.updateMany({
@@ -226,7 +227,7 @@ async function publishRewardsAfterModeChange(
     data: { archivedAt: now, isActive: false },
   });
 
-  const rewards = decision.action === "CONVERT" ? decision.rewards : [];
+  const rewards = fallbackRewards;
   for (const [i, reward] of rewards.entries()) {
     await tx.loyaltyReward.create({
       data: rewardData(program.id, { ...reward, id: undefined }, i),
@@ -260,7 +261,7 @@ export async function publishLoyaltyProgram(input: {
   const firstReward = rewardsToValidate.find((reward) => !reward.archivedAt);
   let entitlementCount = 0;
 
-  if (modeChanged && input.decision?.action === "ARCHIVE_OLD") {
+  if (modeChanged && input.decision?.action === "CONVERT") {
     entitlementCount = await createAcquiredRewardEntitlements(input.tx, {
       program: input.program,
       merchantId: input.program.merchantId,
@@ -268,66 +269,18 @@ export async function publishLoyaltyProgram(input: {
     });
   }
 
-  if (modeChanged && input.decision?.action === "CONVERT") {
-    const nextUnit = thresholdUnitForMode(input.draft.mode);
-    const incompatibleConvertedReward = input.decision.rewards.find(
-      (reward) => !reward.archivedAt && reward.thresholdUnit !== nextUnit,
-    );
-    if (incompatibleConvertedReward) {
-      throw new Error("Certains avantages appartiennent à votre ancien programme. Choisissez un équivalent pour terminer leur conversion.");
-    }
-    const mappings = buildConversionMappings(input.program, input.decision.rewards);
-    const activeOldRewards = activeEligibleRewards(input.program, now);
-    const missingTimeless = activeOldRewards.find(
-      (reward) => !reward.validUntil && !mappings.some((mapping) => mapping.oldReward.id === reward.id),
-    );
-    if (missingTimeless) {
-      throw new Error("Certains avantages appartiennent à votre ancien programme. Choisissez un équivalent pour terminer leur conversion.");
-    }
-    if (!mappings.length && activeOldRewards.length) {
-      throw new Error("Certains avantages appartiennent à votre ancien programme. Choisissez un équivalent pour terminer leur conversion.");
-    }
-
-    const memberships = await input.tx.customerMembership.findMany({
-      where: { merchantId: input.program.merchantId, removedAt: null },
-      select: { id: true, points: true },
-    });
-    const auditRows = [];
-    for (const membership of memberships) {
-      const reference = conversionReference(mappings, membership.points);
-      if (!reference) continue;
-      const result = convertLoyaltyBalance({
-        oldBalance: membership.points,
-        oldThreshold: reference.oldReward.threshold,
-        newThreshold: reference.newReward.threshold,
-      });
-      await input.tx.customerMembership.update({
-        where: { id: membership.id },
-        data: { points: result },
-      });
-      auditRows.push({
-        membershipId: membership.id,
-        oldBalance: membership.points,
-        oldThreshold: reference.oldReward.threshold,
-        newThreshold: reference.newReward.threshold,
-        ratio: membership.points / reference.oldReward.threshold,
-        result,
-      });
-    }
+  if (modeChanged) {
     await input.tx.auditLog.create({
       data: {
         actorId: input.actorId,
         merchantId: input.program.merchantId,
-        action: "LOYALTY_PROGRAM_BALANCE_CONVERSION",
+        action: "LOYALTY_PROGRAM_UNIT_SWITCH",
         metadata: {
           previousMode: input.program.mode,
           nextMode: input.draft.mode,
-          mappings: mappings.map((mapping) => ({
-            oldRewardId: mapping.oldReward.id,
-            oldThreshold: mapping.oldReward.threshold,
-            newThreshold: mapping.newReward.threshold,
-          })),
-          balances: auditRows,
+          balancePolicy: "separate_unit_balances",
+          rewardPolicy: input.decision?.action ?? null,
+          entitlementsCreated: entitlementCount,
         },
       },
     });
@@ -375,10 +328,11 @@ export async function publishLoyaltyProgram(input: {
     const cardTemplatePayload = normalizeResolvedPublishedTemplate(publishedCardTemplate);
     const memberships = await input.tx.customerMembership.findMany({
       where: { merchantId: input.merchant.id, removedAt: null },
-      select: { id: true, userId: true, points: true },
+      select: { id: true, userId: true, points: true, pointsBalance: true, visitsBalance: true },
     });
     for (const membership of memberships) {
-      const programView = loyaltyContext ? buildCustomerProgramView(loyaltyContext, membership.points) : null;
+      const activeBalance = loyaltyContext ? loyaltyBalanceForMode(membership, loyaltyContext.mode) : membership.points;
+      const programView = loyaltyContext ? buildCustomerProgramView(loyaltyContext, activeBalance) : null;
       await input.tx.walletEvent.create({
         data: {
           userId: membership.userId,
@@ -390,7 +344,7 @@ export async function publishLoyaltyProgram(input: {
             merchantName: input.merchant.name,
             loyaltyMode: input.draft.mode,
             programVersion: nextVersion,
-            points: membership.points,
+            points: activeBalance,
             visitsRequired: programView?.progressTarget ?? firstReward?.threshold ?? input.program.visitsRequired,
             rewardLabel: programView?.rewards[0]?.name ?? firstReward?.name ?? input.program.rewardLabel,
             programTitle: programView?.programTitle ?? null,

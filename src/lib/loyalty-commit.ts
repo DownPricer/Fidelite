@@ -12,6 +12,7 @@ import {
   type NextBenefitView,
 } from "./loyalty-engine";
 import { applyLoyaltyAction } from "./loyalty-service";
+import { loyaltyBalanceForMode } from "./loyalty-balance";
 import {
   assertGrantMatchesActiveProgram,
   getActiveMerchantLoyaltyContext,
@@ -234,7 +235,11 @@ export async function evaluateCustomerRewards(input: {
     customerMembershipId: input.customerMembershipId,
   });
   evaluated.push(...entitlements.map((entitlement) => entitlementToEvaluatedReward(entitlement, input.merchantName)));
-  return sortEvaluatedRewards(evaluated);
+  const deduped = new Map<string, EvaluatedReward>();
+  for (const reward of evaluated) {
+    if (!deduped.has(reward.id)) deduped.set(reward.id, reward);
+  }
+  return sortEvaluatedRewards([...deduped.values()]);
 }
 
 function appliedTierLabel(evaluation: ReturnType<typeof evaluateEarn>) {
@@ -428,6 +433,7 @@ async function assembleView(input: {
   const db = input.db ?? prisma;
   const now = input.now ?? new Date();
   const config = programToConfig(input.program, { activeOnly: true, filterByMode: true });
+  const currentBalance = loyaltyBalanceForMode(input.membership, config.mode);
   const history = await loadEarnHistory(db, {
     customerMembershipId: input.membership.id,
     merchantId: input.program.merchantId,
@@ -438,7 +444,7 @@ async function assembleView(input: {
     evaluateEarn({
       mode: config.mode,
       rules: config.rules,
-      currentBalance: input.previousPoints ?? input.membership.points,
+      currentBalance: input.previousPoints ?? currentBalance,
       purchaseAmountCents: input.purchaseAmountCents,
       history,
       now,
@@ -448,7 +454,7 @@ async function assembleView(input: {
 
   const rewards = await evaluateCustomerRewards({
     config,
-    balance: input.membership.points,
+    balance: currentBalance,
     merchantName: input.membership.merchant.name,
     purchaseAmountCents: input.purchaseAmountCents,
     customerMembershipId: input.membership.id,
@@ -460,7 +466,7 @@ async function assembleView(input: {
 
   const nextBenefit = buildNextBenefit(
     config.rewards,
-    input.membership.points,
+    currentBalance,
     config.mode,
     config.rules,
     evaluation.ok ? evaluation.earned : computeEarnFromCents(config.mode, config.rules, 0).earned,
@@ -492,8 +498,8 @@ async function assembleView(input: {
         rewardName: target.name,
         cost: target.cost,
         costLabel: target.costLabel,
-        previousPoints: input.membership.points,
-        nextPoints: input.membership.points - target.cost,
+        previousPoints: currentBalance,
+        nextPoints: currentBalance - target.cost,
       };
       block = null;
     }
@@ -504,8 +510,8 @@ async function assembleView(input: {
     committed: input.committed,
     firstName: input.membership.user.firstName,
     lastName: input.membership.user.lastName ?? "",
-    points: input.membership.points,
-    previousPoints: input.previousPoints ?? input.membership.points,
+    points: currentBalance,
+    previousPoints: input.previousPoints ?? currentBalance,
     program: input.program,
     merchantName: input.membership.merchant.name,
     grantExpiresAt: input.grant.expiresAt,
@@ -571,23 +577,24 @@ export async function commitLoyaltyTransaction(input: {
       }
       const ctx = await loadGrantContext({ ...input, db: tx });
       await lockMembership(tx, ctx.membership.id);
-      const replayedEarn = (existing.balanceAfter ?? ctx.membership.points) - (existing.balanceBefore ?? ctx.membership.points);
+      const activeBalance = loyaltyBalanceForMode(ctx.membership, ctx.program.mode);
+      const replayedEarn = (existing.balanceAfter ?? activeBalance) - (existing.balanceBefore ?? activeBalance);
       const view = await assembleView({
         action: input.action,
         committed: true,
         grant: ctx.grant,
-        membership: { ...ctx.membership, points: existing.balanceAfter ?? ctx.membership.points },
+        membership: { ...ctx.membership, points: existing.balanceAfter ?? activeBalance },
         program: ctx.program,
         purchaseAmountCents: existing.purchaseAmountCents ?? cents,
         rewardId: existing.rewardId ?? input.rewardId,
         db: tx,
-        previousPoints: existing.balanceBefore ?? ctx.membership.points,
+        previousPoints: existing.balanceBefore ?? activeBalance,
         earnEvaluation:
           input.action === "EARN"
             ? {
                 ok: true,
                 earned: Math.max(0, replayedEarn),
-                newBalance: existing.balanceAfter ?? ctx.membership.points,
+                newBalance: existing.balanceAfter ?? activeBalance,
                 unit: "points",
                 purchaseAmountCents: existing.purchaseAmountCents ?? cents ?? 0,
                 ruleApplied: existing.ruleApplied ?? "Validation déjà enregistrée",
@@ -616,6 +623,7 @@ export async function commitLoyaltyTransaction(input: {
       throw new LoyaltyError("Carte introuvable.");
     }
     const program = membership.merchant.program;
+    const activeBalance = loyaltyBalanceForMode(membership, program.mode);
 
     if (input.action === "EARN") {
       if (ctx.grant.earnCommittedAt) {
@@ -734,8 +742,8 @@ export async function commitLoyaltyTransaction(input: {
             pointsDelta: 0,
             purchaseAmount: cents !== undefined ? cents / 100 : null,
             purchaseAmountCents: cents ?? null,
-            balanceBefore: membership.points,
-            balanceAfter: membership.points,
+            balanceBefore: activeBalance,
+            balanceAfter: activeBalance,
             ruleApplied: `Utilisation de « ${preview.redeem.rewardName} »`,
             idempotencyKey: input.idempotencyKey,
             reason: `Utilisation de « ${preview.redeem.rewardName} »`,
@@ -764,7 +772,7 @@ export async function commitLoyaltyTransaction(input: {
               txId: loyaltyTx.id,
               rewardLabel: preview.redeem.rewardName,
               historicalReward: true,
-              points: membership.points,
+              points: activeBalance,
               merchantName: membership.merchant.name,
               merchantSlug: membership.merchant.slug,
               refreshOnly: true,
@@ -772,8 +780,8 @@ export async function commitLoyaltyTransaction(input: {
           },
         });
         persisted = {
-          points: membership.points,
-          previousPoints: membership.points,
+          points: activeBalance,
+          previousPoints: activeBalance,
         };
       } else {
         persisted = await applyLoyaltyAction({

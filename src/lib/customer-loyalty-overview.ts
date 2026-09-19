@@ -1,6 +1,7 @@
 import type { LoyaltyMode, LoyaltyTxType, Prisma } from "@prisma/client";
 import { resolveTier } from "@/components/fife-life/tier";
 import { getActiveMerchantLoyaltyContext } from "./loyalty-context";
+import { loyaltyBalanceForMode } from "./loyalty-balance";
 import {
   formatUnitCount,
   historyEntryLabel,
@@ -464,6 +465,7 @@ export async function getCustomerLoyaltyOverview(input: {
 
   for (const { membership, context } of contexts) {
     if (!context?.isOperational) continue;
+    const activeBalance = loyaltyBalanceForMode(membership, context.mode);
     const candidates = buildNextRewardCandidates({
       merchantId: membership.merchantId,
       merchantName: membership.merchant.name,
@@ -471,7 +473,7 @@ export async function getCustomerLoyaltyOverview(input: {
       merchantLogoUrl: membership.merchant.logoUrl,
       mode: context.mode,
       unit: context.unit,
-      balance: membership.points,
+      balance: activeBalance,
       rewards: context.rewards,
     });
     const nextReward = selectBestNextReward(candidates);

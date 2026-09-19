@@ -249,13 +249,15 @@ function IconCells({ config, progress, pctValue }: { config: CardLoyaltyWidgetCo
 }
 
 function BigBalance({ config, progress, masked }: { config: CardLoyaltyWidgetConfig; progress: LoyaltyWidgetProgress; masked?: boolean }) {
+  const hasObjective = progress.target != null && progress.target > progress.current;
+  const unit = config.loyaltyMode === "VISITS" || config.loyaltyMode === "AMOUNT_TIERS" ? "passages" : "points";
   return (
     <div className="flex h-full w-full flex-col items-center justify-center">
       <p className="font-black" style={{ color: config.colors.fill, fontSize: cardFontSizeCss(config.fontSize ?? 32) }}>
-        {masked ? "•••" : progress.current}
+        {masked ? "•••" : hasObjective ? `${progress.current} / ${progress.target}` : progress.current}
       </p>
       <p className="text-xs font-semibold opacity-80" style={{ color: config.colors.fill }}>
-        points
+        {unit}
       </p>
     </div>
   );

@@ -1,5 +1,6 @@
 import type { LoyaltyMode } from "@prisma/client";
 import { getActiveMerchantLoyaltyContext } from "./loyalty-context";
+import { loyaltyBalanceForMode } from "./loyalty-balance";
 import { evaluateCustomerRewards } from "./loyalty-commit";
 import { formatUnitCount, loyaltyUnitForMode, type LoyaltyUnit } from "./loyalty-labels";
 import { nextReward, programToConfig } from "./loyalty-program";
@@ -95,17 +96,18 @@ export async function getCustomerMerchantRewardProgress(input: {
 
   const membership = await prisma.customerMembership.findFirst({
     where: { userId: input.userId, merchantId, removedAt: null, merchant: { isActive: true } },
-    select: { id: true, points: true, merchant: { select: { id: true, name: true, slug: true } } },
+    select: { id: true, points: true, pointsBalance: true, visitsBalance: true, merchant: { select: { id: true, name: true, slug: true } } },
   });
   if (!membership) return null;
 
   const context = await getActiveMerchantLoyaltyContext(merchantId);
   if (!context?.isOperational) return null;
+  const activeBalance = loyaltyBalanceForMode(membership, context.mode);
 
   const config = programToConfig(context.program, { activeOnly: true, filterByMode: true });
   const evaluated = await evaluateCustomerRewards({
     config,
-    balance: membership.points,
+    balance: activeBalance,
     merchantName: membership.merchant.name,
     customerMembershipId: membership.id,
     merchantId,
@@ -115,7 +117,7 @@ export async function getCustomerMerchantRewardProgress(input: {
   const unit = loyaltyUnitForMode(context.mode);
   const availableRewards = evaluated.filter((reward) => reward.available);
   const locked = evaluated.filter((reward) => !reward.available && reward.status !== "Expiré" && reward.status !== "Utilisé");
-  const upcomingConfig = nextReward(config.rewards, membership.points, context.mode);
+  const upcomingConfig = nextReward(config.rewards, activeBalance, context.mode);
   const nextEvaluated =
     upcomingConfig != null
       ? evaluated.find((reward) => reward.id === upcomingConfig.id) ??
@@ -126,7 +128,7 @@ export async function getCustomerMerchantRewardProgress(input: {
   const nextTarget = nextEvaluated
     ? buildTargetView({
         reward: nextEvaluated,
-        balance: membership.points,
+        balance: activeBalance,
         mode: context.mode,
         unit,
         merchantName: membership.merchant.name,
@@ -134,7 +136,7 @@ export async function getCustomerMerchantRewardProgress(input: {
     : availableRewards.length > 0
       ? buildTargetView({
           reward: availableRewards[0]!,
-          balance: membership.points,
+          balance: activeBalance,
           mode: context.mode,
           unit,
           merchantName: membership.merchant.name,
@@ -154,7 +156,7 @@ export async function getCustomerMerchantRewardProgress(input: {
     merchantId: membership.merchant.id,
     merchantName: membership.merchant.name,
     merchantSlug: membership.merchant.slug,
-    balance: membership.points,
+    balance: activeBalance,
     mode: context.mode,
     unit,
     nextTarget,
