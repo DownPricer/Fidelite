@@ -48,7 +48,7 @@ function mockProgram(mode: LoyaltyMode, rewards: Partial<LoyaltyReward>[]): Loya
       reuseDelayDays: null,
       globalLimit: null,
       conditions: null,
-      archivedAt: null,
+      archivedAt: reward.archivedAt ?? null,
       createdAt: new Date(),
       updatedAt: new Date(),
     })),
@@ -109,6 +109,37 @@ describe("rewardsForProgramMode", () => {
     expect(filtered[0]?.name).toBe("Boisson offerte");
     expect(filtered[0]?.thresholdUnit).toBe("points");
   });
+
+  it("affiche toutes les récompenses actives publiées quand plusieurs existent (POINTS_BY_AMOUNT)", () => {
+    const program = mockProgram("POINTS_BY_AMOUNT", [
+      { id: "r1", name: "Café offert", threshold: 30, thresholdUnit: "points", isActive: true },
+      { id: "r2", name: "Croissant offert", threshold: 60, thresholdUnit: "points", isActive: true },
+      { id: "r3", name: "Menu offert", threshold: 150, thresholdUnit: "points", isActive: true },
+    ]);
+    const filtered = rewardsForProgramMode(program.rewards, "POINTS_BY_AMOUNT");
+    expect(filtered.map((reward) => reward.name)).toEqual(["Café offert", "Croissant offert", "Menu offert"]);
+  });
+
+  it("exclut les récompenses archivées et de brouillon (isActive=false)", () => {
+    const program = mockProgram("POINTS_BY_AMOUNT", [
+      { id: "active", name: "Café offert", threshold: 30, thresholdUnit: "points", isActive: true },
+      { id: "draft", name: "Brouillon", threshold: 40, thresholdUnit: "points", isActive: false },
+      { id: "archived", name: "Ancien avantage", threshold: 50, thresholdUnit: "points", isActive: true, archivedAt: new Date("2026-01-01") },
+    ]);
+    const filtered = rewardsForProgramMode(program.rewards, "POINTS_BY_AMOUNT");
+    expect(filtered).toHaveLength(1);
+    expect(filtered[0]?.name).toBe("Café offert");
+  });
+
+  it("ne renvoie aucune récompense compatible s'il n'existe que des avantages archivés/brouillon/autre mode", () => {
+    const program = mockProgram("POINTS_BY_AMOUNT", [
+      { id: "draft", name: "Brouillon", threshold: 40, thresholdUnit: "points", isActive: false },
+      { id: "archived", name: "Ancien avantage", threshold: 50, thresholdUnit: "points", isActive: true, archivedAt: new Date("2026-01-01") },
+      { id: "other-mode", name: "Avantage passages", threshold: 5, thresholdUnit: "visits", isActive: true },
+    ]);
+    const filtered = rewardsForProgramMode(program.rewards, "POINTS_BY_AMOUNT");
+    expect(filtered).toHaveLength(0);
+  });
 });
 
 describe("buildCustomerProgramView", () => {
@@ -122,6 +153,24 @@ describe("buildCustomerProgramView", () => {
     expect(view.rewards).toHaveLength(1);
     expect(view.rewards[0]?.name).toBe("Boisson offerte");
     expect(view.upcomingRemaining).toBe(60);
+  });
+
+  it("expose toutes les récompenses actives quand plusieurs sont publiées", () => {
+    const context = mockContext("POINTS_BY_AMOUNT", [
+      { id: "r1", name: "Café offert", threshold: 30, thresholdUnit: "points" },
+      { id: "r2", name: "Croissant offert", threshold: 60, thresholdUnit: "points" },
+    ]);
+    const view = buildCustomerProgramView(context, 10);
+    expect(view.rewards).toHaveLength(2);
+    expect(new Set(view.rewards.map((reward) => reward.id)).size).toBe(2);
+  });
+
+  it("ne renvoie aucune récompense si seuls des avantages incompatibles existent", () => {
+    const context = mockContext("POINTS_BY_AMOUNT", [
+      { id: "old", name: "Avantage passages", threshold: 5, thresholdUnit: "visits" },
+    ]);
+    const view = buildCustomerProgramView(context, 10);
+    expect(view.rewards).toHaveLength(0);
   });
 });
 

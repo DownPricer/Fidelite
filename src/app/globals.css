@@ -1803,6 +1803,97 @@ body:has(.wallet-shell) {
   z-index: 1;
 }
 
+/* Ordre mobile de la fiche commerçant : carte -> actions -> prochain avantage
+   -> avantages -> contenu secondaire. Le DOM suit cet ordre ; le bureau
+   restaure la disposition existante via `order` (wrapper responsive
+   strictement exclusif : même arbre, positionnement différent par média). */
+.merchant-primary-column {
+  display: flex;
+  flex-direction: column;
+}
+
+.merchant-card-block {
+  order: 1;
+}
+
+.merchant-action-row {
+  order: 2;
+}
+
+.merchant-reward-progress {
+  order: 3;
+}
+
+.merchant-actions-error {
+  order: 4;
+}
+
+.merchant-side-panel {
+  display: flex;
+  flex-direction: column;
+}
+
+.merchant-advantages-block {
+  order: 1;
+  margin-top: 0 !important;
+}
+
+.merchant-activity-block {
+  order: 2;
+}
+
+.merchant-program-block {
+  order: 3;
+}
+
+.merchant-history-block {
+  order: 4;
+}
+
+.merchant-conditions-block {
+  order: 5;
+}
+
+.merchant-info-block {
+  order: 6;
+}
+
+.merchant-side-panel .delete-zone {
+  order: 7;
+  margin-top: 0 !important;
+}
+
+/* Barre d'actions : QR, Google Wallet, Partager — trois boutons de même
+   style et de même hauteur, disposition compacte sans débordement. */
+.merchant-action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.merchant-action-row > * {
+  flex: 1 1 150px;
+  min-width: 0;
+}
+
+.merchant-action-row .wallet-qr-action,
+.merchant-action-row .google-wallet-action > button,
+.merchant-action-row .merchant-share-btn {
+  min-height: 48px;
+  width: 100%;
+  border-radius: 0.9rem;
+}
+
+@media (max-width: 380px) {
+  .merchant-action-row {
+    flex-direction: column;
+  }
+
+  .merchant-action-row > * {
+    flex: 1 1 auto;
+  }
+}
+
 /* Back button glassy */
 .back-btn-glassy {
   background: rgba(255, 255, 255, 0.04);
@@ -2976,6 +3067,20 @@ body:has(.wallet-shell) {
 
   .merchant-card-block {
     margin-top: 2rem !important;
+    order: 1;
+  }
+
+  /* Bureau : ordre historique inchangé (carte, prochain avantage, actions). */
+  .merchant-reward-progress {
+    order: 2;
+  }
+
+  .merchant-action-row {
+    order: 3;
+  }
+
+  .merchant-actions-error {
+    order: 4;
   }
 
   .merchant-side-panel {
@@ -2986,8 +3091,35 @@ body:has(.wallet-shell) {
     align-self: start;
   }
 
-  .merchant-side-panel > .glass-panel:first-child,
-  .merchant-side-panel > .delete-zone {
+  /* Bureau : ordre historique inchangé (activité, programme, avantages, historique...). */
+  .merchant-activity-block {
+    order: 1;
+    margin-top: 0 !important;
+  }
+
+  .merchant-program-block {
+    order: 2;
+  }
+
+  .merchant-advantages-block {
+    order: 3;
+    margin-top: 1rem !important;
+  }
+
+  .merchant-history-block {
+    order: 4;
+  }
+
+  .merchant-conditions-block {
+    order: 5;
+  }
+
+  .merchant-info-block {
+    order: 6;
+  }
+
+  .merchant-side-panel .delete-zone {
+    order: 7;
     margin-top: 0 !important;
   }
 

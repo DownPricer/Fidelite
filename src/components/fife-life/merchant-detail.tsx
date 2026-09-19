@@ -8,13 +8,12 @@ import type { CardHistoryItem, MerchantCardData, WalletEventPayload } from "./ty
 import { usePersonalizedQr } from "./use-personalized-qr";
 import { mergeMerchantCardUpdate } from "@/lib/merchant-card-update";
 import type { buildCustomerProgramView } from "@/lib/loyalty-context";
-import { formatUnitCount, historyEntryLabel, progressBalanceLabel, type HistoryTxMetadata } from "@/lib/loyalty-labels";
+import { formatUnitCount, historyEntryLabel, type HistoryTxMetadata } from "@/lib/loyalty-labels";
 import {
   activityFromWalletEvent,
   type ActivityItem,
   type NextRewardOverview,
 } from "@/lib/customer-loyalty-overview";
-import type { LoyaltyMode } from "@prisma/client";
 import { useWalletEvents } from "./use-wallet-events";
 import {
   MerchantRewardProgressPanel,
@@ -342,17 +341,8 @@ Le commerçant se réserve le droit de modifier ou d'annuler le programme de fid
             </button>
           </section>
 
-          <MerchantRewardProgressPanel
-            slug={slug}
-            merchantName={card.name}
-            initialProgress={initialRewardProgress}
-            qrSrc={personalizedQr}
-            clientNumber={clientNumber}
-            preview={preview}
-          />
-
-          {/* Actions: QR & Google Wallet */}
-          <section className="merchant-actions-block wallet-primary-actions mt-5">
+          {/* Actions : QR, Google Wallet, Partager — un seul bloc, un seul QR canonique */}
+          <section className="merchant-actions-block merchant-action-row mt-5">
             <WalletQrAction
               qrSrc={personalizedQr}
               qrFailed={qrFailed}
@@ -366,14 +356,11 @@ Le commerçant se réserve le droit de modifier ou d'annuler le programme de fid
                 className="wallet-google-action"
               />
             ) : null}
-          </section>
-
-          <section className="merchant-actions-block mt-3 flex gap-3">
             <button
               type="button"
               onClick={() => void shareCard()}
               disabled={shareBusy}
-              className="action-btn-glassy flex-1 flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold text-[var(--ink)] disabled:opacity-50"
+              className="merchant-share-btn action-btn-glassy flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold text-[var(--ink)] disabled:opacity-50"
             >
               {shareBusy ? (
                 <div className="h-4 w-4 rounded-full border-2 border-current border-t-transparent animate-spin" />
@@ -395,33 +382,49 @@ Le commerçant se réserve le droit de modifier ou d'annuler le programme de fid
             </button>
           </section>
 
+          <MerchantRewardProgressPanel
+            slug={slug}
+            merchantName={card.name}
+            initialProgress={initialRewardProgress}
+            qrSrc={personalizedQr}
+            clientNumber={clientNumber}
+            preview={preview}
+          />
+
           {error ? (
-            <p className="mt-3 text-center text-xs font-semibold text-[var(--danger)]">{error}</p>
+            <p className="merchant-actions-error mt-3 text-center text-xs font-semibold text-[var(--danger)]">{error}</p>
           ) : null}
           </div>
 
           <div className="merchant-side-panel">
-          <section className="glass-panel mt-6 p-5">
-            <h2 className="section-title">Prochaine récompense</h2>
-            {nextReward ? (
-              <div className="mt-3">
-                <p className="text-sm font-semibold text-[var(--ink)]">{nextReward.rewardName}</p>
-                <p className="mt-1 text-xs text-[var(--muted-strong)]">{nextReward.statusLabel}</p>
-                {!nextReward.available ? (
-                  <p className="mt-1 text-[10px] text-[var(--muted)]">
-                    {progressBalanceLabel(nextReward.mode as LoyaltyMode, nextReward.progressCurrent, nextReward.progressTarget)}{" "}
-                    · {nextReward.progressPercent} %
-                  </p>
-                ) : null}
-              </div>
+          {/* Avantages : détail des récompenses du programme actif publié (canonique) */}
+          <section className="merchant-advantages-block glass-panel mt-4 p-5">
+            <h2 className="section-title">Avantages</h2>
+            {rewards.length ? (
+              <ul className="mt-4 divide-y divide-white/8">
+                {rewards.map((reward, idx) => (
+                  <li key={idx} className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0">
+                    <span className="text-sm font-semibold text-[var(--positive)]">
+                      {formatUnitCount(
+                        reward.threshold,
+                        reward.thresholdUnit === "points" ? "points" : "passages",
+                      )}
+                    </span>
+                    <span className="text-sm text-[var(--ink-soft)]">=</span>
+                    <span className="text-sm font-medium text-[var(--ink)]">{reward.reward}</span>
+                  </li>
+                ))}
+              </ul>
             ) : (
-              <p className="mt-3 text-sm text-[var(--muted)]">
-                Aucun prochain avantage disponible pour le moment.
+              <p className="mt-4 text-sm text-[var(--muted)]">
+                {programView
+                  ? "Aucun avantage actif publié pour ce mode."
+                  : "Aucun avantage configuré pour ce programme."}
               </p>
             )}
           </section>
 
-          <section className="glass-panel mt-4 p-5">
+          <section className="merchant-activity-block glass-panel mt-4 p-5">
             <h2 className="section-title">Activité récente</h2>
             {overviewError ? (
               <div className="mt-3 space-y-2">
@@ -470,7 +473,7 @@ Le commerçant se réserve le droit de modifier ou d'annuler le programme de fid
             )}
           </section>
 
-          <section className="glass-panel mt-4 p-5">
+          <section className="merchant-program-block glass-panel mt-4 p-5">
             <h2 className="section-title">Programme</h2>
             <div className="mt-3 space-y-1 text-sm text-[var(--ink-soft)]">
               <p className="font-semibold text-[var(--ink)]">
@@ -481,32 +484,9 @@ Le commerçant se réserve le droit de modifier ou d'annuler le programme de fid
             </div>
           </section>
 
-          {/* Advantages section */}
-          <section className="glass-panel mt-4 p-5">
-            <h2 className="section-title">Avantages</h2>
-            {rewards.length ? (
-              <ul className="mt-4 divide-y divide-white/8">
-                {rewards.map((reward, idx) => (
-                  <li key={idx} className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0">
-                    <span className="text-sm font-semibold text-[var(--positive)]">
-                      {formatUnitCount(
-                        reward.threshold,
-                        reward.thresholdUnit === "points" ? "points" : "passages",
-                      )}
-                    </span>
-                    <span className="text-sm text-[var(--ink-soft)]">=</span>
-                    <span className="text-sm font-medium text-[var(--ink)]">{reward.reward}</span>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="mt-4 text-sm text-[var(--muted)]">Aucun avantage configuré pour ce programme.</p>
-            )}
-          </section>
-
           {/* History section */}
           {showFullHistory ? (
-          <section className="glass-panel mt-4 p-5">
+          <section className="merchant-history-block glass-panel mt-4 p-5">
             <h2 className="section-title">Historique</h2>
             {rows.length === 0 ? (
               <p className="mt-4 text-sm text-[var(--muted)]">Aucun mouvement pour le moment.</p>
@@ -554,7 +534,7 @@ Le commerçant se réserve le droit de modifier ou d'annuler le programme de fid
           ) : null}
 
           {/* Conditions section */}
-          <section className="glass-panel mt-4 p-5">
+          <section className="merchant-conditions-block glass-panel mt-4 p-5">
             <h2 className="section-title">Conditions d'utilisation</h2>
             <div className={`mt-4 text-sm text-[var(--ink-soft)] leading-relaxed whitespace-pre-line ${!conditionsExpanded ? "line-clamp-4" : ""}`}>
               {conditions}
@@ -572,7 +552,7 @@ Le commerçant se réserve le droit de modifier ou d'annuler le programme de fid
 
           {/* Merchant info section */}
           {(merchantInfo.address || merchantInfo.phone || merchantInfo.email || merchantInfo.website) && (
-            <section className="glass-panel mt-4 p-5">
+            <section className="merchant-info-block glass-panel mt-4 p-5">
               <h2 className="section-title">Informations</h2>
               <div className="mt-4 space-y-3">
                 {merchantInfo.address && (
