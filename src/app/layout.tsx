@@ -12,13 +12,13 @@ const manrope = Manrope({
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Fife Life",
-  description: "Fife Life — portefeuille universel de fidélité.",
-  applicationName: "Fife Life",
+  title: "Fidelo",
+  description: "Fidelo — portefeuille universel de fidélité.",
+  applicationName: "Fidelo",
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
-    title: "Fife Life",
+    title: "Fidelo",
     statusBarStyle: "black",
   },
 };

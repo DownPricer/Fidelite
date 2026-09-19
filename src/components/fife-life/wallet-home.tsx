@@ -280,7 +280,7 @@ export function WalletHome({
             <div className="brand-pill-glassy pointer-events-none flex flex-col items-center gap-1 px-3 py-2">
               <span className="h-3 w-3 rounded-full bg-[radial-gradient(circle_at_30%_20%,#c4b5ff,#8557ff)] shadow-[0_0_14px_rgba(166,139,255,0.75)]" />
               <div className="text-center leading-tight">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[var(--ink-soft)]">Fife Life</p>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[var(--ink-soft)]">Fidelo</p>
                 <p className="text-[11px] font-medium text-[var(--muted-strong)]">Prism Wallet</p>
               </div>
             </div>
@@ -295,7 +295,7 @@ export function WalletHome({
 
           <div className="wallet-hero-column">
             <section className="wallet-points-block shrink-0 px-1">
-              <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-[var(--muted-strong)]">Points Fife Life</p>
+              <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-[var(--muted-strong)]">Points Fidelo</p>
               <p className="wallet-points-value mt-1 text-[2.35rem] font-black leading-none tabular-nums text-[var(--ink)]">
                 {formatLoyaltyPoints(points)}
                 <span className="ml-1 text-sm font-semibold text-[var(--muted)]">pts</span>
@@ -326,7 +326,7 @@ export function WalletHome({
                   qrFailed={qrFailed}
                   onRetry={() => void reloadQr()}
                   clientNumber={clientNumber}
-                  merchantName={activeMerchantCard?.name ?? "Fife Life"}
+                  merchantName={activeMerchantCard?.name ?? "Fidelo"}
                 />
                 {!preview && walletEnabled ? (
                   <AddToGoogleWalletButton endpoint={googleWalletEndpoint} className="wallet-google-action" />
@@ -354,7 +354,7 @@ export function WalletHome({
               </>
             ) : activeCard.cardType === "global" || activeCard.cardType === "global-tier" ? (
               <p className="text-xs text-[var(--muted-strong)]">
-                Aucun prochain avantage Fife Life pour le moment.
+                Aucun prochain avantage Fidelo pour le moment.
               </p>
             ) : (
               <p className="text-xs text-[var(--muted-strong)]">
@@ -433,7 +433,7 @@ export function WalletHome({
                 </>
               ) : activeCard.cardType === "global" || activeCard.cardType === "global-tier" ? (
                 <p className="text-xs text-[var(--muted-strong)]">
-                  Aucun prochain avantage Fife Life pour le moment.
+                  Aucun prochain avantage Fidelo pour le moment.
                 </p>
               ) : (
                 <p className="text-xs text-[var(--muted-strong)]">

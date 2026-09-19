@@ -2,7 +2,7 @@
   "name": "fifelite",
   "version": "1.0.0",
   "private": true,
-  "description": "FifeLite — plateforme de fidélité pour commerces",
+  "description": "Fidelo — plateforme de fidélité pour commerces",
   "scripts": {
     "dev": "next dev",
     "build": "prisma generate && next build",

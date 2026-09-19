@@ -4,7 +4,7 @@ function read(name: string, fallback = "") {
 
 export const env = {
   nodeEnv: read("NODE_ENV", "development"),
-  appName: read("APP_NAME", "Fife Life"),
+  appName: read("APP_NAME", "Fidelo"),
   appUrl: read("APP_URL", "http://localhost:3000"),
   customerOrigin: read("CUSTOMER_ORIGIN", "https://fidelite.sitereadyshd.fr"),
   appOrigin: read("APP_ORIGIN", "https://app-fidelite.sitereadyshd.fr"),
@@ -36,7 +36,7 @@ export const env = {
   smtpSecure: read("SMTP_SECURE", "false") === "true",
   smtpUser: read("SMTP_USER"),
   smtpPass: read("SMTP_PASS"),
-  // Nombre de points Fife Life attribués lorsqu'une récompense commerçant est validée.
+  // Nombre de points Fidelo attribués lorsqu'une récompense commerçant est validée.
   fifeLifePointsPerReward: Number(read("FIFE_LIFE_POINTS_PER_REWARD", "12")),
   googleWalletEnabled: read("GOOGLE_WALLET_ENABLED", "false") === "true",
   googleWalletIssuerId: read("GOOGLE_WALLET_ISSUER_ID"),

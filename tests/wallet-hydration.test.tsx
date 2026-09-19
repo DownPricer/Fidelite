@@ -135,7 +135,7 @@ describe("wallet — hydratation renderToString + hydrateRoot", () => {
     vi.clearAllMocks();
   });
 
-  it("hydrate la carte principale Fife Life", async () => {
+  it("hydrate la carte principale Fidelo", async () => {
     await expectCleanHydration(
       <WalletMotionRoot>
         <GlobalCard
@@ -147,7 +147,7 @@ describe("wallet — hydratation renderToString + hydrateRoot", () => {
           preview
         />
       </WalletMotionRoot>,
-      "carte principale Fife Life",
+      "carte principale Fidelo",
     );
   });
 

@@ -192,7 +192,7 @@ model User {
   isActive           Boolean      @default(true)
   mustChangePassword Boolean      @default(false)
   privacyConsentAt   DateTime?
-  /// Solde global de points Fife Life (tous commerces confondus).
+  /// Solde global de points Fidelo (tous commerces confondus).
   fifeLifePoints     Int          @default(0)
   /// Numéro client court affiché sur la carte et saisissable en caisse.
   clientNumber       String?      @unique
@@ -678,7 +678,7 @@ model AccountDeletionRequest {
   user      User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
-/// Ledger des points Fife Life globaux.
+/// Ledger des points Fidelo globaux.
 model FifeLifePointsLedger {
   id        String   @id @default(cuid())
   userId    String
@@ -712,7 +712,7 @@ model WalletEvent {
   @@index([userId, acknowledgedAt])
 }
 
-/// QR global et universel Fife Life, un par utilisateur.
+/// QR global et universel Fidelo, un par utilisateur.
 model FifeLifeQrToken {
   id            String    @id @default(cuid())
   userId        String    @unique

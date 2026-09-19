@@ -102,8 +102,8 @@ const activeProgram = {
   rewards: [],
 };
 
-describe("points Fife Life globaux", () => {
-  it("un simple passage ne donne aucun point Fife Life", async () => {
+describe("points Fidelo globaux", () => {
+  it("un simple passage ne donne aucun point Fidelo", async () => {
     vi.clearAllMocks();
     merchantFindUnique.mockResolvedValue({
       id: "merchant_1",
@@ -144,7 +144,7 @@ describe("points Fife Life globaux", () => {
     ).toBe(false);
   });
 
-  it("une récompense validée crédite des points Fife Life configurés", async () => {
+  it("une récompense validée crédite des points Fidelo configurés", async () => {
     vi.clearAllMocks();
     merchantFindUnique.mockResolvedValue({
       id: "merchant_1",

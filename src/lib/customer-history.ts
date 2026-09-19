@@ -136,7 +136,7 @@ export function formatFifeLifeEntry(input: {
   return {
     id: `fl-${input.id}`,
     merchantId: null,
-    merchantName: input.merchantName ?? "Fife Life",
+    merchantName: input.merchantName ?? "Fidelo",
     merchantLogoUrl: input.merchantLogoUrl ?? null,
     createdAt: input.createdAt.toISOString(),
     operationType,

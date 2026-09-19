@@ -118,7 +118,7 @@ export function InteractiveLoyaltyCard({
             <ExpandableQrCode
               qrSrc={effectiveQrSrc && !qrFailed ? effectiveQrSrc : null}
               clientNumber={clientNumber}
-              merchantName="Fife Life"
+              merchantName="Fidelo"
               zoomEnabled={qrZoomEnabled}
               fetchPriority={qrFetchPriority}
               onError={() => setQrFailed(true)}

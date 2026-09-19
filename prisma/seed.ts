@@ -215,7 +215,7 @@ async function main() {
     },
   });
 
-  console.log("Seed Fife Life terminé.");
+  console.log("Seed Fidelo terminé.");
   console.log("Comptes créés (mots de passe lus depuis les variables d'environnement) :");
   console.log(`  Super-admin : ${superEmail}`);
   console.log(`  Admin Café Demo : ${adminEmail}`);

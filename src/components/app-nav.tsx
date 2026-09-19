@@ -58,7 +58,7 @@ export function AppNav({ admin }: { admin: boolean }) {
         <div className="flex h-16 items-center border-b border-white/10 px-6">
           <Link href={admin ? "/app" : "/app/caisse"} className="flex items-center gap-3 font-bold tracking-tighter text-[var(--ink)]">
             <span className="merchant-brand-mark">FL</span>
-            <span className="text-lg">Fife Life</span>
+            <span className="text-lg">Fidelo</span>
           </Link>
         </div>
         <nav className="flex-1 space-y-1 px-3 py-4">

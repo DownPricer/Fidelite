@@ -81,7 +81,7 @@ const membership = {
   },
 };
 
-describe("processCaisseScan — QR global Fife Life", () => {
+describe("processCaisseScan — QR global Fidelo", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     entitlementFindMany.mockResolvedValue([]);

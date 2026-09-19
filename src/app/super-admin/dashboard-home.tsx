@@ -64,7 +64,7 @@ export function DashboardHome({ firstName }: { firstName: string }) {
       <div className="mx-auto max-w-7xl space-y-8">
         <div>
           <h1 className="text-2xl font-black tracking-tight text-[var(--ink)]">Vue d&apos;ensemble</h1>
-          <p className="text-sm text-[var(--muted-text)]">Indicateurs globaux de la plateforme Fife Life.</p>
+          <p className="text-sm text-[var(--muted-text)]">Indicateurs globaux de la plateforme Fidelo.</p>
         </div>
 
         {error ? <p className="text-sm text-[var(--danger)]">{error}</p> : null}

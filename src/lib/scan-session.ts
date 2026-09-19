@@ -144,6 +144,6 @@ export function readManualToken(raw: string) {
     if (error instanceof QrInputError) {
       throw error;
     }
-    throw new QrInputError("Ce lien n'est pas un QR Fife Life valide.");
+    throw new QrInputError("Ce lien n'est pas un QR Fidelo valide.");
   }
 }

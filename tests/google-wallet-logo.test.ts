@@ -14,7 +14,7 @@ function readPngDimensions(buffer: Buffer) {
   };
 }
 
-describe("logo public Google Wallet Fife Life", () => {
+describe("logo public Google Wallet Fidelo", () => {
   it("existe dans public/ et est un PNG 1024×1024 valide", () => {
     const buffer = readFileSync(LOGO_PATH);
     expect(buffer.length).toBeGreaterThan(512);

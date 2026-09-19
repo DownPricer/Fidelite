@@ -3123,7 +3123,7 @@ body:has(.wallet-shell) {
     margin-top: 0 !important;
   }
 
-  /* Identité Fife Life */
+  /* Identité Fidelo */
   .fife-universal-layout {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);

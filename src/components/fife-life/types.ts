@@ -23,7 +23,7 @@ export type MerchantCardData = {
   cardTemplateId?: string | null;
   cardTemplateVersion?: number | null;
   cardTemplateUsedFallback?: boolean;
-  /** Niveau Fife Life pour l’image statique en mode démo. */
+  /** Niveau Fidelo pour l’image statique en mode démo. */
   demoTier?: WalletTier;
 };
 

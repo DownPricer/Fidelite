@@ -129,7 +129,7 @@ export function BrandMark({ className }: { className?: string }) {
           />
         </svg>
       </span>
-      <span className="text-xl font-semibold tracking-tight">Fife Life</span>
+      <span className="text-xl font-semibold tracking-tight">Fidelo</span>
     </div>
   );
 }
@@ -155,7 +155,7 @@ export function EmployeeBrandMark({ className }: { className?: string }) {
         </svg>
       </span>
       <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-[var(--violet-bright)]">
-        Fife Life Employé
+        Fidelo Employé
       </p>
     </div>
   );

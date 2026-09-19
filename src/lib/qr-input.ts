@@ -32,7 +32,7 @@ function extractJwtFromText(text: string) {
 export function extractFifeLifeQrToken(raw: string) {
   const trimmed = raw.trim();
   if (!trimmed) {
-    throw new QrInputError("Collez un lien ou un code QR Fife Life.");
+    throw new QrInputError("Collez un lien ou un code QR Fidelo.");
   }
 
   if (JWT_PATTERN.test(trimmed)) {
@@ -45,7 +45,7 @@ export function extractFifeLifeQrToken(raw: string) {
   } catch {
     const embedded = extractJwtFromText(trimmed);
     if (embedded) return embedded;
-    throw new QrInputError("Ce lien n'est pas un QR Fife Life valide.");
+    throw new QrInputError("Ce lien n'est pas un QR Fidelo valide.");
   }
 
   if (!["http:", "https:"].includes(parsed.protocol)) {
@@ -54,7 +54,7 @@ export function extractFifeLifeQrToken(raw: string) {
 
   const host = parsed.hostname.toLowerCase();
   if (!ALLOWED_QR_HOSTS.has(host)) {
-    throw new QrInputError("Domaine non autorisé pour un QR Fife Life.");
+    throw new QrInputError("Domaine non autorisé pour un QR Fidelo.");
   }
 
   const fromQuery =
@@ -80,5 +80,5 @@ export function extractFifeLifeQrToken(raw: string) {
     return embedded;
   }
 
-  throw new QrInputError("Impossible d'extraire un QR Fife Life depuis ce lien.");
+  throw new QrInputError("Impossible d'extraire un QR Fidelo depuis ce lien.");
 }

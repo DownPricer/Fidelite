@@ -9,7 +9,7 @@ export default function PrivacyPage() {
         <h1 className="mt-8 text-3xl font-semibold text-[var(--ink)]">Politique de confidentialité</h1>
         <Card className="mt-6 space-y-4 text-sm leading-6">
           <p>
-            Fife Life collecte uniquement les données nécessaires au fonctionnement de la carte
+            Fidelo collecte uniquement les données nécessaires au fonctionnement de la carte
             de fidélité : prénom, adresse e-mail, mot de passe hashé, passages et récompenses.
           </p>
           <p>
@@ -22,9 +22,9 @@ export default function PrivacyPage() {
           </p>
           <p>
             Vous pouvez demander la suppression de votre compte depuis votre espace client.
-            La demande est enregistrée et traitée par l’équipe Fife Life.
+            La demande est enregistrée et traitée par l’équipe Fidelo.
           </p>
-          <p>Responsable : Fife Life — domaine sitereadyshd.fr.</p>
+          <p>Responsable : Fidelo — domaine sitereadyshd.fr.</p>
         </Card>
         <Link href="/" className="mt-6 inline-block text-sm text-[var(--violet-bright)] underline">
           Retour

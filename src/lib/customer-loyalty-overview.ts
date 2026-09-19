@@ -227,7 +227,7 @@ export function buildFifeLifeNextReward(fifeLifePoints: number): NextRewardOverv
   return {
     rewardName: `Niveau ${tier.nextName}`,
     merchantId: "fife-life",
-    merchantName: "Fife Life",
+    merchantName: "Fidelo",
     merchantSlug: "fife-life",
     merchantLogoUrl: null,
     statusLabel: `Encore ${formatUnitCount(tier.remaining, "points")}`,

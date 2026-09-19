@@ -4,7 +4,7 @@ import { BrandMark } from "@/components/ui";
 const SPACES = [
   {
     title: "Wallet client",
-    description: "Cartes Fife Life, points et QR universel.",
+    description: "Cartes Fidelo, points et QR universel.",
     href: "/demo/enter/client",
     cta: "Voir la démo client",
   },
@@ -33,7 +33,7 @@ export default function DemoHubPage() {
           </p>
           <h1 className="mt-2 text-3xl font-black tracking-tight">Choisissez un espace</h1>
           <p className="mt-2 text-sm font-medium leading-relaxed text-[var(--muted-strong)]">
-            Explorez Fife Life sans mot de passe ni configuration.
+            Explorez Fidelo sans mot de passe ni configuration.
           </p>
         </div>
 

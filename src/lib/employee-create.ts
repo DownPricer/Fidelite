@@ -35,7 +35,7 @@ export async function createDirectEmployee(input: {
 
   if (existingUser) {
     throw new EmployeeCreateError(
-      "Cette adresse e-mail est déjà utilisée par un compte Fife Life. Choisissez une autre adresse.",
+      "Cette adresse e-mail est déjà utilisée par un compte Fidelo. Choisissez une autre adresse.",
       409,
     );
   }

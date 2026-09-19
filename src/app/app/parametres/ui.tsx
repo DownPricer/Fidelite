@@ -17,7 +17,7 @@ export function SettingsPanel({
         <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted)]">Commerce</p>
         <h2 className="mt-1 text-xl font-black text-[var(--ink)]">{merchantName}</h2>
         <p className="mt-2 text-sm text-[var(--muted-strong)]">
-          Le nom, le logo et la couleur principale sont gérés par l&apos;administrateur Fife Life.
+          Le nom, le logo et la couleur principale sont gérés par l&apos;administrateur Fidelo.
         </p>
       </div>
 

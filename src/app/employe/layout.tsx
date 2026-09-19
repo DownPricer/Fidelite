@@ -1,13 +1,13 @@
 import type { Metadata, Viewport } from "next";
 
 export const metadata: Metadata = {
-  title: "Fife Life Employé",
-  description: "Application de scan Fife Life pour les employés.",
-  applicationName: "Fife Life Employé",
+  title: "Fidelo Employé",
+  description: "Application de scan Fidelo pour les employés.",
+  applicationName: "Fidelo Employé",
   manifest: "/employe/manifest.webmanifest",
   appleWebApp: {
     capable: true,
-    title: "Fife Life Employé",
+    title: "Fidelo Employé",
     statusBarStyle: "black",
   },
 };

@@ -6,7 +6,7 @@ import { cn } from "@/components/ui";
 type PrismCardProps = {
   /**
    * Visual material of the card.
-   * - "bronze" | "silver" | "gold" | "diamond" for Fife Life tiers
+   * - "bronze" | "silver" | "gold" | "diamond" for Fidelo tiers
    * - "merchant" for individual merchant cards
    */
   material?: "bronze" | "silver" | "gold" | "diamond" | "merchant";

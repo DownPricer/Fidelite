@@ -239,7 +239,7 @@ export function SettingsPage({
             <ToggleRow label="Avantage bientôt expiré" checked={preferences.notifyBenefitExpiring} onChange={(v) => void patchPreferences({ notifyBenefitExpiring: v })} />
             <ToggleRow label="Nouvelle carte ajoutée" checked={preferences.notifyNewCard} onChange={(v) => void patchPreferences({ notifyNewCard: v })} />
             <ToggleRow label="Offres des commerçants" checked={preferences.notifyMerchantOffers} onChange={(v) => void patchPreferences({ notifyMerchantOffers: v })} />
-            <ToggleRow label="Actualités Fife Life" checked={preferences.notifyFifeLifeNews} onChange={(v) => void patchPreferences({ notifyFifeLifeNews: v })} />
+            <ToggleRow label="Actualités Fidelo" checked={preferences.notifyFifeLifeNews} onChange={(v) => void patchPreferences({ notifyFifeLifeNews: v })} />
             <ToggleRow label="Notifications de sécurité" checked={preferences.notifySecurity} disabled onChange={() => undefined} />
           </div>
           <p className="mt-4 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--muted)]">Canaux</p>
@@ -285,7 +285,7 @@ export function SettingsPage({
         <div className="relative z-[1]">
           <h3 className="section-title mb-3">Aide</h3>
           <div className="space-y-2 text-sm">
-            <a href="mailto:support@fifelife.app" className="profile-inline-link block">
+            <a href="mailto:support@fidelo.app" className="profile-inline-link block">
               Contacter le support
             </a>
             <Link href="/confidentialite" className="profile-inline-link block">

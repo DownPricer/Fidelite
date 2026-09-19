@@ -2,9 +2,9 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Fife Life",
-    short_name: "Fife Life",
-    description: "Fife Life — portefeuille universel de fidélité.",
+    name: "Fidelo",
+    short_name: "Fidelo",
+    description: "Fidelo — portefeuille universel de fidélité.",
     start_url: "/",
     display: "standalone",
     background_color: "#06060B",

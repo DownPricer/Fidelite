@@ -56,7 +56,7 @@ export function EmployeeLoginScreen({
       <div className="w-full max-w-[390px]">
         <div className="mb-8 flex flex-col items-center text-center">
           <EmployeeBrandMark className="mb-4" />
-          <p className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--muted)]">Fife Life Employé</p>
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--muted)]">Fidelo Employé</p>
           <h1 className="mt-2 text-2xl font-black tracking-tight text-[var(--ink)]">Connexion</h1>
         </div>
 

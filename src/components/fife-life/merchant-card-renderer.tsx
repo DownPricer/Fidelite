@@ -70,7 +70,7 @@ export type MerchantCardRendererProps = {
 function displayClientName(mode: MerchantCardDisplayMode, name?: string) {
   if (mode === "personalized") return name ?? "Membre";
   if (mode === "adminPreview") return name ?? "Aperçu client";
-  if (mode === "publicPreview") return "Membre Fife Life";
+  if (mode === "publicPreview") return "Membre Fidelo";
   return name ?? "Membre";
 }
 

@@ -14,7 +14,7 @@ export default function HomePage() {
             Votre collection de cartes, en version premium.
           </h1>
           <p className="mt-4 text-lg leading-relaxed text-[var(--muted-strong)]">
-            Fife Life rassemble votre identité, votre QR universel et vos cartes commerçants dans une expérience
+            Fidelo rassemble votre identité, votre QR universel et vos cartes commerçants dans une expérience
             lumineuse, profonde et désirable.
           </p>
           <div className="mt-10 flex flex-wrap gap-3">
@@ -71,7 +71,7 @@ export default function HomePage() {
           >
             <div className="flex h-full flex-col justify-between p-6">
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-white/70">Fife Life</p>
+                <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-white/70">Fidelo</p>
                 <p className="mt-1 text-2xl font-black text-white">Silver</p>
               </div>
               <p className="text-3xl font-black tabular-nums text-white">

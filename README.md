@@ -1,4 +1,4 @@
-# Fife Life
+# Fidelo
 
 Plateforme de fidélité pour commerces. Une seule PWA responsive, installable depuis le navigateur.
 
@@ -6,7 +6,7 @@ Domaines de production :
 
 - `fidelite.sitereadyshd.fr` : espace client, inscription et carte
 - `app-fidelite.sitereadyshd.fr` : espace commerçant et mode caisse
-- `admin-fidelite.sitereadyshd.fr` : super-admin Fife Life
+- `admin-fidelite.sitereadyshd.fr` : super-admin Fidelo
 
 Ne pas utiliser `app.sitereadyshd.fr` ni `admin.sitereadyshd.fr` (déjà pris par d’autres projets).
 
@@ -47,7 +47,7 @@ Commerce de démo : **Café Demo**, slug `cafe-demo`, règle `10 passages = 1 bo
 
 ## Déploiement VPS sans Docker local
 
-Le reverse proxy Nginx Docker `downpricer-nginx` et son réseau `downpricer_downpricer-network` existent déjà. Fife Life ajoute uniquement ses propres conteneurs, volumes et son réseau interne. Ne pas modifier, redémarrer, supprimer, renommer ni reconstruire les autres stacks.
+Le reverse proxy Nginx Docker `downpricer-nginx` et son réseau `downpricer_downpricer-network` existent déjà. Fidelo ajoute uniquement ses propres conteneurs, volumes et son réseau interne. Ne pas modifier, redémarrer, supprimer, renommer ni reconstruire les autres stacks.
 
 Chemins et noms :
 
@@ -191,7 +191,7 @@ npx tsx scripts/google-wallet-doctor.ts
 ## Checklist de déploiement
 
 - [ ] `.env` renseigné : `POSTGRES_PASSWORD` = mot de passe dans `DATABASE_URL`, `QR_SECRET` ≥ 32 caractères aléatoires
-- [ ] DNS des trois sous-domaines Fife Life uniquement
+- [ ] DNS des trois sous-domaines Fidelo uniquement
 - [ ] `docker compose up -d --build` depuis `/opt/fifelite/app/site/deploy`
 - [ ] Seed une seule fois si besoin
 - [ ] `fifelite.conf` ajouté dans le Nginx central, `nginx -t` puis reload
