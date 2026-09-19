@@ -111,6 +111,7 @@ export default async function CardPage({
       programView={programView}
       nextReward={overview.nextReward}
       rewardProgress={rewardProgress}
+      clientName={[user.firstName, user.lastName].filter(Boolean).join(" ") || user.firstName}
       clientNumber={resolveClientNumber({ clientNumber: user.clientNumber, userId: user.id })}
       recentActivity={overview.recentActivity}
       activityTotal={overview.activityTotal}

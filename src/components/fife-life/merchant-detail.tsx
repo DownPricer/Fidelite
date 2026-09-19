@@ -34,6 +34,7 @@ export function MerchantCardDetail({
   rewardProgress: initialRewardProgress = null,
   recentActivity: initialRecentActivity = [],
   activityTotal: initialActivityTotal = 0,
+  clientName = null,
   clientNumber = null,
   preview = false,
   walletEnabled = false,
@@ -46,6 +47,7 @@ export function MerchantCardDetail({
   rewardProgress?: CustomerMerchantRewardProgress | null;
   recentActivity?: ActivityItem[];
   activityTotal?: number;
+  clientName?: string | null;
   clientNumber?: string | null;
   preview?: boolean;
   walletEnabled?: boolean;
@@ -325,6 +327,7 @@ Le commerçant se réserve le droit de modifier ou d'annuler le programme de fid
                 }}
                 card={card}
                 slug={slug}
+                clientName={clientName ?? undefined}
                 displayMode={preview ? "adminPreview" : "personalized"}
                 showQr
                 qrSrc={personalizedQr}
@@ -659,6 +662,7 @@ Le commerçant se réserve le droit de modifier ou d'annuler le programme de fid
         open={cardEnlarged}
         card={card}
         slug={slug}
+        customerName={clientName ?? undefined}
         personalizedQr={personalizedQr}
         preview={preview}
         progress={cardProgress}

@@ -111,6 +111,18 @@ describe("MerchantCardDetail — ordre mobile de la fiche commerçant", () => {
     expect((html.match(/Prochain avantage/g) ?? []).length).toBe(1);
   });
 
+  it("transmet le vrai nom du client à la carte et à la vue agrandie (au lieu du placeholder « Membre »)", () => {
+    // Régression : la fiche /carte/[slug] ne passait aucun nom de client à
+    // MerchantCardRenderer/CardEnlargedView, qui retombaient sur "Membre"
+    // alors que le wallet principal affiche le vrai nom (voir wallet-home.tsx).
+    const source = readFileSync(join(process.cwd(), "src/components/fife-life/merchant-detail.tsx"), "utf8");
+    expect(source).toContain("clientName={clientName ?? undefined}");
+    expect(source).toContain("customerName={clientName ?? undefined}");
+
+    const pageSource = readFileSync(join(process.cwd(), "src/app/carte/[slug]/page.tsx"), "utf8");
+    expect(pageSource).toMatch(/clientName=\{.*user\.firstName.*\}/);
+  });
+
   it("affiche toutes les récompenses actives publiées quand plusieurs existent", () => {
     const html = renderToStaticMarkup(
       <MerchantCardDetail
