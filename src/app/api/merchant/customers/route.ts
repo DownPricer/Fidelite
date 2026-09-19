@@ -1,14 +1,18 @@
 import { requireMerchantAdmin } from "@/lib/api-guard";
 import { jsonError, jsonOk } from "@/lib/http";
+import { balanceFieldForUnit, loyaltyBalanceForMode } from "@/lib/loyalty-balance";
+import { loyaltyUnitForMode } from "@/lib/loyalty-labels";
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@prisma/client";
 
-const SORT_MAP: Record<string, Prisma.CustomerMembershipOrderByWithRelationInput> = {
-  recent: { updatedAt: "desc" },
-  active: { points: "desc" },
-  points: { points: "desc" },
-  alpha: { user: { firstName: "asc" } },
-};
+function sortOrder(
+  sort: string,
+  balanceField: "pointsBalance" | "visitsBalance",
+): Prisma.CustomerMembershipOrderByWithRelationInput {
+  if (sort === "active" || sort === "points") return { [balanceField]: "desc" };
+  if (sort === "alpha") return { user: { firstName: "asc" } };
+  return { updatedAt: "desc" };
+}
 
 export async function GET(req: Request) {
   const staff = await requireMerchantAdmin(req);
@@ -20,6 +24,12 @@ export async function GET(req: Request) {
   const page = Math.max(1, Number(url.searchParams.get("page") ?? 1));
   const limit = Math.min(50, Math.max(10, Number(url.searchParams.get("limit") ?? 30)));
   const skip = (page - 1) * limit;
+  const program = await prisma.loyaltyProgram.findUnique({
+    where: { merchantId: staff.membership.merchantId },
+    select: { mode: true },
+  });
+  if (!program) return jsonError("Programme introuvable.", 404);
+  const balanceField = balanceFieldForUnit(loyaltyUnitForMode(program.mode));
 
   const where: Prisma.CustomerMembershipWhereInput = {
     merchantId: staff.membership.merchantId,
@@ -39,7 +49,7 @@ export async function GET(req: Request) {
     prisma.customerMembership.count({ where }),
     prisma.customerMembership.findMany({
       where,
-      orderBy: SORT_MAP[sort] ?? SORT_MAP.recent,
+      orderBy: sortOrder(sort, balanceField),
       skip,
       take: limit,
       include: {
@@ -59,7 +69,7 @@ export async function GET(req: Request) {
       lastName: item.user.lastName,
       email: item.user.email,
       phone: item.user.phone,
-      points: item.points,
+      points: loyaltyBalanceForMode(item, program.mode),
       createdAt: item.createdAt,
       lastActivity: item.transactions[0]?.createdAt ?? item.updatedAt,
     })),

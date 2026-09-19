@@ -1,5 +1,6 @@
 import { requireMerchantAdmin } from "@/lib/api-guard";
 import { jsonError, jsonOk } from "@/lib/http";
+import { loyaltyBalanceForMode } from "@/lib/loyalty-balance";
 import { prisma } from "@/lib/prisma";
 
 export async function GET(req: Request, context: { params: Promise<{ id: string }> }) {
@@ -20,6 +21,9 @@ export async function GET(req: Request, context: { params: Promise<{ id: string 
     },
   });
   if (!membership) return jsonError("Client introuvable.", 404);
+  if (!membership.merchant.program) return jsonError("Programme introuvable.", 404);
+
+  const activeBalance = loyaltyBalanceForMode(membership, membership.merchant.program.mode);
 
   return jsonOk({
     customer: {
@@ -28,7 +32,7 @@ export async function GET(req: Request, context: { params: Promise<{ id: string 
       lastName: membership.user.lastName,
       email: membership.user.email,
       phone: membership.user.phone,
-      points: membership.points,
+      points: activeBalance,
       createdAt: membership.createdAt,
       program: membership.merchant.program,
     },

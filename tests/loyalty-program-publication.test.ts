@@ -160,6 +160,7 @@ describe("publication programme fidélité", () => {
 
   it("demande une décision si le mode change", async () => {
     expect(modeChangeRequiresRewardDecision("FIXED_POINTS", "VISITS")).toBe(true);
+    expect(modeChangeRequiresRewardDecision("POINTS_BY_AMOUNT", "FIXED_POINTS")).toBe(false);
     const result = await publishLoyaltyProgram({
       tx: tx(),
       program,
@@ -168,6 +169,21 @@ describe("publication programme fidélité", () => {
       actorId: "admin-1",
     });
     expect(result.requiresRewardDecision).toBe(true);
+  });
+
+  it("ne demande pas de décision si aucun avantage incompatible actif n'existe", async () => {
+    const db = tx();
+    const result = await publishLoyaltyProgram({
+      tx: db,
+      program: { ...program, rewards: [] },
+      merchant: null,
+      draft: { ...draft, mode: "VISITS", rewards: [{ ...draft.rewards[0]!, id: undefined, thresholdUnit: "visits" }] },
+      actorId: "admin-1",
+    });
+    expect(result.requiresRewardDecision).toBe(false);
+    expect(db.loyaltyReward.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ thresholdUnit: "visits" }) }),
+    );
   });
 
   it("archive les anciens avantages sans créer de droits si la politique le demande", async () => {
@@ -216,6 +232,29 @@ describe("publication programme fidélité", () => {
         }),
       }),
     );
+  });
+
+  it("valide les avantages du brouillon publié même avec une politique de conservation", async () => {
+    await expect(
+      publishLoyaltyProgram({
+        tx: tx(),
+        program,
+        merchant: null,
+        draft: {
+          ...draft,
+          mode: "VISITS",
+          rewards: Array.from({ length: 11 }, (_, index) => ({
+            ...draft.rewards[0]!,
+            id: undefined,
+            name: `Avantage ${index + 1}`,
+            threshold: index + 1,
+            thresholdUnit: "visits",
+          })),
+        },
+        actorId: "admin-1",
+        decision: { action: "CONVERT", rewards: [] },
+      }),
+    ).rejects.toThrow(REWARD_LIMIT_MESSAGE);
   });
 
   it("crée un droit acquis intemporel pour un client déjà éligible", async () => {

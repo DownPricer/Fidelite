@@ -45,57 +45,15 @@ export function assertRewardLimit(
 }
 
 export function modeChangeRequiresRewardDecision(previousMode: LoyaltyMode, nextMode: LoyaltyMode) {
-  return previousMode !== nextMode;
+  return previousMode !== nextMode && thresholdUnitForMode(previousMode) !== thresholdUnitForMode(nextMode);
 }
 
-export function convertLoyaltyBalance(input: {
-  oldBalance: number;
-  oldThreshold: number;
-  newThreshold: number;
-}) {
-  if (!Number.isFinite(input.oldBalance) || !Number.isFinite(input.oldThreshold) || !Number.isFinite(input.newThreshold)) {
-    throw new Error("Les valeurs de conversion doivent être des nombres finis.");
-  }
-  const oldBalance = Math.max(0, Math.trunc(input.oldBalance));
-  const oldThreshold = Math.trunc(input.oldThreshold);
-  const newThreshold = Math.max(0, Math.trunc(input.newThreshold));
-  if (oldThreshold <= 0) {
-    throw new Error("Le seuil d'origine doit être strictement positif.");
-  }
-  if (newThreshold <= 0 || oldBalance === 0) return 0;
-  return Math.max(0, Math.ceil((oldBalance / oldThreshold) * newThreshold));
-}
-
-function buildConversionMappings(program: ProgramWithRewards, rewards: LoyaltyDraftReward[]) {
-  const byId = new Map(program.rewards.map((reward) => [reward.id, reward]));
-  const mappings = rewards
-    .map((reward) => {
-      const oldReward = reward.id ? byId.get(reward.id) : undefined;
-      if (!oldReward) return null;
-      return { oldReward, newReward: reward };
-    })
-    .filter((row): row is NonNullable<typeof row> => Boolean(row))
-    .sort((a, b) => a.oldReward.threshold - b.oldReward.threshold);
-
-  for (let i = 1; i < mappings.length; i += 1) {
-    const prev = mappings[i - 1]!;
-    const current = mappings[i]!;
-    if (current.newReward.threshold <= prev.newReward.threshold) {
-      throw new Error("Les nouveaux seuils doivent conserver l'ordre croissant des anciens avantages.");
-    }
-  }
-  return mappings;
-}
-
-function conversionReference(
-  mappings: ReturnType<typeof buildConversionMappings>,
-  oldBalance: number,
+export function modeChangeHasIncompatibleRewards(
+  program: ProgramWithRewards,
+  nextMode: LoyaltyMode,
+  now: Date,
 ) {
-  return (
-    mappings.find((mapping) => mapping.oldReward.threshold > oldBalance) ??
-    mappings[mappings.length - 1] ??
-    null
-  );
+  return modeChangeRequiresRewardDecision(program.mode, nextMode) && activeEligibleRewards(program, now).length > 0;
 }
 
 function activeEligibleRewards(program: ProgramWithRewards, now: Date) {
@@ -218,7 +176,6 @@ async function publishRewardsWithoutModeChange(
 async function publishRewardsAfterModeChange(
   tx: Prisma.TransactionClient,
   program: ProgramWithRewards,
-  decision: ModeChangeDecision,
   fallbackRewards: LoyaltyDraftReward[],
   now: Date,
 ) {
@@ -245,23 +202,19 @@ export async function publishLoyaltyProgram(input: {
   now?: Date;
 }) {
   const now = input.now ?? new Date();
-  const modeChanged = modeChangeRequiresRewardDecision(input.program.mode, input.draft.mode);
-  if (modeChanged && !input.decision) {
+  const modeChanged = input.program.mode !== input.draft.mode;
+  const requiresRewardDecision = modeChangeHasIncompatibleRewards(input.program, input.draft.mode, now);
+  if (requiresRewardDecision && !input.decision) {
     return { requiresRewardDecision: true as const, modeChanged };
   }
 
-  const rewardsToValidate = modeChanged
-    ? input.decision?.action === "CONVERT"
-      ? input.decision.rewards
-      : []
-    : input.draft.rewards;
-  assertRewardLimit(rewardsToValidate, input.draft.mode);
+  assertRewardLimit(input.draft.rewards, input.draft.mode);
 
   const nextVersion = input.program.version + 1;
-  const firstReward = rewardsToValidate.find((reward) => !reward.archivedAt);
+  const firstReward = input.draft.rewards.find((reward) => !reward.archivedAt);
   let entitlementCount = 0;
 
-  if (modeChanged && input.decision?.action === "CONVERT") {
+  if (requiresRewardDecision && input.decision?.action === "CONVERT") {
     entitlementCount = await createAcquiredRewardEntitlements(input.tx, {
       program: input.program,
       merchantId: input.program.merchantId,
@@ -279,7 +232,7 @@ export async function publishLoyaltyProgram(input: {
           previousMode: input.program.mode,
           nextMode: input.draft.mode,
           balancePolicy: "separate_unit_balances",
-          rewardPolicy: input.decision?.action ?? null,
+          rewardPolicy: requiresRewardDecision ? (input.decision?.action ?? null) : "NOT_REQUIRED",
           entitlementsCreated: entitlementCount,
         },
       },
@@ -301,7 +254,7 @@ export async function publishLoyaltyProgram(input: {
   });
 
   if (modeChanged) {
-    await publishRewardsAfterModeChange(input.tx, input.program, input.decision!, input.draft.rewards, now);
+    await publishRewardsAfterModeChange(input.tx, input.program, input.draft.rewards, now);
   } else {
     await publishRewardsWithoutModeChange(input.tx, input.program, input.draft.rewards);
   }
@@ -331,7 +284,7 @@ export async function publishLoyaltyProgram(input: {
       select: { id: true, userId: true, points: true, pointsBalance: true, visitsBalance: true },
     });
     for (const membership of memberships) {
-      const activeBalance = loyaltyContext ? loyaltyBalanceForMode(membership, loyaltyContext.mode) : membership.points;
+      const activeBalance = loyaltyBalanceForMode(membership, loyaltyContext?.mode ?? input.draft.mode);
       const programView = loyaltyContext ? buildCustomerProgramView(loyaltyContext, activeBalance) : null;
       await input.tx.walletEvent.create({
         data: {

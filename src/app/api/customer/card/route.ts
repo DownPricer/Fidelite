@@ -1,5 +1,6 @@
 import { jsonError, jsonOk } from "@/lib/http";
 import { isGoogleWalletConfigured } from "@/lib/google-wallet";
+import { loyaltyBalanceForMode } from "@/lib/loyalty-balance";
 import { computeLoyalty } from "@/lib/loyalty";
 import { prisma } from "@/lib/prisma";
 import { getRequestUser } from "@/lib/session";
@@ -24,7 +25,8 @@ export async function GET(req: Request) {
     return jsonError("Carte introuvable.", 404);
   }
 
-  const snapshot = computeLoyalty(membership.points, membership.merchant.program.visitsRequired);
+  const activeBalance = loyaltyBalanceForMode(membership, membership.merchant.program.mode);
+  const snapshot = computeLoyalty(activeBalance, membership.merchant.program.visitsRequired);
   return jsonOk({
     firstName: user.firstName,
     merchant: {

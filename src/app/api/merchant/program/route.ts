@@ -6,10 +6,12 @@ import { programToConfig, validateTiers } from "@/lib/loyalty-program";
 import {
   REWARD_LIMIT_MESSAGE,
   assertRewardLimit,
-  modeChangeRequiresRewardDecision,
+  modeChangeHasIncompatibleRewards,
   publishLoyaltyProgram,
   type ModeChangeDecision,
 } from "@/lib/loyalty-program-publication";
+import { balanceFieldForUnit } from "@/lib/loyalty-balance";
+import { loyaltyUnitForMode } from "@/lib/loyalty-labels";
 import { logMerchantCardSwitch } from "@/lib/merchant-card-switch-log";
 import { prisma } from "@/lib/prisma";
 import { loyaltyDraftSchema, programSimulateSchema, zodErrorMessage } from "@/lib/validation";
@@ -38,12 +40,13 @@ export async function GET(req: Request) {
         rewards: (draftRaw.rewards as typeof active.rewards) ?? active.rewards,
       }
     : null;
+  const activeBalanceField = balanceFieldForUnit(loyaltyUnitForMode(program.mode));
 
-  const [customerCount, totalPoints, historicalEntitlements] = await Promise.all([
+  const [customerCount, totalBalance, historicalEntitlements] = await Promise.all([
     prisma.customerMembership.count({ where: { merchantId: staff.membership.merchantId } }),
     prisma.customerMembership.aggregate({
       where: { merchantId: staff.membership.merchantId },
-      _sum: { points: true },
+      _sum: { pointsBalance: true, visitsBalance: true },
     }),
     prisma.customerRewardEntitlement.findMany({
       where: {
@@ -74,7 +77,10 @@ export async function GET(req: Request) {
     draft,
     impact: {
       customers: customerCount,
-      totalPoints: totalPoints._sum.points ?? 0,
+      totalPoints:
+        activeBalanceField === "pointsBalance"
+          ? (totalBalance._sum.pointsBalance ?? 0)
+          : (totalBalance._sum.visitsBalance ?? 0),
       rewardsUnlocked: active.rewards.filter((r) => r.isActive).length,
     },
     historicalEntitlements: historicalEntitlements.map((entitlement) => ({
@@ -186,15 +192,19 @@ export async function POST(req: Request) {
   const body = await readJson(req).catch(() => ({}));
   const decision = (body as { modeChangeDecision?: ModeChangeDecision }).modeChangeDecision;
   const modeChanged = draft.mode !== program.mode;
+  const requiresRewardDecision = modeChangeHasIncompatibleRewards(program, draft.mode, new Date());
   logMerchantCardSwitch("mode sélectionné", { merchantId, mode: draft.mode });
   logMerchantCardSwitch("mode actif en base", { merchantId, mode: program.mode });
 
-  if (modeChangeRequiresRewardDecision(program.mode, draft.mode) && !decision) {
+  if (requiresRewardDecision && !decision) {
+    const previousBalanceField = balanceFieldForUnit(loyaltyUnitForMode(program.mode));
     const [customers, sum] = await Promise.all([
-      prisma.customerMembership.count({ where: { merchantId: staff.membership.merchantId, points: { gt: 0 } } }),
+      prisma.customerMembership.count({
+        where: { merchantId: staff.membership.merchantId, [previousBalanceField]: { gt: 0 } },
+      }),
       prisma.customerMembership.aggregate({
         where: { merchantId: staff.membership.merchantId },
-        _sum: { points: true },
+        _sum: { pointsBalance: true, visitsBalance: true },
       }),
     ]);
     return jsonError("Politique de migration des avantages requise.", 409, {
@@ -203,7 +213,8 @@ export async function POST(req: Request) {
       requiresRewardDecision: true,
       impact: {
         customersWithBalance: customers,
-        totalPoints: sum._sum.points ?? 0,
+        totalPoints:
+          previousBalanceField === "pointsBalance" ? (sum._sum.pointsBalance ?? 0) : (sum._sum.visitsBalance ?? 0),
         previousMode: program.mode,
         newMode: draft.mode,
         message: "Que souhaitez-vous faire des avantages actuels ?",
