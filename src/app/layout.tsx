@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Manrope } from "next/font/google";
 import { PwaRegister } from "@/components/pwa-register";
+import { ThemeProvider } from "@/components/theme-provider";
 import "./globals.css";
 
 const manrope = Manrope({
@@ -31,14 +32,16 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="fr">
+    <html lang="fr" suppressHydrationWarning>
       <head>
         <link rel="icon" href="/icon.svg" type="image/svg+xml" />
         <link rel="apple-touch-icon" href="/icons/icon-192.png" />
       </head>
-      <body className={`${manrope.variable} min-h-dvh antialiased`}>
-        <PwaRegister />
-        {children}
+      <body className={`${manrope.variable} min-h-dvh antialiased`} suppressHydrationWarning>
+        <ThemeProvider>
+          <PwaRegister />
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   );

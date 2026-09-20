@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { GlassBottomSheet } from "./glass-bottom-sheet";
 import {
   APP_VERSION,
+  AppearanceRow,
   PasswordStrength,
   ProfileShell,
   SettingsRow,
@@ -227,6 +228,14 @@ export function SettingsPage({
           <p className="mt-3 text-[11px] text-[var(--muted)]">
             Connexion par e-mail et mot de passe. Authentification à deux facteurs : non disponible pour le moment.
           </p>
+        </div>
+      </section>
+
+      <section className="glass-panel profile-panel mt-4 p-4">
+        <div className="relative z-[1]">
+          <h3 className="section-title mb-3">Apparence</h3>
+          <p className="mb-3 text-xs text-[var(--muted)]">Choisissez l&apos;apparence de Fidelo.</p>
+          <AppearanceRow />
         </div>
       </section>
 

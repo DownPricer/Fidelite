@@ -23,7 +23,7 @@ export default function HomePage() {
             </Link>
             <Link
               href="/connexion"
-              className="inline-flex items-center justify-center rounded-full border border-white/12 bg-white/5 px-6 py-3.5 text-sm font-semibold text-[var(--ink)] hover:bg-white/8"
+              className="inline-flex items-center justify-center rounded-full border border-[light-dark(rgba(122,69,242,0.16),rgba(255,255,255,0.12))] bg-[light-dark(rgba(255,255,255,0.7),rgba(255,255,255,0.05))] px-6 py-3.5 text-sm font-semibold text-[var(--ink)] hover:bg-[light-dark(rgba(255,255,255,0.9),rgba(255,255,255,0.08))]"
             >
               Se connecter
             </Link>

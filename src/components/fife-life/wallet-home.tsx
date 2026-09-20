@@ -448,16 +448,16 @@ export function WalletHome({
               <div className="mb-3 flex items-center justify-between gap-3">
                 <h3 className="section-title">Mes cartes et avantages</h3>
                 <div className="flex gap-2 text-xs font-semibold">
-                  <Link href={profileHref} className="rounded-full border border-white/10 px-3 py-2 text-[var(--ink-soft)] hover:text-[var(--ink)] focus:outline-none focus:ring-2 focus:ring-[var(--violet-bright)]">
+                  <Link href={profileHref} className="rounded-full border border-[light-dark(rgba(122,69,242,0.16),rgba(255,255,255,0.1))] px-3 py-2 text-[var(--ink-soft)] hover:text-[var(--ink)] focus:outline-none focus:ring-2 focus:ring-[var(--violet-bright)]">
                     Profil
                   </Link>
-                  <Link href="/compte?tab=historique" className="rounded-full border border-white/10 px-3 py-2 text-[var(--ink-soft)] hover:text-[var(--ink)] focus:outline-none focus:ring-2 focus:ring-[var(--violet-bright)]">
+                  <Link href="/compte?tab=historique" className="rounded-full border border-[light-dark(rgba(122,69,242,0.16),rgba(255,255,255,0.1))] px-3 py-2 text-[var(--ink-soft)] hover:text-[var(--ink)] focus:outline-none focus:ring-2 focus:ring-[var(--violet-bright)]">
                     Historique
                   </Link>
                 </div>
               </div>
               {activeAvailableRewards.length ? (
-                <div className="mb-3 rounded-2xl border border-white/10 bg-white/5 p-3">
+                <div className="mb-3 rounded-2xl border border-[light-dark(rgba(122,69,242,0.14),rgba(255,255,255,0.1))] bg-[light-dark(rgba(255,255,255,0.6),rgba(255,255,255,0.05))] p-3">
                   <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--muted)]">Avantages disponibles</p>
                   <ul className="mt-2 space-y-1 text-xs font-semibold text-[var(--ink)]">
                     {activeAvailableRewards.map((reward) => (
@@ -468,12 +468,12 @@ export function WalletHome({
                   </ul>
                 </div>
               ) : (
-                <p className="mb-3 rounded-2xl border border-white/10 bg-white/5 p-3 text-xs text-[var(--muted-strong)]">
+                <p className="mb-3 rounded-2xl border border-[light-dark(rgba(122,69,242,0.14),rgba(255,255,255,0.1))] bg-[light-dark(rgba(255,255,255,0.6),rgba(255,255,255,0.05))] p-3 text-xs text-[var(--muted-strong)]">
                   Aucun avantage disponible sur la carte active.
                 </p>
               )}
               {activeCurrentRewards.length ? (
-                <div className="mb-3 rounded-2xl border border-white/10 bg-white/5 p-3">
+                <div className="mb-3 rounded-2xl border border-[light-dark(rgba(122,69,242,0.14),rgba(255,255,255,0.1))] bg-[light-dark(rgba(255,255,255,0.6),rgba(255,255,255,0.05))] p-3">
                   <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--muted)]">Avantages du programme actuel</p>
                   <ul className="mt-2 space-y-1 text-xs text-[var(--ink-soft)]">
                     {activeCurrentRewards.map((reward) => (

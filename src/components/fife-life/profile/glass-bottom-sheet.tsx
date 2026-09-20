@@ -41,7 +41,7 @@ export function GlassBottomSheet({
           >
             <div className="sheet-halo" aria-hidden />
             <div className="flex justify-center pt-3">
-              <div className="h-1 w-10 rounded-full bg-white/20" />
+              <div className="h-1 w-10 rounded-full bg-[light-dark(rgba(122,69,242,0.25),rgba(255,255,255,0.2))]" />
             </div>
             {title ? (
               <h2 className="px-6 pt-4 text-center text-sm font-bold uppercase tracking-[0.14em] text-[var(--muted)]">

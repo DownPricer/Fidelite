@@ -15,7 +15,7 @@
   --radius-xl: 1rem;
   --radius-2xl: 1.5rem;
   --radius-3xl: 2rem;
-  --shadow-premium: 0 24px 80px rgba(0, 0, 0, 0.75);
+  --shadow-premium: 0 24px 80px var(--shadow-color-strong);
   --font-sans: var(--font-manrope), system-ui, sans-serif;
 }
 
@@ -55,16 +55,130 @@
   --primary: var(--violet);
   --primary-foreground: var(--ink);
   --bg: var(--page-bg);
+
+  /* ── Tokens sémantiques (thème sombre = valeurs historiques) ── */
+  --background: var(--void);
+  --background-elevated: var(--canvas);
+  --surface-hover: var(--surface-strong);
+  --surface-active: color-mix(in srgb, var(--surface-strong) 85%, var(--violet) 15%);
+  --surface-glass: rgba(255, 255, 255, 0.06);
+  --surface-glass-strong: rgba(255, 255, 255, 0.1);
+  --surface-glass-border: rgba(255, 255, 255, 0.12);
+  --surface-glass-highlight: rgba(255, 255, 255, 0.12);
+  --foreground: var(--ink);
+  --foreground-muted: var(--ink-soft);
+  --foreground-subtle: var(--muted);
+  --border-strong: var(--stroke-strong);
+  --primary-hover: var(--violet-bright);
+  --accent: var(--rose-iris);
+  --success: var(--positive);
+  --focus-ring: var(--violet-bright);
+  --shadow-color: rgba(0, 0, 0, 0.45);
+  --shadow-color-strong: rgba(0, 0, 0, 0.75);
+  --purple-glow: rgba(133, 87, 255, 0.35);
+  --scrollbar-thumb: rgba(190, 164, 255, 0.35);
+  --scrollbar-track: transparent;
+  --selection-bg: rgba(133, 87, 255, 0.45);
+  --selection-fg: var(--ink);
+  --overlay-scrim: rgba(5, 5, 10, 0.65);
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+
+  --void: #f6f4fb;
+  --canvas: #eee9fb;
+  --surface: rgba(255, 255, 255, 0.82);
+  --surface-raised: rgba(255, 255, 255, 0.92);
+  --surface-strong: #ffffff;
+  --ink: #201a34;
+  --ink-soft: #4a4262;
+  --muted: #746c8c;
+  --muted-strong: #564d73;
+  --violet: #7a45f2;
+  --violet-bright: #6a36e0;
+  --violet-deep: #efe7ff;
+  --blue-cold: #5468e0;
+  --rose-iris: #c93fd6;
+  --positive: #2f8f57;
+  --warning: #a06a12;
+  --danger: #d13a52;
+  --stroke: rgba(122, 69, 242, 0.16);
+  --stroke-strong: rgba(122, 69, 242, 0.32);
+
+  --sidebar: linear-gradient(165deg, #ffffff 0%, #f3effc 55%, #ece5fb 100%);
+  --sidebar-muted: color-mix(in srgb, var(--muted) 70%, var(--ink-soft) 30%);
+
+  --background: var(--void);
+  --background-elevated: var(--canvas);
+  --surface-hover: #ffffff;
+  --surface-active: color-mix(in srgb, #ffffff 88%, var(--violet) 12%);
+  --surface-glass: rgba(255, 255, 255, 0.62);
+  --surface-glass-strong: rgba(255, 255, 255, 0.82);
+  --surface-glass-border: rgba(122, 69, 242, 0.14);
+  --surface-glass-highlight: rgba(255, 255, 255, 0.9);
+  --foreground: var(--ink);
+  --foreground-muted: var(--ink-soft);
+  --foreground-subtle: var(--muted);
+  --border-strong: var(--stroke-strong);
+  --primary-hover: #5b28c9;
+  --accent: var(--rose-iris);
+  --success: var(--positive);
+  --focus-ring: #6a36e0;
+  --shadow-color: rgba(76, 46, 148, 0.1);
+  --shadow-color-strong: rgba(76, 46, 148, 0.16);
+  --purple-glow: rgba(122, 69, 242, 0.18);
+  --scrollbar-thumb: rgba(122, 69, 242, 0.28);
+  --scrollbar-track: transparent;
+  --selection-bg: rgba(122, 69, 242, 0.22);
+  --selection-fg: var(--ink);
+  --overlay-scrim: rgba(20, 12, 40, 0.45);
 }
 
 html {
   color-scheme: dark;
 }
 
+html[data-theme="light"] {
+  color-scheme: light;
+}
+
 html,
 body {
   min-height: 100dvh;
   background-color: var(--void);
+}
+
+::selection {
+  background: var(--selection-bg);
+  color: var(--selection-fg);
+}
+
+* {
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: var(--scrollbar-thumb);
+  border-radius: 999px;
+}
+
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+button:focus-visible,
+a:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--ink);
+  -webkit-box-shadow: 0 0 0px 1000px var(--surface-raised) inset;
+  transition: background-color 9999s ease-in-out 0s;
 }
 
 body {
@@ -76,16 +190,16 @@ body {
   position: relative;
   min-height: 100dvh;
   background:
-    radial-gradient(ellipse 110% 70% at 50% -8%, rgba(231, 116, 255, 0.48), transparent 64%),
-    radial-gradient(ellipse 85% 55% at 85% 12%, rgba(133, 87, 255, 0.38), transparent 56%),
-    radial-gradient(ellipse 75% 50% at 10% 22%, rgba(231, 116, 255, 0.28), transparent 51%),
-    radial-gradient(ellipse 110% 80% at 50% 35%, rgba(166, 139, 255, 0.32), transparent 69%),
-    radial-gradient(ellipse 100% 65% at 30% 60%, rgba(231, 116, 255, 0.18), transparent 67%),
-    radial-gradient(ellipse 105% 70% at 70% 75%, rgba(112, 133, 255, 0.22), transparent 68%),
-    radial-gradient(ellipse 140% 95% at 50% 118%, rgba(231, 116, 255, 0.52), transparent 76%),
-    radial-gradient(ellipse 100% 80% at 8% 108%, rgba(145, 111, 255, 0.42), transparent 71%),
-    radial-gradient(ellipse 90% 70% at 92% 112%, rgba(64, 92, 255, 0.38), transparent 70%),
-    linear-gradient(180deg, #0f0a1d 0%, #05050a 100%);
+    radial-gradient(ellipse 110% 70% at 50% -8%, light-dark(rgba(201, 63, 214, 0.22), rgba(231, 116, 255, 0.48)), transparent 64%),
+    radial-gradient(ellipse 85% 55% at 85% 12%, light-dark(rgba(122, 69, 242, 0.18), rgba(133, 87, 255, 0.38)), transparent 56%),
+    radial-gradient(ellipse 75% 50% at 10% 22%, light-dark(rgba(201, 63, 214, 0.13), rgba(231, 116, 255, 0.28)), transparent 51%),
+    radial-gradient(ellipse 110% 80% at 50% 35%, light-dark(rgba(106, 54, 224, 0.15), rgba(166, 139, 255, 0.32)), transparent 69%),
+    radial-gradient(ellipse 100% 65% at 30% 60%, light-dark(rgba(201, 63, 214, 0.08), rgba(231, 116, 255, 0.18)), transparent 67%),
+    radial-gradient(ellipse 105% 70% at 70% 75%, light-dark(rgba(84, 104, 224, 0.1), rgba(112, 133, 255, 0.22)), transparent 68%),
+    radial-gradient(ellipse 140% 95% at 50% 118%, light-dark(rgba(201, 63, 214, 0.24), rgba(231, 116, 255, 0.52)), transparent 76%),
+    radial-gradient(ellipse 100% 80% at 8% 108%, light-dark(rgba(140, 100, 224, 0.2), rgba(145, 111, 255, 0.42)), transparent 71%),
+    radial-gradient(ellipse 90% 70% at 92% 112%, light-dark(rgba(84, 104, 224, 0.18), rgba(64, 92, 255, 0.38)), transparent 70%),
+    linear-gradient(180deg, light-dark(#f8f6fc, #0f0a1d) 0%, light-dark(#ede6f9, #05050a) 100%);
 }
 
 .login-scene {
@@ -274,13 +388,13 @@ body:has(.wallet-shell) {
   gap: 0.55rem;
   overflow: hidden;
   border-radius: 1rem;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid light-dark(rgba(122, 69, 242, 0.24), rgba(255, 255, 255, 0.2));
   background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.035)),
-    rgba(8, 7, 16, 0.58);
+    linear-gradient(135deg, light-dark(rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0.12)), light-dark(rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0.035))),
+    light-dark(rgba(255, 255, 255, 0.55), rgba(8, 7, 16, 0.58));
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.2),
-    0 14px 34px rgba(0, 0, 0, 0.34);
+    inset 0 1px 0 light-dark(rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.2)),
+    0 14px 34px light-dark(rgba(76, 46, 148, 0.16), rgba(0, 0, 0, 0.34));
   color: var(--ink);
   font-size: 0.82rem;
   font-weight: 800;
@@ -1467,16 +1581,16 @@ body:has(.wallet-shell) {
 
 .glass-nav {
   border-radius: 999px;
-  border: 1px solid rgba(190, 164, 255, 0.22);
-  background: rgba(8, 7, 16, 0.82);
+  border: 1px solid light-dark(rgba(122, 69, 242, 0.18), rgba(190, 164, 255, 0.22));
+  background: light-dark(rgba(255, 255, 255, 0.86), rgba(8, 7, 16, 0.82));
   backdrop-filter: blur(18px);
-  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.65);
+  box-shadow: 0 18px 40px light-dark(rgba(76, 46, 148, 0.14), rgba(0, 0, 0, 0.65));
 }
 
 .glass-chip {
   border-radius: 999px;
-  border: 1px solid rgba(190, 164, 255, 0.2);
-  background: rgba(12, 10, 22, 0.72);
+  border: 1px solid light-dark(rgba(122, 69, 242, 0.16), rgba(190, 164, 255, 0.2));
+  background: light-dark(rgba(255, 255, 255, 0.78), rgba(12, 10, 22, 0.72));
   backdrop-filter: blur(12px);
 }
 
@@ -1486,13 +1600,13 @@ body:has(.wallet-shell) {
   justify-content: space-between;
   gap: 0.75rem;
   border-radius: 999px;
-  border: 1px solid rgba(190, 164, 255, 0.32);
-  background: rgba(12, 10, 24, 0.88);
+  border: 1px solid light-dark(rgba(122, 69, 242, 0.26), rgba(190, 164, 255, 0.32));
+  background: light-dark(rgba(255, 255, 255, 0.9), rgba(12, 10, 24, 0.88));
   padding: 0.85rem 1rem 0.85rem 1.1rem;
   font-size: 0.8125rem;
   font-weight: 600;
   color: var(--ink);
-  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.55);
+  box-shadow: 0 14px 32px light-dark(rgba(76, 46, 148, 0.12), rgba(0, 0, 0, 0.55));
   transition: border-color 0.2s ease, transform 0.2s ease;
 }
 
@@ -1512,44 +1626,44 @@ body:has(.wallet-shell) {
 /* Styles glassy/transparent - gris fin */
 .avatar-orb-glassy {
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.06);
+  background: light-dark(rgba(122, 69, 242, 0.08), rgba(255, 255, 255, 0.06));
   backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  box-shadow: 
-    0 2px 8px rgba(0, 0, 0, 0.15),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08);
-  color: rgba(255, 255, 255, 0.7);
+  border: 1px solid light-dark(rgba(122, 69, 242, 0.16), rgba(255, 255, 255, 0.12));
+  box-shadow:
+    0 2px 8px light-dark(rgba(76, 46, 148, 0.1), rgba(0, 0, 0, 0.15)),
+    inset 0 1px 0 light-dark(rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.08));
+  color: light-dark(rgba(32, 26, 52, 0.75), rgba(255, 255, 255, 0.7));
 }
 
 .brand-pill-glassy {
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.04);
+  background: light-dark(rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.04));
   backdrop-filter: blur(14px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 
-    0 2px 6px rgba(0, 0, 0, 0.12),
-    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  border: 1px solid light-dark(rgba(122, 69, 242, 0.14), rgba(255, 255, 255, 0.08));
+  box-shadow:
+    0 2px 6px light-dark(rgba(76, 46, 148, 0.08), rgba(0, 0, 0, 0.12)),
+    inset 0 1px 0 light-dark(rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.06));
 }
 
 .settings-btn-glassy {
-  background: rgba(255, 255, 255, 0.05);
+  background: light-dark(rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.05));
   backdrop-filter: blur(14px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 
-    0 2px 6px rgba(0, 0, 0, 0.12),
-    inset 0 1px 0 rgba(255, 255, 255, 0.06);
-  color: rgba(255, 255, 255, 0.6);
+  border: 1px solid light-dark(rgba(122, 69, 242, 0.16), rgba(255, 255, 255, 0.1));
+  box-shadow:
+    0 2px 6px light-dark(rgba(76, 46, 148, 0.08), rgba(0, 0, 0, 0.12)),
+    inset 0 1px 0 light-dark(rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.06));
+  color: light-dark(rgba(32, 26, 52, 0.65), rgba(255, 255, 255, 0.6));
   transition: all 0.2s ease;
 }
 
 .settings-btn-glassy:hover {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.15);
+  background: light-dark(rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.08));
+  border-color: light-dark(rgba(122, 69, 242, 0.24), rgba(255, 255, 255, 0.15));
   transform: scale(1.05);
 }
 
 .wallet-chevron-btn {
-  color: rgba(255, 255, 255, 0.3);
+  color: light-dark(rgba(32, 26, 52, 0.35), rgba(255, 255, 255, 0.3));
   transition: all 0.3s ease;
   cursor: grab;
 }
@@ -1559,25 +1673,25 @@ body:has(.wallet-shell) {
 }
 
 .wallet-chevron-btn:hover {
-  color: rgba(255, 255, 255, 0.5);
+  color: light-dark(rgba(32, 26, 52, 0.6), rgba(255, 255, 255, 0.5));
 }
 
 .wallet-chevron-glassy {
   width: 48px;
   height: 48px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.04);
+  background: light-dark(rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.04));
   backdrop-filter: blur(16px) saturate(1.3);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 
-    0 4px 16px rgba(0, 0, 0, 0.2),
-    inset 0 1px 0 rgba(255, 255, 255, 0.06),
-    0 0 20px rgba(231, 116, 255, 0.1);
+  border: 1px solid light-dark(rgba(122, 69, 242, 0.14), rgba(255, 255, 255, 0.08));
+  box-shadow:
+    0 4px 16px light-dark(rgba(76, 46, 148, 0.12), rgba(0, 0, 0, 0.2)),
+    inset 0 1px 0 light-dark(rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.06)),
+    0 0 20px light-dark(rgba(201, 63, 214, 0.14), rgba(231, 116, 255, 0.1));
 }
 
 .wallet-chevron-glassy:hover {
-  background: rgba(255, 255, 255, 0.06);
-  border-color: rgba(166, 139, 255, 0.15);
+  background: light-dark(rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.06));
+  border-color: light-dark(rgba(122, 69, 242, 0.22), rgba(166, 139, 255, 0.15));
   transform: translateY(-1px);
 }
 
@@ -1605,19 +1719,19 @@ body:has(.wallet-shell) {
 }
 
 .sheet-backdrop {
-  background: rgba(5, 5, 10, 0.65);
+  background: var(--overlay-scrim);
   backdrop-filter: blur(8px);
 }
 
 .obsidian-sheet {
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid light-dark(rgba(122, 69, 242, 0.18), rgba(255, 255, 255, 0.1));
   border-bottom: none;
-  background: rgba(18, 15, 32, 0.25);
+  background: light-dark(rgba(255, 255, 255, 0.82), rgba(18, 15, 32, 0.25));
   backdrop-filter: blur(32px) saturate(1.6);
-  box-shadow: 
-    0 -24px 80px rgba(0, 0, 0, 0.6),
-    inset 0 1px 0 rgba(255, 255, 255, 0.12),
-    0 0 80px rgba(133, 87, 255, 0.25);
+  box-shadow:
+    0 -24px 80px light-dark(rgba(76, 46, 148, 0.16), rgba(0, 0, 0, 0.6)),
+    inset 0 1px 0 light-dark(rgba(255, 255, 255, 0.75), rgba(255, 255, 255, 0.12)),
+    0 0 80px light-dark(rgba(122, 69, 242, 0.16), rgba(133, 87, 255, 0.25));
 }
 
 .sheet-halo {
@@ -1629,34 +1743,34 @@ body:has(.wallet-shell) {
   height: 360px;
   width: 420px;
   transform: translateX(-50%);
-  background: 
-    radial-gradient(ellipse 85% 95% at 50% 15%, rgba(231, 116, 255, 0.55), transparent 68%),
-    radial-gradient(ellipse 75% 85% at 25% 25%, rgba(133, 87, 255, 0.48), transparent 65%),
-    radial-gradient(ellipse 65% 75% at 75% 30%, rgba(112, 133, 255, 0.42), transparent 60%);
+  background:
+    radial-gradient(ellipse 85% 95% at 50% 15%, light-dark(rgba(201, 63, 214, 0.28), rgba(231, 116, 255, 0.55)), transparent 68%),
+    radial-gradient(ellipse 75% 85% at 25% 25%, light-dark(rgba(122, 69, 242, 0.24), rgba(133, 87, 255, 0.48)), transparent 65%),
+    radial-gradient(ellipse 65% 75% at 75% 30%, light-dark(rgba(84, 104, 224, 0.2), rgba(112, 133, 255, 0.42)), transparent 60%);
   filter: blur(40px);
 }
 
 /* Search bar in sheet */
 .search-capsule {
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.04);
+  background: light-dark(rgba(255, 255, 255, 0.75), rgba(255, 255, 255, 0.04));
   backdrop-filter: blur(20px) saturate(1.4);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 
-    inset 0 1px 2px rgba(0, 0, 0, 0.15),
-    inset 0 -1px 1px rgba(255, 255, 255, 0.06),
-    0 2px 12px rgba(0, 0, 0, 0.15);
+  border: 1px solid light-dark(rgba(122, 69, 242, 0.14), rgba(255, 255, 255, 0.08));
+  box-shadow:
+    inset 0 1px 2px light-dark(rgba(76, 46, 148, 0.08), rgba(0, 0, 0, 0.15)),
+    inset 0 -1px 1px light-dark(rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.06)),
+    0 2px 12px light-dark(rgba(76, 46, 148, 0.08), rgba(0, 0, 0, 0.15));
   transition: all 0.2s ease;
 }
 
 .search-capsule:focus-within {
-  background: rgba(255, 255, 255, 0.06);
-  border-color: rgba(166, 139, 255, 0.25);
-  box-shadow: 
-    inset 0 1px 2px rgba(0, 0, 0, 0.15),
-    inset 0 -1px 1px rgba(255, 255, 255, 0.06),
-    0 2px 12px rgba(0, 0, 0, 0.15),
-    0 0 0 2px rgba(166, 139, 255, 0.12);
+  background: light-dark(rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 0.06));
+  border-color: light-dark(rgba(106, 54, 224, 0.35), rgba(166, 139, 255, 0.25));
+  box-shadow:
+    inset 0 1px 2px light-dark(rgba(76, 46, 148, 0.08), rgba(0, 0, 0, 0.15)),
+    inset 0 -1px 1px light-dark(rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.06)),
+    0 2px 12px light-dark(rgba(76, 46, 148, 0.08), rgba(0, 0, 0, 0.15)),
+    0 0 0 2px light-dark(rgba(106, 54, 224, 0.16), rgba(166, 139, 255, 0.12));
 }
 
 .search-input::placeholder {
@@ -1670,12 +1784,12 @@ body:has(.wallet-shell) {
   gap: 0.875rem;
   padding: 0.875rem 1rem;
   border-radius: 1.25rem;
-  background: rgba(255, 255, 255, 0.035);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: light-dark(rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.035));
+  border: 1px solid light-dark(rgba(122, 69, 242, 0.14), rgba(255, 255, 255, 0.08));
   backdrop-filter: blur(18px) saturate(1.3);
-  box-shadow: 
-    inset 0 1px 0 rgba(255, 255, 255, 0.06),
-    0 2px 8px rgba(0, 0, 0, 0.15);
+  box-shadow:
+    inset 0 1px 0 light-dark(rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.06)),
+    0 2px 8px light-dark(rgba(76, 46, 148, 0.08), rgba(0, 0, 0, 0.15));
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
 }
@@ -1685,18 +1799,18 @@ body:has(.wallet-shell) {
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  background: radial-gradient(circle at 25% 35%, rgba(166, 139, 255, 0.06), transparent 65%);
+  background: radial-gradient(circle at 25% 35%, light-dark(rgba(106, 54, 224, 0.05), rgba(166, 139, 255, 0.06)), transparent 65%);
   pointer-events: none;
 }
 
 .merchant-search-row:hover {
-  background: rgba(255, 255, 255, 0.055);
-  border-color: rgba(166, 139, 255, 0.18);
+  background: light-dark(rgba(255, 255, 255, 0.88), rgba(255, 255, 255, 0.055));
+  border-color: light-dark(rgba(106, 54, 224, 0.28), rgba(166, 139, 255, 0.18));
   transform: translateY(-1px);
-  box-shadow: 
-    inset 0 1px 0 rgba(255, 255, 255, 0.08),
-    0 4px 16px rgba(0, 0, 0, 0.25),
-    0 0 24px rgba(166, 139, 255, 0.18);
+  box-shadow:
+    inset 0 1px 0 light-dark(rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.08)),
+    0 4px 16px light-dark(rgba(76, 46, 148, 0.12), rgba(0, 0, 0, 0.25)),
+    0 0 24px light-dark(rgba(106, 54, 224, 0.14), rgba(166, 139, 255, 0.18));
 }
 
 .merchant-search-row:active {
@@ -1793,22 +1907,22 @@ body:has(.wallet-shell) {
   min-height: 100dvh;
   background:
     /* Top: bright rose/violet halos */
-    radial-gradient(ellipse 110% 70% at 50% -15%, rgba(231, 116, 255, 0.45), transparent 62%),
-    radial-gradient(ellipse 90% 60% at 25% 0%, rgba(133, 87, 255, 0.38), transparent 58%),
-    radial-gradient(ellipse 80% 55% at 75% 5%, rgba(112, 133, 255, 0.32), transparent 52%),
+    radial-gradient(ellipse 110% 70% at 50% -15%, light-dark(rgba(201, 63, 214, 0.22), rgba(231, 116, 255, 0.45)), transparent 62%),
+    radial-gradient(ellipse 90% 60% at 25% 0%, light-dark(rgba(122, 69, 242, 0.18), rgba(133, 87, 255, 0.38)), transparent 58%),
+    radial-gradient(ellipse 80% 55% at 75% 5%, light-dark(rgba(84, 104, 224, 0.16), rgba(112, 133, 255, 0.32)), transparent 52%),
     /* Middle: maintain luminosity for glass effect */
-    radial-gradient(ellipse 100% 50% at 50% 30%, rgba(166, 139, 255, 0.25), transparent 60%),
-    radial-gradient(ellipse 85% 45% at 30% 50%, rgba(231, 116, 255, 0.18), transparent 58%),
+    radial-gradient(ellipse 100% 50% at 50% 30%, light-dark(rgba(106, 54, 224, 0.12), rgba(166, 139, 255, 0.25)), transparent 60%),
+    radial-gradient(ellipse 85% 45% at 30% 50%, light-dark(rgba(201, 63, 214, 0.08), rgba(231, 116, 255, 0.18)), transparent 58%),
     /* Card area: focused rose light */
-    radial-gradient(ellipse 95% 40% at 50% 35%, rgba(231, 116, 255, 0.22), transparent 55%),
+    radial-gradient(ellipse 95% 40% at 50% 35%, light-dark(rgba(201, 63, 214, 0.1), rgba(231, 116, 255, 0.22)), transparent 55%),
     /* Bottom glow to keep visibility */
-    radial-gradient(ellipse 120% 60% at 50% 85%, rgba(133, 87, 255, 0.15), transparent 65%),
-    /* Bottom: dark obsidian to near-black */
-    linear-gradient(180deg, 
-      #0d0919 0%, 
-      #09071a 40%,
-      #06050e 70%,
-      #05050a 100%
+    radial-gradient(ellipse 120% 60% at 50% 85%, light-dark(rgba(122, 69, 242, 0.07), rgba(133, 87, 255, 0.15)), transparent 65%),
+    /* Bottom: obsidian near-black (sombre) / lavande très pâle (clair) */
+    linear-gradient(180deg,
+      light-dark(#f8f6fc, #0d0919) 0%,
+      light-dark(#f4f0fb, #09071a) 40%,
+      light-dark(#f0ebfa, #06050e) 70%,
+      light-dark(#ede6f9, #05050a) 100%
     );
 }
 
@@ -1911,29 +2025,29 @@ body:has(.wallet-shell) {
 
 /* Back button glassy */
 .back-btn-glassy {
-  background: rgba(255, 255, 255, 0.04);
+  background: light-dark(rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.04));
   backdrop-filter: blur(18px) saturate(1.4);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 
-    0 2px 8px rgba(0, 0, 0, 0.15),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  border: 1px solid light-dark(rgba(122, 69, 242, 0.16), rgba(255, 255, 255, 0.1));
+  box-shadow:
+    0 2px 8px light-dark(rgba(76, 46, 148, 0.1), rgba(0, 0, 0, 0.15)),
+    inset 0 1px 0 light-dark(rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.08));
   transition: all 0.2s ease;
 }
 
 .back-btn-glassy:hover {
-  background: rgba(255, 255, 255, 0.06);
+  background: light-dark(rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.06));
   transform: translateX(-2px);
 }
 
 /* Merchant name pill */
 .merchant-name-pill {
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.025);
+  background: light-dark(rgba(255, 255, 255, 0.65), rgba(255, 255, 255, 0.025));
   backdrop-filter: blur(20px) saturate(1.5);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 
-    0 2px 12px rgba(0, 0, 0, 0.15),
-    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  border: 1px solid light-dark(rgba(122, 69, 242, 0.14), rgba(255, 255, 255, 0.08));
+  box-shadow:
+    0 2px 12px light-dark(rgba(76, 46, 148, 0.1), rgba(0, 0, 0, 0.15)),
+    inset 0 1px 0 light-dark(rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.06));
 }
 
 /* Card preview button */
@@ -1957,24 +2071,24 @@ body:has(.wallet-shell) {
 /* Action buttons */
 .action-btn-glassy {
   border-radius: 1rem;
-  background: rgba(255, 255, 255, 0.035);
+  background: light-dark(rgba(255, 255, 255, 0.68), rgba(255, 255, 255, 0.035));
   backdrop-filter: blur(18px) saturate(1.3);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 
-    0 2px 8px rgba(0, 0, 0, 0.18),
-    inset 0 1px 0 rgba(255, 255, 255, 0.06),
-    0 0 20px rgba(231, 116, 255, 0.08);
+  border: 1px solid light-dark(rgba(122, 69, 242, 0.14), rgba(255, 255, 255, 0.08));
+  box-shadow:
+    0 2px 8px light-dark(rgba(76, 46, 148, 0.12), rgba(0, 0, 0, 0.18)),
+    inset 0 1px 0 light-dark(rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.06)),
+    0 0 20px light-dark(rgba(201, 63, 214, 0.1), rgba(231, 116, 255, 0.08));
   transition: all 0.2s ease;
 }
 
 .action-btn-glassy:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.05);
-  border-color: rgba(166, 139, 255, 0.2);
+  background: light-dark(rgba(255, 255, 255, 0.88), rgba(255, 255, 255, 0.05));
+  border-color: light-dark(rgba(106, 54, 224, 0.28), rgba(166, 139, 255, 0.2));
   transform: translateY(-1px);
-  box-shadow: 
-    0 4px 16px rgba(0, 0, 0, 0.25),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08),
-    0 0 30px rgba(231, 116, 255, 0.15);
+  box-shadow:
+    0 4px 16px light-dark(rgba(76, 46, 148, 0.16), rgba(0, 0, 0, 0.25)),
+    inset 0 1px 0 light-dark(rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.08)),
+    0 0 30px light-dark(rgba(201, 63, 214, 0.18), rgba(231, 116, 255, 0.15));
 }
 
 .action-btn-glassy:active:not(:disabled) {
@@ -1984,14 +2098,14 @@ body:has(.wallet-shell) {
 /* Glass panel sections */
 .glass-panel {
   border-radius: 1.625rem;
-  background: rgba(255, 255, 255, 0.08);
+  background: light-dark(rgba(255, 255, 255, 0.78), rgba(255, 255, 255, 0.08));
   backdrop-filter: blur(24px) saturate(1.4);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  box-shadow: 
-    0 8px 32px rgba(0, 0, 0, 0.2),
-    inset 0 1px 0 rgba(255, 255, 255, 0.15),
-    inset 0 -1px 0 rgba(255, 255, 255, 0.06),
-    0 0 40px rgba(231, 116, 255, 0.12);
+  border: 1px solid light-dark(rgba(122, 69, 242, 0.16), rgba(255, 255, 255, 0.2));
+  box-shadow:
+    0 8px 32px light-dark(rgba(76, 46, 148, 0.1), rgba(0, 0, 0, 0.2)),
+    inset 0 1px 0 light-dark(rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0.15)),
+    inset 0 -1px 0 light-dark(rgba(255, 255, 255, 0.4), rgba(255, 255, 255, 0.06)),
+    0 0 40px light-dark(rgba(201, 63, 214, 0.1), rgba(231, 116, 255, 0.12));
   position: relative;
 }
 
@@ -2002,10 +2116,10 @@ body:has(.wallet-shell) {
   border-radius: inherit;
   background: linear-gradient(
     135deg,
-    rgba(255, 255, 255, 0.04) 0%,
+    light-dark(rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0.04)) 0%,
     transparent 40%,
     transparent 60%,
-    rgba(231, 116, 255, 0.02) 100%
+    light-dark(rgba(201, 63, 214, 0.04), rgba(231, 116, 255, 0.02)) 100%
   );
   pointer-events: none;
 }
@@ -2020,7 +2134,7 @@ body:has(.wallet-shell) {
   background: linear-gradient(
     90deg,
     transparent 0%,
-    rgba(255, 255, 255, 0.2) 50%,
+    light-dark(rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.2)) 50%,
     transparent 100%
   );
   border-radius: 1.625rem 1.625rem 0 0;
@@ -2041,12 +2155,12 @@ body:has(.wallet-shell) {
   gap: 0.875rem;
   padding: 0.75rem;
   border-radius: 0.75rem;
-  background: rgba(255, 255, 255, 0.02);
+  background: light-dark(rgba(106, 54, 224, 0.03), rgba(255, 255, 255, 0.02));
   transition: all 0.2s ease;
 }
 
 .merchant-info-row:hover {
-  background: rgba(255, 255, 255, 0.04);
+  background: light-dark(rgba(106, 54, 224, 0.06), rgba(255, 255, 255, 0.04));
   transform: translateX(4px);
 }
 
@@ -2076,12 +2190,12 @@ body:has(.wallet-shell) {
 }
 
 .reward-progress-icon {
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: light-dark(rgba(106, 54, 224, 0.06), rgba(255, 255, 255, 0.06));
+  border: 1px solid light-dark(rgba(122, 69, 242, 0.14), rgba(255, 255, 255, 0.1));
 }
 
 .reward-progress-track {
-  background: rgba(255, 255, 255, 0.08);
+  background: light-dark(rgba(106, 54, 224, 0.1), rgba(255, 255, 255, 0.08));
 }
 
 .reward-progress-fill {
@@ -2098,19 +2212,19 @@ body:has(.wallet-shell) {
 
 .reward-use-btn {
   border: 1px solid rgba(190, 164, 255, 0.24);
-  background: rgba(255, 255, 255, 0.06);
+  background: light-dark(rgba(106, 54, 224, 0.08), rgba(255, 255, 255, 0.06));
   transition: background 0.2s ease, transform 0.2s ease;
 }
 
 .reward-use-btn:active {
   transform: scale(0.98);
-  background: rgba(255, 255, 255, 0.1);
+  background: light-dark(rgba(106, 54, 224, 0.14), rgba(255, 255, 255, 0.1));
 }
 
-/* Delete zone - dark area */
+/* Delete zone */
 .delete-zone {
   border-radius: 1.625rem;
-  background: rgba(0, 0, 0, 0.4);
+  background: light-dark(rgba(209, 58, 82, 0.05), rgba(0, 0, 0, 0.4));
   border: 1px solid rgba(255, 50, 80, 0.15);
 }
 
@@ -2129,7 +2243,7 @@ body:has(.wallet-shell) {
 
 .sheet-filter {
   border: 1px solid rgba(190, 164, 255, 0.22);
-  background: rgba(255, 255, 255, 0.04);
+  background: light-dark(rgba(106, 54, 224, 0.05), rgba(255, 255, 255, 0.04));
   color: var(--ink-soft);
 }
 
@@ -2139,9 +2253,9 @@ body:has(.wallet-shell) {
 
 .sheet-filter.is-active {
   border-color: rgba(190, 164, 255, 0.6);
-  background: rgba(133, 87, 255, 0.16);
+  background: light-dark(rgba(122, 69, 242, 0.14), rgba(133, 87, 255, 0.16));
   color: var(--ink);
-  box-shadow: 0 0 14px rgba(133, 87, 255, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  box-shadow: 0 0 14px light-dark(rgba(122, 69, 242, 0.24), rgba(133, 87, 255, 0.35)), inset 0 1px 0 light-dark(rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0.08));
 }
 
 .mini-card-row {
@@ -2151,10 +2265,10 @@ body:has(.wallet-shell) {
   border-radius: 20px;
   border: 1px solid rgba(190, 164, 255, 0.22);
   background:
-    radial-gradient(ellipse 90% 70% at 0% 0%, rgba(166, 139, 255, 0.22), transparent 60%),
-    rgba(12, 10, 24, 0.9);
+    radial-gradient(ellipse 90% 70% at 0% 0%, light-dark(rgba(122, 69, 242, 0.12), rgba(166, 139, 255, 0.22)), transparent 60%),
+    light-dark(rgba(255, 255, 255, 0.85), rgba(12, 10, 24, 0.9));
   padding: 0.55rem 0.75rem 0.6rem 0.6rem;
-  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 18px 40px light-dark(rgba(76, 46, 148, 0.14), rgba(0, 0, 0, 0.6));
 }
 
 .mini-card-thumb {
@@ -2164,8 +2278,8 @@ body:has(.wallet-shell) {
   flex-shrink: 0;
   border-radius: 16px;
   box-shadow:
-    0 16px 32px rgba(0, 0, 0, 0.65),
-    0 0 0 1px rgba(255, 255, 255, 0.12);
+    0 16px 32px light-dark(rgba(76, 46, 148, 0.18), rgba(0, 0, 0, 0.65)),
+    0 0 0 1px light-dark(rgba(122, 69, 242, 0.16), rgba(255, 255, 255, 0.12));
   overflow: hidden;
 }
 
@@ -2187,9 +2301,9 @@ body:has(.wallet-shell) {
 .qr-escutcheon {
   border: 1px solid rgba(190, 164, 255, 0.2);
   background:
-    radial-gradient(ellipse 80% 60% at 50% 0%, rgba(133, 87, 255, 0.14), transparent 60%),
-    rgba(10, 8, 20, 0.88);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 20px 50px rgba(0, 0, 0, 0.55);
+    radial-gradient(ellipse 80% 60% at 50% 0%, light-dark(rgba(122, 69, 242, 0.1), rgba(133, 87, 255, 0.14)), transparent 60%),
+    light-dark(rgba(255, 255, 255, 0.9), rgba(10, 8, 20, 0.88));
+  box-shadow: inset 0 1px 0 light-dark(rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.06)), 0 20px 50px light-dark(rgba(76, 46, 148, 0.14), rgba(0, 0, 0, 0.55));
 }
 
 .landing-deck {
@@ -2202,25 +2316,25 @@ body:has(.wallet-shell) {
   width: min(360px, 88%);
   aspect-ratio: 1.586 / 1;
   border-radius: 26px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 40px 90px rgba(0, 0, 0, 0.78);
+  border: 1px solid light-dark(rgba(122, 69, 242, 0.16), rgba(255, 255, 255, 0.1));
+  box-shadow: 0 40px 90px light-dark(rgba(76, 46, 148, 0.2), rgba(0, 0, 0, 0.78));
 }
 
 .merchant-page-shell .glass-panel {
   border-radius: 28px;
-  border: 1px solid rgba(190, 164, 255, 0.18);
-  background: rgba(12, 10, 24, 0.78);
+  border: 1px solid light-dark(rgba(122, 69, 242, 0.16), rgba(190, 164, 255, 0.18));
+  background: light-dark(rgba(255, 255, 255, 0.82), rgba(12, 10, 24, 0.78));
   backdrop-filter: blur(16px);
-  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.72);
+  box-shadow: 0 24px 70px light-dark(rgba(76, 46, 148, 0.14), rgba(0, 0, 0, 0.72));
 }
 
 .metric-card {
   border-radius: 20px;
-  border: 1px solid rgba(190, 164, 255, 0.14);
+  border: 1px solid light-dark(rgba(122, 69, 242, 0.14), rgba(190, 164, 255, 0.14));
   background:
-    radial-gradient(ellipse 80% 60% at 0% 0%, rgba(133, 87, 255, 0.12), transparent 55%),
-    rgba(14, 12, 26, 0.92);
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+    radial-gradient(ellipse 80% 60% at 0% 0%, light-dark(rgba(122, 69, 242, 0.08), rgba(133, 87, 255, 0.12)), transparent 55%),
+    light-dark(rgba(255, 255, 255, 0.9), rgba(14, 12, 26, 0.92));
+  box-shadow: 0 16px 40px light-dark(rgba(76, 46, 148, 0.12), rgba(0, 0, 0, 0.45));
 }
 
 .prism-card {
@@ -2433,20 +2547,20 @@ body:has(.wallet-shell) {
 }
 
 .profile-panel {
-  background: rgba(255, 255, 255, 0.05) !important;
+  background: light-dark(rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.05)) !important;
   backdrop-filter: blur(24px) saturate(1.5) !important;
-  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border: 1px solid light-dark(rgba(122, 69, 242, 0.16), rgba(255, 255, 255, 0.12)) !important;
   box-shadow:
-    0 8px 32px rgba(0, 0, 0, 0.35),
-    inset 0 1px 0 rgba(255, 255, 255, 0.12),
-    0 0 40px rgba(133, 87, 255, 0.1) !important;
+    0 8px 32px light-dark(rgba(76, 46, 148, 0.12), rgba(0, 0, 0, 0.35)),
+    inset 0 1px 0 light-dark(rgba(255, 255, 255, 0.75), rgba(255, 255, 255, 0.12)),
+    0 0 40px light-dark(rgba(122, 69, 242, 0.08), rgba(133, 87, 255, 0.1)) !important;
 }
 
 .profile-avatar-btn {
   display: block;
   border-radius: 999px;
-  border: 2px solid rgba(255, 255, 255, 0.15);
-  box-shadow: 0 0 40px rgba(133, 87, 255, 0.35);
+  border: 2px solid light-dark(rgba(122, 69, 242, 0.22), rgba(255, 255, 255, 0.15));
+  box-shadow: 0 0 40px light-dark(rgba(122, 69, 242, 0.22), rgba(133, 87, 255, 0.35));
   transition: transform 0.2s ease;
 }
 
@@ -2467,10 +2581,10 @@ body:has(.wallet-shell) {
 .profile-avatar-fallback {
   background:
     radial-gradient(circle at 30% 20%, rgba(196, 181, 255, 0.5), rgba(133, 87, 255, 0.3)),
-    rgba(255, 255, 255, 0.06);
+    light-dark(rgba(255, 255, 255, 0.4), rgba(255, 255, 255, 0.06));
   font-size: 1.5rem;
   font-weight: 800;
-  color: var(--ink);
+  color: light-dark(#201a34, var(--ink));
 }
 
 .profile-edit-icon {
@@ -2479,8 +2593,8 @@ body:has(.wallet-shell) {
   height: 1.75rem;
   width: 1.75rem;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: light-dark(rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0.06));
+  border: 1px solid light-dark(rgba(122, 69, 242, 0.16), rgba(255, 255, 255, 0.1));
   font-size: 0.75rem;
   color: var(--muted-strong);
 }
@@ -2492,7 +2606,7 @@ body:has(.wallet-shell) {
   gap: 0.75rem;
   padding: 0.65rem 0.5rem;
   border-radius: 1rem;
-  background: rgba(255, 255, 255, 0.02);
+  background: light-dark(rgba(106, 54, 224, 0.03), rgba(255, 255, 255, 0.02));
 }
 
 .profile-settings-row {
@@ -2506,7 +2620,7 @@ body:has(.wallet-shell) {
 }
 
 .profile-settings-row:active {
-  background: rgba(255, 255, 255, 0.05);
+  background: light-dark(rgba(106, 54, 224, 0.06), rgba(255, 255, 255, 0.05));
 }
 
 .profile-settings-icon {
@@ -2515,8 +2629,26 @@ body:has(.wallet-shell) {
   height: 2rem;
   width: 2rem;
   border-radius: 0.625rem;
-  background: rgba(255, 255, 255, 0.04);
+  background: light-dark(rgba(106, 54, 224, 0.06), rgba(255, 255, 255, 0.04));
   font-size: 0.875rem;
+}
+
+.appearance-option {
+  border: 1px solid light-dark(rgba(122, 69, 242, 0.14), rgba(255, 255, 255, 0.1));
+  background: light-dark(rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0.04));
+  color: var(--muted);
+}
+
+.appearance-option:hover {
+  border-color: light-dark(rgba(106, 54, 224, 0.28), rgba(166, 139, 255, 0.28));
+  color: var(--ink-soft);
+}
+
+.appearance-option-active {
+  border-color: light-dark(rgba(106, 54, 224, 0.55), rgba(166, 139, 255, 0.55));
+  background: light-dark(rgba(106, 54, 224, 0.1), rgba(133, 87, 255, 0.16));
+  color: var(--ink);
+  box-shadow: 0 0 0 1px light-dark(rgba(106, 54, 224, 0.35), rgba(166, 139, 255, 0.35));
 }
 
 .profile-toggle-row {
@@ -2539,17 +2671,22 @@ body:has(.wallet-shell) {
   width: 100%;
   margin-top: 0.375rem;
   border-radius: 0.875rem;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid light-dark(rgba(122, 69, 242, 0.18), rgba(255, 255, 255, 0.12));
+  background: light-dark(rgba(255, 255, 255, 0.75), rgba(255, 255, 255, 0.04));
   padding: 0.75rem 1rem;
   font-size: 0.875rem;
   color: var(--ink);
   outline: none;
 }
 
+.profile-input::placeholder,
+.profile-select::placeholder {
+  color: light-dark(rgba(32, 26, 52, 0.4), rgba(248, 247, 255, 0.35));
+}
+
 .profile-input:focus,
 .profile-select:focus {
-  border-color: rgba(166, 139, 255, 0.5);
+  border-color: light-dark(rgba(106, 54, 224, 0.55), rgba(166, 139, 255, 0.5));
 }
 
 .profile-field {
@@ -2562,7 +2699,7 @@ body:has(.wallet-shell) {
 .profile-btn-primary {
   border-radius: 0.875rem;
   background: linear-gradient(135deg, rgba(133, 87, 255, 0.85), rgba(166, 139, 255, 0.65));
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  border: 1px solid light-dark(rgba(255, 255, 255, 0.4), rgba(255, 255, 255, 0.15));
   color: white;
   padding: 0.75rem 1rem;
   font-weight: 600;
@@ -2570,8 +2707,8 @@ body:has(.wallet-shell) {
 
 .profile-btn-secondary {
   border-radius: 0.875rem;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: light-dark(rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.05));
+  border: 1px solid light-dark(rgba(122, 69, 242, 0.16), rgba(255, 255, 255, 0.1));
   color: var(--ink-soft);
   padding: 0.75rem 1rem;
   font-weight: 600;
@@ -2583,8 +2720,8 @@ body:has(.wallet-shell) {
   font-size: 0.75rem;
   font-weight: 700;
   color: var(--violet-bright);
-  background: rgba(133, 87, 255, 0.08);
-  border: 1px solid rgba(133, 87, 255, 0.2);
+  background: light-dark(rgba(122, 69, 242, 0.06), rgba(133, 87, 255, 0.08));
+  border: 1px solid light-dark(rgba(122, 69, 242, 0.18), rgba(133, 87, 255, 0.2));
 }
 
 .profile-inline-link {
@@ -2599,23 +2736,23 @@ body:has(.wallet-shell) {
   font-size: 0.875rem;
   font-weight: 700;
   color: var(--ink);
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: light-dark(rgba(255, 255, 255, 0.75), rgba(255, 255, 255, 0.05));
+  border: 1px solid light-dark(rgba(122, 69, 242, 0.16), rgba(255, 255, 255, 0.12));
 }
 
 .profile-danger-zone {
-  background: rgba(0, 0, 0, 0.55) !important;
+  background: light-dark(rgba(209, 58, 82, 0.06), rgba(0, 0, 0, 0.55)) !important;
   backdrop-filter: blur(12px) !important;
 }
 
 .profile-sheet-action {
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: light-dark(rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.04));
+  border: 1px solid light-dark(rgba(122, 69, 242, 0.12), rgba(255, 255, 255, 0.06));
   margin-bottom: 0.5rem;
 }
 
 .profile-sheet-action:active {
-  background: rgba(255, 255, 255, 0.08);
+  background: light-dark(rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 0.08));
 }
 
 .profile-toast {
@@ -2643,8 +2780,8 @@ body:has(.wallet-shell) {
 @media (min-width: 1024px) {
   html,
   body {
-    background-color: #05050a;
-    background-image: linear-gradient(180deg, #0f0a1d 0%, #05050a 100%);
+    background-color: var(--void);
+    background-image: linear-gradient(180deg, light-dark(#f8f6fc, #0f0a1d) 0%, light-dark(#ede6f9, #05050a) 100%);
     background-attachment: fixed;
   }
 
@@ -2666,23 +2803,23 @@ body:has(.wallet-shell) {
     z-index: -1;
     pointer-events: none;
     background:
-      radial-gradient(ellipse 110% 70% at 50% -8%, rgba(231, 116, 255, 0.48), transparent 64%),
-      radial-gradient(ellipse 85% 55% at 85% 12%, rgba(133, 87, 255, 0.38), transparent 56%),
-      radial-gradient(ellipse 75% 50% at 10% 22%, rgba(231, 116, 255, 0.28), transparent 51%),
-      radial-gradient(ellipse 110% 80% at 50% 35%, rgba(166, 139, 255, 0.32), transparent 69%),
-      radial-gradient(ellipse 100% 65% at 30% 60%, rgba(231, 116, 255, 0.18), transparent 67%),
-      radial-gradient(ellipse 105% 70% at 70% 75%, rgba(112, 133, 255, 0.22), transparent 68%),
-      radial-gradient(ellipse 140% 95% at 50% 118%, rgba(231, 116, 255, 0.52), transparent 76%),
-      linear-gradient(180deg, #0f0a1d 0%, #05050a 100%);
+      radial-gradient(ellipse 110% 70% at 50% -8%, light-dark(rgba(201, 63, 214, 0.22), rgba(231, 116, 255, 0.48)), transparent 64%),
+      radial-gradient(ellipse 85% 55% at 85% 12%, light-dark(rgba(122, 69, 242, 0.18), rgba(133, 87, 255, 0.38)), transparent 56%),
+      radial-gradient(ellipse 75% 50% at 10% 22%, light-dark(rgba(201, 63, 214, 0.13), rgba(231, 116, 255, 0.28)), transparent 51%),
+      radial-gradient(ellipse 110% 80% at 50% 35%, light-dark(rgba(106, 54, 224, 0.15), rgba(166, 139, 255, 0.32)), transparent 69%),
+      radial-gradient(ellipse 100% 65% at 30% 60%, light-dark(rgba(201, 63, 214, 0.08), rgba(231, 116, 255, 0.18)), transparent 67%),
+      radial-gradient(ellipse 105% 70% at 70% 75%, light-dark(rgba(84, 104, 224, 0.1), rgba(112, 133, 255, 0.22)), transparent 68%),
+      radial-gradient(ellipse 140% 95% at 50% 118%, light-dark(rgba(201, 63, 214, 0.24), rgba(231, 116, 255, 0.52)), transparent 76%),
+      linear-gradient(180deg, light-dark(#f8f6fc, #0f0a1d) 0%, light-dark(#ede6f9, #05050a) 100%);
   }
 
   .merchant-detail-scene::before {
     background:
-      radial-gradient(ellipse 110% 70% at 50% -15%, rgba(231, 116, 255, 0.45), transparent 62%),
-      radial-gradient(ellipse 90% 60% at 25% 0%, rgba(133, 87, 255, 0.38), transparent 58%),
-      radial-gradient(ellipse 80% 55% at 75% 5%, rgba(112, 133, 255, 0.32), transparent 52%),
-      radial-gradient(ellipse 100% 50% at 50% 30%, rgba(166, 139, 255, 0.25), transparent 60%),
-      linear-gradient(180deg, #0d0919 0%, #09071a 40%, #06050e 70%, #05050a 100%);
+      radial-gradient(ellipse 110% 70% at 50% -15%, light-dark(rgba(201, 63, 214, 0.22), rgba(231, 116, 255, 0.45)), transparent 62%),
+      radial-gradient(ellipse 90% 60% at 25% 0%, light-dark(rgba(122, 69, 242, 0.18), rgba(133, 87, 255, 0.38)), transparent 58%),
+      radial-gradient(ellipse 80% 55% at 75% 5%, light-dark(rgba(84, 104, 224, 0.16), rgba(112, 133, 255, 0.32)), transparent 52%),
+      radial-gradient(ellipse 100% 50% at 50% 30%, light-dark(rgba(106, 54, 224, 0.12), rgba(166, 139, 255, 0.25)), transparent 60%),
+      linear-gradient(180deg, light-dark(#f8f6fc, #0d0919) 0%, light-dark(#f4f0fb, #09071a) 40%, light-dark(#f0ebfa, #06050e) 70%, light-dark(#ede6f9, #05050a) 100%);
   }
 
   .fife-page-shell.max-w-md {
@@ -2860,12 +2997,12 @@ body:has(.wallet-shell) {
   }
 
   .wallet-sidebar-column .glass-panel {
-    background: rgba(255, 255, 255, 0.06);
+    background: light-dark(rgba(255, 255, 255, 0.78), rgba(255, 255, 255, 0.06));
     backdrop-filter: blur(20px) saturate(1.35);
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    border: 1px solid light-dark(rgba(122, 69, 242, 0.16), rgba(255, 255, 255, 0.12));
     box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.08),
-      0 4px 16px rgba(0, 0, 0, 0.1);
+      inset 0 1px 0 light-dark(rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.08)),
+      0 4px 16px light-dark(rgba(76, 46, 148, 0.08), rgba(0, 0, 0, 0.1));
   }
 
   .wallet-sidebar-column .wallet-reward-block {
@@ -2901,9 +3038,9 @@ body:has(.wallet-shell) {
     align-items: stretch;
     gap: 0.5rem;
     padding: 0.6rem;
-    background: rgba(255, 255, 255, 0.03);
-    border-color: rgba(255, 255, 255, 0.08);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    background: light-dark(rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0.03));
+    border-color: light-dark(rgba(122, 69, 242, 0.12), rgba(255, 255, 255, 0.08));
+    box-shadow: inset 0 1px 0 light-dark(rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0.05));
   }
 
   .wallet-cards-grid .merchant-search-row::before {
@@ -2911,11 +3048,11 @@ body:has(.wallet-shell) {
   }
 
   .wallet-cards-grid .merchant-search-row:hover {
-    background: rgba(255, 255, 255, 0.05);
-    border-color: rgba(166, 139, 255, 0.16);
+    background: light-dark(rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0.05));
+    border-color: light-dark(rgba(106, 54, 224, 0.24), rgba(166, 139, 255, 0.16));
     box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.07),
-      0 0 0 1px rgba(166, 139, 255, 0.08);
+      inset 0 1px 0 light-dark(rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0.07)),
+      0 0 0 1px light-dark(rgba(106, 54, 224, 0.14), rgba(166, 139, 255, 0.08));
     transform: none;
   }
 
@@ -3027,9 +3164,9 @@ body:has(.wallet-shell) {
     justify-self: center;
     border-radius: 999px;
     border: 1px solid rgba(190, 164, 255, 0.22);
-    background: rgba(12, 10, 22, 0.72);
+    background: light-dark(rgba(255, 255, 255, 0.8), rgba(12, 10, 22, 0.72));
     backdrop-filter: blur(14px);
-    color: rgba(255, 255, 255, 0.75);
+    color: light-dark(rgba(32, 26, 52, 0.75), rgba(255, 255, 255, 0.75));
     opacity: 0;
     transition: opacity 0.2s ease, background 0.2s ease;
   }
@@ -3209,7 +3346,7 @@ body:has(.wallet-shell) {
     border-top: none !important;
     transform: none !important;
     cursor: default;
-    box-shadow: -24px 0 80px rgba(0, 0, 0, 0.55);
+    box-shadow: -24px 0 80px light-dark(rgba(76, 46, 148, 0.18), rgba(0, 0, 0, 0.55));
   }
 
   .fife-desktop-sheet .sheet-halo {
@@ -3376,8 +3513,8 @@ body:has(.wallet-shell) {
 
   .obsidian-scene-root .glass-panel {
     box-shadow:
-      0 8px 24px rgba(0, 0, 0, 0.22),
-      inset 0 1px 0 rgba(255, 255, 255, 0.1);
+      0 8px 24px light-dark(rgba(76, 46, 148, 0.1), rgba(0, 0, 0, 0.22)),
+      inset 0 1px 0 light-dark(rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.1));
     backdrop-filter: blur(12px) saturate(1.2);
   }
 
@@ -3388,25 +3525,25 @@ body:has(.wallet-shell) {
 
   .obsidian-scene-root .merchant-page-shell .glass-panel {
     box-shadow:
-      0 10px 28px rgba(0, 0, 0, 0.26),
-      inset 0 1px 0 rgba(255, 255, 255, 0.08);
+      0 10px 28px light-dark(rgba(76, 46, 148, 0.12), rgba(0, 0, 0, 0.26)),
+      inset 0 1px 0 light-dark(rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.08));
   }
 
   .obsidian-scene-root .compact-list-shell {
-    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.26);
+    box-shadow: 0 10px 28px light-dark(rgba(76, 46, 148, 0.12), rgba(0, 0, 0, 0.26));
     backdrop-filter: blur(12px);
   }
 
   .obsidian-scene-root .metric-card {
-    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.24);
+    box-shadow: 0 8px 22px light-dark(rgba(76, 46, 148, 0.1), rgba(0, 0, 0, 0.24));
   }
 
   .obsidian-scene-root .glass-cta {
-    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.32);
+    box-shadow: 0 10px 24px light-dark(rgba(76, 46, 148, 0.14), rgba(0, 0, 0, 0.32));
   }
 
   .obsidian-scene-root .glass-cta-icon {
-    box-shadow: 0 0 10px rgba(133, 87, 255, 0.35);
+    box-shadow: 0 0 10px light-dark(rgba(122, 69, 242, 0.3), rgba(133, 87, 255, 0.35));
   }
 }
 
@@ -3465,8 +3602,8 @@ body:has(.wallet-shell) {
   flex-direction: column;
   border-right: 1px solid rgba(190, 164, 255, 0.12);
   background:
-    radial-gradient(ellipse 80% 50% at 0% 0%, rgba(133, 87, 255, 0.14), transparent 55%),
-    rgba(8, 6, 16, 0.92);
+    radial-gradient(ellipse 80% 50% at 0% 0%, light-dark(rgba(122, 69, 242, 0.08), rgba(133, 87, 255, 0.14)), transparent 55%),
+    light-dark(rgba(255, 255, 255, 0.9), rgba(8, 6, 16, 0.92));
   backdrop-filter: blur(20px) saturate(1.3);
 }
 
@@ -3479,8 +3616,8 @@ body:has(.wallet-shell) {
   background: radial-gradient(circle at 0% 0%, #b86cff, #4c228c);
   font-size: 0.65rem;
   font-weight: 900;
-  color: var(--ink);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55);
+  color: #f8f7ff;
+  box-shadow: 0 8px 24px light-dark(rgba(76, 46, 148, 0.22), rgba(0, 0, 0, 0.55));
   box-shadow: 0 0 0 1px var(--stroke-strong);
 }
 
@@ -3497,18 +3634,18 @@ body:has(.wallet-shell) {
 }
 
 .merchant-sidebar-link:hover {
-  background: rgba(255, 255, 255, 0.04);
+  background: light-dark(rgba(106, 54, 224, 0.06), rgba(255, 255, 255, 0.04));
   color: var(--ink-soft);
 }
 
 .merchant-sidebar-link-active {
-  background: rgba(255, 255, 255, 0.06);
+  background: light-dark(rgba(106, 54, 224, 0.09), rgba(255, 255, 255, 0.06));
   color: var(--ink);
   box-shadow: inset 0 0 0 1px rgba(190, 164, 255, 0.12);
 }
 
 .merchant-sidebar-link-caisse {
-  background: rgba(133, 87, 255, 0.12);
+  background: light-dark(rgba(122, 69, 242, 0.1), rgba(133, 87, 255, 0.12));
   color: var(--violet-bright);
 }
 
@@ -3524,9 +3661,9 @@ body:has(.wallet-shell) {
   gap: 0.15rem;
   padding: 0.35rem 0.5rem calc(0.45rem + env(safe-area-inset-bottom));
   border-top: 1px solid rgba(190, 164, 255, 0.14);
-  background: rgba(10, 8, 18, 0.88);
+  background: light-dark(rgba(255, 255, 255, 0.92), rgba(10, 8, 18, 0.88));
   backdrop-filter: blur(22px) saturate(1.4);
-  box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.45);
+  box-shadow: 0 -12px 40px light-dark(rgba(76, 46, 148, 0.12), rgba(0, 0, 0, 0.45));
 }
 
 .merchant-bottom-nav-item {
@@ -3550,7 +3687,7 @@ body:has(.wallet-shell) {
 
 .merchant-bottom-nav-active {
   color: var(--ink);
-  background: rgba(255, 255, 255, 0.06);
+  background: light-dark(rgba(106, 54, 224, 0.09), rgba(255, 255, 255, 0.06));
 }
 
 .merchant-bottom-nav-caisse {
@@ -3558,7 +3695,7 @@ body:has(.wallet-shell) {
 }
 
 .merchant-bottom-nav-caisse.merchant-bottom-nav-active {
-  background: rgba(133, 87, 255, 0.18);
+  background: light-dark(rgba(122, 69, 242, 0.14), rgba(133, 87, 255, 0.18));
   box-shadow: inset 0 0 0 1px rgba(190, 164, 255, 0.2);
 }
 
@@ -3570,7 +3707,7 @@ body:has(.wallet-shell) {
   place-items: center;
   border-radius: 0.85rem;
   border: 1px solid rgba(190, 164, 255, 0.18);
-  background: rgba(255, 255, 255, 0.06);
+  background: light-dark(rgba(106, 54, 224, 0.07), rgba(255, 255, 255, 0.06));
   backdrop-filter: blur(12px);
   color: var(--ink);
 }
@@ -3581,9 +3718,9 @@ body:has(.wallet-shell) {
   overflow: hidden;
   border-radius: 1.25rem;
   border: 1px solid rgba(190, 164, 255, 0.14);
-  background: rgba(12, 10, 22, 0.72);
+  background: light-dark(rgba(255, 255, 255, 0.8), rgba(12, 10, 22, 0.72));
   backdrop-filter: blur(16px);
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 16px 48px light-dark(rgba(76, 46, 148, 0.1), rgba(0, 0, 0, 0.35));
 }
 
 .compact-list-shell-stacked .compact-list-row {
@@ -3610,7 +3747,7 @@ body:has(.wallet-shell) {
   min-height: 4rem;
   align-items: center;
   gap: 0.75rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid light-dark(rgba(122, 69, 242, 0.1), rgba(255, 255, 255, 0.06));
   padding: 0.65rem 0.85rem;
   transition: background 0.12s;
 }
@@ -3636,7 +3773,7 @@ body:has(.wallet-shell) {
     gap: 0.75rem;
     padding: 0.55rem 1rem;
     border-bottom: 1px solid rgba(190, 164, 255, 0.12);
-    background: rgba(255, 255, 255, 0.03);
+    background: light-dark(rgba(106, 54, 224, 0.03), rgba(255, 255, 255, 0.03));
     font-size: 0.625rem;
     font-weight: 800;
     letter-spacing: 0.08em;
@@ -3709,7 +3846,7 @@ body:has(.wallet-shell) {
 
 .compact-list-row:active,
 .compact-list-row:hover {
-  background: rgba(255, 255, 255, 0.04);
+  background: light-dark(rgba(106, 54, 224, 0.05), rgba(255, 255, 255, 0.04));
 }
 
 .initials-avatar {
@@ -3739,7 +3876,7 @@ body:has(.wallet-shell) {
   width: 100%;
   border-radius: 0.85rem;
   border: 1px solid rgba(190, 164, 255, 0.14);
-  background: rgba(255, 255, 255, 0.05);
+  background: light-dark(rgba(255, 255, 255, 0.75), rgba(255, 255, 255, 0.05));
   padding: 0.65rem 0.85rem 0.65rem 2.35rem;
   font-size: 0.875rem;
   color: var(--ink);
@@ -3783,7 +3920,7 @@ body:has(.wallet-shell) {
 .merchant-filter-chip {
   border-radius: 999px;
   border: 1px solid rgba(190, 164, 255, 0.14);
-  background: rgba(255, 255, 255, 0.04);
+  background: light-dark(rgba(255, 255, 255, 0.65), rgba(255, 255, 255, 0.04));
   padding: 0.35rem 0.75rem;
   font-size: 0.7rem;
   font-weight: 700;
@@ -3826,7 +3963,7 @@ body:has(.wallet-shell) {
 }
 
 .merchant-status-badge-muted {
-  background: rgba(255, 255, 255, 0.08);
+  background: light-dark(rgba(106, 54, 224, 0.08), rgba(255, 255, 255, 0.08));
   color: var(--muted);
 }
 
@@ -3845,7 +3982,7 @@ body:has(.wallet-shell) {
 .merchant-stat-pill {
   border-radius: 0.85rem;
   border: 1px solid rgba(190, 164, 255, 0.12);
-  background: rgba(255, 255, 255, 0.04);
+  background: light-dark(rgba(255, 255, 255, 0.65), rgba(255, 255, 255, 0.04));
   padding: 0.65rem 0.75rem;
   text-align: center;
 }
@@ -3858,7 +3995,7 @@ body:has(.wallet-shell) {
 .program-step-card {
   border-radius: 1.25rem;
   border: 1px solid rgba(190, 164, 255, 0.14);
-  background: rgba(12, 10, 22, 0.78);
+  background: light-dark(rgba(255, 255, 255, 0.82), rgba(12, 10, 22, 0.78));
   backdrop-filter: blur(16px);
   padding: 1.25rem;
 }
@@ -3930,7 +4067,7 @@ body:has(.wallet-shell) {
   gap: 0.25rem;
   border-radius: 1rem;
   border: 1px solid rgba(190, 164, 255, 0.14);
-  background: rgba(255, 255, 255, 0.03);
+  background: light-dark(rgba(106, 54, 224, 0.03), rgba(255, 255, 255, 0.03));
   padding: 0.85rem 1rem;
   text-align: left;
   transition: border-color 0.15s, background 0.15s;
@@ -3938,7 +4075,7 @@ body:has(.wallet-shell) {
 
 .program-mode-option-active {
   border-color: rgba(133, 87, 255, 0.45);
-  background: rgba(133, 87, 255, 0.12);
+  background: light-dark(rgba(122, 69, 242, 0.1), rgba(133, 87, 255, 0.12));
 }
 
 .recent-activity-row {
@@ -3946,7 +4083,7 @@ body:has(.wallet-shell) {
   align-items: center;
   gap: 0.75rem;
   padding: 0.65rem 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid light-dark(rgba(122, 69, 242, 0.1), rgba(255, 255, 255, 0.06));
 }
 
 .recent-activity-row:last-child {

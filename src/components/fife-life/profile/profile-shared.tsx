@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import { useTheme } from "next-themes";
 import type { ProfilePayload } from "@/lib/customer-profile";
 import { displayFullName } from "@/lib/customer-profile";
 
@@ -109,6 +110,50 @@ export function SettingsRow({
         ›
       </span>
     </button>
+  );
+}
+
+const APPEARANCE_OPTIONS: { value: "dark" | "light" | "system"; label: string; icon: string }[] = [
+  { value: "dark", label: "Sombre", icon: "🌙" },
+  { value: "light", label: "Clair", icon: "☀️" },
+  { value: "system", label: "Système", icon: "🖥️" },
+];
+
+export function AppearanceRow() {
+  const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => setMounted(true), []);
+
+  const active = mounted ? theme ?? "dark" : "dark";
+
+  return (
+    <div
+      role="radiogroup"
+      aria-label="Apparence"
+      className="grid grid-cols-3 gap-2"
+    >
+      {APPEARANCE_OPTIONS.map((option) => {
+        const selected = active === option.value;
+        return (
+          <button
+            key={option.value}
+            type="button"
+            role="radio"
+            aria-checked={selected}
+            onClick={() => setTheme(option.value)}
+            className={`appearance-option flex flex-col items-center gap-1.5 rounded-2xl px-3 py-3 text-xs font-semibold transition ${
+              selected ? "appearance-option-active" : ""
+            }`}
+          >
+            <span className="text-lg" aria-hidden>
+              {option.icon}
+            </span>
+            <span>{option.label}</span>
+          </button>
+        );
+      })}
+    </div>
   );
 }
 
