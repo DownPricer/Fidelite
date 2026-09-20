@@ -1,0 +1,372 @@
+.\package.json:2:  "name": "fifelite",
+.\NOTES_CAROUSEL.md:12:- Fichier : `src/components/fife-life/card-deck.tsx`
+.\deploy\nginx\fifelite.conf.example:1:# FifeLite — bloc additif pour le Nginx central Docker (downpricer-nginx)
+.\deploy\nginx\fifelite.conf.example:7:#   /opt/downpricer/nginx/conf.d/fifelite.conf
+.\deploy\nginx\fifelite.conf.example:14:# Le conteneur fifelite-web doit être sur le réseau downpricer_downpricer-network
+.\deploy\nginx\fifelite.conf.example:39:#    recopiez exactement cette convention. N’adaptez que les trois noms FifeLite.
+.\deploy\nginx\fifelite.conf.example:43:# Sous-domaines FifeLite uniquement
+.\deploy\nginx\fifelite.conf.example:50:upstream fifelite_web {
+.\deploy\nginx\fifelite.conf.example:51:    server fifelite-web:3000;
+.\deploy\nginx\fifelite.conf.example:63:        proxy_pass http://fifelite_web;
+.\deploy\nginx\fifelite.conf.example:80:        proxy_pass http://fifelite_web;
+.\deploy\nginx\fifelite.conf.example:97:        proxy_pass http://fifelite_web;
+.\deploy\nginx\fifelite.conf.example:114:        proxy_pass http://fifelite_web;
+.\deploy\nginx\fifelite.conf.example:134:#         proxy_pass http://fifelite_web;
+.\deploy\nginx\fifelite.conf.example:151:#         proxy_pass http://fifelite_web;
+.\deploy\nginx\fifelite.conf.example:168:#         proxy_pass http://fifelite_web;
+.\deploy\docker-compose.yml:1:# FifeLite — stack production VPS
+.\deploy\docker-compose.yml:2:# Usage : depuis /opt/fifelite/app/site/deploy
+.\deploy\docker-compose.yml:6:# Conteneurs : fifelite-web, fifelite-postgres
+.\deploy\docker-compose.yml:7:# Réseau interne : fifelite-internal
+.\deploy\docker-compose.yml:10:# Ne pas joindre fifelite-postgres au réseau du reverse proxy.
+.\deploy\docker-compose.yml:14:#   Dossier hôte VPS : /opt/fifelite/data/uploads
+.\deploy\docker-compose.yml:15:#   Dossier conteneur : /var/lib/fifelite/uploads
+.\deploy\docker-compose.yml:16:#   Variable conteneur : UPLOADS_DIR=/var/lib/fifelite/uploads
+.\deploy\docker-compose.yml:19:#   sudo install -d -o 1001 -g 1001 -m 750 /opt/fifelite/data/uploads
+.\deploy\docker-compose.yml:21:# Sauvegarde recommandée : inclure /opt/fifelite/data/uploads dans la routine backup VPS.
+.\deploy\docker-compose.yml:23:name: fifelite
+.\deploy\docker-compose.yml:28:    container_name: fifelite-postgres
+.\deploy\docker-compose.yml:33:      POSTGRES_USER: ${POSTGRES_USER:-fifelite}
+.\deploy\docker-compose.yml:34:      POSTGRES_DB: ${POSTGRES_DB:-fifelite}
+.\deploy\docker-compose.yml:36:      - fifelite-postgres-data:/var/lib/postgresql/data
+.\deploy\docker-compose.yml:38:      - fifelite-internal
+.\deploy\docker-compose.yml:40:      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER:-fifelite}\" -d \"$${POSTGRES_DB:-fifelite}\""]
+.\deploy\docker-compose.yml:47:    container_name: fifelite-web
+.\deploy\docker-compose.yml:58:      UPLOADS_DIR: /var/lib/fifelite/uploads
+.\deploy\docker-compose.yml:60:      - /opt/fifelite/data/uploads:/var/lib/fifelite/uploads
+.\deploy\docker-compose.yml:61:      - /opt/fifelite/secrets/google-wallet-service-account.json:/run/secrets/google-wallet-service-account.json:ro
+.\deploy\docker-compose.yml:66:      - fifelite-internal
+.\deploy\docker-compose.yml:70:  fifelite-postgres-data:
+.\deploy\docker-compose.yml:71:    name: fifelite-postgres-data
+.\deploy\docker-compose.yml:74:  fifelite-internal:
+.\deploy\docker-compose.yml:75:    name: fifelite-internal
+.\deploy\deploy.sh:2:# Déploiement FifeLite — à exécuter SUR le VPS, depuis /opt/fifelite/app/site/deploy
+.\deploy\deploy.sh:18:echo "Migrations : appliquées au démarrage de fifelite-web (entrypoint)."
+.\deploy\docker-entrypoint.sh:5:  echo "[fifelite] ERREUR: $1" >&2
+.\deploy\docker-entrypoint.sh:36:echo "[fifelite] prisma migrate deploy"
+.\deploy\docker-entrypoint.sh:38:echo "[fifelite] démarrage de l'application"
+.\README.md:56:| Code | `/opt/fifelite/app/site` |
+.\README.md:57:| Compose | `/opt/fifelite/app/site/deploy/docker-compose.yml` |
+.\README.md:58:| Web | `fifelite-web` |
+.\README.md:59:| PostgreSQL | `fifelite-postgres` (non exposé) |
+.\README.md:60:| Volume | `fifelite-postgres-data` |
+.\README.md:61:| Réseau interne | `fifelite-internal` |
+.\README.md:77:sudo mkdir -p /opt/fifelite/app/site
+.\README.md:78:sudo chown -R ubuntu:ubuntu /opt/fifelite
+.\README.md:79:cd /opt/fifelite/app/site
+.\README.md:87:Les migrations Prisma s’exécutent automatiquement au démarrage de `fifelite-web` (entrypoint).
+.\README.md:92:sudo cp /opt/fifelite/app/site/deploy/nginx/fifelite.conf.example /opt/downpricer/nginx/conf.d/fifelite.conf
+.\README.md:97:Détails HTTPS : voir les commentaires dans `deploy/nginx/fifelite.conf.example`.
+.\README.md:104:cd /opt/fifelite/app/site/deploy
+.\README.md:111:cd /opt/fifelite/app/site/deploy
+.\README.md:121:cd /opt/fifelite/app/site/deploy
+.\README.md:130:Contrôler que `fifelite-web` et `fifelite-postgres` sont `Up`, et qu’aucun autre projet n’a été recréé.
+.\README.md:135:cd /opt/fifelite/app/site
+.\README.md:179:GOOGLE_WALLET_GLOBAL_CLASS_ID=3388000000023198536.fifelife_global
+.\README.md:180:GOOGLE_WALLET_SERVICE_ACCOUNT_EMAIL=fife-life-google-wallet@fide-life-wallet.iam.gserviceaccount.com
+.\README.md:195:- [ ] `docker compose up -d --build` depuis `/opt/fifelite/app/site/deploy`
+.\README.md:197:- [ ] `fifelite.conf` ajouté dans le Nginx central, `nginx -t` puis reload
+.\prisma\schema.prisma:196:  fifeLifePoints     Int          @default(0)
+.\prisma\schema.prisma:208:  fifeLifeLedger        FifeLifePointsLedger[]
+.\prisma\schema.prisma:210:  fifeLifeQrToken       FifeLifeQrToken?
+.\prisma\schema.prisma:223:  notifyFifeLifeNews        Boolean  @default(false)
+.\prisma\schema.prisma:513:  fifeLifeLedgerEntry  FifeLifePointsLedger?
+.\prisma\schema.prisma:539:  fifeLifeQrTokenId    String?
+.\prisma\schema.prisma:553:  fifeLifeQrToken      FifeLifeQrToken?   @relation(fields: [fifeLifeQrTokenId], references: [id], onDelete: SetNull)
+.\prisma\schema.prisma:682:model FifeLifePointsLedger {
+.\prisma\schema.prisma:716:model FifeLifeQrToken {
+.\prisma\seed.ts:65:  const superEmail = requiredEnv("SEED_SUPERADMIN_EMAIL", "superadmin@fifelite.local").toLowerCase();
+.\prisma\seed.ts:172:      fifeLifePoints: 180,
+.\prisma\seed.ts:180:      fifeLifePoints: 180,
+.\prisma\seed.ts:197:  const qrRecord = await prisma.fifeLifeQrToken.upsert({
+.\public\sw.js:1:const CACHE = "fifelite-v1";
+.\prisma\migrations\20260830170000_fife_life_global_points\migration.sql:1:-- Ajout des points globaux Fife Life et des événements de portefeuille.
+.\prisma\migrations\20260830170000_fife_life_global_points\migration.sql:11:-- Solde global de points Fife Life sur l’utilisateur.
+.\prisma\migrations\20260830170000_fife_life_global_points\migration.sql:13:ADD COLUMN "fifeLifePoints" INTEGER NOT NULL DEFAULT 0;
+.\prisma\migrations\20260830170000_fife_life_global_points\migration.sql:15:-- Ledger des points Fife Life.
+.\prisma\migrations\20260830170000_fife_life_global_points\migration.sql:16:CREATE TABLE "FifeLifePointsLedger" (
+.\prisma\migrations\20260830170000_fife_life_global_points\migration.sql:23:  CONSTRAINT "FifeLifePointsLedger_pkey" PRIMARY KEY ("id")
+.\prisma\migrations\20260830170000_fife_life_global_points\migration.sql:26:CREATE INDEX "FifeLifePointsLedger_userId_createdAt_idx"
+.\prisma\migrations\20260830170000_fife_life_global_points\migration.sql:27:  ON "FifeLifePointsLedger"("userId", "createdAt");
+.\prisma\migrations\20260830170000_fife_life_global_points\migration.sql:29:ALTER TABLE "FifeLifePointsLedger"
+.\prisma\migrations\20260830170000_fife_life_global_points\migration.sql:30:ADD CONSTRAINT "FifeLifePointsLedger_userId_fkey"
+.\tests\card-deck-interaction.test.ts:48:    const component = readFileSync(join(root, "src/components/fife-life/card-deck.tsx"), "utf8");
+.\tests\card-deck-interaction.test.ts:59:    const source = readFileSync(join(process.cwd(), "src/components/fife-life/card-deck.tsx"), "utf8");
+.\tests\caisse-client-number.test.ts:9:const fifeLifeQrTokenFindUnique = vi.fn();
+.\tests\caisse-client-number.test.ts:10:const fifeLifeQrTokenCreate = vi.fn();
+.\tests\caisse-client-number.test.ts:14:    fifeLifeQrToken: {
+.\tests\caisse-client-number.test.ts:15:      findUnique: (...args: unknown[]) => fifeLifeQrTokenFindUnique(...args),
+.\tests\caisse-client-number.test.ts:17:      create: (...args: unknown[]) => fifeLifeQrTokenCreate(...args),
+.\tests\caisse-client-number.test.ts:154:    fifeLifeQrTokenFindUnique.mockResolvedValue({
+.\scripts\fife-life-visual-v4.mjs:6:const outDir = join(process.cwd(), "artifacts", "fife-life-visual-v4");
+.\tests\caisse-scan.test.ts:4:const fifeLifeQrTokenFindUnique = vi.fn();
+.\tests\caisse-scan.test.ts:5:const fifeLifeQrTokenUpdate = vi.fn();
+.\tests\caisse-scan.test.ts:20:    fifeLifeQrToken: {
+.\tests\caisse-scan.test.ts:21:      findUnique: (...args: unknown[]) => fifeLifeQrTokenFindUnique(...args),
+.\tests\caisse-scan.test.ts:22:      update: (...args: unknown[]) => fifeLifeQrTokenUpdate(...args),
+.\tests\caisse-scan.test.ts:89:    fifeLifeQrTokenFindUnique.mockResolvedValue({
+.\tests\caisse-scan.test.ts:96:    fifeLifeQrTokenUpdate.mockResolvedValue({});
+.\tests\caisse-scan.test.ts:190:    expect(fifeLifeQrTokenUpdate).toHaveBeenCalledTimes(2);
+.\scripts\fife-life-visual-v3.mjs:6:const outDir = join(process.cwd(), "artifacts", "fife-life-visual-v3");
+.\tests\customer-qr-route.test.ts:59:    const response = await POST(makePost({ slug: "fife-life" }));
+.\tests\customer-qr-route.test.ts:75:    const response = await POST(makePost({ slug: "fife-life" }));
+.\tests\customer-qr-route.test.ts:93:    const response = await POST(makePost({ slug: "fife-life" }));
+.\tests\customer-qr-route.test.ts:100:    const source = readFileSync(resolve(process.cwd(), "src/components/fife-life/qr-cache.ts"), "utf8");
+.\tests\customer-qr-route.test.ts:110:    expect(source).toContain("fifeLifeQrToken");
+.\scripts\generate-google-wallet-logo.mjs:50:const outFile = join(outDir, "fife-life-logo.png");
+.\scripts\fife-life-visual.mjs:6:const outDir = join(process.cwd(), "artifacts", "fife-life-visual");
+.\tests\customer-loyalty-overview.test.ts:4:  buildFifeLifeNextReward,
+.\tests\customer-loyalty-overview.test.ts:253:        slug: "fife-life",
+.\tests\customer-loyalty-overview.test.ts:254:        nextReward: buildFifeLifeNextReward(180),
+.\tests\customer-loyalty-overview.test.ts:316:          slug: "fife-life",
+.\tests\customer-loyalty-overview.test.ts:319:        fifeLifePoints: 180,
+.\tests\customer-loyalty-overview.test.ts:334:        fifeLifePoints: 180,
+.\tests\customer-loyalty-overview.test.ts:349:        fifeLifePoints: 180,
+.\tests\customer-loyalty-overview.test.ts:355:    expect(buildFifeLifeNextReward(600)).toBeNull();
+.\tests\customer-loyalty-overview.test.ts:365:        slug: "fife-life",
+.\tests\customer-loyalty-overview.test.ts:479:        fifeLifePoints: 0,
+.\prisma\migrations\20260903180000_customer_profile\migration.sql:23:    "notifyFifeLifeNews" BOOLEAN NOT NULL DEFAULT false,
+.\prisma\migrations\20260830183500_fifelife_ledger_tx_id\migration.sql:2:-- l'idempotence des points Fife Life par transaction.
+.\prisma\migrations\20260830183500_fifelife_ledger_tx_id\migration.sql:4:ALTER TABLE "FifeLifePointsLedger"
+.\prisma\migrations\20260830183500_fifelife_ledger_tx_id\migration.sql:7:ALTER TABLE "FifeLifePointsLedger"
+.\prisma\migrations\20260830183500_fifelife_ledger_tx_id\migration.sql:8:ADD CONSTRAINT "FifeLifePointsLedger_loyaltyTransactionId_fkey"
+.\prisma\migrations\20260830183500_fifelife_ledger_tx_id\migration.sql:12:CREATE UNIQUE INDEX "FifeLifePointsLedger_loyaltyTransactionId_key"
+.\prisma\migrations\20260830183500_fifelife_ledger_tx_id\migration.sql:13:ON "FifeLifePointsLedger"("loyaltyTransactionId");
+.\prisma\migrations\20260830183000_caisse_grant_fifelife_qr_fk\migration.sql:1:-- Ajout d'une clé étrangère explicite vers FifeLifeQrToken pour les nouveaux CaisseGrant.
+.\prisma\migrations\20260830183000_caisse_grant_fifelife_qr_fk\migration.sql:5:ADD COLUMN "fifeLifeQrTokenId" TEXT;
+.\prisma\migrations\20260830183000_caisse_grant_fifelife_qr_fk\migration.sql:8:ADD CONSTRAINT "CaisseGrant_fifeLifeQrTokenId_fkey"
+.\prisma\migrations\20260830183000_caisse_grant_fifelife_qr_fk\migration.sql:9:FOREIGN KEY ("fifeLifeQrTokenId") REFERENCES "FifeLifeQrToken"("id")
+.\prisma\migrations\20260830183000_caisse_grant_fifelife_qr_fk\migration.sql:12:CREATE INDEX "CaisseGrant_fifeLifeQrTokenId_idx"
+.\prisma\migrations\20260830183000_caisse_grant_fifelife_qr_fk\migration.sql:13:ON "CaisseGrant"("fifeLifeQrTokenId");
+.\tests\expandable-qr-interaction.test.tsx:6:import { ExpandableQrCode } from "@/components/fife-life/expandable-qr-code";
+.\prisma\migrations\20260830180000_fife_life_qr_global\migration.sql:1:-- QR global Fife Life, propre à chaque utilisateur.
+.\prisma\migrations\20260830180000_fife_life_qr_global\migration.sql:3:CREATE TABLE "FifeLifeQrToken" (
+.\prisma\migrations\20260830180000_fife_life_qr_global\migration.sql:10:  CONSTRAINT "FifeLifeQrToken_pkey" PRIMARY KEY ("id")
+.\prisma\migrations\20260830180000_fife_life_qr_global\migration.sql:13:CREATE UNIQUE INDEX "FifeLifeQrToken_userId_key" ON "FifeLifeQrToken"("userId");
+.\prisma\migrations\20260830180000_fife_life_qr_global\migration.sql:14:CREATE UNIQUE INDEX "FifeLifeQrToken_jti_key" ON "FifeLifeQrToken"("jti");
+.\prisma\migrations\20260830180000_fife_life_qr_global\migration.sql:15:CREATE INDEX "FifeLifeQrToken_userId_idx" ON "FifeLifeQrToken"("userId");
+.\prisma\migrations\20260830180000_fife_life_qr_global\migration.sql:17:ALTER TABLE "FifeLifeQrToken"
+.\prisma\migrations\20260830180000_fife_life_qr_global\migration.sql:18:ADD CONSTRAINT "FifeLifeQrToken_userId_fkey"
+.\prisma\migrations\20260830180000_fife_life_qr_global\migration.sql:25:INSERT INTO "FifeLifeQrToken" ("id", "userId", "jti", "createdAt", "lastScannedAt")
+.\scripts\wallet-vertical-check.mjs:5:const OUT = join(process.cwd(), "artifacts", "fife-life-visual-v4");
+.\tests\employee-access.test.ts:8:        cookie: "fifelite_employee_session=abc123; other=1",
+.\tests\employee-access.test.ts:16:      headers: { cookie: "fifelite_session=standard" },
+.\scripts\wallet-carousel-v5.mjs:5:const OUT = join(process.cwd(), "artifacts", "fife-life-visual-v5");
+.\src\lib\caisse-scan.ts:104:    await tx.fifeLifeQrToken.update({
+.\src\lib\caisse-scan.ts:112:        fifeLifeQrTokenId: input.globalQrId,
+.\src\lib\caisse-scan.ts:178:  const global = await prisma.fifeLifeQrToken.findUnique({
+.\src\lib\caisse-scan.ts:237:  let global = await prisma.fifeLifeQrToken.findUnique({
+.\src\lib\caisse-scan.ts:242:    global = await prisma.fifeLifeQrToken.create({
+.\src\components\super-admin\card-editor-canvas.tsx:8:import { MerchantCardRenderer } from "@/components/fife-life/merchant-card-renderer";
+.\src\components\super-admin\card-editor-canvas.tsx:9:import type { MerchantCardData } from "@/components/fife-life/types";
+.\src\components\merchant\program-preview-card.tsx:3:import { MerchantCardRenderer } from "@/components/fife-life/merchant-card-renderer";
+.\src\components\merchant\program-preview-card.tsx:4:import type { MerchantCardData } from "@/components/fife-life/types";
+.\tests\loyalty-commit.test.ts:52:    fifeLifePointsLedger: { create: vi.fn() },
+.\tests\loyalty-commit.test.ts:109:  user: { id: "u1", firstName: "Léa", lastName: "Martin", fifeLifePoints: 0 },
+.\src\components\super-admin\card-editor-background-crop.tsx:4:import { CardTemplateBackground } from "@/components/fife-life/card-template-background";
+.\src\components\super-admin\loyalty-widget-style-picker.tsx:4:import { LoyaltyGaugeThumbnail } from "@/components/fife-life/loyalty-widget-view";
+.\src\components\fife-life\card-deck.tsx:49:      slug: "fife-life",
+.\src\components\fife-life\card-deck.tsx:59:      slug: "fife-life",
+.\src\components\fife-life\card-deck.tsx:69:      slug: "fife-life",
+.\src\components\fife-life\card-deck.tsx:162:      preloadWalletQr("fife-life");
+.\src\components\fife-life\card-deck.tsx:217:      id: tier ? `fife-life-tier-${tier}` : "fife-life-global",
+.\src\components\fife-life\card-deck.tsx:218:      merchantId: "fife-life",
+.\src\components\fife-life\card-deck.tsx:219:      slug: "fife-life",
+.\src\components\super-admin\merchant-cards-gallery.tsx:7:import { MerchantCardRenderer } from "@/components/fife-life/merchant-card-renderer";
+.\tests\google-wallet.test.ts:6:  process.env.GOOGLE_WALLET_GLOBAL_CLASS_ID = "3388000000023198536.3388000000023198536.fifelife_global";
+.\tests\google-wallet.test.ts:15:      "3388000000023198536.3388000000023198536.fifelife_global",
+.\tests\google-wallet.test.ts:190:    expect(body.programLogo.sourceUri.uri).toContain("/google-wallet/fife-life-logo.png");
+.\tests\google-wallet.test.ts:203:    expect(body.programLogo.sourceUri.uri).toContain("/google-wallet/fife-life-logo.png");
+.\tests\google-wallet.test.ts:210:      user: { id: "u1", firstName: "Ada", lastName: null, clientNumber: "100001", fifeLifePoints: 20, isActive: true },
+.\tests\google-wallet.test.ts:218:      user: { id: "u2", firstName: "Lina", lastName: null, clientNumber: "100002", fifeLifePoints: 300, isActive: true },
+.\src\components\fife-life\card-enlarged-view.tsx:22:  fifeLifePoints?: number;
+.\src\components\fife-life\card-enlarged-view.tsx:29:function isFifeLifeCard(card: MerchantCardData) {
+.\src\components\fife-life\card-enlarged-view.tsx:30:  return card.merchantId === "fife-life" || card.slug === "fife-life";
+.\src\components\fife-life\card-enlarged-view.tsx:39:  fifeLifePoints,
+.\src\components\fife-life\card-enlarged-view.tsx:47:  const fifeLife = isFifeLifeCard(card);
+.\src\components\fife-life\card-enlarged-view.tsx:48:  const tier: WalletTier = card.demoTier ?? resolveTier(fifeLifePoints ?? card.points).name;
+.\src\components\fife-life\card-enlarged-view.tsx:72:    if (!open || !fifeLife) return;
+.\src\components\fife-life\card-enlarged-view.tsx:82:    void loadPersonalizedQr("fife-life").then((next) => {
+.\src\components\fife-life\card-enlarged-view.tsx:88:  }, [open, fifeLife, preview, personalizedQr]);
+.\src\components\fife-life\card-enlarged-view.tsx:112:              {fifeLife ? (
+.\src\components\fife-life\card-enlarged-view.tsx:117:                    points={fifeLifePoints ?? card.points}
+.\tests\google-wallet-media-storage.test.ts:13:      uploadsRoot: "/var/lib/fifelite/uploads",
+.\tests\google-wallet-media-storage.test.ts:25:      `/var/lib/fifelite/uploads/google-wallet/merchant/${MERCHANT_ID}/hero-${VERSION}.png`,
+.\tests\google-wallet-media-storage.test.ts:35:        uploadsRoot: "/var/lib/fifelite/uploads",
+.\tests\google-wallet-media-storage.test.ts:44:        uploadsRoot: "/var/lib/fifelite/uploads",
+.\src\components\fife-life\global-card.tsx:61:    void loadPersonalizedQr("fife-life").then((next) => {
+.\src\components\fife-life\global-card.tsx:85:        void loadPersonalizedQr("fife-life", { force: true }).then((next) => {
+.\src\components\fife-life\interactive-loyalty-card.tsx:74:    void loadPersonalizedQr("fife-life").then((next) => {
+.\tests\qa-login.test.ts:47:    employeeSessionCookieName: () => "fifelite_employee_session",
+.\tests\qa-login.test.ts:303:      "fifelite_session",
+.\tests\qa-login.test.ts:304:      "fifelite_employee_session",
+.\tests\google-wallet-logo.test.ts:5:const LOGO_PATH = resolve(process.cwd(), "public/google-wallet/fife-life-logo.png");
+.\tests\loyalty-widget.test.tsx:18:import { LoyaltyWidgetView } from "@/components/fife-life/loyalty-widget-view";
+.\tests\loyalty-widget.test.tsx:19:import { MerchantCardRenderer } from "@/components/fife-life/merchant-card-renderer";
+.\tests\merchant-card-slots.test.ts:5:import { resolveDisplayQrSrc } from "@/components/fife-life/merchant-card-renderer";
+.\tests\loyalty-mode-cards.test.ts:5:import { resolveDisplayQrSrc } from "@/components/fife-life/merchant-card-renderer";
+.\tests\loyalty-service.test.ts:12:const fifeLifeLedgerCreate = vi.fn();
+.\tests\loyalty-service.test.ts:35:    fifeLifePointsLedger: {
+.\tests\loyalty-service.test.ts:36:      create: (...args: unknown[]) => fifeLifeLedgerCreate(...args),
+.\tests\loyalty-service.test.ts:84:    fifeLifePoints: 0,
+.\tests\loyalty-service.test.ts:138:    expect(result.fifeLifePoints).toBe(0);
+.\tests\loyalty-service.test.ts:173:      fifeLifePoints: 12,
+.\tests\loyalty-service.test.ts:184:    expect(result.fifeLifePoints).toBe(12);
+.\tests\loyalty-service.test.ts:186:    expect(fifeLifeLedgerCreate).toHaveBeenCalledTimes(1);
+.\tests\merchant-card-detail-mobile.test.tsx:9:import { MerchantCardDetail } from "@/components/fife-life/merchant-detail";
+.\tests\merchant-card-detail-mobile.test.tsx:10:import { PREVIEW_CARDS, PREVIEW_HISTORY } from "@/components/fife-life/preview-data";
+.\tests\merchant-card-detail-mobile.test.tsx:12:import { resetQrCache } from "@/components/fife-life/qr-cache";
+.\tests\merchant-card-detail-mobile.test.tsx:118:    const source = readFileSync(join(process.cwd(), "src/components/fife-life/merchant-detail.tsx"), "utf8");
+.\tests\merchant-card-detail-mobile.test.tsx:192:      join(process.cwd(), "src/components/fife-life/merchant-reward-progress-panel.tsx"),
+.\tests\merchant-card-detail-mobile.test.tsx:204:    const source = readFileSync(join(process.cwd(), "src/components/fife-life/merchant-detail.tsx"), "utf8");
+.\tests\merchant-card-detail-mobile.test.tsx:212:    const source = readFileSync(join(process.cwd(), "src/components/fife-life/merchant-detail.tsx"), "utf8");
+.\tests\merchant-card-detail-mobile.test.tsx:219:    const source = readFileSync(join(process.cwd(), "src/components/fife-life/merchant-detail.tsx"), "utf8");
+.\tests\merchant-card-detail-mobile.test.tsx:226:    const source = readFileSync(join(process.cwd(), "src/components/fife-life/merchant-detail.tsx"), "utf8");
+.\tests\production-fix-2026-09-16-round2.test.ts:7:import { LoyaltyWidgetView } from "@/components/fife-life/loyalty-widget-view";
+.\tests\production-fix-2026-09-16-round2.test.ts:111:      join(process.cwd(), "src/components/fife-life/merchant-detail.tsx"),
+.\tests\wallet-unlock-animation.test.ts:119:      "@/components/fife-life/qr-cache"
+.\tests\wallet-unlock-animation.test.ts:122:    expect(getCachedQr("fife-life")).toBeNull();
+.\tests\wallet-unlock-animation.test.ts:123:    preloadWalletQr("fife-life");
+.\tests\wallet-unlock-animation.test.ts:131:      resolve(process.cwd(), "src/components/fife-life/new-card-toast.tsx"),
+.\tests\merchant-card-finish.test.ts:2:import { resolveDisplayQrSrc } from "../src/components/fife-life/merchant-card-renderer";
+.\tests\merchant-card-qr-display.test.ts:5:import { resolveDisplayQrSrc } from "@/components/fife-life/merchant-card-renderer";
+.\tests\merchant-card-qr-display.test.ts:78:      resolve(process.cwd(), "src/components/fife-life/merchant-card-renderer.tsx"),
+.\tests\merchant-card-qr-display.test.ts:82:      resolve(process.cwd(), "src/components/fife-life/expandable-qr-code.tsx"),
+.\tests\merchant-card-qr-display.test.ts:92:    const deck = readFileSync(resolve(process.cwd(), "src/components/fife-life/card-deck.tsx"), "utf8");
+.\tests\merchant-card-qr-display.test.ts:94:      resolve(process.cwd(), "src/components/fife-life/card-enlarged-view.tsx"),
+.\tests\merchant-card-qr-display.test.ts:98:      resolve(process.cwd(), "src/components/fife-life/merchant-detail.tsx"),
+.\tests\merchant-card-qr-display.test.ts:101:    const toast = readFileSync(resolve(process.cwd(), "src/components/fife-life/new-card-toast.tsx"), "utf8");
+.\tests\wallet-personalized-cards.test.ts:3:import { resolveDisplayQrSrc } from "@/components/fife-life/merchant-card-renderer";
+.\tests\wallet-personalized-cards.test.ts:133:      resolve(process.cwd(), "src/components/fife-life/new-card-toast.tsx"),
+.\tests\ux-polish.test.ts:75:      resolve(process.cwd(), "src/components/fife-life/merchant-card-renderer.tsx"),
+.\tests\ux-polish.test.ts:79:      resolve(process.cwd(), "src/components/fife-life/qr-enlarged-view.tsx"),
+.\tests\ux-polish.test.ts:82:    const deck = readFileSync(resolve(process.cwd(), "src/components/fife-life/card-deck.tsx"), "utf8");
+.\tests\ux-polish.test.ts:97:    const walletHome = readFileSync(resolve(process.cwd(), "src/components/fife-life/wallet-home.tsx"), "utf8");
+.\tests\ux-polish.test.ts:99:    const merchantDetail = readFileSync(resolve(process.cwd(), "src/components/fife-life/merchant-detail.tsx"), "utf8");
+.\tests\ux-polish.test.ts:100:    const qrAction = readFileSync(resolve(process.cwd(), "src/components/fife-life/wallet-qr-action.tsx"), "utf8");
+.\tests\ux-polish.test.ts:118:    const walletHome = readFileSync(resolve(process.cwd(), "src/components/fife-life/wallet-home.tsx"), "utf8");
+.\tests\ux-polish.test.ts:129:    const sheet = readFileSync(resolve(process.cwd(), "src/components/fife-life/cards-sheet.tsx"), "utf8");
+.\tests\ux-polish.test.ts:134:    const profile = readFileSync(resolve(process.cwd(), "src/components/fife-life/profile/profile-page.tsx"), "utf8");
+.\tests\wallet-hydration.test.tsx:8:import { CardDeck } from "@/components/fife-life/card-deck";
+.\tests\wallet-hydration.test.tsx:9:import { GlobalCard } from "@/components/fife-life/global-card";
+.\tests\wallet-hydration.test.tsx:10:import { MerchantCardRenderer } from "@/components/fife-life/merchant-card-renderer";
+.\tests\wallet-hydration.test.tsx:11:import { NewCardToast } from "@/components/fife-life/new-card-toast";
+.\tests\wallet-hydration.test.tsx:12:import { WalletHome } from "@/components/fife-life/wallet-home";
+.\tests\wallet-hydration.test.tsx:13:import { WalletMotionRoot } from "@/components/fife-life/wallet-motion-root";
+.\tests\wallet-hydration.test.tsx:14:import { PREVIEW_CARDS } from "@/components/fife-life/preview-data";
+.\tests\wallet-hydration.test.tsx:15:import type { MerchantCardData } from "@/components/fife-life/types";
+.\tests\wallet-hydration.test.tsx:201:        fifeLifePoints={180}
+.\tests\qr-input.test.ts:2:import { extractFifeLifeQrToken, QrInputError } from "../src/lib/qr-input";
+.\tests\qr-input.test.ts:4:describe("extractFifeLifeQrToken", () => {
+.\tests\qr-input.test.ts:9:    expect(extractFifeLifeQrToken(jwt)).toBe(jwt);
+.\tests\qr-input.test.ts:14:    expect(extractFifeLifeQrToken(url)).toBe(jwt);
+.\tests\qr-input.test.ts:18:    expect(() => extractFifeLifeQrToken(`https://evil.example/?token=${jwt}`)).toThrow(QrInputError);
+.\src\components\fife-life\preview-data.ts:31:  notifyFifeLifeNews: false,
+.\src\app\c\[slug]\ui.tsx:5:import { MerchantCardPublicPreview } from "@/components/fife-life/merchant-card-public-preview";
+.\src\app\c\[slug]\ui.tsx:6:import type { MerchantCardData } from "@/components/fife-life/types";
+.\src\app\compte\parametres\page.tsx:2:import { SettingsPage } from "@/components/fife-life/profile/settings-page";
+.\src\app\compte\page.tsx:2:import { ProfilePage } from "@/components/fife-life/profile/profile-page";
+.\src\app\compte\page.tsx:3:import { PREVIEW_BENEFITS, PREVIEW_PROFILE_HISTORY } from "@/components/fife-life/preview-data";
+.\src\app\api\caisse\scan\route.ts:8:import { QrInputError, extractFifeLifeQrToken } from "@/lib/qr-input";
+.\src\app\api\caisse\scan\route.ts:100:            token: extractFifeLifeQrToken(parsed.data.value),
+.\src\components\fife-life\profile\settings-page.tsx:242:            <ToggleRow label="Actualités Fidelo" checked={preferences.notifyFifeLifeNews} onChange={(v) => void patchPreferences({ notifyFifeLifeNews: v })} />
+.\src\components\fife-life\universal-detail.tsx:17:  fifeLifePoints,
+.\src\components\fife-life\universal-detail.tsx:22:  fifeLifePoints: number;
+.\src\components\fife-life\universal-detail.tsx:27:  const tier = resolveTier(fifeLifePoints);
+.\src\components\fife-life\universal-detail.tsx:42:          <GlobalCard points={fifeLifePoints} customerName={customerName} large mode="wallet" />
+.\src\components\fife-life\universal-detail.tsx:56:          <QrBlock slug="fife-life" preview={preview} />
+.\src\app\carte\[slug]\ui.tsx:1:export { MerchantCardDetail as LoyaltyCardScreen } from "@/components/fife-life/merchant-detail";
+.\src\app\employe\scan\ui.tsx:5:import { GlassBottomSheet } from "@/components/fife-life/profile/glass-bottom-sheet";
+.\src\app\carte\[slug]\page.tsx:2:import { MerchantCardDetail } from "@/components/fife-life/merchant-detail";
+.\src\app\carte\[slug]\page.tsx:3:import { PREVIEW_CARDS, PREVIEW_HISTORY } from "@/components/fife-life/preview-data";
+.\src\components\fife-life\wallet-home.tsx:26:  buildFifeLifeNextReward,
+.\src\components\fife-life\wallet-home.tsx:41:  fifeLifePoints,
+.\src\components\fife-life\wallet-home.tsx:53:  fifeLifePoints: number;
+.\src\components\fife-life\wallet-home.tsx:65:  const [points, setPoints] = useState(fifeLifePoints);
+.\src\components\fife-life\wallet-home.tsx:74:    slug: "fife-life",
+.\src\components\fife-life\wallet-home.tsx:100:    setPoints(fifeLifePoints);
+.\src\components\fife-life\wallet-home.tsx:101:  }, [fifeLifePoints]);
+.\src\components\fife-life\wallet-home.tsx:114:      fifeLifePoints: points,
+.\src\components\fife-life\wallet-home.tsx:164:    preloadWalletQr("fife-life");
+.\src\components\fife-life\wallet-home.tsx:178:                    nextReward: buildFifeLifeNextReward(total),
+.\src\components\fife-life\wallet-home.tsx:183:                          percent: buildFifeLifeNextReward(total)?.progressPercent ?? entry.progress.percent,
+.\src\components\fife-life\wallet-home.tsx:537:            fifeLifePoints={points}
+.\src\app\carte\page.tsx:2:import { WalletHome } from "@/components/fife-life/wallet-home";
+.\src\app\carte\page.tsx:76:      fifeLifePoints={user.fifeLifePoints}
+.\src\components\fife-life\use-wallet-unlock-animation.ts:73:    const slug = typeof event.payload.slug === "string" ? event.payload.slug : "fife-life";
+.\src\app\carte\identite\page.tsx:2:import { UniversalDetail } from "@/components/fife-life/universal-detail";
+.\src\app\carte\identite\page.tsx:3:import { PREVIEW_HISTORY } from "@/components/fife-life/preview-data";
+.\src\app\carte\identite\page.tsx:23:          fifeLifePoints={demo.fifeLifePoints}
+.\src\app\carte\identite\page.tsx:32:  const history = await prisma.fifeLifePointsLedger.findMany({
+.\src\app\carte\identite\page.tsx:41:      fifeLifePoints={user.fifeLifePoints}
+.\src\app\api\health\route.ts:4:  return NextResponse.json({ ok: true, service: "fifelite" });
+.\src\app\app\parametres\programme\ui.tsx:9:import type { MerchantCardData } from "@/components/fife-life/types";
+.\src\components\fife-life\qr-cache.ts:98:    slugForMembership === PERSONALIZED_QR_KEY ? "fife-life" : slugForMembership;
+.\src\components\fife-life\qr-cache.ts:133:export function preloadWalletQr(slug = "fife-life") {
+.\src\app\api\customer\history\route.ts:3:  formatFifeLifeEntry,
+.\src\app\api\customer\history\route.ts:50:    prisma.fifeLifePointsLedger.findMany({
+.\src\app\api\customer\history\route.ts:74:    formatFifeLifeEntry({
+.\src\app\super-admin\commerces\nouveau\wizard.tsx:19:const WIZARD_STORAGE_KEY = "fifelite-super-admin-wizard";
+.\src\app\super-admin\commerces\merchants-list.tsx:5:import { MerchantCardRenderer } from "@/components/fife-life/merchant-card-renderer";
+.\src\app\app\employes\ui.tsx:6:import { GlassBottomSheet } from "@/components/fife-life/profile/glass-bottom-sheet";
+.\src\app\super-admin\cartes\cards-index.tsx:6:import { MerchantCardRenderer } from "@/components/fife-life/merchant-card-renderer";
+.\src\lib\customer-history.ts:104:export function formatFifeLifeEntry(input: {
+.\src\lib\customer-loyalty-overview.ts:2:import { resolveTier } from "@/components/fife-life/tier";
+.\src\lib\customer-loyalty-overview.ts:223:export function buildFifeLifeNextReward(fifeLifePoints: number): NextRewardOverview | null {
+.\src\lib\customer-loyalty-overview.ts:224:  const tier = resolveTier(fifeLifePoints);
+.\src\lib\customer-loyalty-overview.ts:229:    merchantId: "fife-life",
+.\src\lib\customer-loyalty-overview.ts:231:    merchantSlug: "fife-life",
+.\src\lib\customer-loyalty-overview.ts:234:    progressCurrent: fifeLifePoints,
+.\src\lib\customer-loyalty-overview.ts:308:  fifeLifePoints: number;
+.\src\lib\customer-loyalty-overview.ts:311:    return buildFifeLifeNextReward(input.fifeLifePoints);
+.\src\lib\customer-loyalty-overview.ts:435:    select: { fifeLifePoints: true },
+.\src\lib\customer-loyalty-overview.ts:437:  const fifeLifePoints = user?.fifeLifePoints ?? 0;
+.\src\lib\customer-loyalty-overview.ts:451:    const globalReward = buildFifeLifeNextReward(fifeLifePoints);
+.\src\lib\customer-loyalty-overview.ts:458:        slug: "fife-life",
+.\src\lib\customer-profile.ts:30:  notifyFifeLifeNews: boolean;
+.\src\lib\customer-profile.ts:75:    notifyFifeLifeNews: prefs.notifyFifeLifeNews,
+.\src\lib\customer-qr.ts:23:  const existing = await prisma.fifeLifeQrToken.findUnique({
+.\src\lib\customer-qr.ts:32:    const created = await prisma.fifeLifeQrToken.create({
+.\src\lib\customer-qr.ts:42:      const concurrent = await prisma.fifeLifeQrToken.findUnique({
+.\src\lib\customer-qr.ts:54:/** Génère ou récupère le QR canonique (JWT signQrToken + jti FifeLifeQrToken). */
+.\src\lib\demo-loyalty-overview.ts:1:import { buildFifeLifeNextReward, type CustomerLoyaltyOverview } from "./customer-loyalty-overview";
+.\src\lib\demo-loyalty-overview.ts:12:      slug: "fife-life",
+.\src\lib\demo-loyalty-overview.ts:13:      nextReward: buildFifeLifeNextReward(180),
+.\src\lib\demo-visual.ts:1:import { PREVIEW_CARDS, PREVIEW_HISTORY, PREVIEW_PROFILE, PREVIEW_PREFERENCES } from "@/components/fife-life/preview-data";
+.\src\lib\demo-visual.ts:33:    fifeLifePoints: DEMO_POINTS,
+.\src\lib\demo-visual.ts:45:    fifeLifePoints: DEMO_POINTS,
+.\src\lib\loyalty-card-assets.ts:1:import type { WalletTier } from "@/components/fife-life/types";
+.\src\lib\google-wallet.ts:21:import { resolveTier } from "@/components/fife-life/tier";
+.\src\lib\google-wallet.ts:28:const GLOBAL_LOGO_PATH = "/google-wallet/fife-life-logo.png";
+.\src\lib\google-wallet.ts:76:      env.googleWalletGlobalClassId || `${issuer}.fifelife_global`,
+.\src\lib\google-wallet.ts:78:      ? `${issuer}.fifelife_user_${opaqueIdPart("user", input.userId)}`
+.\src\lib\google-wallet.ts:571:  user: { id: string; firstName: string; lastName: string | null; clientNumber: string | null; fifeLifePoints: number; isActive: boolean };
+.\src\lib\google-wallet.ts:580:  const tier = resolveTier(input.user.fifeLifePoints);
+.\src\lib\google-wallet.ts:595:      balance: { int: input.user.fifeLifePoints },
+.\src\lib\google-wallet.ts:755:      fifeLifePoints: true,
+.\src\lib\loyalty-card-view-model.ts:1:import { resolveTier } from "@/components/fife-life/tier";
+.\src\lib\loyalty-card-view-model.ts:2:import type { WalletTier } from "@/components/fife-life/types";
+.\src\lib\env.ts:22:  sessionCookie: read("SESSION_COOKIE_NAME", "fifelite_session"),
+.\src\lib\env.ts:23:  employeeSessionCookie: read("EMPLOYEE_SESSION_COOKIE_NAME", "fifelite_employee_session"),
+.\src\lib\env.ts:25:  superAdminSessionCookie: read("SUPER_ADMIN_SESSION_COOKIE", "fifelite_super_admin_session"),
+.\src\lib\env.ts:40:  fifeLifePointsPerReward: Number(read("FIFE_LIFE_POINTS_PER_REWARD", "12")),
+.\src\lib\loyalty-service.ts:188:  let fifeLifePointsAfter = membership.user.fifeLifePoints;
+.\src\lib\loyalty-service.ts:190:    const fifeDelta = env.fifeLifePointsPerReward;
+.\src\lib\loyalty-service.ts:193:      data: { fifeLifePoints: { increment: fifeDelta } },
+.\src\lib\loyalty-service.ts:195:    fifeLifePointsAfter = updatedUser.fifeLifePoints;
+.\src\lib\loyalty-service.ts:197:    await tx.fifeLifePointsLedger.create({
+.\src\lib\loyalty-service.ts:236:          total: fifeLifePointsAfter,
+.\src\lib\loyalty-service.ts:262:    fifeLifePoints: fifeLifePointsAfter,
+.\src\lib\media-storage.ts:8: * En production VPS : bind mount hôte /opt/fifelite/data/uploads → UPLOADS_DIR (/var/lib/fifelite/uploads).
+.\src\lib\merchant-card-update.ts:3:import type { MerchantCardData } from "@/components/fife-life/types";
+.\src\lib\next-reward-styles.ts:2:import type { LoyaltyWidgetProgress } from "@/components/fife-life/loyalty-widget-view";
+.\src\lib\scan-result-card.ts:3:import type { MerchantCardData } from "@/components/fife-life/types";
+.\src\lib\qr-input.ts:32:export function extractFifeLifeQrToken(raw: string) {
+.\src\lib\wallet-unlock-card.ts:3:import type { MerchantCardData } from "@/components/fife-life/types";
+.\src\lib\scan-session.ts:2:import { QrInputError, extractFifeLifeQrToken } from "./qr-input";
+.\src\lib\scan-session.ts:142:    return extractFifeLifeQrToken(raw);
+.\src\lib\validation.ts:99:  notifyFifeLifeNews: z.boolean().optional(),
+.\src\lib\wallet-event-dedup.ts:1:const STORAGE_KEY = "fifelite_wallet_seen_events";
+.\src\lib\wallet-event-dedup.ts:2:const LAST_EVENT_KEY = "fifelite_wallet_last_event_id";
+.\src\lib\wallet-event-dedup.ts:3:const ANIMATED_CARDS_KEY = "fifelite_wallet_animated_cards";
+.\src\lib\super-admin-entry.ts:5:export const SUPER_ADMIN_ENTRY_COOKIE = "fifelite_super_admin_entry";

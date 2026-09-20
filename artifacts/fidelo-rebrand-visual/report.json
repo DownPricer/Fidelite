@@ -1,0 +1,320 @@
+[
+  {
+    "viewport": "360x800",
+    "route": "home",
+    "url": "http://localhost:3000/",
+    "title": "Fidelo",
+    "scrollWidth": 360,
+    "innerWidth": 360,
+    "overflowing": [
+      {
+        "tag": "DIV",
+        "cls": "deck-halo absolute left-1/2 top-1/2 h-80 w-80 -translate-x-1/2 -translate-y-1/2",
+        "text": "",
+        "left": -154,
+        "right": 194,
+        "width": 348
+      }
+    ],
+    "h1": [
+      "Votre collection de cartes, en version premium."
+    ],
+    "hasOldBrand": false,
+    "hasFidelo": true,
+    "screenshot": "C:\\Users\\ironi\\Buisnesss\\VPS Mega BAse\\Cartefidelité\\artifacts\\fidelo-rebrand-visual\\home-360x800.png"
+  },
+  {
+    "viewport": "360x800",
+    "route": "demo",
+    "url": "http://localhost:3000/demo",
+    "title": "Fidelo",
+    "scrollWidth": 360,
+    "innerWidth": 360,
+    "overflowing": [],
+    "h1": [
+      "Choisissez un espace"
+    ],
+    "hasOldBrand": false,
+    "hasFidelo": true,
+    "screenshot": "C:\\Users\\ironi\\Buisnesss\\VPS Mega BAse\\Cartefidelité\\artifacts\\fidelo-rebrand-visual\\demo-360x800.png"
+  },
+  {
+    "viewport": "360x800",
+    "route": "wallet",
+    "url": "http://localhost:3000/carte?demo=1",
+    "title": "Fidelo",
+    "scrollWidth": 360,
+    "innerWidth": 360,
+    "overflowing": [
+      {
+        "tag": "DIV",
+        "cls": "deck-rotate-hint absolute left-0 top-1/2 z-10 -translate-y-1/2 lg:hidden",
+        "text": "",
+        "left": -28,
+        "right": 4,
+        "width": 32
+      },
+      {
+        "tag": "IMG",
+        "cls": "h-8 w-8 opacity-40",
+        "text": "",
+        "left": -28,
+        "right": 4,
+        "width": 32
+      }
+    ],
+    "h1": [],
+    "hasOldBrand": false,
+    "hasFidelo": false,
+    "screenshot": "C:\\Users\\ironi\\Buisnesss\\VPS Mega BAse\\Cartefidelité\\artifacts\\fidelo-rebrand-visual\\wallet-360x800.png"
+  },
+  {
+    "viewport": "390x844",
+    "route": "home",
+    "url": "http://localhost:3000/",
+    "title": "Fidelo",
+    "scrollWidth": 390,
+    "innerWidth": 390,
+    "overflowing": [
+      {
+        "tag": "DIV",
+        "cls": "deck-halo absolute left-1/2 top-1/2 h-80 w-80 -translate-x-1/2 -translate-y-1/2",
+        "text": "",
+        "left": -140,
+        "right": 210,
+        "width": 350
+      }
+    ],
+    "h1": [
+      "Votre collection de cartes, en version premium."
+    ],
+    "hasOldBrand": false,
+    "hasFidelo": true,
+    "screenshot": "C:\\Users\\ironi\\Buisnesss\\VPS Mega BAse\\Cartefidelité\\artifacts\\fidelo-rebrand-visual\\home-390x844.png"
+  },
+  {
+    "viewport": "390x844",
+    "route": "demo",
+    "url": "http://localhost:3000/demo",
+    "title": "Fidelo",
+    "scrollWidth": 390,
+    "innerWidth": 390,
+    "overflowing": [],
+    "h1": [
+      "Choisissez un espace"
+    ],
+    "hasOldBrand": false,
+    "hasFidelo": true,
+    "screenshot": "C:\\Users\\ironi\\Buisnesss\\VPS Mega BAse\\Cartefidelité\\artifacts\\fidelo-rebrand-visual\\demo-390x844.png"
+  },
+  {
+    "viewport": "390x844",
+    "route": "wallet",
+    "url": "http://localhost:3000/carte?demo=1",
+    "title": "Fidelo",
+    "scrollWidth": 390,
+    "innerWidth": 390,
+    "overflowing": [
+      {
+        "tag": "DIV",
+        "cls": "deck-rotate-hint absolute left-0 top-1/2 z-10 -translate-y-1/2 lg:hidden",
+        "text": "",
+        "left": -28,
+        "right": 4,
+        "width": 32
+      },
+      {
+        "tag": "IMG",
+        "cls": "h-8 w-8 opacity-40",
+        "text": "",
+        "left": -28,
+        "right": 4,
+        "width": 32
+      }
+    ],
+    "h1": [],
+    "hasOldBrand": false,
+    "hasFidelo": false,
+    "screenshot": "C:\\Users\\ironi\\Buisnesss\\VPS Mega BAse\\Cartefidelité\\artifacts\\fidelo-rebrand-visual\\wallet-390x844.png"
+  },
+  {
+    "viewport": "430x932",
+    "route": "home",
+    "url": "http://localhost:3000/",
+    "title": "Fidelo",
+    "scrollWidth": 430,
+    "innerWidth": 430,
+    "overflowing": [
+      {
+        "tag": "DIV",
+        "cls": "deck-halo absolute left-1/2 top-1/2 h-80 w-80 -translate-x-1/2 -translate-y-1/2",
+        "text": "",
+        "left": -119,
+        "right": 229,
+        "width": 348
+      },
+      {
+        "tag": "DIV",
+        "cls": "landing-card",
+        "text": "",
+        "left": 73,
+        "right": 433,
+        "width": 359
+      }
+    ],
+    "h1": [
+      "Votre collection de cartes, en version premium."
+    ],
+    "hasOldBrand": false,
+    "hasFidelo": true,
+    "screenshot": "C:\\Users\\ironi\\Buisnesss\\VPS Mega BAse\\Cartefidelité\\artifacts\\fidelo-rebrand-visual\\home-430x932.png"
+  },
+  {
+    "viewport": "430x932",
+    "route": "demo",
+    "url": "http://localhost:3000/demo",
+    "title": "Fidelo",
+    "scrollWidth": 430,
+    "innerWidth": 430,
+    "overflowing": [],
+    "h1": [
+      "Choisissez un espace"
+    ],
+    "hasOldBrand": false,
+    "hasFidelo": true,
+    "screenshot": "C:\\Users\\ironi\\Buisnesss\\VPS Mega BAse\\Cartefidelité\\artifacts\\fidelo-rebrand-visual\\demo-430x932.png"
+  },
+  {
+    "viewport": "430x932",
+    "route": "wallet",
+    "url": "http://localhost:3000/carte?demo=1",
+    "title": "Fidelo",
+    "scrollWidth": 430,
+    "innerWidth": 430,
+    "overflowing": [
+      {
+        "tag": "DIV",
+        "cls": "deck-rotate-hint absolute left-0 top-1/2 z-10 -translate-y-1/2 lg:hidden",
+        "text": "",
+        "left": -28,
+        "right": 4,
+        "width": 32
+      },
+      {
+        "tag": "IMG",
+        "cls": "h-8 w-8 opacity-40",
+        "text": "",
+        "left": -28,
+        "right": 4,
+        "width": 32
+      }
+    ],
+    "h1": [],
+    "hasOldBrand": false,
+    "hasFidelo": false,
+    "screenshot": "C:\\Users\\ironi\\Buisnesss\\VPS Mega BAse\\Cartefidelité\\artifacts\\fidelo-rebrand-visual\\wallet-430x932.png"
+  },
+  {
+    "viewport": "768x1024",
+    "route": "home",
+    "url": "http://localhost:3000/",
+    "title": "Fidelo",
+    "scrollWidth": 768,
+    "innerWidth": 768,
+    "overflowing": [],
+    "h1": [
+      "Votre collection de cartes, en version premium."
+    ],
+    "hasOldBrand": false,
+    "hasFidelo": true,
+    "screenshot": "C:\\Users\\ironi\\Buisnesss\\VPS Mega BAse\\Cartefidelité\\artifacts\\fidelo-rebrand-visual\\home-768x1024.png"
+  },
+  {
+    "viewport": "768x1024",
+    "route": "demo",
+    "url": "http://localhost:3000/demo",
+    "title": "Fidelo",
+    "scrollWidth": 768,
+    "innerWidth": 768,
+    "overflowing": [],
+    "h1": [
+      "Choisissez un espace"
+    ],
+    "hasOldBrand": false,
+    "hasFidelo": true,
+    "screenshot": "C:\\Users\\ironi\\Buisnesss\\VPS Mega BAse\\Cartefidelité\\artifacts\\fidelo-rebrand-visual\\demo-768x1024.png"
+  },
+  {
+    "viewport": "768x1024",
+    "route": "wallet",
+    "url": "http://localhost:3000/carte?demo=1",
+    "title": "Fidelo",
+    "scrollWidth": 768,
+    "innerWidth": 768,
+    "overflowing": [
+      {
+        "tag": "DIV",
+        "cls": "deck-rotate-hint absolute left-0 top-1/2 z-10 -translate-y-1/2 lg:hidden",
+        "text": "",
+        "left": -10,
+        "right": 22,
+        "width": 32
+      },
+      {
+        "tag": "IMG",
+        "cls": "h-8 w-8 opacity-40",
+        "text": "",
+        "left": -10,
+        "right": 22,
+        "width": 32
+      }
+    ],
+    "h1": [],
+    "hasOldBrand": false,
+    "hasFidelo": false,
+    "screenshot": "C:\\Users\\ironi\\Buisnesss\\VPS Mega BAse\\Cartefidelité\\artifacts\\fidelo-rebrand-visual\\wallet-768x1024.png"
+  },
+  {
+    "viewport": "1440x900",
+    "route": "home",
+    "url": "http://localhost:3000/",
+    "title": "Fidelo",
+    "scrollWidth": 1440,
+    "innerWidth": 1440,
+    "overflowing": [],
+    "h1": [
+      "Votre collection de cartes, en version premium."
+    ],
+    "hasOldBrand": false,
+    "hasFidelo": true,
+    "screenshot": "C:\\Users\\ironi\\Buisnesss\\VPS Mega BAse\\Cartefidelité\\artifacts\\fidelo-rebrand-visual\\home-1440x900.png"
+  },
+  {
+    "viewport": "1440x900",
+    "route": "demo",
+    "url": "http://localhost:3000/demo",
+    "title": "Fidelo",
+    "scrollWidth": 1440,
+    "innerWidth": 1440,
+    "overflowing": [],
+    "h1": [
+      "Choisissez un espace"
+    ],
+    "hasOldBrand": false,
+    "hasFidelo": true,
+    "screenshot": "C:\\Users\\ironi\\Buisnesss\\VPS Mega BAse\\Cartefidelité\\artifacts\\fidelo-rebrand-visual\\demo-1440x900.png"
+  },
+  {
+    "viewport": "1440x900",
+    "route": "wallet",
+    "url": "http://localhost:3000/carte?demo=1",
+    "title": "Fidelo",
+    "scrollWidth": 1440,
+    "innerWidth": 1440,
+    "overflowing": [],
+    "h1": [],
+    "hasOldBrand": false,
+    "hasFidelo": false,
+    "screenshot": "C:\\Users\\ironi\\Buisnesss\\VPS Mega BAse\\Cartefidelité\\artifacts\\fidelo-rebrand-visual\\wallet-1440x900.png"
+  }
+]
