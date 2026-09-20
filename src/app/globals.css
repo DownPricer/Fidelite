@@ -244,6 +244,11 @@ body:has(.wallet-shell) {
 
   .wallet-reward-block {
     margin-top: clamp(20px, 5vw, 28px) !important;
+    /* hauteur fixe : le contenu (recompense courte vs. detaillee avec
+       barre de progression) varie selon la carte active dans le deck,
+       sans quoi tout ce qui suit (bouton flottant, etc.) se decale a
+       chaque swipe. */
+    min-height: 124px;
   }
 
   .wallet-sheet-trigger {
@@ -1823,6 +1828,9 @@ body:has(.wallet-shell) {
 
 .merchant-card-block {
   order: 1;
+  /* le mt-16 du JSX est pense pour le bureau (voir override ci-dessous) ;
+     sur mobile ca laisse un vide disproportionne sous l'entete. */
+  margin-top: 1.5rem !important;
 }
 
 .merchant-action-row {
@@ -1844,7 +1852,6 @@ body:has(.wallet-shell) {
 
 .merchant-advantages-block {
   order: 1;
-  margin-top: 0 !important;
 }
 
 .merchant-activity-block {
@@ -1869,7 +1876,6 @@ body:has(.wallet-shell) {
 
 .merchant-side-panel .delete-zone {
   order: 7;
-  margin-top: 0 !important;
 }
 
 /* Barre d'actions : QR, Google Wallet, Partager — trois boutons de même
@@ -3129,7 +3135,6 @@ body:has(.wallet-shell) {
 
   .merchant-side-panel .delete-zone {
     order: 7;
-    margin-top: 0 !important;
   }
 
   /* Identité Fidelo */
