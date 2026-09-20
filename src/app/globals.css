@@ -215,7 +215,8 @@ body:has(.wallet-shell) {
 @media (max-width: 1023px) {
   .wallet-page-body {
     gap: 0;
-    min-height: auto;
+    min-height: calc(100dvh - clamp(1.8rem, 7dvh, 4rem));
+    justify-content: space-between;
   }
 
   .wallet-shell.fife-page-shell {
@@ -224,7 +225,7 @@ body:has(.wallet-shell) {
 
   .wallet-hero-column {
     gap: 0;
-    margin-top: clamp(8px, 2vw, 12px);
+    margin-top: clamp(14px, 3.5vw, 20px);
   }
 
   /* margin-top doit rester > --wallet-spread (carte du fond qui deborde
@@ -242,11 +243,11 @@ body:has(.wallet-shell) {
   }
 
   .wallet-reward-block {
-    margin-top: clamp(32px, 8vw, 44px) !important;
+    margin-top: clamp(20px, 5vw, 28px) !important;
   }
 
   .wallet-sheet-trigger {
-    margin-top: clamp(28px, 7vw, 40px) !important;
+    margin-top: clamp(20px, 5vw, 28px) !important;
     padding-bottom: clamp(6px, 1.5vw, 12px);
   }
 }
@@ -832,20 +833,28 @@ body:has(.wallet-shell) {
 
 .loyalty-card[data-tier="argent"] {
   --background: url("/cards/argent-good.png");
-  --ink: #f5f5f5;
+  --ink: #ffffff;
   --bar-light: #ffffff;
   --bar-mid: #e1e1e1;
   --bar-dark: #8b8f92;
   --track: #222426;
+  font-weight: 500;
+  text-shadow:
+    0 0.08cqw 0.16cqw #000000d9,
+    0 0.2cqw 0.4cqw #00000080;
 }
 
 .loyalty-card[data-tier="or"] {
   --background: url("/cards/or-good.png");
-  --ink: #fff1cd;
+  --ink: #fffaf0;
   --bar-light: #ffeebc;
   --bar-mid: #e9c173;
   --bar-dark: #aa792d;
   --track: #3d2708;
+  font-weight: 500;
+  text-shadow:
+    0 0.08cqw 0.16cqw #000000d9,
+    0 0.2cqw 0.4cqw #00000080;
 }
 
 .loyalty-card[data-tier="diamant"] {
@@ -1010,7 +1019,7 @@ body:has(.wallet-shell) {
   z-index: 10;
   left: 6.8%;
   right: 7.1%;
-  top: 80%;
+  top: 78%;
   font-size: 3.23cqw;
   line-height: 1.2;
   white-space: nowrap;
@@ -1027,7 +1036,7 @@ body:has(.wallet-shell) {
   z-index: 10;
   left: 6.8%;
   right: 7.1%;
-  top: 87.2%;
+  top: 85.2%;
   height: 3.65%;
   padding: 0.15cqw;
   border: 0.13cqw solid var(--bar-light);
