@@ -196,6 +196,25 @@ html {
   }
 }
 
+.fidelo-landing {
+  --fh-bg: light-dark(#fbfaff, #0c0913);
+  --fh-bg-soft: light-dark(#f5f0ff, #151020);
+  --fh-surface: light-dark(rgba(255, 255, 255, 0.88), rgba(25, 19, 37, 0.88));
+  --fh-surface-solid: light-dark(#ffffff, #191325);
+  --fh-text: light-dark(#17131d, #f8f5ff);
+  --fh-muted: light-dark(#665f70, #b8aec8);
+  --fh-border: light-dark(rgba(89, 62, 116, 0.14), rgba(255, 255, 255, 0.12));
+  --fh-purple: #7c3aed;
+  --fh-purple-2: #a855f7;
+  --fh-purple-soft: light-dark(#efe6ff, rgba(124, 58, 237, 0.18));
+  --fh-dark: #15111d;
+  color: var(--fh-text);
+  background:
+    radial-gradient(circle at 82% 9%, rgba(168, 85, 247, 0.18), transparent 24rem),
+    radial-gradient(circle at 6% 32%, rgba(124, 58, 237, 0.1), transparent 28rem),
+    var(--fh-bg);
+}
+
 .obsidian-scene {
   position: relative;
   min-height: 100dvh;

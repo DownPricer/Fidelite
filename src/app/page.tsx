@@ -6,11 +6,17 @@ import { LandingFaq } from "@/components/landing/landing-faq";
 import { LandingHeroVisual } from "@/components/landing/landing-hero-visual";
 import { LandingMerchantPreview } from "@/components/landing/landing-merchant-preview";
 import {
+  ArrowRightIcon,
+  CheckCircleIcon,
+  CheckIcon,
   GiftIcon,
+  LayersIcon,
+  PaletteIcon,
   ScanLineIcon,
   ShieldCheckIcon,
   StoreIcon,
-  WalletIcon,
+  UsersIcon,
+  ZapIcon,
 } from "@/components/landing/icons";
 
 export const metadata: Metadata = {
@@ -19,7 +25,9 @@ export const metadata: Metadata = {
     "Fidelo réunit les cartes, les points et les avantages des clients, tout en donnant aux commerçants les outils pour créer et gérer leur programme de fidélité.",
 };
 
-const BENEFITS_BAR = [
+const GUARANTEES = ["Sans carte plastique", "Toujours à jour", "Disponible sur mobile"] as const;
+
+const PROOF_ITEMS = [
   { label: "Un scan suffit", Icon: ScanLineIcon },
   { label: "Avantages en temps réel", Icon: GiftIcon },
   { label: "Pensé pour les commerces", Icon: StoreIcon },
@@ -28,380 +36,326 @@ const BENEFITS_BAR = [
 
 const CLIENT_STEPS = [
   {
+    number: "01",
     title: "Rejoignez un commerce",
     text: "Scannez son QR code ou ouvrez son lien Fidelo pour ajouter votre carte en quelques secondes.",
   },
   {
-    title: "Présentez votre QR personnel",
-    text: "Le commerçant retrouve votre carte et met à jour votre fidélité depuis sa caisse.",
+    number: "02",
+    title: "Présentez votre QR",
+    text: "Un seul QR personnel permet au commerçant de retrouver votre carte, vos points et vos avantages.",
   },
   {
+    number: "03",
     title: "Profitez de vos avantages",
     text: "Suivez votre progression et utilisez vos récompenses directement chez le commerçant.",
   },
 ] as const;
 
-const CLIENT_BENEFITS = [
-  "Toutes vos cartes au même endroit",
-  "Points et passages clairement séparés",
-  "Vos prochains avantages en un coup d'œil",
-  "Historique de votre fidélité",
-  "Partage de carte",
-  "Ajout à Google Wallet lorsque disponible",
-] as const;
-
 const MERCHANT_BENEFITS = [
-  "Programme en points ou en passages",
-  "Avantages configurables",
-  "Cartes personnalisées",
-  "Caisse rapide",
-  "Accès employés et permissions",
-  "Suivi des clients et activité récente",
-  "Google Wallet lorsque configuré",
+  "Points, passages et récompenses configurables",
+  "Caisse rapide pour vous et vos employés",
+  "Cartes numériques personnalisées à votre image",
+  "Suivi simple de vos clients et de leur engagement",
 ] as const;
 
-const COMMON_ADVANTAGES = [
+const BENTO_ITEMS = [
   {
-    title: "Une expérience commune",
-    text: "Clients et commerçants évoluent dans le même univers Fidelo, pensé pour les deux publics.",
+    Icon: LayersIcon,
+    title: "Une expérience vraiment universelle",
+    text: "Une seule application côté client, des programmes personnalisés côté commerçant, et un parcours cohérent à chaque visite.",
+    span: "main",
   },
   {
-    title: "Personnalisation du commerce",
-    text: "Chaque commerçant adapte sa carte, ses couleurs et ses avantages à son image.",
+    Icon: PaletteIcon,
+    title: "À votre image",
+    text: "Chaque commerce garde ses couleurs, sa carte et ses propres avantages.",
+    span: "normal",
   },
   {
-    title: "Rapidité en caisse",
-    text: "Un scan suffit pour identifier le client et mettre à jour sa fidélité.",
+    Icon: ZapIcon,
+    title: "Rapide en caisse",
+    text: "Scannez, ajoutez les points et validez l'avantage sans ralentir le service.",
+    span: "normal",
   },
   {
-    title: "Accès des employés",
-    text: "Des accès dédiés permettent à l'équipe d'utiliser la caisse sans partager de compte principal.",
-  },
-  {
-    title: "QR personnel",
-    text: "Chaque client dispose d'un identifiant unique, valable chez tous les commerces Fidelo.",
-  },
-  {
-    title: "Google Wallet",
-    text: "Les cartes compatibles peuvent être ajoutées directement au portefeuille du téléphone.",
-  },
-  {
-    title: "Respect des données",
-    text: "Seules les données nécessaires au fonctionnement du service sont utilisées.",
-  },
-  {
-    title: "Thèmes clair et sombre",
-    text: "Fidelo s'adapte à la préférence d'affichage de chaque utilisateur.",
+    Icon: UsersIcon,
+    title: "Une équipe bien organisée",
+    text: "Invitez vos employés et attribuez uniquement les permissions nécessaires à chacun.",
+    span: "wide",
   },
 ] as const;
 
 export default function HomePage() {
   return (
-    <div className="obsidian-scene relative min-h-dvh overflow-x-hidden text-[var(--ink-soft)]">
+    <div className="fidelo-landing relative w-full overflow-hidden font-sans">
       <LandingHeader />
 
       <main>
         {/* Hero */}
-        <section className="mx-auto flex max-w-7xl flex-col gap-12 px-6 py-14 lg:flex-row lg:items-center lg:justify-between lg:gap-16 lg:py-20">
-          <div className="max-w-xl">
-            <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-[var(--violet-bright)]">
+        <section className="mx-auto grid w-full max-w-[1180px] gap-10 px-5 py-16 lg:min-h-[670px] lg:grid-cols-[1.04fr_0.96fr] lg:items-center lg:gap-16 lg:py-[78px]">
+          <div>
+            <div className="inline-flex items-center gap-2 rounded-full bg-[var(--fh-purple-soft)] px-3 py-1.5 text-[12px] font-extrabold uppercase tracking-[0.04em] text-[light-dark(#6d28d9,#d8b4fe)]">
+              <span className="h-[7px] w-[7px] rounded-full bg-[#a855f7] shadow-[0_0_0_5px_rgba(168,85,247,0.14)]" />
               La fidélité, enfin simple
-            </p>
-            <h1 className="mt-3 text-4xl font-black tracking-tight text-[var(--ink)] sm:text-5xl">
-              Une seule carte. Toutes vos fidélités.
+            </div>
+
+            <h1 className="mt-5 max-w-[560px] text-[46px] font-extrabold leading-[0.98] tracking-[-0.045em] text-[var(--fh-text)] sm:text-[64px]">
+              Une seule carte.
+              <br />
+              <span
+                className="bg-clip-text text-transparent"
+                style={{ backgroundImage: "linear-gradient(100deg, #6d28d9, #a855f7 65%, #c026d3)" }}
+              >
+                Toutes vos fidélités.
+              </span>
             </h1>
-            <p className="mt-5 text-lg leading-relaxed text-[var(--muted-strong)]">
+
+            <p className="max-w-[560px] text-lg leading-[1.68] text-[var(--fh-muted)]">
               Fidelo réunit vos cartes, vos points et vos avantages dans un seul espace. Pour les commerçants,
-              c&apos;est un programme moderne, simple à lancer et agréable à utiliser.
+              c&apos;est un programme de fidélité moderne, simple à lancer et agréable à utiliser.
             </p>
-            <div className="mt-10 flex flex-wrap gap-3">
-              <a href="#clients" className="glass-cta min-w-[200px] justify-center px-6 py-3.5 text-sm">
-                Je suis client
+
+            <div className="mt-7 flex flex-wrap gap-3">
+              <a
+                href="#fonctionnement"
+                className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-[14px] px-[18px] text-sm font-bold text-white shadow-[0_12px_30px_rgba(124,58,237,0.28)] transition hover:opacity-95"
+                style={{ background: "linear-gradient(135deg, #7c3aed, #a855f7)" }}
+              >
+                Découvrir Fidelo
+                <ArrowRightIcon className="h-4 w-4" />
               </a>
               <a
                 href="#commercants"
-                className="inline-flex min-w-[200px] items-center justify-center rounded-full border border-[light-dark(rgba(122,69,242,0.24),rgba(190,164,255,0.3))] bg-[light-dark(rgba(255,255,255,0.75),rgba(255,255,255,0.06))] px-6 py-3.5 text-sm font-bold text-[var(--ink)] transition hover:bg-[light-dark(rgba(255,255,255,0.92),rgba(255,255,255,0.1))]"
+                className="inline-flex min-h-[44px] items-center justify-center rounded-[14px] border border-[var(--fh-border)] bg-[var(--fh-surface)] px-[18px] text-sm font-bold text-[var(--fh-text)] shadow-[0_8px_28px_rgba(30,18,45,0.06)] transition hover:opacity-90"
               >
                 Je suis commerçant
               </a>
             </div>
-            <p className="mt-8 max-w-md text-sm text-[var(--muted)]">
-              Un seul QR en caisse. Des programmes en points ou en passages. Des cartes qui donnent envie
-              d&apos;être collectionnées.
-            </p>
+
+            <div className="mt-5 flex flex-wrap gap-4.5 text-[13px] text-[var(--fh-muted)]">
+              {GUARANTEES.map((item) => (
+                <span key={item} className="inline-flex items-center gap-1.5">
+                  <CheckIcon className="h-[15px] w-[15px] text-[var(--fh-purple)]" />
+                  {item}
+                </span>
+              ))}
+            </div>
           </div>
 
           <LandingHeroVisual />
         </section>
 
-        {/* Choix de parcours */}
-        <section id="parcours" className="mx-auto max-w-7xl px-6 py-16 scroll-mt-24">
-          <h2 className="text-center text-3xl font-black tracking-tight text-[var(--ink)] sm:text-4xl">
-            Que souhaitez-vous faire avec Fidelo ?
-          </h2>
-          <div className="mt-10 grid gap-6 lg:grid-cols-2">
-            <div className="glass-panel flex flex-col p-7 sm:p-8">
-              <span className="grid h-12 w-12 place-items-center rounded-2xl bg-[light-dark(rgba(122,69,242,0.1),rgba(255,255,255,0.08))] text-[var(--violet-bright)]" aria-hidden>
-                <WalletIcon className="h-6 w-6" />
-              </span>
-              <h3 className="mt-5 text-2xl font-black text-[var(--ink)]">Je suis client</h3>
-              <p className="mt-3 flex-1 text-sm leading-relaxed text-[var(--muted-strong)]">
-                Retrouvez vos cartes, suivez vos récompenses et présentez un seul QR chez vos commerces préférés.
-              </p>
-              <a href="#clients" className="glass-cta mt-6 justify-center px-6 py-3.5 text-sm">
-                Découvrir l&apos;expérience client
-              </a>
-            </div>
-            <div className="glass-panel flex flex-col p-7 sm:p-8">
-              <span className="grid h-12 w-12 place-items-center rounded-2xl bg-[light-dark(rgba(201,63,214,0.1),rgba(231,116,255,0.12))] text-[var(--violet-bright)]" aria-hidden>
-                <StoreIcon className="h-6 w-6" />
-              </span>
-              <h3 className="mt-5 text-2xl font-black text-[var(--ink)]">Je suis commerçant</h3>
-              <p className="mt-3 flex-1 text-sm leading-relaxed text-[var(--muted-strong)]">
-                Créez votre programme, récompensez vos clients et gérez facilement votre fidélité au quotidien.
-              </p>
-              <a href="#commercants" className="glass-cta mt-6 justify-center px-6 py-3.5 text-sm">
-                Découvrir l&apos;espace commerçant
-              </a>
-            </div>
-          </div>
-        </section>
-
-        {/* Barre de bénéfices communs */}
-        <section className="border-y border-[light-dark(rgba(122,69,242,0.1),rgba(255,255,255,0.08))] bg-[light-dark(rgba(255,255,255,0.4),rgba(255,255,255,0.02))] px-6 py-6">
-          <ul className="mx-auto flex max-w-7xl flex-wrap items-center justify-center gap-x-10 gap-y-3">
-            {BENEFITS_BAR.map(({ label, Icon }) => (
-              <li key={label} className="flex items-center gap-2 text-sm font-bold text-[var(--ink-soft)]">
-                <Icon className="h-4 w-4 shrink-0 text-[var(--violet-bright)]" />
+        {/* Proof bar */}
+        <section className="border-y border-[var(--fh-border)] bg-[light-dark(rgba(255,255,255,0.46),rgba(18,13,27,0.45))]">
+          <div className="mx-auto grid min-h-[108px] w-full max-w-[1180px] grid-cols-2 items-center px-5 lg:grid-cols-4">
+            {PROOF_ITEMS.map(({ label, Icon }, index) => (
+              <div
+                key={label}
+                className={`flex min-h-14 items-center justify-center gap-2.5 py-4 text-sm font-bold text-[var(--fh-muted)] ${
+                  index > 0 ? "border-l border-[var(--fh-border)] max-lg:border-l-0" : ""
+                } ${index === 2 ? "max-lg:border-l max-lg:border-[var(--fh-border)]" : ""}`}
+              >
+                <Icon className="h-5 w-5 shrink-0 text-[var(--fh-purple)]" />
                 {label}
-              </li>
+              </div>
             ))}
-          </ul>
-        </section>
-
-        {/* Comment ça marche (vue d'ensemble) */}
-        <section id="fonctionnement" className="mx-auto max-w-7xl px-6 py-16 scroll-mt-24">
-          <h2 className="text-center text-3xl font-black tracking-tight text-[var(--ink)] sm:text-4xl">
-            Comment ça marche
-          </h2>
-          <div className="mt-10 grid gap-6 lg:grid-cols-2">
-            <div className="glass-panel p-6 sm:p-7">
-              <p className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--violet-bright)]">Côté client</p>
-              <ol className="mt-4 space-y-3">
-                {CLIENT_STEPS.map((step, index) => (
-                  <li key={step.title} className="flex items-start gap-3">
-                    <span className="mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full bg-[light-dark(rgba(122,69,242,0.12),rgba(255,255,255,0.1))] text-xs font-black text-[var(--ink)]">
-                      {index + 1}
-                    </span>
-                    <span className="text-sm font-semibold text-[var(--ink-soft)]">{step.title}</span>
-                  </li>
-                ))}
-              </ol>
-            </div>
-            <div className="glass-panel p-6 sm:p-7">
-              <p className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--violet-bright)]">Côté commerçant</p>
-              <ol className="mt-4 space-y-3">
-                {[
-                  "Créez votre programme",
-                  "Personnalisez votre carte et vos avantages",
-                  "Utilisez une caisse simple au quotidien",
-                  "Suivez l'activité de votre programme",
-                ].map((step, index) => (
-                  <li key={step} className="flex items-start gap-3">
-                    <span className="mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full bg-[light-dark(rgba(122,69,242,0.12),rgba(255,255,255,0.1))] text-xs font-black text-[var(--ink)]">
-                      {index + 1}
-                    </span>
-                    <span className="text-sm font-semibold text-[var(--ink-soft)]">{step}</span>
-                  </li>
-                ))}
-              </ol>
-            </div>
           </div>
         </section>
 
         {/* Section clients */}
-        <section id="clients" className="mx-auto max-w-7xl px-6 py-16 scroll-mt-24">
-          <div className="grid gap-12 lg:grid-cols-2 lg:items-start">
-            <div>
-              <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-[var(--violet-bright)]">Pour les clients</p>
-              <h2 className="mt-3 text-3xl font-black tracking-tight text-[var(--ink)] sm:text-4xl">
-                Vos récompenses vous suivent partout.
-              </h2>
-              <p className="mt-4 text-base leading-relaxed text-[var(--muted-strong)]">
-                Plus besoin de chercher une carte papier ou de retenir plusieurs identifiants. Fidelo rassemble vos
-                cartes et votre progression dans une expérience unique.
-              </p>
+        <section id="fonctionnement" className="mx-auto w-full max-w-[1180px] scroll-mt-20 px-5 py-[90px]">
+          <div className="max-w-[690px]">
+            <p className="text-[13px] font-extrabold uppercase tracking-[0.08em] text-[var(--fh-purple)]">
+              Pour vos clients
+            </p>
+            <h2 className="mt-3 text-[32px] font-extrabold leading-[1.06] tracking-[-0.03em] text-[var(--fh-text)] sm:text-[42px]">
+              Vos récompenses vous suivent partout.
+            </h2>
+            <p className="mt-3.5 leading-[1.7] text-[var(--fh-muted)]">
+              Plus besoin de chercher une carte papier ou de retenir plusieurs identifiants. Fidelo rassemble
+              l&apos;essentiel dans une expérience unique.
+            </p>
+          </div>
 
-              <div className="mt-8 space-y-5">
-                {CLIENT_STEPS.map((step, index) => (
-                  <div key={step.title} className="flex gap-4">
-                    <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[light-dark(rgba(122,69,242,0.1),rgba(255,255,255,0.08))] text-sm font-black text-[var(--ink)]">
-                      {index + 1}
-                    </span>
-                    <div>
-                      <p className="font-bold text-[var(--ink)]">{step.title}</p>
-                      <p className="mt-1 text-sm leading-relaxed text-[var(--muted-strong)]">{step.text}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <Link href="/connexion" className="glass-cta mt-9 inline-flex px-6 py-3.5 text-sm">
-                Créer mon espace client
-              </Link>
-            </div>
-
-            <ul className="glass-panel grid grid-cols-1 gap-4 p-7 sm:grid-cols-2 sm:p-8">
-              {CLIENT_BENEFITS.map((benefit) => (
-                <li key={benefit} className="flex items-start gap-2.5 text-sm font-semibold text-[var(--ink-soft)]">
-                  <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--violet-bright)]" aria-hidden />
-                  {benefit}
-                </li>
-              ))}
-            </ul>
+          <div className="mt-9 grid gap-4.5 sm:grid-cols-3">
+            {CLIENT_STEPS.map((step) => (
+              <article
+                key={step.number}
+                className="min-h-[220px] rounded-[25px] border border-[var(--fh-border)] bg-[var(--fh-surface)] p-7"
+                style={{ boxShadow: "0 16px 45px rgba(35,18,52,0.06)" }}
+              >
+                <div className="grid h-11 w-11 place-items-center rounded-[14px] bg-[var(--fh-purple-soft)] text-sm font-black text-[var(--fh-purple)]">
+                  {step.number}
+                </div>
+                <h3 className="mb-2.5 mt-7 text-[19px] font-extrabold tracking-[-0.02em] text-[var(--fh-text)]">
+                  {step.title}
+                </h3>
+                <p className="leading-[1.6] text-[var(--fh-muted)]">{step.text}</p>
+              </article>
+            ))}
           </div>
         </section>
 
         {/* Section commerçants */}
-        <section id="commercants" className="mx-auto max-w-7xl px-6 py-16 scroll-mt-24">
-          <div className="grid gap-12 lg:grid-cols-2 lg:items-start">
+        <section
+          id="commercants"
+          className="scroll-mt-20 py-[90px]"
+          style={{
+            background:
+              "linear-gradient(180deg, transparent, var(--fh-bg-soft) 18%, var(--fh-bg-soft) 82%, transparent)",
+          }}
+        >
+          <div className="mx-auto grid w-full max-w-[1180px] items-center gap-12 px-5 lg:grid-cols-[0.88fr_1.12fr] lg:gap-16">
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-[var(--violet-bright)]">Pour les commerçants</p>
-              <h2 className="mt-3 text-3xl font-black tracking-tight text-[var(--ink)] sm:text-4xl">
+              <p className="text-[13px] font-extrabold uppercase tracking-[0.08em] text-[var(--fh-purple)]">
+                Pour les commerçants
+              </p>
+              <h2 className="mt-3 text-[32px] font-extrabold leading-[1.06] tracking-[-0.03em] text-[var(--fh-text)] sm:text-[42px]">
                 Créez une fidélité qui donne envie de revenir.
               </h2>
-              <p className="mt-4 text-base leading-relaxed text-[var(--muted-strong)]">
-                Lancez votre programme, personnalisez vos avantages et gérez votre activité depuis un espace simple
-                et moderne.
+              <p className="mt-3.5 leading-[1.7] text-[var(--fh-muted)]">
+                Lancez votre programme, personnalisez vos avantages et pilotez votre activité depuis un tableau de
+                bord clair.
               </p>
 
-              <ul className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="mt-6.5 grid gap-3.5">
                 {MERCHANT_BENEFITS.map((benefit) => (
-                  <li key={benefit} className="flex items-start gap-2.5 text-sm font-semibold text-[var(--ink-soft)]">
-                    <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--violet-bright)]" aria-hidden />
-                    {benefit}
-                  </li>
+                  <div key={benefit} className="flex items-start gap-2.5 text-[var(--fh-muted)]">
+                    <CheckCircleIcon className="mt-0.5 h-[18px] w-[18px] shrink-0 text-[var(--fh-purple)]" />
+                    <span>{benefit}</span>
+                  </div>
                 ))}
-              </ul>
-
-              <div className="mt-9 flex flex-wrap gap-3">
-                <Link href="/app/connexion" className="glass-cta px-6 py-3.5 text-sm">
-                  Créer mon programme
-                </Link>
-                <a
-                  href="#fonctionnement"
-                  className="inline-flex items-center justify-center rounded-full border border-[light-dark(rgba(122,69,242,0.2),rgba(255,255,255,0.14))] bg-transparent px-6 py-3.5 text-sm font-bold text-[var(--ink)] transition hover:bg-[light-dark(rgba(255,255,255,0.6),rgba(255,255,255,0.06))]"
-                >
-                  Voir comment ça fonctionne
-                </a>
               </div>
+
+              <Link
+                href="/app/connexion"
+                className="mt-7 inline-flex min-h-[44px] items-center justify-center gap-2 rounded-[14px] px-[18px] text-sm font-bold text-white shadow-[0_12px_30px_rgba(124,58,237,0.28)] transition hover:opacity-95"
+                style={{ background: "linear-gradient(135deg, #7c3aed, #a855f7)" }}
+              >
+                Créer mon programme
+                <ArrowRightIcon className="h-4 w-4" />
+              </Link>
             </div>
 
             <div className="flex justify-center lg:justify-end">
               <LandingMerchantPreview />
             </div>
           </div>
-
-          {/* Tarifs */}
-          <div id="tarifs" className="glass-panel mt-14 p-8 text-center scroll-mt-24 sm:p-10">
-            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-[var(--violet-bright)]">
-              Offre commerçant
-            </p>
-            <h3 className="mt-2 text-2xl font-black text-[var(--ink)] sm:text-3xl">
-              Des formules adaptées à votre activité
-            </h3>
-            <p className="mx-auto mt-3 max-w-xl text-sm leading-relaxed text-[var(--muted-strong)]">
-              Contactez-nous pour découvrir l&apos;offre correspondant à votre commerce.
-            </p>
-            <a href="#contact" className="glass-cta mt-6 inline-flex px-6 py-3.5 text-sm">
-              Nous contacter
-            </a>
-          </div>
         </section>
 
-        {/* Avantages communs */}
-        <section id="avantages" className="mx-auto max-w-7xl px-6 py-16 scroll-mt-24">
-          <h2 className="text-center text-3xl font-black tracking-tight text-[var(--ink)] sm:text-4xl">
-            Tout ce qu&apos;il faut. Rien de compliqué.
-          </h2>
-          <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-            {COMMON_ADVANTAGES.map((item) => (
-              <div key={item.title} className="glass-panel p-6">
-                <h3 className="text-base font-black text-[var(--ink)]">{item.title}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-[var(--muted-strong)]">{item.text}</p>
-              </div>
+        {/* Pourquoi Fidelo */}
+        <section id="avantages" className="mx-auto w-full max-w-[1180px] scroll-mt-20 px-5 py-[90px]">
+          <div className="max-w-[690px]">
+            <p className="text-[13px] font-extrabold uppercase tracking-[0.08em] text-[var(--fh-purple)]">
+              Pourquoi Fidelo
+            </p>
+            <h2 className="mt-3 text-[32px] font-extrabold leading-[1.06] tracking-[-0.03em] text-[var(--fh-text)] sm:text-[42px]">
+              Tout ce qu&apos;il faut. Rien de compliqué.
+            </h2>
+          </div>
+
+          <div className="mt-9 grid gap-4 sm:grid-cols-2 lg:grid-cols-[1.2fr_0.8fr_0.8fr]">
+            {BENTO_ITEMS.map((item) => (
+              <article
+                key={item.title}
+                className={`min-h-[220px] rounded-[25px] border border-[var(--fh-border)] p-7 ${
+                  item.span === "main" ? "sm:col-span-2 sm:row-span-2 lg:col-span-1 lg:min-h-[456px]" : ""
+                } ${item.span === "wide" ? "sm:col-span-2" : ""}`}
+                style={{
+                  background:
+                    item.span === "main"
+                      ? "linear-gradient(155deg, var(--fh-surface-solid), var(--fh-purple-soft))"
+                      : "var(--fh-surface)",
+                }}
+              >
+                <div className="grid h-[46px] w-[46px] place-items-center rounded-[15px] bg-[var(--fh-purple-soft)] text-[var(--fh-purple)]">
+                  <item.Icon className="h-5 w-5" />
+                </div>
+                <h3 className="mb-2 mt-6 text-xl font-extrabold text-[var(--fh-text)]">{item.title}</h3>
+                <p className="leading-[1.6] text-[var(--fh-muted)]">{item.text}</p>
+              </article>
             ))}
           </div>
         </section>
 
         {/* Confidentialité */}
-        <section className="mx-auto max-w-3xl px-6 py-16 text-center">
-          <h2 className="text-2xl font-black tracking-tight text-[var(--ink)] sm:text-3xl">
-            Vos données restent les vôtres.
-          </h2>
-          <p className="mt-4 text-sm leading-relaxed text-[var(--muted-strong)]">
-            Fidelo utilise uniquement les données nécessaires au fonctionnement du service et vous permet de garder
-            le contrôle sur vos informations et vos préférences.
-          </p>
-          <Link
-            href="/confidentialite"
-            className="mt-5 inline-flex items-center gap-1.5 text-sm font-bold text-[var(--violet-bright)] hover:underline"
+        <section className="mx-auto w-full max-w-[1180px] px-5 py-[90px]">
+          <div
+            className="flex flex-col items-start justify-between gap-7 rounded-[28px] border border-[var(--fh-border)] p-9 sm:flex-row sm:items-center"
+            style={{ background: "linear-gradient(110deg, var(--fh-surface-solid), var(--fh-purple-soft))" }}
           >
-            Comprendre notre approche
-            <span aria-hidden>→</span>
-          </Link>
+            <div>
+              <p className="text-[13px] font-extrabold uppercase tracking-[0.08em] text-[var(--fh-purple)]">
+                Confidentialité
+              </p>
+              <h2 className="mt-2.5 text-[28px] font-extrabold tracking-[-0.02em] text-[var(--fh-text)] sm:text-[36px]">
+                Vos données restent les vôtres.
+              </h2>
+              <p className="mt-2.5 max-w-[680px] leading-[1.65] text-[var(--fh-muted)]">
+                Fidelo utilise uniquement les données nécessaires au fonctionnement du service et vous permet de
+                garder le contrôle sur vos informations et vos préférences.
+              </p>
+            </div>
+            <Link
+              href="/confidentialite"
+              className="inline-flex min-h-[44px] shrink-0 items-center justify-center rounded-[14px] border border-[var(--fh-border)] bg-[var(--fh-surface)] px-[18px] text-sm font-bold text-[var(--fh-text)] shadow-[0_8px_28px_rgba(30,18,45,0.06)] transition hover:opacity-90"
+            >
+              Comprendre notre approche
+            </Link>
+          </div>
         </section>
 
         {/* FAQ */}
-        <section id="faq" className="mx-auto max-w-3xl px-6 py-16 scroll-mt-24">
-          <h2 className="text-center text-3xl font-black tracking-tight text-[var(--ink)] sm:text-4xl">
-            Questions fréquentes
-          </h2>
-          <div className="mt-10">
-            <LandingFaq />
+        <section id="faq" className="mx-auto w-full max-w-[1180px] scroll-mt-20 px-5 py-[90px]">
+          <div className="mb-9 max-w-[690px]">
+            <p className="text-[13px] font-extrabold uppercase tracking-[0.08em] text-[var(--fh-purple)]">
+              Questions fréquentes
+            </p>
+            <h2 className="mt-3 text-[32px] font-extrabold leading-[1.06] tracking-[-0.03em] text-[var(--fh-text)] sm:text-[42px]">
+              Vous vous demandez peut-être…
+            </h2>
           </div>
+          <LandingFaq />
         </section>
 
-        {/* Contact */}
-        <section id="contact" className="mx-auto max-w-3xl px-6 py-16 text-center scroll-mt-24">
-          <h2 className="text-2xl font-black tracking-tight text-[var(--ink)] sm:text-3xl">Une question ?</h2>
-          <p className="mt-4 text-sm leading-relaxed text-[var(--muted-strong)]">
-            Notre équipe vous répond rapidement, que vous soyez client ou commerçant.
-          </p>
-          <a
-            href="mailto:support@fidelo.app"
-            className="glass-cta mt-6 inline-flex px-6 py-3.5 text-sm"
+        {/* CTA final */}
+        <section className="mx-auto w-full max-w-[1180px] px-5 py-[90px]">
+          <div
+            className="rounded-[34px] p-10 text-center text-white sm:p-14"
+            style={{
+              background:
+                "radial-gradient(circle at 15% 20%, rgba(216,180,254,.28), transparent 19rem), linear-gradient(135deg, #261538, #6d28d9 64%, #a855f7)",
+              boxShadow: "0 32px 80px rgba(91,33,182,0.27)",
+            }}
           >
-            support@fidelo.app
-          </a>
-        </section>
-
-        {/* CTA final double */}
-        <section className="mx-auto max-w-7xl px-6 py-16">
-          <div className="grid gap-6 lg:grid-cols-2">
-            <div className="glass-panel p-8 text-center sm:p-10">
-              <h3 className="text-xl font-black text-[var(--ink)] sm:text-2xl">
-                Toutes vos cartes, enfin réunies.
-              </h3>
-              <Link href="/connexion" className="glass-cta mt-6 inline-flex px-6 py-3.5 text-sm">
-                Créer mon espace client
-              </Link>
-            </div>
-            <div className="glass-panel p-8 text-center sm:p-10">
-              <h3 className="text-xl font-black text-[var(--ink)] sm:text-2xl">
-                Une fidélité moderne pour votre commerce.
-              </h3>
-              <Link href="/app/connexion" className="glass-cta mt-6 inline-flex px-6 py-3.5 text-sm">
+            <h2 className="mx-auto max-w-[760px] text-[28px] font-extrabold tracking-[-0.02em] sm:text-[38px]">
+              Prêt à créer une fidélité qui compte vraiment ?
+            </h2>
+            <p className="mx-auto mt-4 max-w-[650px] leading-[1.65] text-white/78">
+              Rejoignez Fidelo et proposez à vos clients une expérience simple, moderne et toujours accessible.
+            </p>
+            <div className="mt-7 flex flex-wrap justify-center gap-3">
+              <Link
+                href="/app/connexion"
+                className="inline-flex min-h-[44px] items-center justify-center rounded-[14px] bg-white px-[18px] text-sm font-bold text-[#5b21b6] transition hover:opacity-90"
+              >
                 Créer mon programme
               </Link>
+              <a
+                href="mailto:support@fidelo.app"
+                className="inline-flex min-h-[44px] items-center justify-center rounded-[14px] border border-white/26 bg-white/10 px-[18px] text-sm font-bold text-white transition hover:bg-white/15"
+              >
+                Nous contacter
+              </a>
             </div>
+            <p className="mt-6 text-sm text-white/70">
+              Déjà inscrit ?{" "}
+              <Link href="/connexion" className="font-bold text-white underline underline-offset-2">
+                Se connecter
+              </Link>
+            </p>
           </div>
-          <p className="mt-8 text-center text-sm font-medium text-[var(--muted-strong)]">
-            Déjà inscrit ?{" "}
-            <Link href="/connexion" className="font-bold text-[var(--violet-bright)] hover:underline">
-              Se connecter
-            </Link>
-          </p>
         </section>
       </main>
 

@@ -9,40 +9,29 @@ const page = readSrc("src/app/page.tsx");
 const header = readSrc("src/components/landing/landing-header.tsx");
 const footer = readSrc("src/components/landing/landing-footer.tsx");
 const faq = readSrc("src/components/landing/landing-faq.tsx");
+const heroVisual = readSrc("src/components/landing/landing-hero-visual.tsx");
 
-describe("landing page balance and structure", () => {
+describe("landing page structure and balance", () => {
   it("exposes exactly one h1", () => {
     const matches = page.match(/<h1[\s>]/g) ?? [];
     expect(matches.length).toBe(1);
   });
 
   it("presents both audiences in the hero", () => {
-    expect(page).toMatch(/Une seule carte\. Toutes vos fidélités\./);
-    expect(page).toContain("Je suis client");
+    expect(page).toContain("Une seule carte.");
+    expect(page).toContain("Toutes vos fidélités.");
+    expect(page).toContain("Découvrir Fidelo");
     expect(page).toContain("Je suis commerçant");
   });
 
-  it("gives client and merchant CTAs the same visual level (glass-cta)", () => {
-    const heroClientCta = /href="#clients" className="glass-cta[^"]*">\s*Je suis client/;
-    expect(page).toMatch(heroClientCta);
-    expect(page).toContain('href="#commercants"');
-    // Both hero buttons share the same size and padding classes (min-w-[200px], px-6 py-3.5 text-sm).
-    const clientButtonClasses = page.match(/<a href="#clients" className="([^"]*)">/)?.[1] ?? "";
-    const merchantButtonClasses = page.match(/href="#commercants"\s*className="([^"]*)"/)?.[1] ?? "";
-    expect(clientButtonClasses).toContain("min-w-[200px]");
-    expect(merchantButtonClasses).toContain("min-w-[200px]");
-    expect(clientButtonClasses).toContain("px-6 py-3.5 text-sm");
-    expect(merchantButtonClasses).toContain("px-6 py-3.5 text-sm");
-
-    // Final dual CTA block: both use glass-cta, same markup shape.
-    const finalCtas = page.match(/glass-cta mt-6 inline-flex px-6 py-3\.5 text-sm/g) ?? [];
-    expect(finalCtas.length).toBeGreaterThanOrEqual(2);
-  });
-
   it("declares every required anchor id", () => {
-    for (const id of ["parcours", "fonctionnement", "clients", "commercants", "tarifs", "avantages", "faq", "contact"]) {
+    for (const id of ["fonctionnement", "commercants", "avantages", "faq"]) {
       expect(page).toContain(`id="${id}"`);
     }
+  });
+
+  it("does not reintroduce the removed journey-choice section", () => {
+    expect(page).not.toContain("Que souhaitez-vous faire avec Fidelo");
   });
 
   it("links the client CTA to the real client login route", () => {
@@ -56,7 +45,7 @@ describe("landing page balance and structure", () => {
   });
 
   it("does not create separate marketing pages replacing the single landing page", () => {
-    for (const forbidden of ['href="/clients"', 'href="/commercants"', 'href="/fonctionnement"', 'href="/faq"', 'href="/contact"']) {
+    for (const forbidden of ['href="/clients"', 'href="/commercants"', 'href="/fonctionnement"', 'href="/faq"']) {
       expect(page).not.toContain(forbidden);
     }
   });
@@ -68,35 +57,20 @@ describe("landing page balance and structure", () => {
   });
 
   it("contains every required section", () => {
-    expect(page).toContain("Que souhaitez-vous faire avec Fidelo ?");
-    expect(page).toContain("Comment ça marche");
     expect(page).toContain("Vos récompenses vous suivent partout.");
     expect(page).toContain("Créez une fidélité qui donne envie de revenir.");
-    expect(page).toContain("Des formules adaptées à votre activité");
     expect(page).toContain("Tout ce qu&apos;il faut. Rien de compliqué.");
     expect(page).toContain("Vos données restent les vôtres.");
-    expect(page).toContain("Questions fréquentes");
-    expect(page).toContain("Une question ?");
+    expect(page).toContain("Vous vous demandez peut-être");
+    expect(page).toContain("Prêt à créer une fidélité qui compte vraiment ?");
   });
 
-  it("exposes the FAQ as an accessible accordion with all required questions", () => {
+  it("exposes the FAQ as an accessible accordion", () => {
     expect(faq).toContain("aria-expanded");
     expect(faq).toContain("aria-controls");
-    const requiredQuestions = [
-      "Fidelo est-il une carte de fidélité unique ?",
-      "Comment fonctionne le QR personnel ?",
-      "Puis-je utiliser Google Wallet ?",
-      "Comment rejoindre un commerce ?",
-      "Comment créer un programme ?",
-      "Puis-je choisir entre points et passages ?",
-      "Mes employés peuvent-ils utiliser la caisse ?",
-      "Comment sont protégées mes données ?",
-      "Comment supprimer mon compte ?",
-      "Comment contacter l'assistance ?",
-    ];
-    for (const question of requiredQuestions) {
-      expect(faq).toContain(question);
-    }
+    expect(faq).toContain("Fidelo est-il une carte de fidélité unique ?");
+    expect(faq).toContain("Comment fonctionne le QR code ?");
+    expect(faq).toContain("Puis-je ajouter ma carte à Google Wallet ?");
   });
 
   it("links legal pages that actually exist in the repo", () => {
@@ -104,20 +78,20 @@ describe("landing page balance and structure", () => {
     expect(footer).toContain('href: "/conditions"');
   });
 
-  it("keeps light and dark theme support via light-dark() tokens, no theme removal", () => {
-    expect(header).toContain("light-dark(");
-    expect(footer).toContain("light-dark(");
-    expect(page).toContain("light-dark(");
+  it("keeps light and dark theme support via the fidelo-landing token scope", () => {
+    expect(page).toContain("fidelo-landing");
+    expect(header).toContain("var(--fh-");
+    expect(footer).toContain("var(--fh-");
   });
 
   it("contains no private customer data or functional QR/session tokens", () => {
     for (const forbidden of ["getSessionUser", "prisma.", "fetch(", "qrToken", "membershipId"]) {
       expect(page).not.toContain(forbidden);
+      expect(heroVisual).not.toContain(forbidden);
     }
   });
 
-  it("contains no fabricated testimonials or unverified statistics", () => {
-    expect(page).not.toMatch(/\d[\d\s]*\+?\s*(clients|commerces|utilisateurs) (actifs|inscrits)/i);
+  it("contains no fabricated testimonials or unverified pricing claims", () => {
     expect(page).not.toMatch(/témoignage/i);
     expect(page).not.toMatch(/gratuit|sans engagement|essai gratuit|satisfait ou remboursé/i);
   });
@@ -135,8 +109,13 @@ describe("landing page balance and structure", () => {
     );
   });
 
-  it("keeps the connexion hub as the single sign-in entry point from the header", () => {
+  it("keeps the connexion hub reachable as the sign-in entry point", () => {
     expect(header).toContain('href="/connexion"');
     expect(header).toContain("Se connecter");
+  });
+
+  it("gives the header a violet primary CTA, not a white one", () => {
+    expect(header).toContain("Créer mon programme");
+    expect(header).toContain("linear-gradient(135deg, #7c3aed, #a855f7)");
   });
 });

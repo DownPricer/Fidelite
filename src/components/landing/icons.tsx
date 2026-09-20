@@ -137,3 +137,62 @@ export function PlusIcon({ className }: IconProps) {
     </svg>
   );
 }
+
+export function CoffeeIcon({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <path d="M4 8h13v6a5 5 0 01-5 5H9a5 5 0 01-5-5Z" />
+      <path d="M17 9.5h1.5a2.5 2.5 0 010 5H17" />
+      <path d="M7 3.5c-.6.7-.6 1.3 0 2M11 3.5c-.6.7-.6 1.3 0 2" />
+    </svg>
+  );
+}
+
+export function WifiIcon({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <path d="M2 8.5a15 15 0 0120 0M5 12a10.5 10.5 0 0114 0M8.3 15.5a6 6 0 017.4 0" />
+      <circle cx="12" cy="19" r="1" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+export function LayersIcon({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <path d="M12 3l9 5-9 5-9-5Z" />
+      <path d="M4.5 13.2L12 17l7.5-3.8" />
+      <path d="M4.5 17.2L12 21l7.5-3.8" />
+    </svg>
+  );
+}
+
+export function PaletteIcon({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <path d="M12 3a9 8.5 0 100 17c1.1 0 2-.8 2-1.8 0-.5-.2-.9-.5-1.2-.3-.3-.5-.7-.5-1.2 0-1 .8-1.8 1.8-1.8H16.5A3.5 3.5 0 0020 10.5C20 6.4 16.4 3 12 3Z" />
+      <circle cx="7.5" cy="10.5" r="1.1" fill="currentColor" stroke="none" />
+      <circle cx="10.5" cy="7" r="1.1" fill="currentColor" stroke="none" />
+      <circle cx="15" cy="7.5" r="1.1" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+export function ZapIcon({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <path d="M13 3L4.5 13.5H11L10.5 21L19.5 10.5H13Z" />
+    </svg>
+  );
+}
+
+export function UsersIcon({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <circle cx="9" cy="8" r="3.3" />
+      <path d="M2.7 19c.8-3 3.3-5 6.3-5s5.5 2 6.3 5" />
+      <path d="M16 4.3c1.5.4 2.6 1.7 2.6 3.3s-1.1 2.9-2.6 3.3" />
+      <path d="M18.5 14.3c1.9.6 3.3 2.2 3.8 4.7" />
+    </svg>
+  );
+}
