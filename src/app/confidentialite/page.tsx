@@ -21,6 +21,11 @@ export default function PrivacyPage() {
             par défaut. Les mots de passe ne sont jamais stockés en clair.
           </p>
           <p>
+            Si vous choisissez “Continuer avec Google”, Google agit comme fournisseur
+            d’identité et transmet à Fidelo l’identifiant du compte, l’adresse e-mail vérifiée
+            et, si disponible, les informations de profil nécessaires à la création du compte.
+          </p>
+          <p>
             Vous pouvez demander la suppression de votre compte depuis votre espace client.
             La demande est enregistrée et traitée par l’équipe Fidelo.
           </p>

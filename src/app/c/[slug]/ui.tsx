@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { MerchantCardPublicPreview } from "@/components/fife-life/merchant-card-public-preview";
 import type { MerchantCardData } from "@/components/fife-life/types";
+import { AuthSeparator, GoogleAuthButton } from "@/components/google-auth-button";
 import { Alert, Button, Field, Input } from "@/components/ui";
 
 type Merchant = {
@@ -21,11 +22,15 @@ export function MerchantPublic({
   alreadyMember,
   signedIn,
   firstName,
+  googleEnabled,
+  googleStatus,
 }: {
   merchant: Merchant;
   alreadyMember: boolean;
   signedIn: boolean;
   firstName: string | null;
+  googleEnabled: boolean;
+  googleStatus: string | null;
 }) {
   const previewCard: MerchantCardData = {
     id: "public-preview",
@@ -41,6 +46,23 @@ export function MerchantPublic({
   };
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const [privacyConsent, setPrivacyConsent] = useState(false);
+  const googleMessages: Record<string, { tone: "error" | "ok"; text: string }> = {
+    cancelled: { tone: "ok", text: "Connexion Google annulée. Vous pouvez continuer avec le formulaire." },
+    configuration_absente: { tone: "error", text: "La connexion Google n'est pas encore configurée." },
+    compte_existant: { tone: "error", text: "Un compte existe déjà avec cet e-mail. Connectez-vous avec votre méthode habituelle." },
+    email_non_verifie: { tone: "error", text: "Google ne confirme pas cet e-mail. Utilisez une autre méthode d'inscription." },
+    email_absent: { tone: "error", text: "Google n'a pas transmis d'e-mail vérifié." },
+    state_invalide: { tone: "error", text: "La tentative Google a expiré. Réessayez depuis cette page." },
+    consentement_requis: { tone: "error", text: "Acceptez la politique de confidentialité avant de créer un compte." },
+    invitation_invalide: { tone: "error", text: "Ce commerce n'est pas disponible pour cette inscription." },
+    erreur: { tone: "error", text: "Inscription Google impossible pour le moment." },
+  };
+  const googleMessage = googleStatus ? googleMessages[googleStatus] ?? googleMessages.erreur : null;
+  const googleHref =
+    `/api/auth/google/start?flow=register&slug=${encodeURIComponent(merchant.slug)}` +
+    `&privacyConsent=${privacyConsent ? "true" : "false"}` +
+    `&returnTo=${encodeURIComponent(`/carte/${merchant.slug}`)}`;
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -177,6 +199,21 @@ export function MerchantPublic({
               <section className="rounded-[28px] border border-white/10 bg-[var(--surface)] p-8">
                 <h2 className="text-2xl font-bold tracking-tight text-[var(--ink)]">Créer ma carte</h2>
                 <p className="mt-1 text-sm text-[var(--muted)]">Gratuit, prêt en quelques secondes.</p>
+                <div className="mt-6 space-y-5">
+                  {googleMessage ? <Alert tone={googleMessage.tone}>{googleMessage.text}</Alert> : null}
+                  {googleEnabled ? (
+                    <>
+                      <GoogleAuthButton
+                        href={googleHref}
+                        disabled={!privacyConsent}
+                        disabledReason={
+                          !privacyConsent ? "Acceptez la politique de confidentialité pour créer votre compte." : undefined
+                        }
+                      />
+                      <AuthSeparator />
+                    </>
+                  ) : null}
+                </div>
                 <form className="mt-8 space-y-6" onSubmit={onSubmit}>
                   {error ? <Alert>{error}</Alert> : null}
                   <Field label="Prénom">
@@ -193,12 +230,18 @@ export function MerchantPublic({
                       name="privacyConsent"
                       type="checkbox"
                       required
+                      checked={privacyConsent}
+                      onChange={(event) => setPrivacyConsent(event.currentTarget.checked)}
                       className="mt-1 h-4 w-4 rounded border-[var(--stroke)] bg-[var(--surface-raised)] text-[var(--violet)] focus:ring-[var(--violet)]/20"
                     />
                     <span className="transition-colors group-hover:text-[var(--ink)]">
                       J’accepte la{" "}
                       <Link href="/confidentialite" className="font-bold text-[var(--violet-bright)] hover:underline">
                         politique de confidentialité
+                      </Link>
+                      {" "}et les{" "}
+                      <Link href="/conditions" className="font-bold text-[var(--violet-bright)] hover:underline">
+                        conditions d’utilisation
                       </Link>
                       .
                     </span>

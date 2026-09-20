@@ -2,11 +2,37 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { AuthSeparator, GoogleAuthButton } from "@/components/google-auth-button";
 import { Alert, BrandMark, Button, Field, Input, PasswordInput } from "@/components/ui";
 
-export function CustomerLoginForm() {
+function googleMessage(code: string | null) {
+  if (!code) return null;
+  const messages: Record<string, { tone: "error" | "ok"; text: string }> = {
+    cancelled: { tone: "ok", text: "Connexion Google annulée. Vous pouvez continuer avec votre e-mail." },
+    configuration_absente: { tone: "error", text: "La connexion Google n'est pas encore configurée." },
+    compte_existant: { tone: "error", text: "Un compte existe déjà avec cet e-mail. Connectez-vous avec votre méthode habituelle." },
+    email_non_verifie: { tone: "error", text: "Google ne confirme pas cet e-mail. Utilisez une autre méthode de connexion." },
+    email_absent: { tone: "error", text: "Google n'a pas transmis d'e-mail vérifié." },
+    state_invalide: { tone: "error", text: "La tentative Google a expiré. Réessayez depuis cette page." },
+    consentement_requis: { tone: "error", text: "Acceptez la politique de confidentialité avant de créer un compte." },
+    erreur: { tone: "error", text: "Connexion Google impossible pour le moment." },
+  };
+  return messages[code] ?? messages.erreur;
+}
+
+export function CustomerLoginForm({
+  googleEnabled,
+  googleStatus,
+  returnTo,
+}: {
+  googleEnabled: boolean;
+  googleStatus: string | null;
+  returnTo: string | null;
+}) {
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const google = googleMessage(googleStatus);
+  const googleHref = `/api/auth/google/start?flow=login&returnTo=${encodeURIComponent(returnTo || "/carte")}`;
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -42,6 +68,13 @@ export function CustomerLoginForm() {
         </div>
 
         <section className="glass-panel p-6 sm:p-8">
+          {google ? <Alert tone={google.tone}>{google.text}</Alert> : null}
+          {googleEnabled ? (
+            <div className="mb-6 space-y-5">
+              <GoogleAuthButton href={googleHref} />
+              <AuthSeparator />
+            </div>
+          ) : null}
           <form className="space-y-5 sm:space-y-6" onSubmit={onSubmit}>
             {error ? <Alert>{error}</Alert> : null}
             <Field label="Adresse e-mail">

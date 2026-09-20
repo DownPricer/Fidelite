@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { AuthSeparator, GoogleAuthButton } from "./google-auth-button";
 import { Alert, BrandMark, Button, Card, Field, Input, PasswordInput } from "./ui";
 
 async function readApiJson(response: Response) {
@@ -19,11 +20,15 @@ export function StaffLogin({
   nextPath,
   demoHref,
   otherSpaces,
+  googleEnabled = false,
+  googleReturnTo,
 }: {
   title: string;
   nextPath: string;
   demoHref?: string;
   otherSpaces?: Array<{ label: string; href: string }>;
+  googleEnabled?: boolean;
+  googleReturnTo?: string;
 }) {
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -71,6 +76,14 @@ export function StaffLogin({
         </div>
 
         <Card className="glass-panel border-0 p-6 shadow-none sm:p-10">
+          {googleEnabled ? (
+            <div className="mb-6 space-y-5">
+              <GoogleAuthButton
+                href={`/api/auth/google/start?flow=login&returnTo=${encodeURIComponent(googleReturnTo || nextPath)}`}
+              />
+              <AuthSeparator />
+            </div>
+          ) : null}
           <form className="space-y-5 sm:space-y-6" onSubmit={(event) => void onSubmit(event)}>
             {error ? <Alert>{error}</Alert> : null}
             <Field label="Adresse e-mail">

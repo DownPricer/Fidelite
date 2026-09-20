@@ -1,15 +1,19 @@
 import { notFound } from "next/navigation";
 import { getPublishedCardTemplate } from "@/lib/card-template-resolver";
+import { isGoogleSignInEnabled } from "@/lib/google-auth";
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/session";
 import { MerchantPublic } from "@/app/c/[slug]/ui";
 
 export default async function JoinMerchantPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ google?: string }>;
 }) {
   const { slug } = await params;
+  const query = await searchParams;
   const merchant = await prisma.merchant.findUnique({
     where: { slug },
     include: { program: true },
@@ -47,6 +51,8 @@ export default async function JoinMerchantPage({
       alreadyMember={alreadyMember}
       signedIn={Boolean(user)}
       firstName={user?.firstName ?? null}
+      googleEnabled={isGoogleSignInEnabled()}
+      googleStatus={query.google ?? null}
     />
   );
 }

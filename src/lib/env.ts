@@ -47,6 +47,8 @@ export const env = {
   googleCloudProjectId: read("GOOGLE_CLOUD_PROJECT_ID"),
   googleWalletOrigin: read("GOOGLE_WALLET_ORIGIN") || read("CUSTOMER_ORIGIN", "https://fidelite.sitereadyshd.fr"),
   googleWalletOrigins: read("GOOGLE_WALLET_ORIGINS"),
+  googleClientId: read("GOOGLE_CLIENT_ID"),
+  googleClientSecret: read("GOOGLE_CLIENT_SECRET"),
   qaMagicLoginEnabled: read("QA_MAGIC_LOGIN_ENABLED", "false") === "true",
   qaMerchantUserId: read("QA_MERCHANT_USER_ID"),
   qaEmployeeId: read("QA_EMPLOYEE_ID"),
@@ -79,4 +81,8 @@ export function isGoogleWalletConfigured() {
       env.googleServiceAccountEmail &&
       env.googleWalletServiceAccountFile,
   );
+}
+
+export function isGoogleAuthConfigured() {
+  return Boolean(env.googleClientId && env.googleClientSecret);
 }
