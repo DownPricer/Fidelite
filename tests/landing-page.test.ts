@@ -10,6 +10,8 @@ const header = readSrc("src/components/landing/landing-header.tsx");
 const footer = readSrc("src/components/landing/landing-footer.tsx");
 const faq = readSrc("src/components/landing/landing-faq.tsx");
 const heroVisual = readSrc("src/components/landing/landing-hero-visual.tsx");
+const authTargets = readSrc("src/lib/landing-auth-targets.ts");
+const proPage = readSrc("src/app/pro/page.tsx");
 
 describe("landing page structure and balance", () => {
   it("exposes exactly one h1", () => {
@@ -20,7 +22,7 @@ describe("landing page structure and balance", () => {
   it("presents both audiences in the hero", () => {
     expect(page).toContain("Une seule carte.");
     expect(page).toContain("Toutes vos fidélités.");
-    expect(page).toContain("Découvrir Fidelo");
+    expect(page).toContain("Se connecter");
     expect(page).toContain("Je suis commerçant");
   });
 
@@ -34,14 +36,13 @@ describe("landing page structure and balance", () => {
     expect(page).not.toContain("Que souhaitez-vous faire avec Fidelo");
   });
 
-  it("links the client CTA to the real client login route", () => {
-    expect(page).toContain('href="/connexion"');
-    expect(page).not.toContain('href="/clients"');
-  });
-
-  it("links the merchant CTA to the real merchant onboarding/login route", () => {
-    expect(page).toContain('href="/app/connexion"');
-    expect(page).not.toContain('href="/commercants"');
+  it("resolves auth-aware destinations server-side instead of hardcoding routes", () => {
+    expect(page).toContain('from "@/lib/landing-auth-targets"');
+    expect(page).toContain("resolveLandingAuthTargets");
+    expect(page).toMatch(/href=\{clientHref\}/);
+    expect(page).toMatch(/href=\{proHref\}/);
+    expect(header).toMatch(/href=\{clientHref\}/);
+    expect(header).toMatch(/href=\{proHref\}/);
   });
 
   it("does not create separate marketing pages replacing the single landing page", () => {
@@ -84,8 +85,8 @@ describe("landing page structure and balance", () => {
     expect(footer).toContain("var(--fh-");
   });
 
-  it("contains no private customer data or functional QR/session tokens", () => {
-    for (const forbidden of ["getSessionUser", "prisma.", "fetch(", "qrToken", "membershipId"]) {
+  it("contains no private customer data or functional QR/session tokens in the page markup", () => {
+    for (const forbidden of ["prisma.", "qrToken", "membershipId"]) {
       expect(page).not.toContain(forbidden);
       expect(heroVisual).not.toContain(forbidden);
     }
@@ -109,13 +110,45 @@ describe("landing page structure and balance", () => {
     );
   });
 
-  it("keeps the connexion hub reachable as the sign-in entry point", () => {
-    expect(header).toContain('href="/connexion"');
-    expect(header).toContain("Se connecter");
-  });
-
   it("gives the header a violet primary CTA, not a white one", () => {
     expect(header).toContain("Créer mon programme");
     expect(header).toContain("linear-gradient(135deg, #7c3aed, #a855f7)");
+  });
+});
+
+describe("professional entry point (/pro)", () => {
+  it("offers a clean choice between Commerçant and Employé", () => {
+    expect(proPage).toContain("Commerçant");
+    expect(proPage).toContain("Gérez votre programme de fidélité, vos récompenses et votre équipe.");
+    expect(proPage).toContain("Employé");
+    expect(proPage).toContain("Accédez à la caisse et aux fonctionnalités autorisées par votre commerce.");
+  });
+
+  it("routes each choice to the existing auth forms without duplicating them", () => {
+    expect(proPage).toContain('href: "/app/connexion"');
+    expect(proPage).toContain('href: "/employe/connexion"');
+  });
+
+  it("redirects an already-known role straight to its space using the server-verified session", () => {
+    expect(proPage).toContain("getSessionUser");
+    expect(proPage).toContain("getEmployeeSession");
+    expect(proPage).toContain("firstActiveStaffMembership");
+    expect(proPage).toContain('redirect("/employe/scan")');
+    expect(proPage).toContain('"/app/caisse"');
+    expect(proPage).toContain('"/app"');
+  });
+});
+
+describe("landing-auth-targets resolver", () => {
+  it("only derives destinations from server-verified session helpers", () => {
+    expect(authTargets).toContain("getSessionUser");
+    expect(authTargets).toContain("getEmployeeSession");
+    expect(authTargets).toContain("firstActiveStaffMembership");
+  });
+
+  it("knows every real destination route", () => {
+    for (const route of ['"/connexion"', '"/carte"', '"/pro"', '"/app"', '"/app/caisse"', '"/employe/scan"']) {
+      expect(authTargets).toContain(route);
+    }
   });
 });

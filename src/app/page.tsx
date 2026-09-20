@@ -5,6 +5,7 @@ import { LandingFooter } from "@/components/landing/landing-footer";
 import { LandingFaq } from "@/components/landing/landing-faq";
 import { LandingHeroVisual } from "@/components/landing/landing-hero-visual";
 import { LandingMerchantPreview } from "@/components/landing/landing-merchant-preview";
+import { resolveLandingAuthTargets } from "@/lib/landing-auth-targets";
 import {
   ArrowRightIcon,
   CheckCircleIcon,
@@ -86,10 +87,12 @@ const BENTO_ITEMS = [
   },
 ] as const;
 
-export default function HomePage() {
+export default async function HomePage() {
+  const { clientHref, proHref } = await resolveLandingAuthTargets();
+
   return (
     <div className="fidelo-landing relative w-full overflow-hidden font-sans">
-      <LandingHeader />
+      <LandingHeader clientHref={clientHref} proHref={proHref} />
 
       <main>
         {/* Hero */}
@@ -117,20 +120,20 @@ export default function HomePage() {
             </p>
 
             <div className="mt-7 flex flex-wrap gap-3">
-              <a
-                href="#fonctionnement"
+              <Link
+                href={clientHref}
                 className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-[14px] px-[18px] text-sm font-bold text-white shadow-[0_12px_30px_rgba(124,58,237,0.28)] transition hover:opacity-95"
                 style={{ background: "linear-gradient(135deg, #7c3aed, #a855f7)" }}
               >
-                Découvrir Fidelo
+                Se connecter
                 <ArrowRightIcon className="h-4 w-4" />
-              </a>
-              <a
-                href="#commercants"
+              </Link>
+              <Link
+                href={proHref}
                 className="inline-flex min-h-[44px] items-center justify-center rounded-[14px] border border-[var(--fh-border)] bg-[var(--fh-surface)] px-[18px] text-sm font-bold text-[var(--fh-text)] shadow-[0_8px_28px_rgba(30,18,45,0.06)] transition hover:opacity-90"
               >
                 Je suis commerçant
-              </a>
+              </Link>
             </div>
 
             <div className="mt-5 flex flex-wrap gap-4.5 text-[13px] text-[var(--fh-muted)]">
@@ -229,7 +232,7 @@ export default function HomePage() {
               </div>
 
               <Link
-                href="/app/connexion"
+                href={proHref}
                 className="mt-7 inline-flex min-h-[44px] items-center justify-center gap-2 rounded-[14px] px-[18px] text-sm font-bold text-white shadow-[0_12px_30px_rgba(124,58,237,0.28)] transition hover:opacity-95"
                 style={{ background: "linear-gradient(135deg, #7c3aed, #a855f7)" }}
               >
@@ -337,7 +340,7 @@ export default function HomePage() {
             </p>
             <div className="mt-7 flex flex-wrap justify-center gap-3">
               <Link
-                href="/app/connexion"
+                href={proHref}
                 className="inline-flex min-h-[44px] items-center justify-center rounded-[14px] bg-white px-[18px] text-sm font-bold text-[#5b21b6] transition hover:opacity-90"
               >
                 Créer mon programme
@@ -351,7 +354,7 @@ export default function HomePage() {
             </div>
             <p className="mt-6 text-sm text-white/70">
               Déjà inscrit ?{" "}
-              <Link href="/connexion" className="font-bold text-white underline underline-offset-2">
+              <Link href={clientHref} className="font-bold text-white underline underline-offset-2">
                 Se connecter
               </Link>
             </p>

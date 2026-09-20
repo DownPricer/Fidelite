@@ -9,7 +9,7 @@ const NAV_LINKS = [
   { href: "#faq", label: "FAQ" },
 ] as const;
 
-export function LandingHeader() {
+export function LandingHeader({ clientHref, proHref }: { clientHref: string; proHref: string }) {
   return (
     <header className="sticky top-0 z-50 border-b border-[var(--fh-border)] bg-[var(--fh-bg)]/90 backdrop-blur-xl">
       <div className="mx-auto flex h-[76px] w-full max-w-[1180px] items-center justify-between gap-6 px-5">
@@ -28,13 +28,13 @@ export function LandingHeader() {
         <div className="flex items-center gap-2.5">
           <ThemeToggle />
           <Link
-            href="/connexion"
+            href={clientHref}
             className="hidden min-h-[44px] items-center justify-center rounded-[14px] border border-[var(--fh-border)] bg-[var(--fh-surface)] px-4.5 text-sm font-bold text-[var(--fh-text)] shadow-[0_8px_28px_rgba(30,18,45,0.06)] transition hover:opacity-90 sm:inline-flex"
           >
             Se connecter
           </Link>
           <Link
-            href="/app/connexion"
+            href={proHref}
             className="inline-flex min-h-[44px] items-center justify-center rounded-[14px] px-4.5 text-sm font-bold text-white shadow-[0_12px_30px_rgba(124,58,237,0.28)] transition hover:opacity-95"
             style={{ background: "linear-gradient(135deg, #7c3aed, #a855f7)" }}
           >
