@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { PlusIcon } from "@/components/landing/icons";
 
 type FaqCategory = "Client" | "Commerçant" | "Général";
 
@@ -108,12 +109,9 @@ export function LandingFaq() {
                   </span>
                   <span className="text-sm font-bold text-[var(--ink)] sm:text-base">{item.question}</span>
                 </span>
-                <span
-                  aria-hidden
-                  className={`shrink-0 text-lg text-[var(--violet-bright)] transition-transform ${isOpen ? "rotate-45" : ""}`}
-                >
-                  +
-                </span>
+                <PlusIcon
+                  className={`h-4 w-4 shrink-0 text-[var(--violet-bright)] transition-transform ${isOpen ? "rotate-45" : ""}`}
+                />
               </button>
             </h3>
             <div

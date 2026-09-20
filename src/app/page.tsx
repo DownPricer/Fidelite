@@ -5,6 +5,13 @@ import { LandingFooter } from "@/components/landing/landing-footer";
 import { LandingFaq } from "@/components/landing/landing-faq";
 import { LandingHeroVisual } from "@/components/landing/landing-hero-visual";
 import { LandingMerchantPreview } from "@/components/landing/landing-merchant-preview";
+import {
+  GiftIcon,
+  ScanLineIcon,
+  ShieldCheckIcon,
+  StoreIcon,
+  WalletIcon,
+} from "@/components/landing/icons";
 
 export const metadata: Metadata = {
   title: "Fidelo — Toutes vos cartes de fidélité au même endroit",
@@ -13,10 +20,10 @@ export const metadata: Metadata = {
 };
 
 const BENEFITS_BAR = [
-  "Un scan suffit",
-  "Avantages en temps réel",
-  "Pensé pour les commerces",
-  "Données protégées",
+  { label: "Un scan suffit", Icon: ScanLineIcon },
+  { label: "Avantages en temps réel", Icon: GiftIcon },
+  { label: "Pensé pour les commerces", Icon: StoreIcon },
+  { label: "Données protégées", Icon: ShieldCheckIcon },
 ] as const;
 
 const CLIENT_STEPS = [
@@ -134,8 +141,8 @@ export default function HomePage() {
           </h2>
           <div className="mt-10 grid gap-6 lg:grid-cols-2">
             <div className="glass-panel flex flex-col p-7 sm:p-8">
-              <span className="grid h-12 w-12 place-items-center rounded-2xl bg-[light-dark(rgba(122,69,242,0.1),rgba(255,255,255,0.08))] text-2xl" aria-hidden>
-                👛
+              <span className="grid h-12 w-12 place-items-center rounded-2xl bg-[light-dark(rgba(122,69,242,0.1),rgba(255,255,255,0.08))] text-[var(--violet-bright)]" aria-hidden>
+                <WalletIcon className="h-6 w-6" />
               </span>
               <h3 className="mt-5 text-2xl font-black text-[var(--ink)]">Je suis client</h3>
               <p className="mt-3 flex-1 text-sm leading-relaxed text-[var(--muted-strong)]">
@@ -146,8 +153,8 @@ export default function HomePage() {
               </a>
             </div>
             <div className="glass-panel flex flex-col p-7 sm:p-8">
-              <span className="grid h-12 w-12 place-items-center rounded-2xl bg-[light-dark(rgba(201,63,214,0.1),rgba(231,116,255,0.12))] text-2xl" aria-hidden>
-                🏪
+              <span className="grid h-12 w-12 place-items-center rounded-2xl bg-[light-dark(rgba(201,63,214,0.1),rgba(231,116,255,0.12))] text-[var(--violet-bright)]" aria-hidden>
+                <StoreIcon className="h-6 w-6" />
               </span>
               <h3 className="mt-5 text-2xl font-black text-[var(--ink)]">Je suis commerçant</h3>
               <p className="mt-3 flex-1 text-sm leading-relaxed text-[var(--muted-strong)]">
@@ -163,10 +170,10 @@ export default function HomePage() {
         {/* Barre de bénéfices communs */}
         <section className="border-y border-[light-dark(rgba(122,69,242,0.1),rgba(255,255,255,0.08))] bg-[light-dark(rgba(255,255,255,0.4),rgba(255,255,255,0.02))] px-6 py-6">
           <ul className="mx-auto flex max-w-7xl flex-wrap items-center justify-center gap-x-10 gap-y-3">
-            {BENEFITS_BAR.map((benefit) => (
-              <li key={benefit} className="flex items-center gap-2 text-sm font-bold text-[var(--ink-soft)]">
-                <span className="h-1.5 w-1.5 rounded-full bg-[var(--violet-bright)]" aria-hidden />
-                {benefit}
+            {BENEFITS_BAR.map(({ label, Icon }) => (
+              <li key={label} className="flex items-center gap-2 text-sm font-bold text-[var(--ink-soft)]">
+                <Icon className="h-4 w-4 shrink-0 text-[var(--violet-bright)]" />
+                {label}
               </li>
             ))}
           </ul>
