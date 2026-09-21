@@ -1,6 +1,8 @@
 import { requireMerchantAdmin } from "@/lib/api-guard";
 import { jsonError, jsonOk } from "@/lib/http";
 import { isGoogleWalletConfigured } from "@/lib/google-wallet";
+import { getFreeMerchantStats } from "@/lib/insight-stats";
+import { resolvePeriod } from "@/lib/insight-period";
 import { prisma } from "@/lib/prisma";
 
 export async function GET(req: Request) {
@@ -11,7 +13,7 @@ export async function GET(req: Request) {
   const startOfDay = new Date();
   startOfDay.setHours(0, 0, 0, 0);
 
-  const [customers, visitsToday, rewards, employees, recent, merchant] = await Promise.all([
+  const [customers, visitsToday, rewards, employees, recent, merchant, statsPreview] = await Promise.all([
     prisma.customerMembership.count({ where: { merchantId } }),
     prisma.loyaltyTransaction.count({
       where: { merchantId, type: "EARN_VISIT", createdAt: { gte: startOfDay } },
@@ -33,6 +35,7 @@ export async function GET(req: Request) {
       where: { id: merchantId },
       include: { program: true },
     }),
+    getFreeMerchantStats(merchantId, resolvePeriod("7d")),
   ]);
 
   return jsonOk({
@@ -45,6 +48,12 @@ export async function GET(req: Request) {
       rewardLabel: merchant?.program?.rewardLabel,
     },
     stats: { customers, visitsToday, rewards, employees },
+    statsPreview: {
+      totalClients: statsPreview.totalClients,
+      newClientsThisWeek: statsPreview.newClientsThisWeek,
+      passagesThisWeek: statsPreview.passagesThisWeek,
+      passagesSeries: statsPreview.passagesSeries,
+    },
     walletStatus: isGoogleWalletConfigured() ? "ready" : "unavailable",
     recent: recent.map((item) => ({
       id: item.id,

@@ -470,6 +470,7 @@ model CustomerMembership {
 
   @@unique([userId, merchantId])
   @@index([merchantId])
+  @@index([merchantId, createdAt])
 }
 
 model CustomerRewardEntitlement {
@@ -531,6 +532,7 @@ model LoyaltyTransaction {
 
   @@index([customerMembershipId, createdAt])
   @@index([merchantId, createdAt])
+  @@index([merchantId, type, createdAt])
   @@index([performedByUserId, createdAt])
 }
 
@@ -588,6 +590,7 @@ model AuditLog {
   @@index([merchantId, createdAt])
   @@index([actorId, createdAt])
   @@index([action, createdAt])
+  @@index([merchantId, action, createdAt])
 }
 
 model MerchantCardTemplate {
@@ -629,23 +632,27 @@ model MerchantCardTemplateVersion {
 }
 
 model MerchantSubscription {
-  id            String                @id @default(cuid())
-  merchantId    String                @unique
-  plan          SubscriptionPlan      @default(STARTER)
-  amount        Float                 @default(0)
-  currency      String                @default("EUR")
-  frequency     SubscriptionFrequency @default(MONTHLY)
-  status        SubscriptionStatus    @default(DRAFT)
-  trialEndsAt   DateTime?
-  startsAt      DateTime?
-  endsAt        DateTime?
-  nextBillingAt DateTime?
-  cancelledAt   DateTime?
-  autoRenew     Boolean               @default(true)
-  notes         String?
-  createdAt     DateTime              @default(now())
-  updatedAt     DateTime              @updatedAt
-  merchant      Merchant              @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  id                String                @id @default(cuid())
+  merchantId        String                @unique
+  plan              SubscriptionPlan      @default(STARTER)
+  amount            Float                 @default(0)
+  currency          String                @default("EUR")
+  frequency         SubscriptionFrequency @default(MONTHLY)
+  status            SubscriptionStatus    @default(DRAFT)
+  trialEndsAt       DateTime?
+  startsAt          DateTime?
+  endsAt            DateTime?
+  nextBillingAt     DateTime?
+  cancelledAt       DateTime?
+  autoRenew         Boolean               @default(true)
+  notes             String?
+  /// Option Fidelo Insight (+10€/mois), activée manuellement par un super-admin.
+  insightEnabled    Boolean               @default(false)
+  insightEnabledAt  DateTime?
+  insightRequestedAt DateTime?
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+  merchant          Merchant              @relation(fields: [merchantId], references: [id], onDelete: Cascade)
 }
 
 model MerchantContract {

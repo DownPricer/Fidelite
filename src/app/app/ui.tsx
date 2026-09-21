@@ -4,11 +4,20 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui";
 import { MerchantPageShell } from "@/components/merchant/merchant-ui";
+import { InsightLineChart } from "@/components/merchant/insight-charts";
+
+type StatsPreview = {
+  totalClients: number;
+  newClientsThisWeek: number;
+  passagesThisWeek: number;
+  passagesSeries: { date: string; value: number }[];
+};
 
 export function MerchantHome({
   firstName,
   merchantName,
   demoStats,
+  demoStatsPreview,
 }: {
   firstName: string;
   role: string;
@@ -20,8 +29,10 @@ export function MerchantHome({
     rewards: number;
     employees: number;
   };
+  demoStatsPreview?: StatsPreview;
 }) {
   const [stats, setStats] = useState(demoStats ?? null);
+  const [statsPreview, setStatsPreview] = useState<StatsPreview | null>(demoStatsPreview ?? null);
   const [recent, setRecent] = useState<
     Array<{ id: string; type: string; pointsDelta: number; firstName: string; actor: string; createdAt: string }>
   >(
@@ -41,6 +52,7 @@ export function MerchantHome({
       .then((data) => {
         setStats(data.stats);
         setRecent(data.recent ?? []);
+        setStatsPreview(data.statsPreview ?? null);
       })
       .catch(() => undefined);
   }, [demoStats]);
@@ -101,6 +113,43 @@ export function MerchantHome({
               ))}
             </div>
           )}
+
+          <section className="glass-panel mt-3 p-4 md:p-5">
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <p className="font-bold text-[var(--ink)]">Statistiques</p>
+                <p className="mt-0.5 text-xs text-[var(--muted)]">
+                  Suivez l&apos;activité de votre programme et découvrez ce qui fidélise réellement vos clients.
+                </p>
+              </div>
+            </div>
+            {statsPreview ? (
+              <>
+                <div className="mt-3 grid grid-cols-3 gap-2">
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted)]">Clients</p>
+                    <p className="text-lg font-black text-[var(--ink)]">{statsPreview.totalClients}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted)]">Nouveaux (semaine)</p>
+                    <p className="text-lg font-black text-[var(--ink)]">{statsPreview.newClientsThisWeek}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted)]">Passages (semaine)</p>
+                    <p className="text-lg font-black text-[var(--ink)]">{statsPreview.passagesThisWeek}</p>
+                  </div>
+                </div>
+                <div className="mt-2">
+                  <InsightLineChart data={statsPreview.passagesSeries} height={72} />
+                </div>
+              </>
+            ) : (
+              <div className="mt-3 h-20 animate-pulse rounded-xl bg-white/5" />
+            )}
+            <Link href="/app/statistiques" className="glass-cta mt-3 inline-flex px-4 py-2 text-xs">
+              Voir les statistiques
+            </Link>
+          </section>
 
           <section className="merchant-dashboard-shortcuts">
             {[

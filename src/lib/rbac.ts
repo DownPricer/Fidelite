@@ -47,6 +47,14 @@ export function canAdjustPoints(membership: Pick<StaffMembership, "role" | "staf
   );
 }
 
+export function canViewStatistics(membership: Pick<StaffMembership, "role" | "staffPreset" | "permissions">) {
+  if (membership.role === "MERCHANT_ADMIN") return true;
+  return hasPermission(
+    { role: membership.role, staffPreset: membership.staffPreset ?? "CASHIER", permissions: membership.permissions },
+    "viewStatistics",
+  );
+}
+
 export function staffHasPermission(membership: StaffMembership, key: PermissionKey) {
   return hasPermission(
     { role: membership.role, staffPreset: membership.staffPreset ?? "CASHIER", permissions: membership.permissions },

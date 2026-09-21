@@ -9,7 +9,8 @@ export type PermissionKey =
   | "correctTransaction"
   | "manageEmployees"
   | "editProgram"
-  | "sensitiveSettings";
+  | "sensitiveSettings"
+  | "viewStatistics";
 
 export type StaffPermissions = Record<PermissionKey, boolean>;
 
@@ -23,6 +24,7 @@ export const PERMISSION_LABELS: Record<PermissionKey, string> = {
   manageEmployees: "Gestion des employés",
   editProgram: "Modification du programme",
   sensitiveSettings: "Accès aux réglages sensibles",
+  viewStatistics: "Consultation des statistiques",
 };
 
 export const PERMISSION_KEYS = Object.keys(PERMISSION_LABELS) as PermissionKey[];
@@ -44,6 +46,7 @@ const ADMIN_PERMISSIONS: StaffPermissions = {
   manageEmployees: true,
   editProgram: true,
   sensitiveSettings: true,
+  viewStatistics: true,
 };
 
 const MANAGER_DEFAULT: StaffPermissions = {
@@ -56,6 +59,7 @@ const MANAGER_DEFAULT: StaffPermissions = {
   manageEmployees: false,
   editProgram: false,
   sensitiveSettings: false,
+  viewStatistics: false,
 };
 
 const CASHIER_DEFAULT: StaffPermissions = {
@@ -68,6 +72,7 @@ const CASHIER_DEFAULT: StaffPermissions = {
   manageEmployees: false,
   editProgram: false,
   sensitiveSettings: false,
+  viewStatistics: false,
 };
 
 export function presetPermissions(preset: StaffPreset): StaffPermissions {

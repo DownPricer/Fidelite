@@ -14,6 +14,7 @@ export default async function MerchantHomePage() {
         merchantName={DEMO_MERCHANT.merchantName}
         canAdmin
         demoStats={DEMO_MERCHANT.stats}
+        demoStatsPreview={DEMO_MERCHANT.statsPreview}
       />
     );
   }

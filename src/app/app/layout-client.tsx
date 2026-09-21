@@ -4,14 +4,22 @@ import { usePathname } from "next/navigation";
 import { AppNav } from "@/components/app-nav";
 import { cn } from "@/components/ui";
 
-export default function DashboardLayout({ children, admin }: { children: React.ReactNode; admin: boolean }) {
+export default function DashboardLayout({
+  children,
+  admin,
+  canViewStatistics,
+}: {
+  children: React.ReactNode;
+  admin: boolean;
+  canViewStatistics: boolean;
+}) {
   const pathname = usePathname();
   const isLogin = pathname === "/app/connexion";
   const showShell = !isLogin;
 
   return (
     <div className="obsidian-scene obsidian-scene-root min-h-dvh text-[var(--ink-soft)]">
-      {showShell && <AppNav admin={admin} />}
+      {showShell && <AppNav admin={admin} canViewStatistics={canViewStatistics} />}
       <div className={cn(showShell && "md:pl-[var(--merchant-sidebar-w)]")}>
         {showShell ? <div className="min-h-dvh pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-0">{children}</div> : children}
       </div>

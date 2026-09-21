@@ -2,7 +2,7 @@ import { MerchantRole } from "@prisma/client";
 import { CsrfError, assertSameOrigin } from "./csrf";
 import { employeeTokenFromRequest, getRequestEmployee } from "./employee-session";
 import { jsonError } from "./http";
-import { canOpenCaisse, firstActiveStaffMembership, isSuperAdmin, staffHasPermission } from "./rbac";
+import { canOpenCaisse, canViewStatistics, firstActiveStaffMembership, isSuperAdmin, staffHasPermission } from "./rbac";
 import { getRequestSuperAdminUser } from "./super-admin-session";
 import { getRequestUser, type SessionUser } from "./session";
 
@@ -113,6 +113,19 @@ export async function requireMerchantAdmin(req: Request, merchantId?: string) {
   const membership = staffContext(auth.user, merchantId);
   if (!membership || membership.role !== MerchantRole.MERCHANT_ADMIN) {
     return { error: jsonError("Accès administrateur commerçant requis.", 403) };
+  }
+  return { error: null, user: auth.user, membership };
+}
+
+export async function requireMerchantStatsAccess(req: Request, merchantId?: string) {
+  if (employeeTokenFromRequest(req)) {
+    return { error: jsonError("Accès aux statistiques refusé.", 403) };
+  }
+  const auth = await requireStandardUser(req);
+  if (auth.error || !auth.user) return { error: auth.error ?? jsonError("Connexion requise.", 401) };
+  const membership = staffContext(auth.user, merchantId);
+  if (!membership || !canViewStatistics(membership)) {
+    return { error: jsonError("Accès aux statistiques refusé.", 403) };
   }
   return { error: null, user: auth.user, membership };
 }

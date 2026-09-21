@@ -70,6 +70,20 @@ export const DEMO_MERCHANT = {
     rewards: 16,
     employees: 5,
   },
+  statsPreview: {
+    totalClients: 128,
+    newClientsThisWeek: 9,
+    passagesThisWeek: 41,
+    passagesSeries: [
+      { date: "J-6", value: 14 },
+      { date: "J-5", value: 18 },
+      { date: "J-4", value: 12 },
+      { date: "J-3", value: 21 },
+      { date: "J-2", value: 19 },
+      { date: "J-1", value: 24 },
+      { date: "J-0", value: 17 },
+    ],
+  },
 };
 
 export const DEMO_EMPLOYEE = {

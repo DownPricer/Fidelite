@@ -31,6 +31,11 @@ const icons = {
       <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   ),
+  stats: (
+    <svg viewBox="0 0 24 24" width={20} height={20} fill="none" stroke="currentColor" strokeWidth="2.2" className="h-5 w-5 shrink-0">
+      <path d="M4 20V10m6.5 10V4m6.5 16v-7" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  ),
 };
 
 function isActive(pathname: string, href: string) {
@@ -38,7 +43,7 @@ function isActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-export function AppNav({ admin }: { admin: boolean }) {
+export function AppNav({ admin, canViewStatistics }: { admin: boolean; canViewStatistics?: boolean }) {
   const pathname = usePathname();
   if (pathname === "/app/connexion") return null;
 
@@ -46,11 +51,17 @@ export function AppNav({ admin }: { admin: boolean }) {
     ? [
         { href: "/app", label: "Accueil", icon: icons.home },
         { href: "/app/caisse", label: "Caisse", icon: icons.scan, emphasize: true },
+        { href: "/app/statistiques", label: "Statistiques", mobileLabel: "Stats", icon: icons.stats },
         { href: "/app/clients", label: "Clients", icon: icons.clients },
         { href: "/app/employes", label: "Équipe", icon: icons.team },
         { href: "/app/parametres", label: "Réglages", icon: icons.settings },
       ]
-    : [{ href: "/app/caisse", label: "Caisse", icon: icons.scan, emphasize: true }];
+    : canViewStatistics
+      ? [
+          { href: "/app/caisse", label: "Caisse", icon: icons.scan, emphasize: true },
+          { href: "/app/statistiques", label: "Statistiques", mobileLabel: "Stats", icon: icons.stats },
+        ]
+      : [{ href: "/app/caisse", label: "Caisse", icon: icons.scan, emphasize: true }];
 
   return (
     <>
@@ -96,7 +107,7 @@ export function AppNav({ admin }: { admin: boolean }) {
               )}
             >
               {link.icon}
-              <span>{link.label}</span>
+              <span>{"mobileLabel" in link && link.mobileLabel ? link.mobileLabel : link.label}</span>
             </Link>
           );
         })}
