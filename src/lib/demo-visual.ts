@@ -64,12 +64,6 @@ export const DEMO_MERCHANT = {
   firstName: "Léa",
   merchantName: "Café Demo",
   role: "MERCHANT_ADMIN",
-  stats: {
-    customers: 128,
-    visitsToday: 24,
-    rewards: 16,
-    employees: 5,
-  },
   statsPreview: {
     totalClients: 128,
     newClientsThisWeek: 9,
@@ -83,6 +77,12 @@ export const DEMO_MERCHANT = {
       { date: "J-1", value: 24 },
       { date: "J-0", value: 17 },
     ],
+  },
+  homeStats: {
+    activeClients: { current: 74, previous: 61, changePct: 21.3 },
+    passagesThisWeek: { current: 41, previous: 34, changePct: 20.6 },
+    rewardsUsedThisWeek: { current: 12, previous: 9, changePct: 33.3 },
+    newClientsThisWeek: { current: 9, previous: 6, changePct: 50 },
   },
 };
 

@@ -2,7 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 import { cn } from "@/components/ui";
+import { useTheme } from "@/components/theme-provider";
 
 const NAV = [
   { href: "/super-admin", label: "Vue d'ensemble", icon: "M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" },
@@ -14,6 +16,33 @@ const NAV = [
   { href: "/super-admin/statistiques", label: "Statistiques", icon: "M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" },
   { href: "/super-admin/audit", label: "Sécurité et audit", icon: "M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" },
 ];
+
+function ThemeToggle() {
+  const { resolvedTheme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  const isLight = mounted && resolvedTheme === "light";
+
+  return (
+    <button
+      type="button"
+      onClick={() => setTheme(isLight ? "dark" : "light")}
+      aria-label={isLight ? "Activer le thème sombre" : "Activer le thème clair"}
+      className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-[var(--stroke)] text-[var(--ink-soft)] transition hover:bg-[var(--surface)] hover:text-[var(--ink)]"
+    >
+      {isLight ? (
+        <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+          <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      ) : (
+        <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+          <circle cx="12" cy="12" r="4" />
+          <path d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32l1.41 1.41M2 12h2m16 0h2M4.93 19.07l1.41-1.41m11.32-11.32l1.41-1.41" strokeLinecap="round" />
+        </svg>
+      )}
+    </button>
+  );
+}
 
 export function SuperAdminShell({
   firstName,
@@ -31,8 +60,8 @@ export function SuperAdminShell({
 
   return (
     <div className="min-h-dvh bg-[var(--void)] text-[var(--body-text)]">
-      <aside className="fixed inset-y-0 left-0 z-20 hidden w-64 flex-col border-r border-white/10 bg-[var(--sidebar)] lg:flex">
-        <div className="flex h-16 items-center border-b border-white/5 px-6">
+      <aside className="fixed inset-y-0 left-0 z-20 hidden w-64 flex-col border-r border-[var(--stroke)] bg-[var(--sidebar)] lg:flex">
+        <div className="flex h-16 items-center border-b border-[var(--stroke)] px-6">
           <span className="text-lg font-bold tracking-tighter text-[var(--ink)]">
             Fidelo <span className="text-[10px] font-black uppercase tracking-widest text-[var(--violet-bright)]">Super</span>
           </span>
@@ -47,8 +76,8 @@ export function SuperAdminShell({
                 className={cn(
                   "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition",
                   active
-                    ? "bg-[rgba(255,255,255,0.08)] text-[var(--ink)]"
-                    : "text-[var(--ink-soft)] hover:bg-white/5 hover:text-[var(--ink)]",
+                    ? "bg-[var(--surface)] text-[var(--ink)]"
+                    : "text-[var(--ink-soft)] hover:bg-[var(--surface)] hover:text-[var(--ink)]",
                 )}
               >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-5 w-5 shrink-0">
@@ -59,8 +88,8 @@ export function SuperAdminShell({
             );
           })}
         </nav>
-        <div className="border-t border-white/5 p-4">
-          <button type="button" onClick={() => void logout()} className="w-full rounded-xl px-3 py-2 text-sm text-[var(--ink-soft)] hover:bg-white/5 hover:text-[var(--ink)]">
+        <div className="border-t border-[var(--stroke)] p-4">
+          <button type="button" onClick={() => void logout()} className="w-full rounded-xl px-3 py-2 text-left text-sm text-[var(--ink-soft)] hover:bg-[var(--surface)] hover:text-[var(--ink)]">
             Déconnexion
           </button>
         </div>
@@ -69,16 +98,17 @@ export function SuperAdminShell({
       <div className="lg:pl-64">
         <header className="sticky top-0 z-10 border-b border-[var(--border)] bg-[var(--canvas)]/85 px-4 py-3 backdrop-blur-md sm:px-8">
           <div className="flex items-center justify-between gap-4">
-            <div className="lg:hidden overflow-x-auto">
+            <div className="overflow-x-auto lg:hidden">
               <div className="flex gap-2 pb-1">
-                {NAV.slice(0, 5).map((item) => (
-                  <Link key={item.href} href={item.href} className="whitespace-nowrap rounded-full border border-white/10 px-3 py-1 text-xs font-semibold">
+                {NAV.map((item) => (
+                  <Link key={item.href} href={item.href} className="whitespace-nowrap rounded-full border border-[var(--stroke)] px-3 py-1 text-xs font-semibold text-[var(--ink-soft)]">
                     {item.label}
                   </Link>
                 ))}
               </div>
             </div>
             <div className="ml-auto flex items-center gap-3">
+              <ThemeToggle />
               <div className="hidden text-right sm:block">
                 <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted-text)]">Super-admin</p>
                 <p className="text-sm font-bold text-[var(--panel-text)]">{firstName}</p>

@@ -13,8 +13,8 @@ export default async function MerchantHomePage() {
         role={DEMO_MERCHANT.role}
         merchantName={DEMO_MERCHANT.merchantName}
         canAdmin
-        demoStats={DEMO_MERCHANT.stats}
         demoStatsPreview={DEMO_MERCHANT.statsPreview}
+        demoHomeStats={DEMO_MERCHANT.homeStats}
       />
     );
   }

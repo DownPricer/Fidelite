@@ -15,6 +15,7 @@ import {
   parisHour,
   parisWeekdayIndex,
   percentChange,
+  resolvePeriod,
   startOfParisWeek,
   type InsightRange,
 } from "./insight-period";
@@ -177,6 +178,82 @@ export async function getFreeMerchantStats(
     revenue: hasRevenue
       ? { amountCents: revenueCents, amountCentsLabel: formatEurosFromCents(revenueCents) }
       : null,
+  };
+}
+
+export type HomeStats = {
+  activeClients: TrendMetric;
+  passagesThisWeek: TrendMetric;
+  rewardsUsedThisWeek: TrendMetric;
+  newClientsThisWeek: TrendMetric;
+};
+
+/**
+ * KPIs de l'accueil commerçant, avec évolution réelle vs la période précédente. Toujours
+ * gratuit (pas de dépendance à Fidelo Insight) — ce sont les indicateurs de base, pas
+ * l'analytique premium.
+ */
+export async function getHomeStats(merchantId: string): Promise<HomeStats> {
+  const now = new Date();
+  const range30 = resolvePeriod("30d", now);
+  const range7 = resolvePeriod("7d", now);
+
+  const [activeCurrentRows, activePreviousRows, weekTx, newClientsCurrent, newClientsPrevious] = await Promise.all([
+    prisma.loyaltyTransaction.groupBy({
+      by: ["customerMembershipId"],
+      where: {
+        merchantId,
+        status: "COMPLETED",
+        type: { in: ["EARN_VISIT", "REDEEM_REWARD"] },
+        createdAt: { gte: range30.start, lt: range30.end },
+      },
+    }),
+    prisma.loyaltyTransaction.groupBy({
+      by: ["customerMembershipId"],
+      where: {
+        merchantId,
+        status: "COMPLETED",
+        type: { in: ["EARN_VISIT", "REDEEM_REWARD"] },
+        createdAt: { gte: range30.compareStart, lt: range30.compareEnd },
+      },
+    }),
+    prisma.loyaltyTransaction.findMany({
+      where: {
+        merchantId,
+        status: "COMPLETED",
+        type: { in: ["EARN_VISIT", "REDEEM_REWARD"] },
+        createdAt: { gte: range7.compareStart, lt: range7.end },
+      },
+      select: { type: true, createdAt: true },
+    }),
+    prisma.customerMembership.count({
+      where: { merchantId, removedAt: null, createdAt: { gte: range7.start, lt: range7.end } },
+    }),
+    prisma.customerMembership.count({
+      where: { merchantId, removedAt: null, createdAt: { gte: range7.compareStart, lt: range7.compareEnd } },
+    }),
+  ]);
+
+  let passagesCurrent = 0;
+  let passagesPrevious = 0;
+  let rewardsCurrent = 0;
+  let rewardsPrevious = 0;
+  for (const row of weekTx) {
+    const inCurrent = row.createdAt.getTime() >= range7.start.getTime();
+    if (row.type === "EARN_VISIT") {
+      if (inCurrent) passagesCurrent += 1;
+      else passagesPrevious += 1;
+    } else if (row.type === "REDEEM_REWARD") {
+      if (inCurrent) rewardsCurrent += 1;
+      else rewardsPrevious += 1;
+    }
+  }
+
+  return {
+    activeClients: trend(activeCurrentRows.length, activePreviousRows.length),
+    passagesThisWeek: trend(passagesCurrent, passagesPrevious),
+    rewardsUsedThisWeek: trend(rewardsCurrent, rewardsPrevious),
+    newClientsThisWeek: trend(newClientsCurrent, newClientsPrevious),
   };
 }
 

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { GoogleWalletMediaCrop } from "@/components/super-admin/google-wallet-media-crop";
 import { SuperAdminShell } from "@/components/super-admin/layout-shell";
+import { MerchantActionsMenu, type MerchantQuickAction } from "@/components/super-admin/merchant-actions-menu";
 import { Alert, Button, Card, Field, Input } from "@/components/ui";
 import type { GoogleWalletMediaKind } from "@/lib/google-wallet-media-crop";
 
@@ -116,17 +117,16 @@ export function MerchantDetailPage({ firstName, merchantId }: { firstName: strin
     });
   }, [data]);
 
-  async function action(kind: "suspend" | "reactivate" | "archive") {
-    const password = window.prompt("Mot de passe super-admin :");
-    if (!password) return;
+  async function action(kind: MerchantQuickAction, password: string) {
     const response = await fetch(`/api/super-admin/merchants/${merchantId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: kind, password }),
     });
     const json = await response.json();
-    if (!response.ok) alert(json.error ?? "Action impossible.");
-    else window.location.reload();
+    if (!response.ok) return { ok: false, error: json.error ?? "Action impossible." };
+    window.location.reload();
+    return { ok: true };
   }
 
   const publishedAppearance = useMemo(() => {
@@ -326,7 +326,7 @@ export function MerchantDetailPage({ firstName, merchantId }: { firstName: strin
         />
       ) : null}
       <div className="mx-auto max-w-7xl space-y-6">
-        <div className="rounded-2xl border border-white/10 bg-white/[0.055] p-4 shadow-[0_22px_70px_rgba(0,0,0,0.22)] backdrop-blur-2xl sm:p-5">
+        <div className="rounded-2xl border border-[var(--stroke)] bg-[var(--surface)] p-4 shadow-[0_22px_70px_rgba(0,0,0,0.1)] backdrop-blur-2xl sm:p-5">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="flex min-w-0 items-center gap-4">
               <div className="grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-2xl text-xl font-black text-white ring-1 ring-white/20" style={{ backgroundColor: merchant?.primaryColor ?? "#8557ff" }}>
@@ -338,7 +338,7 @@ export function MerchantDetailPage({ firstName, merchantId }: { firstName: strin
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
                   <h1 className="truncate text-2xl font-black text-[var(--ink)]">{merchant?.name ?? "Commerce"}</h1>
-                  <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[10px] font-black uppercase text-[var(--muted-text)]">
+                  <span className="rounded-full border border-[var(--stroke)] bg-[var(--surface-strong)] px-2.5 py-1 text-[10px] font-black uppercase text-[var(--muted-text)]">
                     {merchant?.status ?? "—"}
                   </span>
                 </div>
@@ -350,16 +350,9 @@ export function MerchantDetailPage({ firstName, merchantId }: { firstName: strin
               <Link href={`/super-admin/commerces/${merchantId}/cartes`}>
                 <Button variant="secondary">Gérer mes cartes</Button>
               </Link>
-              <details className="relative">
-                <summary className="inline-flex h-full cursor-pointer list-none items-center rounded-xl border border-[var(--stroke)] bg-[var(--surface-raised)] px-4 py-3 text-sm font-bold text-[var(--ink-soft)] [&::-webkit-details-marker]:hidden">
-                  Actions
-                </summary>
-                <div className="absolute right-0 z-20 mt-2 w-44 rounded-2xl border border-white/10 bg-[#171225] p-2 text-xs shadow-2xl">
-                  <button type="button" className="block w-full rounded-xl px-3 py-2 text-left text-[var(--danger)] hover:bg-white/5" onClick={() => void action("suspend")}>Suspendre</button>
-                  <button type="button" className="block w-full rounded-xl px-3 py-2 text-left hover:bg-white/5" onClick={() => void action("reactivate")}>Réactiver</button>
-                  <button type="button" className="block w-full rounded-xl px-3 py-2 text-left hover:bg-white/5" onClick={() => void action("archive")}>Archiver</button>
-                </div>
-              </details>
+              {merchant ? (
+                <MerchantActionsMenu status={merchant.status} label="Actions" onAction={(kind, password) => action(kind, password)} />
+              ) : null}
             </div>
           </div>
         </div>

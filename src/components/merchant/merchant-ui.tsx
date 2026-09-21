@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import type { ReactNode } from "react";
-import { cn } from "@/components/ui";
+import { useEffect, useRef, type ReactNode } from "react";
+import { Button, cn } from "@/components/ui";
 
 export function MerchantBackButton({ href }: { href?: string }) {
   const router = useRouter();
@@ -255,6 +255,59 @@ export function EmptyState({ title, hint }: { title: string; hint?: string }) {
       <p className="font-bold text-[var(--ink)]">{title}</p>
       {hint ? <p className="mt-1 text-sm text-[var(--muted)]">{hint}</p> : null}
     </div>
+  );
+}
+
+/**
+ * Confirmation accessible au clavier par défaut (élément `<dialog>` natif : Échap ferme,
+ * le focus est piégé par le navigateur) — utilisée avant toute action sensible.
+ */
+export function ConfirmDialog({
+  open,
+  title,
+  description,
+  confirmLabel,
+  cancelLabel = "Annuler",
+  tone = "default",
+  onConfirm,
+  onCancel,
+}: {
+  open: boolean;
+  title: string;
+  description?: string;
+  confirmLabel: string;
+  cancelLabel?: string;
+  tone?: "default" | "danger";
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  const ref = useRef<HTMLDialogElement>(null);
+
+  useEffect(() => {
+    const dialog = ref.current;
+    if (!dialog) return;
+    if (open && !dialog.open) dialog.showModal();
+    if (!open && dialog.open) dialog.close();
+  }, [open]);
+
+  return (
+    <dialog ref={ref} className="confirm-dialog" onCancel={onCancel} onClose={onCancel}>
+      <p className="confirm-dialog-title">{title}</p>
+      {description ? <p className="confirm-dialog-desc">{description}</p> : null}
+      <div className="confirm-dialog-actions">
+        <Button type="button" variant="ghost" className="h-10 px-4 text-xs" onClick={onCancel}>
+          {cancelLabel}
+        </Button>
+        <Button
+          type="button"
+          variant={tone === "danger" ? "danger" : "primary"}
+          className="h-10 px-4 text-xs"
+          onClick={onConfirm}
+        >
+          {confirmLabel}
+        </Button>
+      </div>
+    </dialog>
   );
 }
 

@@ -123,6 +123,7 @@ export async function getPlatformOverview() {
     },
     cards: { publishedTemplates: activeCardTemplates },
     employees: { active: activeEmployees },
+    insight: { enabled: subscriptions.filter((s) => s.insightEnabled).length },
     activity: {
       scans,
       loyaltyTransactions: loyaltyTx,
@@ -217,6 +218,65 @@ export async function getPlatformTimeSeries(period: PeriodKey) {
       transactions: { current: transactions.length, previous: prevTx },
     },
   };
+}
+
+/** Éléments réels nécessitant une action côté super-admin — jamais de placeholder inventé. */
+export async function getPlatformAlerts() {
+  const now = new Date();
+  const soon = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);
+
+  const [insightPending, pastDue, trialEndingSoon] = await Promise.all([
+    prisma.merchantSubscription.count({
+      where: { insightRequestedAt: { not: null }, insightEnabled: false },
+    }),
+    prisma.merchantSubscription.count({ where: { status: "PAST_DUE" } }),
+    prisma.merchantSubscription.count({
+      where: { status: "TRIAL", trialEndsAt: { gte: now, lte: soon } },
+    }),
+  ]);
+
+  return { insightPending, pastDue, trialEndingSoon };
+}
+
+/**
+ * Actions à portée plateforme (création/statut commerce, Insight, connexions super-admin…) —
+ * volontairement pas EARN/REDEEM/LOGIN client ou employé, trop fréquents pour être un signal
+ * utile à ce niveau.
+ */
+const PLATFORM_ACTIVITY_ACTIONS = [
+  "MERCHANT_CREATE",
+  "MERCHANT_SUSPEND",
+  "MERCHANT_REACTIVATE",
+  "MERCHANT_ARCHIVE",
+  "MERCHANT_RESTORE",
+  "MERCHANT_DELETE_REQUESTED",
+  "MERCHANT_SETTINGS_UPDATE",
+  "INSIGHT_ENABLED",
+  "INSIGHT_DISABLED",
+  "INSIGHT_ACTIVATION_REQUESTED",
+  "LOYALTY_PROGRAM_PUBLISH",
+  "CARD_TEMPLATE_PUBLISH",
+  "SUPER_ADMIN_LOGIN",
+];
+
+/** Dernières actions à portée plateforme du journal d'audit. */
+export async function getPlatformRecentActivity(limit = 8) {
+  const rows = await prisma.auditLog.findMany({
+    where: { action: { in: PLATFORM_ACTIVITY_ACTIONS } },
+    orderBy: { createdAt: "desc" },
+    take: limit,
+    include: {
+      actor: { select: { firstName: true } },
+      merchant: { select: { name: true } },
+    },
+  });
+  return rows.map((row) => ({
+    id: row.id,
+    action: row.action,
+    actorName: row.actor?.firstName ?? null,
+    merchantName: row.merchant?.name ?? null,
+    createdAt: row.createdAt,
+  }));
 }
 
 export async function getPlatformBreakdowns() {

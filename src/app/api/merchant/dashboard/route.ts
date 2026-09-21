@@ -1,7 +1,7 @@
 import { requireMerchantAdmin } from "@/lib/api-guard";
 import { jsonError, jsonOk } from "@/lib/http";
 import { isGoogleWalletConfigured } from "@/lib/google-wallet";
-import { getFreeMerchantStats } from "@/lib/insight-stats";
+import { getFreeMerchantStats, getHomeStats } from "@/lib/insight-stats";
 import { resolvePeriod } from "@/lib/insight-period";
 import { prisma } from "@/lib/prisma";
 
@@ -13,7 +13,7 @@ export async function GET(req: Request) {
   const startOfDay = new Date();
   startOfDay.setHours(0, 0, 0, 0);
 
-  const [customers, visitsToday, rewards, employees, recent, merchant, statsPreview] = await Promise.all([
+  const [customers, visitsToday, rewards, employees, recent, merchant, statsPreview, homeStats] = await Promise.all([
     prisma.customerMembership.count({ where: { merchantId } }),
     prisma.loyaltyTransaction.count({
       where: { merchantId, type: "EARN_VISIT", createdAt: { gte: startOfDay } },
@@ -36,6 +36,7 @@ export async function GET(req: Request) {
       include: { program: true },
     }),
     getFreeMerchantStats(merchantId, resolvePeriod("7d")),
+    getHomeStats(merchantId),
   ]);
 
   return jsonOk({
@@ -48,6 +49,7 @@ export async function GET(req: Request) {
       rewardLabel: merchant?.program?.rewardLabel,
     },
     stats: { customers, visitsToday, rewards, employees },
+    homeStats,
     statsPreview: {
       totalClients: statsPreview.totalClients,
       newClientsThisWeek: statsPreview.newClientsThisWeek,

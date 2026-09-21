@@ -37,7 +37,7 @@ export function SubscriptionsPage({ firstName }: { firstName: string }) {
         <p className="text-sm text-[var(--muted-text)]">Données contractuelles saisies manuellement — aucun PSP connecté.</p>
         <Card className="overflow-hidden p-0">
           <table className="min-w-full text-sm">
-            <thead className="border-b border-white/10 bg-white/[0.03] text-[10px] uppercase tracking-widest text-[var(--muted-text)]">
+            <thead className="border-b border-[var(--stroke)] bg-[var(--surface)] text-[10px] uppercase tracking-widest text-[var(--muted-text)]">
               <tr>
                 <th className="px-4 py-3">Commerce</th>
                 <th className="px-4 py-3">Plan</th>
@@ -49,7 +49,7 @@ export function SubscriptionsPage({ firstName }: { firstName: string }) {
             </thead>
             <tbody>
               {rows.map((row) => (
-                <tr key={row.id} className="border-b border-white/5">
+                <tr key={row.id} className="border-b border-[var(--stroke)]">
                   <td className="px-4 py-2">{row.merchant.name}</td>
                   <td className="px-4 py-2">{row.plan}</td>
                   <td className="px-4 py-2">{row.amount} {row.currency} / {row.frequency === "MONTHLY" ? "mois" : "an"}</td>
@@ -60,7 +60,7 @@ export function SubscriptionsPage({ firstName }: { firstName: string }) {
                       type="button"
                       disabled={pending === row.merchantId}
                       onClick={() => toggleInsight(row.merchantId, !row.insightEnabled)}
-                      className={`rounded-lg px-3 py-1.5 text-xs font-bold ${row.insightEnabled ? "bg-[var(--violet-bright)] text-white" : "border border-white/15 text-[var(--muted-text)]"} disabled:opacity-50`}
+                      className={`rounded-lg px-3 py-1.5 text-xs font-bold ${row.insightEnabled ? "bg-[var(--violet-bright)] text-white" : "border border-[var(--stroke)] text-[var(--muted-text)]"} disabled:opacity-50`}
                     >
                       {row.insightEnabled ? "Activé" : row.insightRequestedAt ? "Demandé — activer" : "Désactivé"}
                     </button>

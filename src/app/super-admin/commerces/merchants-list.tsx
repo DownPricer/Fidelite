@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { MerchantCardRenderer } from "@/components/fife-life/merchant-card-renderer";
 import { SuperAdminShell } from "@/components/super-admin/layout-shell";
+import { MerchantActionsMenu, type MerchantQuickAction } from "@/components/super-admin/merchant-actions-menu";
 import { Alert, Button, Card, Input, cn } from "@/components/ui";
 import type { CardTemplateConfig } from "@/lib/card-template-schema";
 
@@ -94,9 +95,7 @@ export function MerchantsListPage({ firstName }: { firstName: string }) {
     void load();
   }, [load]);
 
-  async function quickAction(id: string, action: "suspend" | "reactivate" | "archive") {
-    const password = window.prompt("Confirmez votre mot de passe super-admin :");
-    if (!password) return;
+  async function quickAction(id: string, action: MerchantQuickAction, password: string) {
     const response = await fetch(`/api/super-admin/merchants/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -104,10 +103,10 @@ export function MerchantsListPage({ firstName }: { firstName: string }) {
     });
     if (!response.ok) {
       const data = await response.json();
-      alert(data.error ?? "Action impossible.");
-      return;
+      return { ok: false, error: data.error ?? "Action impossible." };
     }
     void load();
+    return { ok: true };
   }
 
   return (
@@ -126,7 +125,7 @@ export function MerchantsListPage({ firstName }: { firstName: string }) {
         <div className="grid gap-3 sm:grid-cols-[1fr_auto_auto]">
           <Input placeholder="Rechercher nom, slug, e-mail, téléphone…" value={q} onChange={(e) => { setPage(1); setQ(e.target.value); }} />
           <select
-            className="rounded-xl border border-white/10 bg-[var(--surface)] px-3 py-2 text-sm"
+            className="rounded-xl border border-[var(--stroke)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--panel-text)]"
             value={status}
             onChange={(e) => { setPage(1); setStatus(e.target.value); }}
           >
@@ -153,7 +152,7 @@ export function MerchantsListPage({ firstName }: { firstName: string }) {
               return (
                 <article
                   key={row.id}
-                  className="group relative overflow-hidden rounded-[28px] border border-white/10 bg-white/[0.055] p-4 shadow-[0_22px_70px_rgba(0,0,0,0.22)] backdrop-blur-2xl transition duration-200 hover:-translate-y-0.5 hover:border-white/20 hover:bg-white/[0.075]"
+                  className="group relative overflow-hidden rounded-[28px] border border-[var(--stroke)] bg-[var(--surface)] p-4 shadow-[0_22px_70px_rgba(0,0,0,0.1)] backdrop-blur-2xl transition duration-200 hover:-translate-y-0.5 hover:bg-[var(--surface-strong)]"
                 >
                   <div
                     className="pointer-events-none absolute inset-x-0 top-0 h-28 opacity-55 blur-2xl"
@@ -173,22 +172,10 @@ export function MerchantsListPage({ firstName }: { firstName: string }) {
                         <p className="truncate text-xs text-[var(--muted-text)]">/{row.slug}</p>
                       </div>
                     </div>
-                    <details className="relative">
-                      <summary className="grid h-9 w-9 cursor-pointer list-none place-items-center rounded-full border border-white/10 bg-white/5 text-[var(--muted-text)] transition hover:text-[var(--ink)] [&::-webkit-details-marker]:hidden">
-                        <span className="text-lg leading-none">…</span>
-                      </summary>
-                      <div className="absolute right-0 z-20 mt-2 w-36 rounded-2xl border border-white/10 bg-[#171225] p-2 text-xs shadow-2xl">
-                        {row.status === "ACTIVE" || row.status === "TRIAL" ? (
-                          <button type="button" className="block w-full rounded-xl px-3 py-2 text-left text-[var(--danger)] hover:bg-white/5" onClick={() => void quickAction(row.id, "suspend")}>Suspendre</button>
-                        ) : (
-                          <button type="button" className="block w-full rounded-xl px-3 py-2 text-left hover:bg-white/5" onClick={() => void quickAction(row.id, "reactivate")}>Réactiver</button>
-                        )}
-                        <button type="button" className="block w-full rounded-xl px-3 py-2 text-left hover:bg-white/5" onClick={() => void quickAction(row.id, "archive")}>Archiver</button>
-                      </div>
-                    </details>
+                    <MerchantActionsMenu status={row.status} onAction={(action, password) => quickAction(row.id, action, password)} />
                   </div>
 
-                  <div className="relative z-10 mt-4 overflow-hidden rounded-2xl border border-white/10 bg-black/25">
+                  <div className="relative z-10 mt-4 overflow-hidden rounded-2xl border border-[var(--stroke)] bg-[var(--surface-strong)]">
                     {previewTemplate ? (
                       <MerchantCardRenderer
                         merchant={{ name: row.name, logoUrl: row.logoUrl, primaryColor: row.primaryColor }}
@@ -222,19 +209,19 @@ export function MerchantsListPage({ firstName }: { firstName: string }) {
                   </div>
 
                   <div className="relative z-10 mt-4 grid grid-cols-2 gap-2 text-xs">
-                    <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                    <div className="rounded-2xl border border-[var(--stroke)] bg-[var(--surface)] p-3">
                       <p className="text-[var(--muted-text)]">Statut</p>
-                      <span className={cn("mt-1 inline-flex rounded-full px-2 py-1 text-[10px] font-black uppercase", row.status === "ACTIVE" ? "bg-emerald-500/15 text-emerald-200" : row.status === "SUSPENDED" ? "bg-amber-500/15 text-amber-100" : row.status === "ARCHIVED" ? "bg-white/10 text-[var(--muted-text)]" : "bg-violet-500/15 text-violet-100")}>{statusLabel(row.status)}</span>
+                      <span className={cn("mt-1 inline-flex rounded-full px-2 py-1 text-[10px] font-black uppercase", row.status === "ACTIVE" ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-200" : row.status === "SUSPENDED" ? "bg-amber-500/15 text-amber-700 dark:text-amber-100" : row.status === "ARCHIVED" ? "bg-[var(--surface-strong)] text-[var(--muted-text)]" : "bg-violet-500/15 text-violet-700 dark:text-violet-100")}>{statusLabel(row.status)}</span>
                     </div>
-                    <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                    <div className="rounded-2xl border border-[var(--stroke)] bg-[var(--surface)] p-3">
                       <p className="text-[var(--muted-text)]">Fidélité</p>
                       <p className="mt-1 font-bold text-[var(--ink)]">{modeLabel(row.loyaltyMode)}</p>
                     </div>
-                    <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                    <div className="rounded-2xl border border-[var(--stroke)] bg-[var(--surface)] p-3">
                       <p className="text-[var(--muted-text)]">Clients</p>
                       <p className="mt-1 font-black text-[var(--ink)]">{row.customers}</p>
                     </div>
-                    <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                    <div className="rounded-2xl border border-[var(--stroke)] bg-[var(--surface)] p-3">
                       <p className="text-[var(--muted-text)]">Dernière activité</p>
                       <p className="mt-1 font-bold text-[var(--ink)]">{formatActivity(row.lastActivityAt)}</p>
                     </div>
@@ -244,7 +231,7 @@ export function MerchantsListPage({ firstName }: { firstName: string }) {
                     <p className="truncate text-xs text-[var(--muted-text)]">
                       {row.plan ?? "Sans plan"} · {row.monthlyContractual.toFixed(2)} € MRR
                     </p>
-                    <Link href={`/super-admin/commerces/${row.id}`} className="shrink-0 rounded-full bg-white px-4 py-2 text-xs font-black text-black transition hover:bg-[var(--violet-bright)] hover:text-white">
+                    <Link href={`/super-admin/commerces/${row.id}`} className="shrink-0 rounded-full bg-[var(--ink)] px-4 py-2 text-xs font-black text-[var(--void)] transition hover:bg-[var(--violet-bright)] hover:text-white">
                       Ouvrir le commerce
                     </Link>
                   </div>

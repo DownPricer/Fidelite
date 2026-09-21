@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { Alert, Button, Field, Input, cn } from "@/components/ui";
-import { MerchantPageHeader } from "@/components/merchant/merchant-ui";
+import { ConfirmDialog, EmptyState, MerchantPageHeader, StatusBadge } from "@/components/merchant/merchant-ui";
 import { ProgramPreviewCard } from "@/components/merchant/program-preview-card";
 import type { LoyaltyMode } from "@prisma/client";
 import type { MerchantCardData } from "@/components/fife-life/types";
@@ -101,6 +101,7 @@ export function ProgramConfigurator({
   const [simResult, setSimResult] = useState<string | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [modeDecision, setModeDecision] = useState<"ARCHIVE_OLD" | "CONVERT">("ARCHIVE_OLD");
+  const [rewardConfirm, setRewardConfirm] = useState<{ index: number; kind: "deactivate" | "archive" } | null>(null);
   const [historicalEntitlements, setHistoricalEntitlements] = useState<HistoricalEntitlement[]>([]);
   const [cardTemplate, setCardTemplate] = useState<MerchantCardData["cardTemplate"]>(null);
   const [templateVersion, setTemplateVersion] = useState<number | null>(null);
@@ -370,12 +371,13 @@ export function ProgramConfigurator({
             <p className="text-sm font-black text-[var(--ink)]">{reward.name}</p>
             <p className="mt-1 text-xs text-[var(--muted-strong)]">{reward.description || "Aucune description"}</p>
           </div>
-          <span className={cn(
-            "rounded-full border px-2.5 py-1 text-[10px] font-black uppercase",
-            statusLabel === "Actif" ? "border-emerald-300/25 bg-emerald-400/10 text-emerald-100" :
-            statusLabel === "Futur" ? "border-violet-300/25 bg-violet-400/10 text-violet-100" :
-            "border-white/10 bg-white/5 text-[var(--muted)]",
-          )}>{statusLabel}</span>
+          <StatusBadge
+            tone={
+              statusLabel === "Actif" ? "ok" : statusLabel === "Futur" ? "warn" : statusLabel === "Expiré" ? "danger" : "muted"
+            }
+          >
+            {statusLabel}
+          </StatusBadge>
         </div>
         <div className="grid gap-2 text-xs text-[var(--muted-strong)] sm:grid-cols-2">
           <p><strong className="text-[var(--ink-soft)]">Seuil :</strong> {reward.threshold} {reward.thresholdUnit === "points" ? "points" : "passages"}</p>
@@ -424,10 +426,18 @@ export function ProgramConfigurator({
         <div className="flex flex-wrap gap-2">
           <Button variant="secondary" className="h-9 px-3 text-xs" disabled={index === 0} onClick={() => moveReward(index, -1)}>Monter</Button>
           <Button variant="secondary" className="h-9 px-3 text-xs" disabled={index === rewards.length - 1} onClick={() => moveReward(index, 1)}>Descendre</Button>
-          <Button variant="secondary" className="h-9 px-3 text-xs" onClick={() => updateReward(index, { isActive: !reward.isActive, thresholdUnit: unitForMode(mode) })}>
+          <Button
+            variant="secondary"
+            className="h-9 px-3 text-xs"
+            onClick={() =>
+              reward.isActive
+                ? setRewardConfirm({ index, kind: "deactivate" })
+                : updateReward(index, { isActive: true, thresholdUnit: unitForMode(mode) })
+            }
+          >
             {reward.isActive ? "Désactiver" : "Activer"}
           </Button>
-          <Button variant="danger" className="h-9 px-3 text-xs" onClick={() => updateReward(index, { archivedAt: new Date().toISOString(), isActive: false })}>
+          <Button variant="danger" className="h-9 px-3 text-xs" onClick={() => setRewardConfirm({ index, kind: "archive" })}>
             Archiver
           </Button>
         </div>
@@ -438,9 +448,16 @@ export function ProgramConfigurator({
   function renderRewardGroup(title: string, items: RewardConfig[], empty: string) {
     return (
       <section className="space-y-3">
-        <h2 className="text-base font-black text-[var(--ink)]">{title}</h2>
-        {items.length ? items.map((reward) => renderRewardCard(reward, rewards.indexOf(reward))) : (
-          <p className="program-step-card text-sm text-[var(--muted-strong)]">{empty}</p>
+        <div className="flex items-center gap-2">
+          <h2 className="text-base font-black text-[var(--ink)]">{title}</h2>
+          <span className="rounded-full bg-[light-dark(rgba(106,54,224,0.08),rgba(255,255,255,0.08))] px-2 py-0.5 text-[11px] font-bold text-[var(--muted)]">
+            {items.length}
+          </span>
+        </div>
+        {items.length ? (
+          items.map((reward) => renderRewardCard(reward, rewards.indexOf(reward)))
+        ) : (
+          <EmptyState title={empty} />
         )}
       </section>
     );
@@ -495,6 +512,7 @@ export function ProgramConfigurator({
   }
 
   if (view === "advantages") {
+    const confirmingReward = rewardConfirm ? rewards[rewardConfirm.index] : null;
     return (
       <div className="space-y-6">
         <MerchantPageHeader
@@ -506,6 +524,31 @@ export function ProgramConfigurator({
         {error ? <Alert>{error}</Alert> : null}
         {ok ? <Alert tone="ok">{ok}</Alert> : null}
         {renderAdvantagesEditor()}
+        <ConfirmDialog
+          open={rewardConfirm !== null}
+          title={
+            rewardConfirm?.kind === "archive"
+              ? `Archiver « ${confirmingReward?.name ?? "cet avantage"} » ?`
+              : `Désactiver « ${confirmingReward?.name ?? "cet avantage"} » ?`
+          }
+          description={
+            rewardConfirm?.kind === "archive"
+              ? "Cet avantage ne sera plus proposé aux clients. Cette action sera enregistrée à la prochaine sauvegarde."
+              : "Les clients ne pourront plus l'obtenir tant qu'il reste désactivé. Vous pourrez le réactiver à tout moment."
+          }
+          confirmLabel={rewardConfirm?.kind === "archive" ? "Archiver" : "Désactiver"}
+          tone={rewardConfirm?.kind === "archive" ? "danger" : "default"}
+          onCancel={() => setRewardConfirm(null)}
+          onConfirm={() => {
+            if (!rewardConfirm) return;
+            if (rewardConfirm.kind === "archive") {
+              updateReward(rewardConfirm.index, { archivedAt: new Date().toISOString(), isActive: false });
+            } else {
+              updateReward(rewardConfirm.index, { isActive: false });
+            }
+            setRewardConfirm(null);
+          }}
+        />
       </div>
     );
   }

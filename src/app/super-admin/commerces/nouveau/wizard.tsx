@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { SuperAdminShell } from "@/components/super-admin/layout-shell";
-import { Alert, Button, Card, Field, Input } from "@/components/ui";
+import { Alert, Button, Card, Field, Input, cn } from "@/components/ui";
 
 const STEPS = [
   "Identité publique",
@@ -98,6 +98,28 @@ export function CreateMerchantWizard({ firstName }: { firstName: string }) {
 
   function update<K extends keyof typeof form>(key: K, value: (typeof form)[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
+  }
+
+  function stepError(targetStep: number): string | null {
+    if (targetStep === 0 && !form.name.trim()) return "Le nom public est obligatoire.";
+    if (targetStep === 3) {
+      if (!form.adminFirstName.trim()) return "Le prénom de l'administrateur est obligatoire.";
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.adminEmail)) return "L'e-mail administrateur est invalide.";
+      if (form.adminPassword.length < 8) return "Le mot de passe doit contenir au moins 8 caractères.";
+      if (form.adminPassword !== form.adminPasswordConfirm) return "Les deux mots de passe ne correspondent pas.";
+    }
+    if (targetStep === 5 && form.amount < 0) return "Le montant ne peut pas être négatif.";
+    return null;
+  }
+
+  function goNext() {
+    const err = stepError(step);
+    if (err) {
+      setError(err);
+      return;
+    }
+    setError(null);
+    setStep((s) => s + 1);
   }
 
   async function submit() {
@@ -226,17 +248,37 @@ export function CreateMerchantWizard({ firstName }: { firstName: string }) {
           <p className="text-sm text-[var(--muted-text)]">Étape {step + 1} / {STEPS.length} — {STEPS[step]}</p>
         </div>
 
-        <div className="flex flex-wrap gap-2">
-          {STEPS.map((label, index) => (
-            <button
-              key={label}
-              type="button"
-              onClick={() => setStep(index)}
-              className={`rounded-full px-3 py-1 text-xs font-semibold ${index === step ? "bg-[var(--violet)] text-white" : "bg-white/5 text-[var(--muted-text)]"}`}
-            >
-              {index + 1}. {label}
-            </button>
-          ))}
+        <div className="flex items-center gap-1 overflow-x-auto pb-1">
+          {STEPS.map((label, index) => {
+            const state = index < step ? "done" : index === step ? "current" : "upcoming";
+            return (
+              <div key={label} className="flex shrink-0 items-center">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setError(null);
+                    setStep(index);
+                  }}
+                  className="flex shrink-0 items-center gap-2 rounded-full px-2 py-1"
+                >
+                  <span
+                    className={cn(
+                      "grid h-6 w-6 shrink-0 place-items-center rounded-full text-[11px] font-black",
+                      state === "done" && "bg-[var(--positive)] text-white",
+                      state === "current" && "bg-[var(--violet)] text-white",
+                      state === "upcoming" && "bg-[var(--surface-strong)] text-[var(--muted-text)]",
+                    )}
+                  >
+                    {state === "done" ? "✓" : index + 1}
+                  </span>
+                  <span className={cn("whitespace-nowrap text-xs font-semibold", state === "upcoming" ? "text-[var(--muted-text)]" : "text-[var(--panel-text)]")}>
+                    {label}
+                  </span>
+                </button>
+                {index < STEPS.length - 1 ? <span className="mx-1 h-px w-4 shrink-0 bg-[var(--stroke)]" aria-hidden /> : null}
+              </div>
+            );
+          })}
         </div>
 
         {error ? <Alert>{error}</Alert> : null}
@@ -293,7 +335,7 @@ export function CreateMerchantWizard({ firstName }: { firstName: string }) {
           {step === 4 ? (
             <>
               <Field label="Type de fidélité">
-                <select className="w-full rounded-xl border border-white/10 bg-[var(--surface)] px-3 py-2" value={form.loyaltyMode} onChange={(e) => update("loyaltyMode", e.target.value as typeof form.loyaltyMode)}>
+                <select className="w-full rounded-xl border border-[var(--stroke)] bg-[var(--surface)] px-3 py-2 text-[var(--panel-text)]" value={form.loyaltyMode} onChange={(e) => update("loyaltyMode", e.target.value as typeof form.loyaltyMode)}>
                   {LOYALTY_MODES.map((mode) => <option key={mode.id} value={mode.id}>{mode.label}</option>)}
                 </select>
               </Field>
@@ -307,7 +349,7 @@ export function CreateMerchantWizard({ firstName }: { firstName: string }) {
           {step === 5 ? (
             <>
               <Field label="Formule">
-                <select className="w-full rounded-xl border border-white/10 bg-[var(--surface)] px-3 py-2" value={form.plan} onChange={(e) => update("plan", e.target.value as typeof form.plan)}>
+                <select className="w-full rounded-xl border border-[var(--stroke)] bg-[var(--surface)] px-3 py-2 text-[var(--panel-text)]" value={form.plan} onChange={(e) => update("plan", e.target.value as typeof form.plan)}>
                   <option value="STARTER">Starter</option>
                   <option value="PRO">Pro</option>
                   <option value="ENTERPRISE">Enterprise</option>
@@ -316,7 +358,7 @@ export function CreateMerchantWizard({ firstName }: { firstName: string }) {
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field label="Montant"><Input type="number" value={form.amount} onChange={(e) => update("amount", Number(e.target.value))} /></Field>
                 <Field label="Fréquence">
-                  <select className="w-full rounded-xl border border-white/10 bg-[var(--surface)] px-3 py-2" value={form.frequency} onChange={(e) => update("frequency", e.target.value as typeof form.frequency)}>
+                  <select className="w-full rounded-xl border border-[var(--stroke)] bg-[var(--surface)] px-3 py-2 text-[var(--panel-text)]" value={form.frequency} onChange={(e) => update("frequency", e.target.value as typeof form.frequency)}>
                     <option value="MONTHLY">Mensuel</option>
                     <option value="YEARLY">Annuel</option>
                   </select>
@@ -357,12 +399,47 @@ export function CreateMerchantWizard({ firstName }: { firstName: string }) {
           ) : null}
 
           {step === 7 ? (
-            <div className="space-y-2 text-sm">
-              <p><strong>Nom :</strong> {form.name}</p>
-              <p><strong>Slug :</strong> {form.slug || slugPreview}</p>
-              <p><strong>Admin :</strong> {form.adminEmail}</p>
-              <p><strong>Fidélité :</strong> {form.loyaltyMode}</p>
-              <p><strong>Formule :</strong> {form.plan} — {form.amount} € / {form.frequency === "MONTHLY" ? "mois" : "an"}</p>
+            <div className="space-y-4 text-sm">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-widest text-[var(--muted-text)]">Identité</p>
+                <p><strong>Nom :</strong> {form.name || "—"}</p>
+                <p><strong>Slug :</strong> /{form.slug || slugPreview || "—"}</p>
+                <p><strong>Catégorie :</strong> {form.category || "—"}</p>
+                <p><strong>Description :</strong> {form.shortDescription || "—"}</p>
+              </div>
+              <div>
+                <p className="text-xs font-bold uppercase tracking-widest text-[var(--muted-text)]">Informations légales</p>
+                <p><strong>Nom légal :</strong> {form.legalName || form.name || "—"}</p>
+                <p><strong>Responsable :</strong> {form.ownerName || "—"}{form.ownerPhone ? ` · ${form.ownerPhone}` : ""}</p>
+                <p><strong>Adresse :</strong> {[form.addressLine1, form.postalCode, form.city, form.country].filter(Boolean).join(", ") || "—"}</p>
+              </div>
+              <div>
+                <p className="text-xs font-bold uppercase tracking-widest text-[var(--muted-text)]">Horaires</p>
+                <p><strong>Fuseau horaire :</strong> {form.timezone}</p>
+                <p><strong>Visible dans la recherche :</strong> {form.visibleInSearch ? "Oui" : "Non"}</p>
+              </div>
+              <div>
+                <p className="text-xs font-bold uppercase tracking-widest text-[var(--muted-text)]">Administrateur</p>
+                <p><strong>Nom :</strong> {form.adminFirstName} {form.adminLastName}</p>
+                <p><strong>E-mail :</strong> {form.adminEmail || "—"}</p>
+              </div>
+              <div>
+                <p className="text-xs font-bold uppercase tracking-widest text-[var(--muted-text)]">Programme</p>
+                <p><strong>Mode :</strong> {LOYALTY_MODES.find((m) => m.id === form.loyaltyMode)?.label}</p>
+                {form.loyaltyMode === "VISITS" ? <p><strong>Passages requis :</strong> {form.visitsRequired}</p> : null}
+                <p><strong>Récompense :</strong> {form.rewardLabel || "—"}</p>
+              </div>
+              <div>
+                <p className="text-xs font-bold uppercase tracking-widest text-[var(--muted-text)]">Abonnement</p>
+                <p><strong>Formule :</strong> {form.plan} — {form.amount} € / {form.frequency === "MONTHLY" ? "mois" : "an"}</p>
+                <p><strong>Statut :</strong> {form.subscriptionStatus === "TRIAL" ? `Essai (${form.trialDays} j)` : "Actif"}</p>
+                {form.contractReference ? <p><strong>Contrat :</strong> {form.contractReference}</p> : null}
+              </div>
+              <div>
+                <p className="text-xs font-bold uppercase tracking-widest text-[var(--muted-text)]">Carte</p>
+                <p><strong>Fond personnalisé :</strong> {form.cardBackgroundDataUrl ? "Fourni" : "Design par défaut"}</p>
+                <p><strong>Dupliquer sur tous les modes :</strong> {form.duplicateCardDesignToAllModes ? "Oui" : "Non"}</p>
+              </div>
             </div>
           ) : null}
         </Card>
@@ -370,7 +447,7 @@ export function CreateMerchantWizard({ firstName }: { firstName: string }) {
         <div className="flex justify-between">
           <Button variant="secondary" disabled={step === 0} onClick={() => setStep((s) => s - 1)}>Précédent</Button>
           {step < STEPS.length - 1 ? (
-            <Button onClick={() => setStep((s) => s + 1)}>Suivant</Button>
+            <Button onClick={goNext}>Suivant</Button>
           ) : (
             <Button disabled={loading} onClick={() => void submit()}>{loading ? "Création…" : "Créer le commerce"}</Button>
           )}

@@ -4008,6 +4008,42 @@ body:has(.wallet-shell) {
   text-align: center;
 }
 
+.confirm-dialog {
+  margin: auto;
+  width: min(26rem, calc(100vw - 2rem));
+  border: 1px solid light-dark(rgba(106, 54, 224, 0.14), rgba(255, 255, 255, 0.1));
+  border-radius: 1.25rem;
+  background: light-dark(#ffffff, #15121f);
+  color: var(--ink);
+  padding: 1.5rem;
+  box-shadow: 0 24px 60px rgba(20, 10, 40, 0.28);
+}
+
+.confirm-dialog::backdrop {
+  background: light-dark(rgba(32, 26, 52, 0.28), rgba(5, 5, 10, 0.6));
+  backdrop-filter: blur(2px);
+}
+
+.confirm-dialog-title {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.confirm-dialog-desc {
+  margin-top: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--muted-strong);
+  line-height: 1.5;
+}
+
+.confirm-dialog-actions {
+  margin-top: 1.25rem;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
 .merchant-stat-pill {
   border-radius: 0.85rem;
   border: 1px solid rgba(190, 164, 255, 0.12);

@@ -4,7 +4,7 @@
 import { randomUUID } from "crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { prisma } from "../src/lib/prisma";
-import { getFreeMerchantStats, getInsightPremium, hasAnyRecordedRevenue } from "../src/lib/insight-stats";
+import { getFreeMerchantStats, getHomeStats, getInsightPremium, hasAnyRecordedRevenue } from "../src/lib/insight-stats";
 import { resolvePeriod } from "../src/lib/insight-period";
 
 describe("Fidelo Insight — agrégations (PostgreSQL)", () => {
@@ -139,6 +139,21 @@ describe("Fidelo Insight — agrégations (PostgreSQL)", () => {
     expect(premiumB.financial).toBeNull();
 
     for (const metric of Object.values(premiumA.overview)) {
+      expect(Number.isNaN(metric.changePct)).toBe(false);
+      if (metric.changePct !== null) expect(Number.isFinite(metric.changePct)).toBe(true);
+    }
+  });
+
+  it("calcule les KPIs de l'accueil commerçant avec des évolutions réelles, isolées par commerce", async (ctx) => {
+    if (!dbReady) ctx.skip();
+    const [homeA, homeB] = await Promise.all([getHomeStats(merchantAId), getHomeStats(merchantBId)]);
+
+    // Merchant A a 2 passages sur les 7 derniers jours (fixtures daysAgo(1) et daysAgo(3)).
+    expect(homeA.passagesThisWeek.current).toBe(2);
+    // Merchant B a 1 passage sur les 7 derniers jours (fixture daysAgo(1)).
+    expect(homeB.passagesThisWeek.current).toBe(1);
+
+    for (const metric of Object.values(homeA)) {
       expect(Number.isNaN(metric.changePct)).toBe(false);
       if (metric.changePct !== null) expect(Number.isFinite(metric.changePct)).toBe(true);
     }
