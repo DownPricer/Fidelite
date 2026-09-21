@@ -91,7 +91,7 @@ export function CustomerLoginForm({
 
         <div className="glass-panel mt-6 p-5 text-center sm:mt-8 sm:p-6">
           <p className="text-sm font-medium leading-relaxed text-[var(--muted-strong)]">
-            Pas encore de carte ? Scannez le QR en magasin ou testez{" "}
+            Pas encore de carte ? Créez votre compte pour obtenir votre QR personnel, ou testez{" "}
             <Link href="/demo" className="font-bold text-[var(--violet-bright)] hover:underline">
               le wallet démo
             </Link>

@@ -12,6 +12,7 @@ import {
   CheckIcon,
   GiftIcon,
   LayersIcon,
+  NetworkIcon,
   PaletteIcon,
   ScanLineIcon,
   ShieldCheckIcon,
@@ -38,18 +39,18 @@ const PROOF_ITEMS = [
 const CLIENT_STEPS = [
   {
     number: "01",
-    title: "Rejoignez un commerce",
-    text: "Scannez son QR code ou ouvrez son lien Fidelo pour ajouter votre carte en quelques secondes.",
+    title: "Créez votre compte Fidelo",
+    text: "Créez gratuitement votre compte et retrouvez un QR personnel unique, utilisable dans tous les commerces partenaires.",
   },
   {
     number: "02",
-    title: "Présentez votre QR",
-    text: "Un seul QR personnel permet au commerçant de retrouver votre carte, vos points et vos avantages.",
+    title: "Présentez votre QR personnel",
+    text: "Lors de votre passage en caisse, le commerçant scanne votre QR pour ajouter sa carte à votre espace ou retrouver votre programme de fidélité.",
   },
   {
     number: "03",
     title: "Profitez de vos avantages",
-    text: "Suivez votre progression et utilisez vos récompenses directement chez le commerçant.",
+    text: "Suivez vos points, consultez votre progression et utilisez vos récompenses directement chez vos commerçants.",
   },
 ] as const;
 
@@ -83,7 +84,13 @@ const BENTO_ITEMS = [
     Icon: UsersIcon,
     title: "Une équipe bien organisée",
     text: "Invitez vos employés et attribuez uniquement les permissions nécessaires à chacun.",
-    span: "wide",
+    span: "normal",
+  },
+  {
+    Icon: NetworkIcon,
+    title: "Rejoignez le réseau Fidelo",
+    text: "Intégrez une communauté de commerçants, développez votre visibilité auprès des clients Fidelo et renforcez l'image moderne de votre établissement.",
+    span: "normal",
   },
 ] as const;
 
@@ -136,10 +143,13 @@ export default async function HomePage() {
               </Link>
             </div>
 
-            <div className="mt-5 flex flex-wrap gap-4.5 text-[13px] text-[var(--fh-muted)]">
+            <div className="mt-5 grid grid-cols-3 gap-2 sm:flex sm:flex-wrap sm:gap-4.5">
               {GUARANTEES.map((item) => (
-                <span key={item} className="inline-flex items-center gap-1.5">
-                  <CheckIcon className="h-[15px] w-[15px] text-[var(--fh-purple)]" />
+                <span
+                  key={item}
+                  className="flex flex-col items-center gap-1 text-center text-[11px] leading-tight text-[var(--fh-muted)] sm:flex-row sm:gap-1.5 sm:text-left sm:text-[13px]"
+                >
+                  <CheckIcon className="h-[13px] w-[13px] shrink-0 text-[var(--fh-purple)] sm:h-[15px] sm:w-[15px]" />
                   {item}
                 </span>
               ))}
@@ -263,8 +273,8 @@ export default async function HomePage() {
               <article
                 key={item.title}
                 className={`min-h-[220px] rounded-[25px] border border-[var(--fh-border)] p-7 ${
-                  item.span === "main" ? "sm:col-span-2 sm:row-span-2 lg:col-span-1 lg:min-h-[456px]" : ""
-                } ${item.span === "wide" ? "sm:col-span-2" : ""}`}
+                  item.span === "main" ? "sm:col-span-2 sm:row-span-2 lg:col-span-1 lg:row-span-2 lg:min-h-[456px]" : ""
+                }`}
                 style={{
                   background:
                     item.span === "main"

@@ -12,6 +12,7 @@ const faq = readSrc("src/components/landing/landing-faq.tsx");
 const heroVisual = readSrc("src/components/landing/landing-hero-visual.tsx");
 const authTargets = readSrc("src/lib/landing-auth-targets.ts");
 const proPage = readSrc("src/app/pro/page.tsx");
+const connexionUi = readSrc("src/app/connexion/ui.tsx");
 
 describe("landing page structure and balance", () => {
   it("exposes exactly one h1", () => {
@@ -94,7 +95,9 @@ describe("landing page structure and balance", () => {
 
   it("contains no fabricated testimonials or unverified pricing claims", () => {
     expect(page).not.toMatch(/témoignage/i);
-    expect(page).not.toMatch(/gratuit|sans engagement|essai gratuit|satisfait ou remboursé/i);
+    // "gratuitement" is allowed in the mandated client-onboarding copy (account creation is free);
+    // this only forbids standalone pricing/promo claims like a bare "gratuit" badge.
+    expect(page).not.toMatch(/\bgratuit\b|sans engagement|essai gratuit|satisfait ou remboursé/i);
   });
 
   it("does not reference the old Fife Life brand", () => {
@@ -113,6 +116,48 @@ describe("landing page structure and balance", () => {
   it("gives the header a violet primary CTA, not a white one", () => {
     expect(header).toContain("Créer mon programme");
     expect(header).toContain("linear-gradient(135deg, #7c3aed, #a855f7)");
+  });
+
+  it("describes the real client onboarding flow: account first, own QR presented at checkout", () => {
+    expect(page).toContain("Créez votre compte Fidelo");
+    expect(page).toContain(
+      "Créez gratuitement votre compte et retrouvez un QR personnel unique, utilisable dans tous les commerces partenaires.",
+    );
+    expect(page).toContain("Présentez votre QR personnel");
+    expect(page).toContain(
+      "Lors de votre passage en caisse, le commerçant scanne votre QR pour ajouter sa carte à votre espace ou retrouver votre programme de fidélité.",
+    );
+    expect(page).toContain(
+      "Suivez vos points, consultez votre progression et utilisez vos récompenses directement chez vos commerçants.",
+    );
+  });
+
+  it("never claims the client should scan the merchant's QR or a join link to add a card", () => {
+    expect(page).not.toContain("Rejoignez un commerce");
+    expect(page).not.toContain("Scannez son QR code ou ouvrez son lien Fidelo");
+    expect(connexionUi).not.toMatch(/scannez le qr en magasin/i);
+  });
+
+  it("adds the merchant network card harmoniously into the existing bento grid", () => {
+    expect(page).toContain("Rejoignez le réseau Fidelo");
+    expect(page).toContain(
+      "Intégrez une communauté de commerçants, développez votre visibilité auprès des clients Fidelo et renforcez l'image moderne de votre établissement.",
+    );
+    // Still exactly one large "main" bento tile — the new card is a normal-sized tile, not a separate giant block.
+    const mainSpans = page.match(/span: "main"/g) ?? [];
+    expect(mainSpans.length).toBe(1);
+    expect(page).not.toContain('span: "wide"');
+    // Existing cards are preserved verbatim.
+    expect(page).toContain("Une expérience vraiment universelle");
+    expect(page).toContain("À votre image");
+    expect(page).toContain("Chaque commerce garde ses couleurs, sa carte et ses propres avantages.");
+    expect(page).toContain("Rapide en caisse");
+    expect(page).toContain("Une équipe bien organisée");
+  });
+
+  it("keeps the three hero guarantees on a single symmetric row on mobile", () => {
+    expect(page).toMatch(/grid grid-cols-3[^"]*sm:flex/);
+    expect(page).not.toMatch(/mt-5 flex flex-wrap gap-4\.5/);
   });
 });
 

@@ -196,3 +196,14 @@ export function UsersIcon({ className }: IconProps) {
     </svg>
   );
 }
+
+export function NetworkIcon({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <circle cx="12" cy="5" r="2.4" />
+      <circle cx="5.5" cy="18" r="2.4" />
+      <circle cx="18.5" cy="18" r="2.4" />
+      <path d="M10.6 6.9L7 15.8M13.4 6.9L17 15.8M7.9 18h8.2" />
+    </svg>
+  );
+}
