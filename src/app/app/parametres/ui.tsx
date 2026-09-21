@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { PasswordSection } from "./password-section";
 
 function SectionLabel({ children }: { children: string }) {
   return <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--violet-bright)]">{children}</p>;
@@ -10,11 +9,9 @@ function SectionLabel({ children }: { children: string }) {
 export function SettingsPanel({
   merchantName,
   programSummary,
-  demo = false,
 }: {
   merchantName: string;
   programSummary: string;
-  demo?: boolean;
 }) {
   return (
     <div className="space-y-8">
@@ -54,16 +51,6 @@ export function SettingsPanel({
               </svg>
             </Link>
           ))}
-        </div>
-      </section>
-
-      <section className="space-y-3">
-        <SectionLabel>Sécurité</SectionLabel>
-        <div className="glass-panel p-5">
-          <p className="mb-4 text-sm text-[var(--muted-strong)]">
-            Choisissez un mot de passe d&apos;au moins 8 caractères que vous n&apos;utilisez pas ailleurs.
-          </p>
-          <PasswordSection demo={demo} />
         </div>
       </section>
     </div>

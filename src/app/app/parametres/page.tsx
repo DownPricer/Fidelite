@@ -13,7 +13,7 @@ export default async function SettingsPage() {
     return (
       <MerchantPageShell narrow>
         <MerchantPageHeader eyebrow="Configuration" title="Réglages" subtitle={DEMO_MERCHANT.merchantName} />
-        <SettingsPanel demo merchantName={DEMO_MERCHANT.merchantName} programSummary="10 passages = 1 boisson offerte" />
+        <SettingsPanel merchantName={DEMO_MERCHANT.merchantName} programSummary="10 passages = 1 boisson offerte" />
       </MerchantPageShell>
     );
   }

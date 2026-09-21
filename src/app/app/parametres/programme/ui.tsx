@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Alert, Button, Field, Input, cn } from "@/components/ui";
 import { ConfirmDialog, EmptyState, MerchantPageHeader, StatusBadge } from "@/components/merchant/merchant-ui";
 import { ProgramPreviewCard } from "@/components/merchant/program-preview-card";
+import { RewardFormDialog } from "../reward-form-dialog";
 import type { LoyaltyMode } from "@prisma/client";
 import type { MerchantCardData } from "@/components/fife-life/types";
 import type { ProgramConfig, RewardConfig, ProgramRules } from "@/lib/loyalty-program";
@@ -102,6 +103,9 @@ export function ProgramConfigurator({
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [modeDecision, setModeDecision] = useState<"ARCHIVE_OLD" | "CONVERT">("ARCHIVE_OLD");
   const [rewardConfirm, setRewardConfirm] = useState<{ index: number; kind: "deactivate" | "archive" } | null>(null);
+  const [rewardEditor, setRewardEditor] = useState<{ mode: "create" | "edit"; index: number | null } | null>(null);
+  const [savingDraft, setSavingDraft] = useState(false);
+  const [publishing, setPublishing] = useState(false);
   const [historicalEntitlements, setHistoricalEntitlements] = useState<HistoricalEntitlement[]>([]);
   const [cardTemplate, setCardTemplate] = useState<MerchantCardData["cardTemplate"]>(null);
   const [templateVersion, setTemplateVersion] = useState<number | null>(null);
@@ -206,19 +210,25 @@ export function ProgramConfigurator({
       setDirty(false);
       return;
     }
-    const res = await fetch("/api/merchant/program", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ mode, rules, rewards }),
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      setError(data.error ?? "Enregistrement impossible.");
-      return;
-    }
+    setSavingDraft(true);
     setError(null);
-    setOk("Brouillon enregistré.");
-    setDirty(false);
+    try {
+      const res = await fetch("/api/merchant/program", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mode, rules, rewards }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error ?? "Enregistrement impossible.");
+        return;
+      }
+      setError(null);
+      setOk("Brouillon enregistré.");
+      setDirty(false);
+    } finally {
+      setSavingDraft(false);
+    }
   }
 
   async function runSimulate() {
@@ -251,54 +261,71 @@ export function ProgramConfigurator({
       setConfirmOpen(false);
       return;
     }
-    const res = await fetch("/api/merchant/program?action=publish", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(
-        confirmed
-          ? {
-              modeChangeDecision:
-                modeDecision === "CONVERT"
-                  ? { action: "CONVERT", rewards: rewards.filter((reward) => !reward.archivedAt) }
-                  : { action: "ARCHIVE_OLD" },
-            }
-          : {},
-      ),
-    });
-    const data = await res.json();
-    if (data.requiresConfirmation) {
-      setConfirmOpen(true);
-      return;
+    setPublishing(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/merchant/program?action=publish", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(
+          confirmed
+            ? {
+                modeChangeDecision:
+                  modeDecision === "CONVERT"
+                    ? { action: "CONVERT", rewards: rewards.filter((reward) => !reward.archivedAt) }
+                    : { action: "ARCHIVE_OLD" },
+              }
+            : {},
+        ),
+      });
+      const data = await res.json();
+      if (data.requiresConfirmation) {
+        setConfirmOpen(true);
+        return;
+      }
+      if (!res.ok) {
+        setError(data.error ?? "Publication impossible.");
+        return;
+      }
+      setOk("Programme publié avec succès.");
+      setConfirmOpen(false);
+      setDirty(false);
+      void load();
+    } finally {
+      setPublishing(false);
     }
-    if (!res.ok) {
-      setError(data.error ?? "Publication impossible.");
-      return;
-    }
-    setOk("Programme publié avec succès.");
-    setConfirmOpen(false);
-    setDirty(false);
-    void load();
   }
 
-  function addReward() {
+  function openCreateReward() {
     if (rewards.filter(isCurrentReward).length >= 10) {
       setError("Vous avez atteint la limite de 10 avantages pour ce programme.");
       return;
     }
-    markDirty();
-    setRewards((r) => [
-      ...r,
-      {
-        id: `new-${Date.now()}`,
-        name: "Nouvelle récompense",
-        threshold: 10,
-        thresholdUnit: mode === "VISITS" || mode === "AMOUNT_TIERS" ? "visits" : "points",
-        rewardType: "CUSTOM",
-        isActive: true,
-        sortOrder: r.length,
-        archivedAt: null,
-      },
-    ]);
+    setError(null);
+    setRewardEditor({ mode: "create", index: null });
+  }
+
+  function openEditReward(index: number) {
+    setRewardEditor({ mode: "edit", index });
+  }
+
+  function handleRewardSave(values: RewardConfig) {
+    if (rewardEditor?.mode === "create") {
+      if (rewards.filter(isCurrentReward).length >= 10) {
+        setError("Vous avez atteint la limite de 10 avantages pour ce programme.");
+        return;
+      }
+      markDirty();
+      setRewards((r) => [
+        ...r,
+        { ...values, thresholdUnit: unitForMode(mode), sortOrder: r.length, archivedAt: null },
+      ]);
+      setOk("Avantage créé. Enregistrez le brouillon ou publiez pour l'appliquer.");
+    } else if (rewardEditor?.mode === "edit" && rewardEditor.index !== null) {
+      updateReward(rewardEditor.index, { ...values, thresholdUnit: unitForMode(mode) });
+      setOk("Avantage mis à jour. Enregistrez le brouillon ou publiez pour l'appliquer.");
+    }
+    setRewardEditor(null);
   }
 
   function unitForMode(value: LoyaltyMode) {
@@ -384,46 +411,8 @@ export function ProgramConfigurator({
           <p><strong className="text-[var(--ink-soft)]">Période :</strong> {rewardPeriod(reward)}</p>
           <p className="sm:col-span-2"><strong className="text-[var(--ink-soft)]">Utilisations :</strong> {rewardLimitSummary(reward)}</p>
         </div>
-        <details className="rounded-2xl border border-white/10 bg-white/[0.035] p-3">
-          <summary className="cursor-pointer text-xs font-bold text-[var(--violet-bright)]">Modifier</summary>
-          <div className="mt-3 grid gap-3 md:grid-cols-2">
-            <Field label="Nom">
-              <Input value={reward.name} onChange={(e) => updateReward(index, { name: e.target.value })} />
-            </Field>
-            <Field label={`Seuil (${unitForMode(mode) === "points" ? "points" : "passages"})`}>
-              <Input type="number" min={1} value={reward.threshold} onChange={(e) => updateReward(index, { threshold: Number(e.target.value), thresholdUnit: unitForMode(mode) })} />
-            </Field>
-            <Field label="Description">
-              <Input value={reward.description ?? ""} onChange={(e) => updateReward(index, { description: e.target.value })} />
-            </Field>
-            <Field label="Récompense offerte">
-              <Input value={reward.rewardType ?? "CUSTOM"} onChange={(e) => updateReward(index, { rewardType: e.target.value })} />
-            </Field>
-            <Field label="Début de validité">
-              <Input type="date" value={reward.validFrom?.slice(0, 10) ?? ""} onChange={(e) => updateReward(index, { validFrom: e.target.value || null })} />
-            </Field>
-            <Field label="Fin de validité">
-              <Input type="date" value={reward.validUntil?.slice(0, 10) ?? ""} onChange={(e) => updateReward(index, { validUntil: e.target.value || null })} />
-            </Field>
-            <label className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.035] px-3 py-2 text-xs font-semibold text-[var(--ink-soft)]">
-              <input type="checkbox" checked={!reward.validUntil} onChange={(e) => updateReward(index, { validUntil: e.target.checked ? null : new Date().toISOString().slice(0, 10) })} />
-              Sans expiration
-            </label>
-            <Field label="Minimum d'achat (€)">
-              <Input type="number" min={0} placeholder="Aucun" value={reward.minPurchase ?? ""} onChange={(e) => updateReward(index, { minPurchase: e.target.value ? Number(e.target.value) : null })} />
-            </Field>
-            <Field label="Limite globale">
-              <Input type="number" min={0} placeholder="Illimité" value={reward.globalLimit ?? ""} onChange={(e) => updateReward(index, { globalLimit: e.target.value ? Number(e.target.value) : null })} />
-            </Field>
-            <Field label="Limite par client">
-              <Input type="number" min={0} placeholder="Illimité" value={reward.maxUsesPerCustomer ?? ""} onChange={(e) => updateReward(index, { maxUsesPerCustomer: e.target.value ? Number(e.target.value) : null })} />
-            </Field>
-            <Field label="Délai avant réutilisation (jours)">
-              <Input type="number" min={0} placeholder="Aucun" value={reward.reuseDelayDays ?? ""} onChange={(e) => updateReward(index, { reuseDelayDays: e.target.value ? Number(e.target.value) : null })} />
-            </Field>
-          </div>
-        </details>
         <div className="flex flex-wrap gap-2">
+          <Button variant="secondary" className="h-9 px-3 text-xs" onClick={() => openEditReward(index)}>Modifier</Button>
           <Button variant="secondary" className="h-9 px-3 text-xs" disabled={index === 0} onClick={() => moveReward(index, -1)}>Monter</Button>
           <Button variant="secondary" className="h-9 px-3 text-xs" disabled={index === rewards.length - 1} onClick={() => moveReward(index, 1)}>Descendre</Button>
           <Button
@@ -471,7 +460,7 @@ export function ProgramConfigurator({
             <h2 className="text-xl font-black text-[var(--ink)]">Avantages</h2>
             <p className="mt-1 text-sm text-[var(--muted-strong)]">{currentRewardCount}/10 avantages</p>
           </div>
-          <Button variant="secondary" onClick={addReward}>Ajouter un avantage</Button>
+          <Button variant="secondary" onClick={openCreateReward}>Ajouter un avantage</Button>
         </div>
         {rewards.some((reward) => !reward.archivedAt && reward.thresholdUnit !== unitForMode(mode)) ? (
           <p className="rounded-xl border border-amber-300/25 bg-amber-400/10 p-3 text-xs font-semibold text-amber-100">
@@ -500,11 +489,11 @@ export function ProgramConfigurator({
           )}
         </section>
         <div className="flex flex-wrap gap-2">
-          <Button variant="secondary" onClick={() => void saveDraft()}>
-            Enregistrer le brouillon
+          <Button variant="secondary" disabled={savingDraft} onClick={() => void saveDraft()}>
+            {savingDraft ? "Enregistrement…" : "Enregistrer le brouillon"}
           </Button>
-          <Button onClick={() => void publish(confirmOpen || activeMode !== mode)}>
-            Publier les modifications
+          <Button disabled={publishing} onClick={() => void publish(confirmOpen || activeMode !== mode)}>
+            {publishing ? "Publication…" : "Publier les modifications"}
           </Button>
         </div>
       </div>
@@ -513,6 +502,7 @@ export function ProgramConfigurator({
 
   if (view === "advantages") {
     const confirmingReward = rewardConfirm ? rewards[rewardConfirm.index] : null;
+    const editingReward = rewardEditor?.mode === "edit" && rewardEditor.index !== null ? (rewards[rewardEditor.index] ?? null) : null;
     return (
       <div className="space-y-6">
         <MerchantPageHeader
@@ -521,9 +511,20 @@ export function ProgramConfigurator({
           title="Avantages"
           subtitle={dirty ? "Modifications non enregistrées" : `${currentRewardCount}/10 avantages`}
         />
+        <p className="text-sm text-[var(--muted-strong)]">
+          Un avantage est débloqué automatiquement dès qu&apos;un client atteint le seuil défini. Créez-en plusieurs pour
+          récompenser la fidélité par paliers.
+        </p>
         {error ? <Alert>{error}</Alert> : null}
         {ok ? <Alert tone="ok">{ok}</Alert> : null}
         {renderAdvantagesEditor()}
+        <RewardFormDialog
+          open={rewardEditor !== null}
+          reward={editingReward}
+          unit={unitForMode(mode)}
+          onCancel={() => setRewardEditor(null)}
+          onSave={handleRewardSave}
+        />
         <ConfirmDialog
           open={rewardConfirm !== null}
           title={
@@ -564,6 +565,11 @@ export function ProgramConfigurator({
 
       {error ? <Alert>{error}</Alert> : null}
       {ok ? <Alert tone="ok">{ok}</Alert> : null}
+
+      <p className="text-sm text-[var(--muted-strong)]">
+        Choisissez comment vos clients gagnent des points ou passages, réglez les limites, puis publiez : vos clients
+        ne voient les changements qu&apos;une fois le programme publié.
+      </p>
 
       {/* Bloc "Programme actuellement publié" : construit exclusivement
           depuis data.active (activeMode/activeRules/activeVersion), jamais
@@ -631,6 +637,10 @@ export function ProgramConfigurator({
         <div className="space-y-6">
       {step === 0 && (
         <div className="space-y-4">
+          <p className="text-xs text-[var(--muted-strong)]">
+            Le mode définit ce que vos clients cumulent à chaque achat : des passages (une visite = un cran) ou des
+            points (proportionnels au montant dépensé, ou fixes par achat).
+          </p>
           {hasDraft ? (
             <p className="text-xs font-bold uppercase tracking-widest text-amber-300">
               Brouillon non publié — mode sélectionné dans le formulaire
@@ -679,19 +689,22 @@ export function ProgramConfigurator({
         <div className="program-step-card space-y-4">
           {mode === "VISITS" && (
             <>
-              <Field label="Passages par visite">
+              <Field label="Passages par visite" hint="Nombre de passages ajoutés à chaque validation en caisse.">
                 <Input type="number" min={1} value={rules.visitsPerScan ?? 1} onChange={(e) => { setRules({ ...rules, visitsPerScan: Number(e.target.value) }); markDirty(); }} />
               </Field>
-              <Field label="Montant minimum (€)">
+              <Field label="Montant minimum (€)" hint="0 = aucun montant minimum pour valider un passage.">
                 <Input type="number" min={0} value={rules.minPurchase ?? 0} onChange={(e) => { setRules({ ...rules, minPurchase: Number(e.target.value) }); markDirty(); }} />
               </Field>
-              <Field label="Délai minimum entre passages (min)">
+              <Field label="Délai minimum entre passages (min)" hint="Empêche de valider deux passages trop rapprochés pour le même client. 0 = aucun délai.">
                 <Input type="number" min={0} value={rules.minIntervalMinutes ?? 0} onChange={(e) => { setRules({ ...rules, minIntervalMinutes: Number(e.target.value) }); markDirty(); }} />
               </Field>
             </>
           )}
           {mode === "POINTS_BY_AMOUNT" && (
             <>
+              <p className="text-xs text-[var(--muted-strong)]">
+                Ex : 1 point gagné pour chaque tranche de 1 € dépensée.
+              </p>
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Points gagnés">
                   <Input type="number" min={1} value={rules.pointsPerAmount ?? 1} onChange={(e) => { setRules({ ...rules, pointsPerAmount: Number(e.target.value) }); markDirty(); }} />
@@ -700,10 +713,10 @@ export function ProgramConfigurator({
                   <Input type="number" min={0.01} step={0.01} value={rules.amountForPoints ?? 1} onChange={(e) => { setRules({ ...rules, amountForPoints: Number(e.target.value) }); markDirty(); }} />
                 </Field>
               </div>
-              <Field label="Montant minimum transaction (€)">
+              <Field label="Montant minimum transaction (€)" hint="0 = tous les achats font gagner des points.">
                 <Input type="number" min={0} value={rules.minPurchase ?? 0} onChange={(e) => { setRules({ ...rules, minPurchase: Number(e.target.value) }); markDirty(); }} />
               </Field>
-              <Field label="Arrondi">
+              <Field label="Arrondi" hint="Comment arrondir les points quand le calcul tombe entre deux valeurs.">
                 <select className="merchant-search-input !pl-3" value={rules.rounding ?? "floor"} onChange={(e) => { setRules({ ...rules, rounding: e.target.value as "floor" | "round" }); markDirty(); }}>
                   <option value="floor">À l&apos;unité inférieure</option>
                   <option value="round">Au plus proche</option>
@@ -713,17 +726,20 @@ export function ProgramConfigurator({
           )}
           {mode === "FIXED_POINTS" && (
             <>
-              <Field label="Points par achat">
+              <Field label="Points par achat" hint="Ex : 20 points offerts, quel que soit le montant dépensé.">
                 <Input type="number" min={1} value={rules.fixedPointsPerPurchase ?? 20} onChange={(e) => { setRules({ ...rules, fixedPointsPerPurchase: Number(e.target.value) }); markDirty(); }} />
               </Field>
-              <Field label="Montant minimum (€)">
+              <Field label="Montant minimum (€)" hint="0 = tous les achats font gagner des points.">
                 <Input type="number" min={0} value={rules.minPurchase ?? 0} onChange={(e) => { setRules({ ...rules, minPurchase: Number(e.target.value) }); markDirty(); }} />
               </Field>
             </>
           )}
           {mode === "AMOUNT_TIERS" && (
             <div className="space-y-2">
-              <p className="text-xs text-[var(--muted)]">Paliers sans trou ni chevauchement.</p>
+              <p className="text-xs text-[var(--muted-strong)]">
+                Plus le panier est élevé, plus le gain augmente. Définissez des tranches de montant sans trou ni
+                chevauchement (Min €, Max € et Gain pour chaque palier).
+              </p>
               {(rules.amountTiers ?? []).map((tier, i) => (
                 <div key={tier.id} className="grid grid-cols-3 gap-2">
                   <Input type="number" placeholder="Min €" value={tier.minAmount} onChange={(e) => {
@@ -765,10 +781,16 @@ export function ProgramConfigurator({
 
       {step === 3 && (
         <div className="program-step-card space-y-4">
-          <Field label="Maximum par client et par jour (0 = illimité)">
+          <Field
+            label="Maximum par client et par jour (0 = illimité)"
+            hint="Limite le nombre de gains qu'un même client peut cumuler en une journée."
+          >
             <Input type="number" min={0} value={rules.maxPerDay ?? 0} onChange={(e) => { setRules({ ...rules, maxPerDay: Number(e.target.value) }); markDirty(); }} />
           </Field>
-          <Field label="Expiration des points (mois, vide = jamais)">
+          <Field
+            label="Expiration des points (mois, vide = jamais)"
+            hint="Après ce délai depuis leur obtention, les points ou passages non utilisés sont perdus."
+          >
             <Input type="number" min={0} placeholder="Jamais" value={rules.pointsExpiryMonths ?? ""} onChange={(e) => { setRules({ ...rules, pointsExpiryMonths: e.target.value ? Number(e.target.value) : null }); markDirty(); }} />
           </Field>
           <p className="text-xs leading-relaxed text-[var(--muted-strong)]">
@@ -852,11 +874,11 @@ export function ProgramConfigurator({
             </div>
           ) : null}
           <div className="flex flex-wrap gap-2">
-            <Button variant="secondary" onClick={() => void saveDraft()}>
-              Enregistrer le brouillon
+            <Button variant="secondary" disabled={savingDraft} onClick={() => void saveDraft()}>
+              {savingDraft ? "Enregistrement…" : "Enregistrer le brouillon"}
             </Button>
-            <Button onClick={() => void publish(confirmOpen || activeMode !== mode)}>
-              Publier les modifications
+            <Button disabled={publishing} onClick={() => void publish(confirmOpen || activeMode !== mode)}>
+              {publishing ? "Publication…" : "Publier les modifications"}
             </Button>
           </div>
         </div>
