@@ -98,8 +98,34 @@ export async function finalizeCameraStart(input: {
 export const CAISSE_SCAN_PATH = "/api/caisse/scan";
 
 export type CaisseScanRequest =
-  | { inputType: "QR"; value: string }
-  | { inputType: "CLIENT_NUMBER"; value: string };
+  | { inputType: "QR"; value: string; confirmNewMembership?: boolean }
+  | { inputType: "CLIENT_NUMBER"; value: string; confirmNewMembership?: boolean };
+
+export type MembershipConfirmationDetails = {
+  firstName: string;
+  lastName: string | null;
+  merchantName: string;
+};
+
+export function isMembershipConfirmationRequired(
+  data: Record<string, unknown>,
+  status: number,
+): MembershipConfirmationDetails | null {
+  if (status !== 409 || data.code !== "MEMBERSHIP_CONFIRMATION_REQUIRED") return null;
+  return {
+    firstName: typeof data.firstName === "string" ? data.firstName : "",
+    lastName: typeof data.lastName === "string" ? data.lastName : null,
+    merchantName: typeof data.merchantName === "string" ? data.merchantName : "",
+  };
+}
+
+/** Formate le délai d'attente d'un 429 pour l'affichage ("Patientez 12 s."). */
+export function formatRetryAfter(data: Record<string, unknown>): string | null {
+  const ms = typeof data.retryAfterMs === "number" ? data.retryAfterMs : null;
+  if (ms === null || ms <= 0) return null;
+  const seconds = Math.ceil(ms / 1000);
+  return `Patientez ${seconds} s.`;
+}
 
 export async function postCaisseScan(input: CaisseScanRequest) {
   const response = await fetch(CAISSE_SCAN_PATH, {
@@ -124,9 +150,17 @@ export async function postCaisseScan(input: CaisseScanRequest) {
 }
 
 export function resolveCaisseScanError(data: Record<string, unknown>, status: number): string {
-  if (typeof data.error === "string" && data.error.trim()) return data.error;
-  if (status === 401) return "Votre session de caisse a expiré.";
-  return "Une erreur est survenue. Réessayez.";
+  const base =
+    typeof data.error === "string" && data.error.trim()
+      ? data.error
+      : status === 401
+        ? "Votre session de caisse a expiré."
+        : "Une erreur est survenue. Réessayez.";
+  if (status === 429) {
+    const retry = formatRetryAfter(data);
+    return retry ? `${base} ${retry}` : base;
+  }
+  return base;
 }
 
 export function readManualClientNumber(raw: string) {

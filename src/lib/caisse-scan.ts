@@ -16,6 +16,7 @@ async function buildScanResult(input: {
   merchantId: string;
   actorUserId: string;
   globalQrId: string;
+  confirmNewMembership?: boolean;
 }) {
   return prisma.$transaction(async (tx) => {
     const context = await getActiveMerchantLoyaltyContext(input.merchantId, tx);
@@ -31,6 +32,20 @@ async function buildScanResult(input: {
       where: { userId: input.user.id, merchantId: input.merchantId },
       include: { user: true },
     });
+
+    const needsNewMembership = !membership || Boolean(membership.removedAt);
+    if (needsNewMembership && !input.confirmNewMembership) {
+      throw new CaisseScanError(
+        `Ajouter ${input.user.firstName} au programme de fidélité de ce commerce ?`,
+        "MEMBERSHIP_CONFIRMATION_REQUIRED",
+        409,
+        {
+          firstName: input.user.firstName,
+          lastName: input.user.lastName ?? null,
+          merchantName: context.merchant.name,
+        },
+      );
+    }
 
     let cardJustCreated = false;
     if (!membership) {
@@ -171,6 +186,7 @@ export async function processCaisseScan(input: {
   token: string;
   merchantId: string;
   actorUserId: string;
+  confirmNewMembership?: boolean;
 }) {
   logWalletUnlock("scan validé", { merchantId: input.merchantId });
   const payload = await verifyQrToken(input.token.trim());
@@ -188,6 +204,7 @@ export async function processCaisseScan(input: {
     merchantId: input.merchantId,
     actorUserId: input.actorUserId,
     globalQrId: global.id,
+    confirmNewMembership: input.confirmNewMembership,
   });
 }
 
@@ -218,6 +235,7 @@ export async function processCaisseScanByClientNumber(input: {
   clientNumber: string;
   merchantId: string;
   actorUserId: string;
+  confirmNewMembership?: boolean;
 }) {
   logWalletUnlock("scan validé", { merchantId: input.merchantId });
   const normalized = normalizeCustomerNumber(input.clientNumber);
@@ -253,5 +271,6 @@ export async function processCaisseScanByClientNumber(input: {
     merchantId: input.merchantId,
     actorUserId: input.actorUserId,
     globalQrId: global.id,
+    confirmNewMembership: input.confirmNewMembership,
   });
 }

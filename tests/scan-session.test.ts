@@ -4,14 +4,49 @@ import {
   INSTANT_DUPLICATE_MS,
   SCANNER_STATE,
   finalizeCameraStart,
+  formatRetryAfter,
+  isMembershipConfirmationRequired,
   postCaisseScan,
   readManualToken,
   rememberToken,
+  resolveCaisseScanError,
   safeStopScanner,
   shouldCallStop,
   shouldIgnoreInstantDuplicate,
   withTimeout,
 } from "../src/lib/scan-session";
+
+describe("confirmation d'adhésion (2.1)", () => {
+  it("détecte une réponse 409 MEMBERSHIP_CONFIRMATION_REQUIRED", () => {
+    const details = isMembershipConfirmationRequired(
+      { code: "MEMBERSHIP_CONFIRMATION_REQUIRED", firstName: "Léa", lastName: "Martin", merchantName: "Café Demo" },
+      409,
+    );
+    expect(details).toEqual({ firstName: "Léa", lastName: "Martin", merchantName: "Café Demo" });
+  });
+
+  it("ignore les autres statuts ou codes", () => {
+    expect(isMembershipConfirmationRequired({ code: "MERCHANT_UNAVAILABLE" }, 403)).toBeNull();
+    expect(isMembershipConfirmationRequired({ code: "MEMBERSHIP_CONFIRMATION_REQUIRED" }, 200)).toBeNull();
+  });
+});
+
+describe("délai d'attente 429 (2.3)", () => {
+  it("formate le délai restant en secondes", () => {
+    expect(formatRetryAfter({ retryAfterMs: 12_400 })).toBe("Patientez 13 s.");
+    expect(formatRetryAfter({ retryAfterMs: 0 })).toBeNull();
+    expect(formatRetryAfter({})).toBeNull();
+  });
+
+  it("l'ajoute au message d'erreur 429 uniquement", () => {
+    expect(resolveCaisseScanError({ error: "Trop de scans. Patientez un instant.", retryAfterMs: 5_000 }, 429)).toBe(
+      "Trop de scans. Patientez un instant. Patientez 5 s.",
+    );
+    expect(resolveCaisseScanError({ error: "Client introuvable.", retryAfterMs: 5_000 }, 404)).toBe(
+      "Client introuvable.",
+    );
+  });
+});
 
 describe("doublons instantanés caméra", () => {
   it("ignore seulement le même jeton issu de la même image", () => {

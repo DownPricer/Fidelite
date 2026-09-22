@@ -112,10 +112,12 @@ export const scanSchema = z.discriminatedUnion("inputType", [
   z.object({
     inputType: z.literal("QR"),
     value: z.string().trim().min(10, "QR invalide.").max(4000),
+    confirmNewMembership: z.boolean().optional(),
   }),
   z.object({
     inputType: z.literal("CLIENT_NUMBER"),
     value: z.string().trim().min(1, "Numéro client invalide.").max(20),
+    confirmNewMembership: z.boolean().optional(),
   }),
 ]);
 

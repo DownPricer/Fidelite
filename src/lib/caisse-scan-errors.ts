@@ -1,12 +1,14 @@
 export class CaisseScanError extends Error {
   readonly code: string;
   readonly status: number;
+  readonly details?: Record<string, unknown>;
 
-  constructor(message: string, code: string, status = 400) {
+  constructor(message: string, code: string, status = 400, details?: Record<string, unknown>) {
     super(message);
     this.name = "CaisseScanError";
     this.code = code;
     this.status = status;
+    this.details = details;
   }
 }
 

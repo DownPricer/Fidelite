@@ -203,11 +203,25 @@ describe("processCaisseScan — QR global Fidelo", () => {
     );
   });
 
-  it("crée une carte pour un nouveau commerce lors du premier scan", async () => {
+  it("demande confirmation avant de créer une carte pour un nouveau commerce, sans rien créer", async () => {
+    customerMembershipFindFirst.mockResolvedValue(null);
+
+    const token = await signQrToken({ jti });
+    await expect(processCaisseScan({ token, merchantId, actorUserId })).rejects.toMatchObject({
+      code: "MEMBERSHIP_CONFIRMATION_REQUIRED",
+      status: 409,
+    });
+
+    expect(customerMembershipCreate).not.toHaveBeenCalled();
+    expect(caisseGrantCreate).not.toHaveBeenCalled();
+    expect(walletEventCreate).not.toHaveBeenCalled();
+  });
+
+  it("crée la carte seulement après confirmNewMembership=true", async () => {
     customerMembershipFindFirst.mockResolvedValueOnce(null);
 
     const token = await signQrToken({ jti });
-    const result = await processCaisseScan({ token, merchantId, actorUserId });
+    const result = await processCaisseScan({ token, merchantId, actorUserId, confirmNewMembership: true });
 
     expect(result.cardJustCreated).toBe(true);
     expect(customerMembershipCreate).toHaveBeenCalledTimes(1);
@@ -218,6 +232,14 @@ describe("processCaisseScan — QR global Fidelo", () => {
         }),
       }),
     );
+  });
+
+  it("ne redemande pas confirmation quand la carte existe déjà (adhésion existante → fiche ouverte directement)", async () => {
+    const token = await signQrToken({ jti });
+    const result = await processCaisseScan({ token, merchantId, actorUserId });
+
+    expect(result.grantId).toBeDefined();
+    expect(customerMembershipCreate).not.toHaveBeenCalled();
   });
 
   it("accepte le scan quand le programme a un brouillon non publié (status DRAFT) — régression 403", async () => {

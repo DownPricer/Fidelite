@@ -61,7 +61,10 @@ export async function POST(req: Request) {
       ip: clientIp(req),
       userAgent: userAgent(req),
     });
-    return jsonError("Trop de scans. Patientez un instant.", 429);
+    return jsonError("Trop de scans. Patientez un instant.", 429, {
+      code: "RATE_LIMIT",
+      retryAfterMs: limited.retryAfterMs,
+    });
   }
 
   if (parsed.data.inputType === "CLIENT_NUMBER") {
@@ -73,19 +76,28 @@ export async function POST(req: Request) {
     );
     if (!lookupLimited.ok) {
       console.info("[caisse-scan] refus : raison", "RATE_LIMIT");
-      return jsonError("Trop de recherches. Patientez un instant.", 429, { code: "RATE_LIMIT" });
+      return jsonError("Trop de recherches. Patientez un instant.", 429, {
+        code: "RATE_LIMIT",
+        retryAfterMs: lookupLimited.retryAfterMs,
+      });
     }
   } else {
     console.info("[caisse-scan] type QR reçu");
   }
 
-  const scanKey =
-    parsed.data.inputType === "QR"
-      ? `scan-token:${staff.user.id}:${parsed.data.value.slice(0, 32)}`
-      : `scan-client:${staff.user.id}:${normalizeCustomerNumber(parsed.data.value)}`;
-  const duplicate = rateLimit(scanKey, 1, 2_000);
-  if (!duplicate.ok) {
-    return jsonError("Scan trop rapproché. Patientez un instant.", 429);
+  // Un renvoi explicite après confirmation d'adhésion (même QR/numéro) n'est pas un double-scan accidentel.
+  if (!parsed.data.confirmNewMembership) {
+    const scanKey =
+      parsed.data.inputType === "QR"
+        ? `scan-token:${staff.user.id}:${parsed.data.value.slice(0, 32)}`
+        : `scan-client:${staff.user.id}:${normalizeCustomerNumber(parsed.data.value)}`;
+    const duplicate = rateLimit(scanKey, 1, 2_000);
+    if (!duplicate.ok) {
+      return jsonError("Scan trop rapproché. Patientez un instant.", 429, {
+        code: "RATE_LIMIT",
+        retryAfterMs: duplicate.retryAfterMs,
+      });
+    }
   }
 
   try {
@@ -95,11 +107,13 @@ export async function POST(req: Request) {
             clientNumber: normalizeCustomerNumber(parsed.data.value),
             merchantId: staff.membership.merchantId,
             actorUserId: staff.user.id,
+            confirmNewMembership: parsed.data.confirmNewMembership,
           })
         : await processCaisseScan({
             token: extractFifeLifeQrToken(parsed.data.value),
             merchantId: staff.membership.merchantId,
             actorUserId: staff.user.id,
+            confirmNewMembership: parsed.data.confirmNewMembership,
           });
 
     console.info("[caisse-scan] grant créé", { grantId: result.grantId });
@@ -132,22 +146,26 @@ export async function POST(req: Request) {
     const message = isCaisseScan || isQrInput ? error.message : publicQrErrorMessage(error);
     const code = isCaisseScan ? error.code : isQrInput ? "INVALID_QR" : "SCAN_FAILED";
     const status = isCaisseScan ? error.status : 400;
+    const details = isCaisseScan ? error.details : undefined;
 
     console.info("[caisse-scan] refus : raison", code);
 
-    await writeAudit({
-      actorId: staff.user.id,
-      merchantId: staff.membership.merchantId,
-      action: "CAISSE_SCAN_DENIED",
-      metadata: {
-        reason: code,
-        via,
-        membershipId: "id" in staff.membership ? staff.membership.id : staff.membership.merchantId,
-      },
-      ip: clientIp(req),
-      userAgent: userAgent(req),
-    });
+    // La confirmation d'adhésion n'est pas un refus : ne pas la journaliser comme un scan refusé.
+    if (code !== "MEMBERSHIP_CONFIRMATION_REQUIRED") {
+      await writeAudit({
+        actorId: staff.user.id,
+        merchantId: staff.membership.merchantId,
+        action: "CAISSE_SCAN_DENIED",
+        metadata: {
+          reason: code,
+          via,
+          membershipId: "id" in staff.membership ? staff.membership.id : staff.membership.merchantId,
+        },
+        ip: clientIp(req),
+        userAgent: userAgent(req),
+      });
+    }
 
-    return jsonError(message, status, { code });
+    return jsonError(message, status, { code, ...(details ?? {}) });
   }
 }

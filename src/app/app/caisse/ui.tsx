@@ -8,11 +8,14 @@ import { QrScanner, ClientNumberField } from "@/components/qr-scanner";
 import { DEMO_CLIENT_NUMBER } from "@/lib/demo-visual";
 import { resolvePermissions, type StaffPermissions } from "@/lib/staff-permissions";
 import {
+  isMembershipConfirmationRequired,
   postCaisseScan,
   readManualClientNumber,
   rememberToken,
   resolveCaisseScanError,
   shouldIgnoreInstantDuplicate,
+  type CaisseScanRequest,
+  type MembershipConfirmationDetails,
   type TokenMemory,
 } from "@/lib/scan-session";
 import { QrInputError } from "@/lib/qr-input";
@@ -41,8 +44,51 @@ export function CaisseScreen({
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [result, setResult] = useState<ScanResult | null>(null);
+  const [pendingConfirm, setPendingConfirm] = useState<{
+    request: CaisseScanRequest;
+    details: MembershipConfirmationDetails;
+  } | null>(null);
   const lastCameraTokenRef = useRef<TokenMemory | null>(null);
   const processingRef = useRef(false);
+
+  const runScanRequest = useCallback(async (request: CaisseScanRequest) => {
+    processingRef.current = true;
+    setBusy(true);
+    setError(null);
+    setScanning(false);
+
+    const { ok, status, data } = await postCaisseScan(request);
+    setBusy(false);
+    processingRef.current = false;
+
+    if (!ok) {
+      setResult(null);
+      if (status === 401) {
+        window.location.href = "/app/connexion";
+        return;
+      }
+      const confirmation = isMembershipConfirmationRequired(data, status);
+      if (confirmation) {
+        setPendingConfirm({ request, details: confirmation });
+        return;
+      }
+      setPendingConfirm(null);
+      setError(resolveCaisseScanError(data, status));
+      return;
+    }
+    setPendingConfirm(null);
+    setResult(data as ScanResult);
+    setSuccess(null);
+  }, []);
+
+  const confirmMembership = useCallback(() => {
+    if (!pendingConfirm) return;
+    void runScanRequest({ ...pendingConfirm.request, confirmNewMembership: true });
+  }, [pendingConfirm, runScanRequest]);
+
+  const cancelConfirmMembership = useCallback(() => {
+    setPendingConfirm(null);
+  }, []);
 
   const startScan = useCallback(() => {
     lastCameraTokenRef.current = null;
@@ -54,7 +100,7 @@ export function CaisseScreen({
   }, []);
 
   const submitToken = useCallback(async (token: string, source: "camera" | "manual") => {
-    if (processingRef.current || busy) return;
+    if (processingRef.current || busy || pendingConfirm) return;
     if (source === "camera" && shouldIgnoreInstantDuplicate(lastCameraTokenRef.current, token)) {
       return;
     }
@@ -86,25 +132,12 @@ export function CaisseScreen({
       return;
     }
 
-    const { ok, status, data } = await postCaisseScan({ inputType: "QR", value: token });
-    setBusy(false);
-    processingRef.current = false;
-    if (!ok) {
-      setResult(null);
-      if (status === 401) {
-        window.location.href = "/app/connexion";
-        return;
-      }
-      setError(resolveCaisseScanError(data, status));
-      return;
-    }
-    setResult(data as ScanResult);
-    setSuccess(null);
-  }, [busy, demo]);
+    await runScanRequest({ inputType: "QR", value: token });
+  }, [busy, demo, pendingConfirm, runScanRequest]);
 
   const submitClientNumber = useCallback(
     async (raw: string) => {
-      if (processingRef.current || busy) return;
+      if (processingRef.current || busy || pendingConfirm) return;
 
       let clientNumber: string;
       try {
@@ -137,25 +170,9 @@ export function CaisseScreen({
         return;
       }
 
-      const { ok, status, data } = await postCaisseScan({
-        inputType: "CLIENT_NUMBER",
-        value: clientNumber,
-      });
-      setBusy(false);
-      processingRef.current = false;
-      if (!ok) {
-        setResult(null);
-        if (status === 401) {
-          window.location.href = "/app/connexion";
-          return;
-        }
-        setError(resolveCaisseScanError(data, status));
-        return;
-      }
-      setResult(data as ScanResult);
-      setSuccess(null);
+      await runScanRequest({ inputType: "CLIENT_NUMBER", value: clientNumber });
     },
-    [busy, demo],
+    [busy, demo, pendingConfirm, runScanRequest],
   );
 
   function resetToIdle() {
@@ -164,6 +181,7 @@ export function CaisseScreen({
     setResult(null);
     setError(null);
     setSuccess(null);
+    setPendingConfirm(null);
     setScanning(false);
   }
 
@@ -231,7 +249,7 @@ export function CaisseScreen({
                     whileTap={{ scale: 0.98 }}
                     className="glass-cta w-full justify-center py-3.5 text-sm font-bold"
                     onClick={startScan}
-                    disabled={busy}
+                    disabled={busy || Boolean(pendingConfirm)}
                   >
                     Activer la caméra
                   </motion.button>
@@ -259,10 +277,50 @@ export function CaisseScreen({
               <div className="shrink-0 space-y-2">
                 <p className="text-sm font-semibold text-[var(--ink)]">Numéro client</p>
                 <ClientNumberField
-                  disabled={busy}
+                  disabled={busy || Boolean(pendingConfirm)}
                   onSubmit={(value) => void submitClientNumber(value)}
                 />
               </div>
+
+              {pendingConfirm ? (
+                <motion.div
+                  key="confirm-membership"
+                  role="alertdialog"
+                  aria-labelledby="confirm-membership-title"
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 8 }}
+                  transition={{ type: "spring", duration: 0.35, bounce: 0.1 }}
+                  className="glass-panel shrink-0 space-y-3 p-4"
+                >
+                  <p id="confirm-membership-title" className="text-sm font-bold text-[var(--ink)]">
+                    Ajouter {pendingConfirm.details.firstName} au programme de fidélité de{" "}
+                    {pendingConfirm.details.merchantName || "ce commerce"} ?
+                  </p>
+                  <p className="text-xs text-[var(--muted-strong)]">
+                    Ce client n&apos;a pas encore la carte de ce commerce. Sa carte et son historique dans les autres
+                    commerces restent privés.
+                  </p>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      className="glass-cta flex-1 justify-center py-2.5 text-sm font-bold disabled:opacity-60"
+                      onClick={confirmMembership}
+                      disabled={busy}
+                    >
+                      {busy ? "Ajout…" : "Ajouter et ouvrir la fiche"}
+                    </button>
+                    <button
+                      type="button"
+                      className="flex-1 rounded-lg border border-[var(--border)] bg-[var(--panel-bg)] px-3 py-2.5 text-sm font-bold text-[var(--panel-text)] disabled:opacity-60"
+                      onClick={cancelConfirmMembership}
+                      disabled={busy}
+                    >
+                      Annuler
+                    </button>
+                  </div>
+                </motion.div>
+              ) : null}
 
               {error ? (
                 <motion.p

@@ -7,12 +7,15 @@ import { ClientNumberField, QrScanner } from "@/components/qr-scanner";
 import { CashierCheckout, type CashierScanResult } from "@/components/caisse/cashier-checkout";
 import { Button, Field, Input } from "@/components/ui";
 import {
+  isMembershipConfirmationRequired,
   postCaisseScan,
   readManualClientNumber,
   readManualToken,
   rememberToken,
   resolveCaisseScanError,
   shouldIgnoreInstantDuplicate,
+  type CaisseScanRequest,
+  type MembershipConfirmationDetails,
   type TokenMemory,
 } from "@/lib/scan-session";
 import type { StaffPermissions } from "@/lib/staff-permissions";
@@ -31,6 +34,7 @@ type Phase =
   | "ready"
   | "camera"
   | "processing"
+  | "confirm"
   | "result"
   | "error";
 
@@ -40,6 +44,7 @@ function statusLabel(phase: Phase, cameraError: string | null) {
   if (phase === "ready") return "Prêt à scanner";
   if (phase === "camera") return "Analyse du QR…";
   if (phase === "processing") return "Validation serveur…";
+  if (phase === "confirm") return "Confirmation requise";
   if (phase === "result") return "Client reconnu";
   if (phase === "error") return "Erreur";
   return "Prêt à scanner";
@@ -96,6 +101,10 @@ export function EmployeeScanScreen({
   );
   const [pasteOpen, setPasteOpen] = useState(false);
   const [pasteValue, setPasteValue] = useState("");
+  const [pendingConfirm, setPendingConfirm] = useState<{
+    request: CaisseScanRequest;
+    details: MembershipConfirmationDetails;
+  } | null>(null);
   const lastCameraTokenRef = useRef<TokenMemory | null>(null);
   const processingRef = useRef(false);
 
@@ -105,15 +114,65 @@ export function EmployeeScanScreen({
     setResult(null);
     setError(null);
     setSuccess(null);
+    setPendingConfirm(null);
     setCameraActive(false);
     setCameraError(null);
     setPhase("ready");
     setCameraSession((session) => session + 1);
   }, []);
 
+  const runScanRequest = useCallback(async (request: CaisseScanRequest) => {
+    processingRef.current = true;
+    setBusy(true);
+    setError(null);
+    setPhase("processing");
+    setCameraActive(false);
+    setPasteOpen(false);
+
+    const { ok, status, data } = await postCaisseScan(request);
+    setBusy(false);
+    processingRef.current = false;
+
+    if (!ok) {
+      setResult(null);
+      if (status === 401) {
+        window.location.href = "/employe/connexion";
+        return;
+      }
+      const confirmation = isMembershipConfirmationRequired(data, status);
+      if (confirmation) {
+        setPendingConfirm({ request, details: confirmation });
+        setPhase("confirm");
+        return;
+      }
+      setPendingConfirm(null);
+      setPhase("error");
+      if (status === 403) {
+        setError(typeof data?.error === "string" ? data.error : "Accès au scanner refusé.");
+        return;
+      }
+      setError(resolveCaisseScanError(data, status));
+      return;
+    }
+
+    setPendingConfirm(null);
+    setResult(data as ScanResult);
+    setPhase("result");
+  }, []);
+
+  const confirmMembership = useCallback(() => {
+    if (!pendingConfirm) return;
+    void runScanRequest({ ...pendingConfirm.request, confirmNewMembership: true });
+  }, [pendingConfirm, runScanRequest]);
+
+  const cancelConfirmMembership = useCallback(() => {
+    setPendingConfirm(null);
+    setPhase("ready");
+  }, []);
+
   const submitQr = useCallback(
     async (raw: string, source: "camera" | "manual") => {
-      if (processingRef.current || busy) return;
+      if (processingRef.current || busy || pendingConfirm) return;
 
       let token: string;
       try {
@@ -132,14 +191,13 @@ export function EmployeeScanScreen({
         lastCameraTokenRef.current = rememberToken(token);
       }
 
-      processingRef.current = true;
-      setBusy(true);
-      setError(null);
-      setPhase("processing");
-      setCameraActive(false);
       setPasteOpen(false);
 
       if (demo) {
+        processingRef.current = true;
+        setBusy(true);
+        setError(null);
+        setCameraActive(false);
         setBusy(false);
         processingRef.current = false;
         setResult({
@@ -158,34 +216,14 @@ export function EmployeeScanScreen({
         return;
       }
 
-      const { ok, status, data } = await postCaisseScan({ inputType: "QR", value: token });
-      setBusy(false);
-      processingRef.current = false;
-
-      if (!ok) {
-        setResult(null);
-        setPhase("error");
-        if (status === 401) {
-          window.location.href = "/employe/connexion";
-          return;
-        }
-        if (status === 403) {
-          setError(typeof data?.error === "string" ? data.error : "Accès au scanner refusé.");
-          return;
-        }
-        setError(resolveCaisseScanError(data, status));
-        return;
-      }
-
-      setResult(data as ScanResult);
-      setPhase("result");
+      await runScanRequest({ inputType: "QR", value: token });
     },
-    [busy, demo],
+    [busy, demo, pendingConfirm, runScanRequest],
   );
 
   const submitClientNumber = useCallback(
     async (raw: string) => {
-      if (processingRef.current || busy) return;
+      if (processingRef.current || busy || pendingConfirm) return;
 
       let clientNumber: string;
       try {
@@ -197,14 +235,13 @@ export function EmployeeScanScreen({
         return;
       }
 
-      processingRef.current = true;
-      setBusy(true);
-      setError(null);
-      setPhase("processing");
-      setCameraActive(false);
       setPasteOpen(false);
 
       if (demo) {
+        processingRef.current = true;
+        setBusy(true);
+        setError(null);
+        setCameraActive(false);
         setBusy(false);
         processingRef.current = false;
         setResult({
@@ -223,32 +260,9 @@ export function EmployeeScanScreen({
         return;
       }
 
-      const { ok, status, data } = await postCaisseScan({
-        inputType: "CLIENT_NUMBER",
-        value: clientNumber,
-      });
-      setBusy(false);
-      processingRef.current = false;
-
-      if (!ok) {
-        setResult(null);
-        setPhase("error");
-        if (status === 401) {
-          window.location.href = "/employe/connexion";
-          return;
-        }
-        if (status === 403) {
-          setError(typeof data?.error === "string" ? data.error : "Accès au scanner refusé.");
-          return;
-        }
-        setError(resolveCaisseScanError(data, status));
-        return;
-      }
-
-      setResult(data as ScanResult);
-      setPhase("result");
+      await runScanRequest({ inputType: "CLIENT_NUMBER", value: clientNumber });
     },
-    [busy, demo],
+    [busy, demo, pendingConfirm, runScanRequest],
   );
 
   async function logout() {
@@ -306,6 +320,38 @@ export function EmployeeScanScreen({
           {phase === "result" && result ? (
             <motion.div key="result" className="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
               <CashierCheckout result={result} permissions={profile.permissions} demo={demo} onReset={resetScanner} />
+            </motion.div>
+          ) : phase === "confirm" && pendingConfirm ? (
+            <motion.div
+              key="confirm"
+              role="alertdialog"
+              aria-labelledby="confirm-membership-title"
+              className="flex min-h-0 flex-1 flex-col justify-center gap-4"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+            >
+              <div className="rounded-2xl border border-[var(--stroke)] bg-[var(--surface)] p-5 text-center">
+                <p id="confirm-membership-title" className="text-base font-black text-[var(--panel-text)]">
+                  Ajouter {pendingConfirm.details.firstName} au programme de fidélité de{" "}
+                  {pendingConfirm.details.merchantName || "ce commerce"} ?
+                </p>
+                <p className="mt-2 text-xs text-[var(--muted-text)]">
+                  Ce client n&apos;a pas encore la carte de ce commerce. Sa carte et son historique dans les autres
+                  commerces restent privés.
+                </p>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <Button variant="secondary" onClick={cancelConfirmMembership} disabled={busy}>
+                  Annuler
+                </Button>
+                <Button
+                  className="bg-[var(--scan-action)] text-white hover:bg-[var(--scan-action-strong)]"
+                  onClick={confirmMembership}
+                  disabled={busy}
+                >
+                  {busy ? "Ajout…" : "Ajouter et ouvrir"}
+                </Button>
+              </div>
             </motion.div>
           ) : (
             <motion.div key="scan" className="flex min-h-0 flex-1 flex-col justify-center gap-3">
