@@ -80,9 +80,20 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
       },
     });
 
+    // Une publicité sponsorisée a déjà été validée par le super-admin AVANT paiement
+    // (voir /api/merchant/ads/[id]/confirm) : ne jamais la repasser en PENDING_REVIEW ici.
+    let nextStatus = statusAfterFundingConfirmed({ channel: campaign.channel, audienceType: campaign.audienceType });
+    if (campaign.channel === "SPONSORED_AD") {
+      const adRequest = await tx.adRequest.findUnique({ where: { campaignId } });
+      if (adRequest?.status === "APPROVED") {
+        nextStatus = "SCHEDULED";
+        await tx.adRequest.update({ where: { id: adRequest.id }, data: { status: "SCHEDULED" } });
+      }
+    }
+
     await tx.campaign.update({
       where: { id: campaignId },
-      data: { status: statusAfterFundingConfirmed({ channel: campaign.channel, audienceType: campaign.audienceType }) },
+      data: { status: nextStatus },
     });
 
     await writeAudit({

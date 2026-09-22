@@ -20,6 +20,7 @@ export async function GET(req: Request) {
               { name: { contains: q, mode: "insensitive" } },
               { slug: { contains: q, mode: "insensitive" } },
               { category: { contains: q, mode: "insensitive" } },
+              { city: { contains: q, mode: "insensitive" } },
             ],
           }
         : {}),
@@ -42,6 +43,7 @@ export async function GET(req: Request) {
         logoUrl: merchant.logoUrl,
         primaryColor: merchant.primaryColor,
         category: merchant.category,
+        city: merchant.city,
         shortDescription: merchant.shortDescription,
         rewardLabel: merchant.program?.rewardLabel ?? "Récompense",
         visitsRequired: merchant.program?.visitsRequired ?? 10,
@@ -57,5 +59,29 @@ export async function GET(req: Request) {
     }),
   );
 
-  return jsonOk({ merchants: merchantsWithTemplates });
+  const now = new Date();
+  const liveAds = q
+    ? []
+    : await prisma.adRequest.findMany({
+        where: { status: "SCHEDULED", startDate: { lte: now }, endDate: { gte: now } },
+        include: { merchant: { select: { slug: true, name: true, logoUrl: true } } },
+        orderBy: { createdAt: "desc" },
+        take: 5,
+      });
+
+  return jsonOk({
+    merchants: merchantsWithTemplates,
+    // Toujours marquées "Sponsorisé" côté UI — jamais mélangées aux résultats organiques.
+    sponsored: liveAds.map((ad) => ({
+      id: ad.id,
+      merchantSlug: ad.merchant.slug,
+      merchantName: ad.merchant.name,
+      merchantLogoUrl: ad.merchant.logoUrl,
+      imageUrl: ad.finalImageUrl ?? ad.requestedImageUrl,
+      text: ad.requestedText,
+      ctaLabel: ad.ctaLabel,
+      impressionUrl: `/api/public/ads/${ad.id}/impression`,
+      clickUrl: `/api/public/ads/${ad.id}/click`,
+    })),
+  });
 }
