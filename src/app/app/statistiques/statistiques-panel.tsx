@@ -40,6 +40,15 @@ const PERIOD_LABELS: Record<PeriodKey, string> = {
   custom: "Personnalisée",
 };
 
+const COMPARISON_METRICS = [
+  { key: "passages", label: "Passages", color: "#2563EB" },
+  { key: "scans", label: "Scans", color: "#059669" },
+  { key: "newClients", label: "Nouveaux clients", color: "#D97706" },
+  { key: "returningClients", label: "Clients récurrents", color: "#7C3AED" },
+  { key: "rewardsUsed", label: "Récompenses utilisées", color: "#E11D48" },
+  { key: "revenueCents", label: "Chiffre d'affaires", color: "#0F766E" },
+] as const;
+
 function fmtNum(n: number) {
   return n.toLocaleString("fr-FR");
 }
@@ -60,6 +69,7 @@ export function StatistiquesPanel({
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo] = useState("");
   const [showComparison, setShowComparison] = useState(true);
+  const [comparisonKeys, setComparisonKeys] = useState<string[]>(["passages", "scans", "newClients"]);
   const [tab, setTab] = useState<Tab>("apercu");
   const [data, setData] = useState<ApiResponse | null>(demoData ?? null);
   const [loading, setLoading] = useState(!demoData);
@@ -216,7 +226,14 @@ export function StatistiquesPanel({
               ))}
             </div>
 
-            {tab === "apercu" && <OverviewTab premium={premium} showComparison={showComparison} />}
+            {tab === "apercu" && (
+              <OverviewTab
+                premium={premium}
+                showComparison={showComparison}
+                comparisonKeys={comparisonKeys}
+                setComparisonKeys={setComparisonKeys}
+              />
+            )}
             {tab === "frequentation" && <FrequentationTab premium={premium} />}
             {tab === "fidelite" && <FideliteTab premium={premium} />}
             {tab === "recompenses" && <RecompensesTab premium={premium} showComparison={showComparison} />}
@@ -289,8 +306,49 @@ function LockedInsightTeaser({
   );
 }
 
-function OverviewTab({ premium, showComparison }: { premium: InsightPremium; showComparison: boolean }) {
+function normalizeBase100(rows: NonNullable<InsightPremium["comparison"]>["series"], keys: string[]) {
+  const firstPositive = new Map<string, number>();
+  for (const key of keys) {
+    const first = rows.find((row) => Number(row[key as keyof typeof row] ?? 0) > 0);
+    firstPositive.set(key, first ? Number(first[key as keyof typeof first] ?? 0) : 0);
+  }
+  return rows.map((row) => {
+    const next: Record<string, string | number> = { date: row.date };
+    for (const key of keys) {
+      const base = firstPositive.get(key) ?? 0;
+      const value = Number(row[key as keyof typeof row] ?? 0);
+      next[key] = base > 0 ? Math.round((value / base) * 100) : 0;
+    }
+    return next;
+  });
+}
+
+function OverviewTab({
+  premium,
+  showComparison,
+  comparisonKeys,
+  setComparisonKeys,
+}: {
+  premium: InsightPremium;
+  showComparison: boolean;
+  comparisonKeys: string[];
+  setComparisonKeys: (keys: string[]) => void;
+}) {
   const o = premium.overview;
+  const availableMetrics = COMPARISON_METRICS.filter((metric) => metric.key !== "revenueCents" || premium.comparison.hasRevenue);
+  const selectedSeries = availableMetrics.filter((metric) => comparisonKeys.includes(metric.key));
+  const comparisonData = normalizeBase100(premium.comparison.series, comparisonKeys);
+
+  function toggleMetric(key: string) {
+    if (comparisonKeys.includes(key)) {
+      if (comparisonKeys.length <= 2) return;
+      setComparisonKeys(comparisonKeys.filter((item) => item !== key));
+      return;
+    }
+    if (comparisonKeys.length >= 4) return;
+    setComparisonKeys([...comparisonKeys, key]);
+  }
+
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -304,6 +362,29 @@ function OverviewTab({ premium, showComparison }: { premium: InsightPremium; sho
       </div>
       <InsightCard title="Passages" subtitle="Évolution sur la période">
         <InsightLineChart data={premium.frequentation.series} />
+      </InsightCard>
+      <InsightCard
+        title="Comparer les indicateurs"
+        subtitle="Évolution en base 100 : chaque courbe démarre à 100 lors de sa première valeur non nulle."
+      >
+        <div className="mb-3 flex flex-wrap gap-2">
+          {availableMetrics.map((metric) => {
+            const active = comparisonKeys.includes(metric.key);
+            const disabled = (!active && comparisonKeys.length >= 4) || (active && comparisonKeys.length <= 2);
+            return (
+              <button
+                key={metric.key}
+                type="button"
+                disabled={disabled}
+                onClick={() => toggleMetric(metric.key)}
+                className={`merchant-filter-chip ${active ? "merchant-filter-chip-active" : ""} disabled:opacity-45`}
+              >
+                {metric.label}
+              </button>
+            );
+          })}
+        </div>
+        <InsightMultiLineChart data={comparisonData} series={selectedSeries} normalized />
       </InsightCard>
     </div>
   );

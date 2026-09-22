@@ -75,6 +75,19 @@ const CASHIER_DEFAULT: StaffPermissions = {
   viewStatistics: false,
 };
 
+const EMPLOYEE_FIXED_PERMISSIONS: StaffPermissions = {
+  caisse: true,
+  viewCustomers: false,
+  viewHistory: false,
+  addPoints: true,
+  redeemReward: true,
+  correctTransaction: false,
+  manageEmployees: false,
+  editProgram: false,
+  sensitiveSettings: false,
+  viewStatistics: false,
+};
+
 export function presetPermissions(preset: StaffPreset): StaffPermissions {
   if (preset === "MANAGER") return { ...MANAGER_DEFAULT };
   if (preset === "CASHIER") return { ...CASHIER_DEFAULT };
@@ -87,6 +100,7 @@ export function resolvePermissions(input: {
   permissions?: unknown;
 }): StaffPermissions {
   if (input.role === "MERCHANT_ADMIN") return { ...ADMIN_PERMISSIONS };
+  if (input.role === "EMPLOYEE") return { ...EMPLOYEE_FIXED_PERMISSIONS };
   const base = presetPermissions(input.staffPreset);
   if (input.permissions && typeof input.permissions === "object" && !Array.isArray(input.permissions)) {
     const raw = input.permissions as Partial<StaffPermissions>;

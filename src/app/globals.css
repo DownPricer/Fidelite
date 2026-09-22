@@ -3519,7 +3519,8 @@ body:has(.wallet-shell) {
   max-width: 100%;
   margin: 0 auto;
   padding: 1.25rem 1rem 2rem;
-  min-height: 100%;
+  min-height: auto;
+  overflow: visible;
 }
 
 @media (min-width: 768px) {
@@ -4071,11 +4072,20 @@ body:has(.wallet-shell) {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
     gap: 1.5rem;
     align-items: start;
+    min-height: 0;
+    overflow: visible;
+  }
+
+  .program-config-layout > * {
+    min-width: 0;
   }
 
   .program-steps-nav {
     position: sticky;
     top: 1.5rem;
+    max-height: calc(100dvh - 3rem);
+    overflow-y: auto;
+    overscroll-behavior: contain;
   }
 
   .program-mode-grid {
@@ -4318,6 +4328,32 @@ body:has(.wallet-shell) {
   gap: 0.5rem;
   padding: 1rem 1.5rem;
   border-top: 1px solid light-dark(rgba(106, 54, 224, 0.1), rgba(255, 255, 255, 0.08));
+}
+
+.employee-scan-scene {
+  --scan-action: light-dark(#0f766e, #38bdf8);
+  --scan-action-strong: light-dark(#0b5f59, #0284c7);
+  background: light-dark(#f6f8fb, #090b12);
+  color: var(--ink-soft);
+}
+
+.employee-scan-scene .bg-\[var\(--violet\)\] {
+  background: var(--scan-action);
+  color: #ffffff;
+}
+
+.employee-scan-scene .hover\:bg-\[var\(--violet-bright\)\]:hover {
+  background: var(--scan-action-strong);
+}
+
+@media (max-width: 380px) {
+  .employee-scan-scene .qr-scanner-viewport {
+    min-height: 220px;
+  }
+
+  .employee-scan-scene .inline-flex {
+    min-width: 0;
+  }
 }
 
 .recent-activity-row {

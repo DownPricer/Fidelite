@@ -29,20 +29,6 @@ type Employee = {
   joinedAt: string;
 };
 
-const PERMISSION_LABELS: Record<string, string> = {
-  caisse: "Accès à la caisse",
-  addPoints: "Attribuer des points ou passages",
-  redeemReward: "Utiliser un avantage",
-  viewCustomers: "Voir les clients",
-  viewHistory: "Voir l'historique",
-  correctTransaction: "Corriger une transaction",
-  manageEmployees: "Gérer les employés",
-  editProgram: "Modifier le programme",
-  sensitiveSettings: "Réglages sensibles",
-};
-
-const CRITICAL_PERMISSIONS = new Set(["caisse", "addPoints", "redeemReward", "manageEmployees", "sensitiveSettings"]);
-
 const DEMO: Employee[] = [
   {
     id: "e0",
@@ -54,17 +40,6 @@ const DEMO: Employee[] = [
     status: "Actif",
     lastActivityAt: new Date().toISOString(),
     joinedAt: new Date(Date.now() - 86400000 * 30).toISOString(),
-    permissions: {
-      caisse: true,
-      addPoints: true,
-      redeemReward: true,
-      viewCustomers: false,
-      viewHistory: false,
-      correctTransaction: false,
-      manageEmployees: false,
-      editProgram: false,
-      sensitiveSettings: false,
-    },
   },
   {
     id: "e1",
@@ -467,19 +442,6 @@ export function EmployeeDetailPanel({ id, demo = false }: { id: string; demo?: b
     setActionSuccess("Informations mises à jour.");
   }
 
-  async function togglePermission(key: string, checked: boolean) {
-    if (!employee?.permissions) return;
-    if (!checked && CRITICAL_PERMISSIONS.has(key)) {
-      const ok = confirm(`Retirer la permission « ${PERMISSION_LABELS[key] ?? key} » ? L'effet est immédiat côté serveur.`);
-      if (!ok) return;
-    }
-    const next = { ...employee.permissions, [key]: checked };
-    const data = await patchEmployee({ permissions: next });
-    if (data?.employee) {
-      setActionSuccess("Permissions mises à jour.");
-    }
-  }
-
   function txLine(tx: (typeof history)[0]) {
     const name = `${tx.customerFirstName}${tx.customerLastName ? ` ${tx.customerLastName}` : ""}`;
     if (tx.type === "REDEEM_REWARD") return `${name} · Récompense « ${tx.rewardName ?? "offerte"} » utilisée`;
@@ -572,27 +534,13 @@ export function EmployeeDetailPanel({ id, demo = false }: { id: string; demo?: b
           ) : null}
         </div>
 
-        {employee.permissions ? (
-          <section className="program-step-card space-y-3">
-            <div>
-              <h3 className="text-sm font-black text-[var(--ink)]">Permissions</h3>
-              <p className="mt-1 text-xs text-[var(--muted-strong)]">Modifications individuelles appliquées immédiatement.</p>
-            </div>
-            <div className="grid gap-2 sm:grid-cols-2">
-              {Object.entries(PERMISSION_LABELS).map(([key, label]) => (
-                <label key={key} className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.035] px-3 py-2 text-sm text-[var(--ink-soft)]">
-                  <span>{label}</span>
-                  <input
-                    type="checkbox"
-                    checked={Boolean(employee.permissions?.[key])}
-                    disabled={pendingAction}
-                    onChange={(event) => void togglePermission(key, event.currentTarget.checked)}
-                  />
-                </label>
-              ))}
-            </div>
-          </section>
-        ) : null}
+        <section className="program-step-card space-y-2">
+          <h3 className="text-sm font-black text-[var(--ink)]">Accès employé</h3>
+          <p className="text-sm text-[var(--muted-strong)]">
+            Un employé actif peut ouvrir le scanner, enregistrer un passage et utiliser un avantage disponible.
+            Il n'a pas accès aux réglages, au programme, aux statistiques ni à la gestion de l'équipe.
+          </p>
+        </section>
       </div>
 
       {employee.status !== "Invitation en attente" ? (

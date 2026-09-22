@@ -352,6 +352,19 @@ export type InsightFinancial = {
   topSpenders: { customerMembershipId: string; firstName: string; totalCents: number }[];
 };
 
+export type InsightComparison = {
+  series: {
+    date: string;
+    passages: number;
+    scans: number;
+    newClients: number;
+    returningClients: number;
+    rewardsUsed: number;
+    revenueCents?: number;
+  }[];
+  hasRevenue: boolean;
+};
+
 export type InsightPremium = {
   overview: InsightOverview;
   frequentation: InsightFrequentation;
@@ -360,6 +373,7 @@ export type InsightPremium = {
   rewards: InsightRewards;
   team: InsightTeam;
   financial: InsightFinancial | null;
+  comparison: InsightComparison;
 };
 
 export async function getInsightPremium(merchantId: string, range: InsightRange): Promise<InsightPremium> {
@@ -405,8 +419,9 @@ export async function getInsightPremium(merchantId: string, range: InsightRange)
   const rewards = await buildRewards({ merchantId, current, previous, range });
   const team = await buildTeam({ merchantId, current, range });
   const financial = revenueEnabled ? await buildFinancial({ current, previous }) : null;
+  const comparison = await buildComparison({ merchantId, current, range, includeRevenue: revenueEnabled });
 
-  return { overview, frequentation, retention, segments, rewards, team, financial };
+  return { overview, frequentation, retention, segments, rewards, team, financial, comparison };
 }
 
 function loadVisitsBefore(merchantId: string, before: Date) {
@@ -822,6 +837,70 @@ async function buildTeam(input: { merchantId: string; current: RawTx[]; range: I
   employees.sort((a, b) => b.scansValidated + b.commits - (a.scansValidated + a.commits));
 
   return { employees };
+}
+
+async function buildComparison(input: {
+  merchantId: string;
+  current: RawTx[];
+  range: InsightRange;
+  includeRevenue: boolean;
+}): Promise<InsightComparison> {
+  const scanRows = await prisma.auditLog.findMany({
+    where: {
+      merchantId: input.merchantId,
+      action: "CAISSE_SCAN",
+      createdAt: { gte: input.range.start, lt: input.range.end },
+    },
+    select: { createdAt: true },
+  });
+  const newClientRows = await prisma.customerMembership.findMany({
+    where: {
+      merchantId: input.merchantId,
+      removedAt: null,
+      createdAt: { gte: input.range.start, lt: input.range.end },
+    },
+    select: { createdAt: true },
+  });
+
+  const rows = new Map<string, InsightComparison["series"][number]>();
+  for (const date of enumerateBucketKeys(input.range)) {
+    rows.set(date, {
+      date,
+      passages: 0,
+      scans: 0,
+      newClients: 0,
+      returningClients: 0,
+      rewardsUsed: 0,
+      ...(input.includeRevenue ? { revenueCents: 0 } : {}),
+    });
+  }
+
+  const visitCounts = new Map<string, number>();
+  for (const tx of input.current) {
+    const date = bucketKey(tx.createdAt, input.range.bucket);
+    const row = rows.get(date);
+    if (!row) continue;
+    if (tx.type === "EARN_VISIT") {
+      row.passages += 1;
+      const previous = visitCounts.get(tx.customerMembershipId) ?? 0;
+      if (previous > 0) row.returningClients += 1;
+      visitCounts.set(tx.customerMembershipId, previous + 1);
+    }
+    if (tx.type === "REDEEM_REWARD") row.rewardsUsed += 1;
+    if (input.includeRevenue && tx.purchaseAmountCents) {
+      row.revenueCents = (row.revenueCents ?? 0) + tx.purchaseAmountCents;
+    }
+  }
+  for (const scan of scanRows) {
+    const row = rows.get(bucketKey(scan.createdAt, input.range.bucket));
+    if (row) row.scans += 1;
+  }
+  for (const client of newClientRows) {
+    const row = rows.get(bucketKey(client.createdAt, input.range.bucket));
+    if (row) row.newClients += 1;
+  }
+
+  return { series: [...rows.values()], hasRevenue: input.includeRevenue };
 }
 
 async function buildFinancial(input: { current: RawTx[]; previous: RawTx[] }): Promise<InsightFinancial> {

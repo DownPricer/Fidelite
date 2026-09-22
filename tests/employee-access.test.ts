@@ -43,6 +43,30 @@ describe("canEmployeeAccess", () => {
       }),
     ).toBe(false);
   });
+
+  it("autorise un employé actif rattaché à un commerce actif", async () => {
+    const { canEmployeeAccess } = await import("../src/lib/employee-invitation");
+    expect(
+      canEmployeeAccess({
+        userActive: true,
+        membershipActive: true,
+        invitationStatus: "ACCEPTED",
+        merchantActive: true,
+      }),
+    ).toBe(true);
+  });
+
+  it("refuse un commerce suspendu", async () => {
+    const { canEmployeeAccess } = await import("../src/lib/employee-invitation");
+    expect(
+      canEmployeeAccess({
+        userActive: true,
+        membershipActive: true,
+        invitationStatus: "ACCEPTED",
+        merchantActive: false,
+      }),
+    ).toBe(false);
+  });
 });
 
 describe("assertEarnProgramRules", () => {

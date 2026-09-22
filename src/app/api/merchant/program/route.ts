@@ -12,6 +12,7 @@ import {
 } from "@/lib/loyalty-program-publication";
 import { balanceFieldForUnit } from "@/lib/loyalty-balance";
 import { loyaltyUnitForMode } from "@/lib/loyalty-labels";
+import { decideRewardRemoval, updateDraftRewardsForRemoval } from "@/lib/loyalty-reward-removal";
 import { logMerchantCardSwitch } from "@/lib/merchant-card-switch-log";
 import { prisma } from "@/lib/prisma";
 import { loyaltyDraftSchema, programSimulateSchema, zodErrorMessage } from "@/lib/validation";
@@ -140,6 +141,66 @@ export async function POST(req: Request) {
   const action = url.searchParams.get("action") ?? "publish";
   const program = await loadProgram(staff.membership.merchantId);
   if (!program) return jsonError("Programme introuvable.", 404);
+
+  if (action === "delete-reward") {
+    const body = await readJson(req).catch(() => ({}));
+    const rewardId = typeof (body as { rewardId?: unknown }).rewardId === "string" ? (body as { rewardId: string }).rewardId : "";
+    if (!rewardId) return jsonError("Avantage introuvable.", 400);
+
+    const reward = await prisma.loyaltyReward.findFirst({
+      where: { id: rewardId, programId: program.id },
+      select: { id: true },
+    });
+    if (!reward) return jsonError("Avantage introuvable.", 404);
+
+    const [transactions, entitlements] = await Promise.all([
+      prisma.loyaltyTransaction.count({ where: { rewardId } }),
+      prisma.customerRewardEntitlement.count({ where: { originalRewardId: rewardId } }),
+    ]);
+    const decision = decideRewardRemoval({ transactions, entitlements });
+    const now = new Date();
+
+    await prisma.$transaction(async (tx) => {
+      if (decision.action === "archive") {
+        await tx.loyaltyReward.update({
+          where: { id: rewardId },
+          data: { archivedAt: now, isActive: false },
+        });
+      } else {
+        await tx.loyaltyReward.delete({ where: { id: rewardId } });
+      }
+
+      const draft = program.draftConfig as { mode?: LoyaltyMode; rules?: Record<string, unknown>; rewards?: Array<Record<string, unknown>> } | null;
+      const nextDraft = updateDraftRewardsForRemoval(draft, rewardId, decision, now.toISOString());
+      if (nextDraft) {
+        await tx.loyaltyProgram.update({
+          where: { id: program.id },
+          data: {
+            draftConfig: nextDraft as Prisma.InputJsonValue,
+            status: "DRAFT",
+          },
+        });
+      }
+    });
+
+    await writeAudit({
+      actorId: staff.user.id,
+      merchantId: staff.membership.merchantId,
+      action: decision.action === "archive" ? "LOYALTY_REWARD_ARCHIVE" : "LOYALTY_REWARD_DELETE",
+      metadata: { rewardId, transactions, entitlements },
+      ip: clientIp(req),
+      userAgent: userAgent(req),
+    });
+
+    return jsonOk({
+      ok: true,
+      deleted: decision.action === "delete",
+      archived: decision.action === "archive",
+      message: decision.action === "archive"
+        ? "Cet avantage a été archivé afin de conserver l'historique des clients."
+        : "Cet avantage a été supprimé définitivement.",
+    });
+  }
 
   if (action === "simulate") {
     const parsed = programSimulateSchema.safeParse(await readJson(req));
