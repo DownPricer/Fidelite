@@ -1,24 +1,26 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 describe("e-mail de campagne (Partie 10)", () => {
-  const originalEnv = process.env;
   const originalFetch = global.fetch;
 
   beforeEach(() => {
     vi.resetModules();
-    process.env = { ...originalEnv };
+    // vi.stubEnv touche uniquement les clés listées (jamais une réaffectation globale de
+    // process.env, qui créerait une fenêtre de course avec d'autres fichiers de test
+    // exécutés en parallèle dans le même worker) ; vi.unstubAllEnvs() restaure exactement
+    // ces clés après chaque test.
+    vi.stubEnv("RESEND_API_KEY", "");
+    vi.stubEnv("SMTP_HOST", "");
+    vi.stubEnv("SMTP_USER", "");
+    vi.stubEnv("SMTP_PASS", "");
   });
 
   afterEach(() => {
-    process.env = originalEnv;
+    vi.unstubAllEnvs();
     global.fetch = originalFetch;
   });
 
   it("refuse d'envoyer sans fournisseur configuré, sans jamais prétendre avoir réussi", async () => {
-    delete process.env.RESEND_API_KEY;
-    delete process.env.SMTP_HOST;
-    delete process.env.SMTP_USER;
-    delete process.env.SMTP_PASS;
     const mod = await import("../src/lib/email");
 
     const result = await mod.sendCampaignEmail({
@@ -36,7 +38,7 @@ describe("e-mail de campagne (Partie 10)", () => {
   });
 
   it("envoie via Resend avec le lien de désinscription et la raison de réception dans le corps", async () => {
-    process.env.RESEND_API_KEY = "re_test";
+    vi.stubEnv("RESEND_API_KEY", "re_test");
     const fetchMock = vi.fn().mockResolvedValue({ ok: true, text: async () => "" });
     global.fetch = fetchMock as unknown as typeof fetch;
 
@@ -65,7 +67,7 @@ describe("e-mail de campagne (Partie 10)", () => {
   });
 
   it("échappe le HTML fourni par le commerçant (pas de HTML arbitraire — Partie 7/10)", async () => {
-    process.env.RESEND_API_KEY = "re_test";
+    vi.stubEnv("RESEND_API_KEY", "re_test");
     const fetchMock = vi.fn().mockResolvedValue({ ok: true, text: async () => "" });
     global.fetch = fetchMock as unknown as typeof fetch;
 

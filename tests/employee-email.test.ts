@@ -2,29 +2,31 @@ import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { isEmailConfigured, emailConfigHint } from "../src/lib/email";
 
 describe("configuration e-mail", () => {
-  const env = process.env;
-
   beforeEach(() => {
     vi.resetModules();
-    process.env = { ...env };
+    // vi.stubEnv touche uniquement les clés listées, sans jamais réaffecter tout
+    // process.env — une réaffectation globale (l'ancien code ici) ouvre une fenêtre de
+    // course avec d'autres fichiers de test exécutés dans le même worker (repéré en
+    // stabilisant la suite complète : provoquait un échec intermittent dans
+    // tests/google-wallet.test.ts selon l'ordre d'exécution).
+    vi.stubEnv("RESEND_API_KEY", "");
+    vi.stubEnv("SMTP_HOST", "");
+    vi.stubEnv("SMTP_USER", "");
+    vi.stubEnv("SMTP_PASS", "");
   });
 
   afterEach(() => {
-    process.env = env;
+    vi.unstubAllEnvs();
   });
 
   it("signale l'absence de configuration", async () => {
-    delete process.env.RESEND_API_KEY;
-    delete process.env.SMTP_HOST;
-    delete process.env.SMTP_USER;
-    delete process.env.SMTP_PASS;
     const mod = await import("../src/lib/email");
     expect(mod.isEmailConfigured()).toBe(false);
     expect(mod.emailConfigHint()).toMatch(/RESEND_API_KEY|SMTP_HOST/);
   });
 
   it("détecte Resend", async () => {
-    process.env.RESEND_API_KEY = "re_test";
+    vi.stubEnv("RESEND_API_KEY", "re_test");
     const mod = await import("../src/lib/email");
     expect(mod.isEmailConfigured()).toBe(true);
     expect(mod.emailConfigHint()).toBeNull();
