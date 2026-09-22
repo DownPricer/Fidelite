@@ -102,7 +102,7 @@ export function ProgramConfigurator({
   const [simResult, setSimResult] = useState<string | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [modeDecision, setModeDecision] = useState<"ARCHIVE_OLD" | "CONVERT">("ARCHIVE_OLD");
-  const [rewardConfirm, setRewardConfirm] = useState<{ index: number; kind: "deactivate" | "archive" } | null>(null);
+  const [rewardConfirm, setRewardConfirm] = useState<{ index: number; kind: "deactivate" | "delete" } | null>(null);
   const [rewardEditor, setRewardEditor] = useState<{ mode: "create" | "edit"; index: number | null } | null>(null);
   const [savingDraft, setSavingDraft] = useState(false);
   const [publishing, setPublishing] = useState(false);
@@ -378,6 +378,34 @@ export function ProgramConfigurator({
     markDirty();
   }
 
+  async function deleteReward(index: number) {
+    const reward = rewards[index];
+    if (!reward) return;
+    if (demo || reward.id.startsWith("new-")) {
+      setRewards((items) => items.filter((_, i) => i !== index).map((item, i) => ({ ...item, sortOrder: i })));
+      markDirty();
+      setOk("Avantage retiré du brouillon.");
+      return;
+    }
+    const res = await fetch("/api/merchant/program?action=delete-reward", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ rewardId: reward.id }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      setError(data.error ?? "Suppression impossible.");
+      return;
+    }
+    if (data.archived) {
+      updateReward(index, { archivedAt: new Date().toISOString(), isActive: false });
+    } else {
+      setRewards((items) => items.filter((_, i) => i !== index).map((item, i) => ({ ...item, sortOrder: i })));
+      markDirty();
+    }
+    setOk(data.message ?? "Avantage supprimé.");
+  }
+
   function moveReward(index: number, direction: -1 | 1) {
     const next = [...rewards];
     const target = index + direction;
@@ -426,8 +454,8 @@ export function ProgramConfigurator({
           >
             {reward.isActive ? "Désactiver" : "Activer"}
           </Button>
-          <Button variant="danger" className="h-9 px-3 text-xs" onClick={() => setRewardConfirm({ index, kind: "archive" })}>
-            Archiver
+          <Button variant="danger" className="h-9 px-3 text-xs" onClick={() => setRewardConfirm({ index, kind: "delete" })}>
+            Supprimer
           </Button>
         </div>
       </div>
@@ -528,22 +556,22 @@ export function ProgramConfigurator({
         <ConfirmDialog
           open={rewardConfirm !== null}
           title={
-            rewardConfirm?.kind === "archive"
-              ? `Archiver « ${confirmingReward?.name ?? "cet avantage"} » ?`
+            rewardConfirm?.kind === "delete"
+              ? `Supprimer « ${confirmingReward?.name ?? "cet avantage"} » ?`
               : `Désactiver « ${confirmingReward?.name ?? "cet avantage"} » ?`
           }
           description={
-            rewardConfirm?.kind === "archive"
-              ? "Cet avantage ne sera plus proposé aux clients. Cette action sera enregistrée à la prochaine sauvegarde."
+            rewardConfirm?.kind === "delete"
+              ? "S'il n'a jamais été utilisé, il sera supprimé définitivement. S'il possède un historique, il sera archivé afin de conserver les transactions et les droits déjà attribués."
               : "Les clients ne pourront plus l'obtenir tant qu'il reste désactivé. Vous pourrez le réactiver à tout moment."
           }
-          confirmLabel={rewardConfirm?.kind === "archive" ? "Archiver" : "Désactiver"}
-          tone={rewardConfirm?.kind === "archive" ? "danger" : "default"}
+          confirmLabel={rewardConfirm?.kind === "delete" ? "Supprimer" : "Désactiver"}
+          tone={rewardConfirm?.kind === "delete" ? "danger" : "default"}
           onCancel={() => setRewardConfirm(null)}
           onConfirm={() => {
             if (!rewardConfirm) return;
-            if (rewardConfirm.kind === "archive") {
-              updateReward(rewardConfirm.index, { archivedAt: new Date().toISOString(), isActive: false });
+            if (rewardConfirm.kind === "delete") {
+              void deleteReward(rewardConfirm.index);
             } else {
               updateReward(rewardConfirm.index, { isActive: false });
             }

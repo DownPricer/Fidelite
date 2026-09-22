@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { Button } from "@/components/ui";
 
 function SectionLabel({ children }: { children: string }) {
   return <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--violet-bright)]">{children}</p>;
@@ -13,6 +14,11 @@ export function SettingsPanel({
   merchantName: string;
   programSummary: string;
 }) {
+  async function logout() {
+    await fetch("/api/auth/logout", { method: "POST" });
+    window.location.href = "/app/connexion";
+  }
+
   return (
     <div className="space-y-8">
       <section className="space-y-3">
@@ -51,6 +57,17 @@ export function SettingsPanel({
               </svg>
             </Link>
           ))}
+        </div>
+      </section>
+
+      <section className="space-y-3">
+        <SectionLabel>Compte</SectionLabel>
+        <div className="glass-panel p-5">
+          <h2 className="text-lg font-black text-[var(--ink)]">Session commerçant</h2>
+          <p className="mt-1 text-sm text-[var(--muted-strong)]">Fermer la session sur cet appareil.</p>
+          <Button variant="secondary" className="mt-4 w-full" onClick={() => void logout()}>
+            Se déconnecter
+          </Button>
         </div>
       </section>
     </div>

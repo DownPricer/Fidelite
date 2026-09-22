@@ -1,6 +1,6 @@
 import { MerchantRole } from "@prisma/client";
 import { CsrfError, assertSameOrigin } from "./csrf";
-import { employeeTokenFromRequest, getRequestEmployee } from "./employee-session";
+import { employeeTokenFromRequest, getRequestEmployee, getRequestEmployeeWithReason } from "./employee-session";
 import { jsonError } from "./http";
 import { canOpenCaisse, canViewStatistics, firstActiveStaffMembership, isSuperAdmin, staffHasPermission } from "./rbac";
 import { getRequestSuperAdminUser } from "./super-admin-session";
@@ -79,12 +79,13 @@ export async function requireEmployee(req: Request) {
 }
 
 export async function requireCaisse(req: Request, merchantId?: string) {
-  const employee = await getRequestEmployee(req);
+  const employeeAccess = await getRequestEmployeeWithReason(req);
+  const employee = employeeAccess.session;
+  if (!employee && employeeAccess.denial) {
+    return { error: jsonError(employeeAccess.denial, 403) };
+  }
   if (employee) {
     if (merchantId && employee.membership.merchantId !== merchantId) {
-      return { error: jsonError("Accès caisse refusé.", 403) };
-    }
-    if (!canOpenCaisse(employee.membership)) {
       return { error: jsonError("Accès caisse refusé.", 403) };
     }
     return {

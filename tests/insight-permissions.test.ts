@@ -20,7 +20,7 @@ describe("canViewStatistics", () => {
     expect(canViewStatistics(manager)).toBe(false);
   });
 
-  it("autorise un employé seulement si la permission a été explicitement accordée", () => {
-    expect(canViewStatistics(grantedCashier)).toBe(true);
+  it("ignore les anciennes permissions détaillées pour les statistiques", () => {
+    expect(canViewStatistics(grantedCashier)).toBe(false);
   });
 });

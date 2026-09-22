@@ -121,7 +121,7 @@ function previewLine(values: RewardConfig, unit: "visits" | "points"): string {
   } else if (values.rewardType === "FIXED_DISCOUNT" && values.value) {
     reward = `${name} (−${values.value} €)`;
   }
-  return `${qty} cumulés → ${reward}`;
+  return `Après ${qty}, le client reçoit ${reward}.`;
 }
 
 export function RewardFormDialog({
@@ -143,6 +143,7 @@ export function RewardFormDialog({
   const [errors, setErrors] = useState<FieldErrors>({});
   const [submitting, setSubmitting] = useState(false);
   const [discardConfirmOpen, setDiscardConfirmOpen] = useState(false);
+  const [showLimits, setShowLimits] = useState(false);
   const isEdit = reward !== null;
 
   useEffect(() => {
@@ -153,6 +154,7 @@ export function RewardFormDialog({
     setErrors({});
     setSubmitting(false);
     setDiscardConfirmOpen(false);
+    setShowLimits(Boolean(initial.minPurchase || initial.globalLimit || initial.maxUsesPerCustomer || initial.reuseDelayDays));
   }, [open, reward, unit]);
 
   useEffect(() => {
@@ -217,7 +219,7 @@ export function RewardFormDialog({
                   {isEdit ? values.name || "Avantage" : "Créer un avantage"}
                 </h2>
                 <p className="mt-1 text-xs text-[var(--muted-strong)]">
-                  Vos clients débloquent cet avantage automatiquement en cumulant des {unitWord(unit, 2)}.
+                  Répondez simplement : ce que le client reçoit, quand il le reçoit, puis les limites éventuelles.
                 </p>
               </div>
               <button type="button" aria-label="Fermer" className="reward-form-close" onClick={requestClose}>
@@ -233,8 +235,8 @@ export function RewardFormDialog({
               ) : null}
 
               <section className="reward-form-section">
-                <h3 className="reward-form-section-title">Informations</h3>
-                <Field label="Nom de l'avantage" hint="Affiché tel quel sur la carte du client.">
+                <h3 className="reward-form-section-title">1. Que reçoit le client ?</h3>
+                <Field label="Nom visible par le client" hint="Ex : Café offert, -10 %, soin découverte.">
                   <Input
                     value={values.name}
                     placeholder="Ex : Boisson offerte"
@@ -242,7 +244,7 @@ export function RewardFormDialog({
                   />
                 </Field>
                 {errors.name ? <p className="reward-form-error">{errors.name}</p> : null}
-                <Field label="Description (optionnelle)" hint="Précisez le produit, service ou la condition.">
+                <Field label="Détail utile (optionnel)" hint="Précisez le produit, le service ou une condition simple.">
                   <Input
                     value={values.description ?? ""}
                     placeholder="Ex : Une boisson chaude au choix"
@@ -253,7 +255,7 @@ export function RewardFormDialog({
               </section>
 
               <section className="reward-form-section">
-                <h3 className="reward-form-section-title">Type de récompense</h3>
+                <h3 className="reward-form-section-title">Choisir le type</h3>
                 <div className="reward-type-grid">
                   {REWARD_TYPES.map((t) => (
                     <button
@@ -298,9 +300,9 @@ export function RewardFormDialog({
               </section>
 
               <section className="reward-form-section">
-                <h3 className="reward-form-section-title">Seuil requis</h3>
+                <h3 className="reward-form-section-title">2. À partir de combien ?</h3>
                 <Field
-                  label={`Seuil (${unit === "points" ? "points" : "passages"})`}
+                  label={`Nombre de ${unit === "points" ? "points" : "passages"} nécessaires`}
                   hint={`Le client doit avoir au moins ${values.threshold || 0} ${unitWord(unit, values.threshold || 0)} pour débloquer cet avantage.`}
                 >
                   <Input
@@ -315,7 +317,7 @@ export function RewardFormDialog({
               </section>
 
               <section className="reward-form-section">
-                <h3 className="reward-form-section-title">Période de validité</h3>
+                <h3 className="reward-form-section-title">3. Date de validité</h3>
                 <label className="reward-form-checkbox">
                   <input
                     type="checkbox"
@@ -346,45 +348,51 @@ export function RewardFormDialog({
               </section>
 
               <section className="reward-form-section">
-                <h3 className="reward-form-section-title">Limites d&apos;utilisation</h3>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <Field label="Montant minimum d'achat (€)" hint="Aucun = pas de minimum.">
-                    <Input
-                      type="number"
-                      min={0}
-                      placeholder="Aucun"
-                      value={values.minPurchase ?? ""}
-                      onChange={(e) => patch({ minPurchase: toNullableNumber(e.target.value) })}
-                    />
-                  </Field>
-                  <Field label="Limite globale" hint="Nombre total d'utilisations, tous clients confondus.">
-                    <Input
-                      type="number"
-                      min={0}
-                      placeholder="Illimité"
-                      value={values.globalLimit ?? ""}
-                      onChange={(e) => patch({ globalLimit: toNullableNumber(e.target.value) })}
-                    />
-                  </Field>
-                  <Field label="Limite par client" hint="Nombre de fois qu'un même client peut l'utiliser.">
-                    <Input
-                      type="number"
-                      min={0}
-                      placeholder="Illimité"
-                      value={values.maxUsesPerCustomer ?? ""}
-                      onChange={(e) => patch({ maxUsesPerCustomer: toNullableNumber(e.target.value) })}
-                    />
-                  </Field>
-                  <Field label="Délai avant réutilisation (jours)" hint="Temps minimum entre deux utilisations.">
-                    <Input
-                      type="number"
-                      min={0}
-                      placeholder="Aucun"
-                      value={values.reuseDelayDays ?? ""}
-                      onChange={(e) => patch({ reuseDelayDays: toNullableNumber(e.target.value) })}
-                    />
-                  </Field>
-                </div>
+                <h3 className="reward-form-section-title">Limites si besoin</h3>
+                <label className="reward-form-checkbox">
+                  <input type="checkbox" checked={showLimits} onChange={(event) => setShowLimits(event.currentTarget.checked)} />
+                  Ajouter une limite d'utilisation
+                </label>
+                {showLimits ? (
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <Field label="Montant minimum d'achat (€)" hint="Aucun = pas de minimum.">
+                      <Input
+                        type="number"
+                        min={0}
+                        placeholder="Aucun"
+                        value={values.minPurchase ?? ""}
+                        onChange={(e) => patch({ minPurchase: toNullableNumber(e.target.value) })}
+                      />
+                    </Field>
+                    <Field label="Limite globale" hint="Nombre total d'utilisations, tous clients confondus.">
+                      <Input
+                        type="number"
+                        min={0}
+                        placeholder="Illimité"
+                        value={values.globalLimit ?? ""}
+                        onChange={(e) => patch({ globalLimit: toNullableNumber(e.target.value) })}
+                      />
+                    </Field>
+                    <Field label="Limite par client" hint="Nombre de fois qu'un même client peut l'utiliser.">
+                      <Input
+                        type="number"
+                        min={0}
+                        placeholder="Illimité"
+                        value={values.maxUsesPerCustomer ?? ""}
+                        onChange={(e) => patch({ maxUsesPerCustomer: toNullableNumber(e.target.value) })}
+                      />
+                    </Field>
+                    <Field label="Délai avant réutilisation (jours)" hint="Temps minimum entre deux utilisations.">
+                      <Input
+                        type="number"
+                        min={0}
+                        placeholder="Aucun"
+                        value={values.reuseDelayDays ?? ""}
+                        onChange={(e) => patch({ reuseDelayDays: toNullableNumber(e.target.value) })}
+                      />
+                    </Field>
+                  </div>
+                ) : null}
                 {errors.minPurchase ? <p className="reward-form-error">{errors.minPurchase}</p> : null}
                 {errors.globalLimit ? <p className="reward-form-error">{errors.globalLimit}</p> : null}
                 {errors.maxUsesPerCustomer ? <p className="reward-form-error">{errors.maxUsesPerCustomer}</p> : null}
@@ -393,6 +401,9 @@ export function RewardFormDialog({
 
               <section className="reward-form-section">
                 <h3 className="reward-form-section-title">Statut</h3>
+                <p className="text-xs text-[var(--muted-strong)]">
+                  Actif : visible et utilisable. Inactif : conservé mais masqué. Archivé : retiré du catalogue avec son historique conservé.
+                </p>
                 <label className="reward-form-toggle">
                   <input
                     type="checkbox"
@@ -407,7 +418,7 @@ export function RewardFormDialog({
               </section>
 
               <section className="reward-form-preview">
-                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--muted)]">Aperçu</p>
+                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--muted)]">4. Résumé avant enregistrement</p>
                 <p className="mt-1 text-sm font-bold text-[var(--ink)]">{previewLine(values, unit)}</p>
                 <p className="mt-1 text-xs text-[var(--muted-strong)]">Type : {rewardTypeLabel(values.rewardType)}</p>
               </section>

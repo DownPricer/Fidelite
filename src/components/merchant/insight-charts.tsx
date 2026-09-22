@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment } from "react";
+import { Fragment, useState } from "react";
 import {
   Bar,
   BarChart,
@@ -95,12 +95,16 @@ export function InsightMultiLineChart({
   data,
   series,
   height = 240,
+  normalized = false,
 }: {
   data: Record<string, string | number>[];
   series: { key: string; label: string; color: string }[];
   height?: number;
+  normalized?: boolean;
 }) {
   const theme = useChartTheme();
+  const [hidden, setHidden] = useState<Set<string>>(() => new Set());
+  const visibleSeries = series.filter((s) => !hidden.has(s.key));
   const hasData = data.some((row) => series.some((s) => Number(row[s.key] ?? 0) > 0));
   if (!hasData) {
     return <div className="grid place-items-center text-sm text-[var(--muted)]" style={{ height }}>Aucune donnée sur cette période.</div>;
@@ -111,10 +115,22 @@ export function InsightMultiLineChart({
         <LineChart data={data}>
           <CartesianGrid stroke={theme.grid} vertical={false} />
           <XAxis dataKey="date" tick={{ fontSize: 10, fill: theme.axis }} stroke={theme.axis} />
-          <YAxis tick={{ fontSize: 10, fill: theme.axis }} stroke={theme.axis} width={32} allowDecimals={false} />
+          <YAxis tick={{ fontSize: 10, fill: theme.axis }} stroke={theme.axis} width={normalized ? 42 : 32} allowDecimals={!normalized} />
           <Tooltip contentStyle={{ background: theme.tooltipBg, border: `1px solid ${theme.tooltipBorder}`, borderRadius: 12, color: theme.tooltipText }} />
-          <Legend wrapperStyle={{ fontSize: 12, color: theme.axis }} />
-          {series.map((s) => (
+          <Legend
+            wrapperStyle={{ fontSize: 12, color: theme.axis, cursor: "pointer" }}
+            onClick={(payload) => {
+              const key = String(payload.dataKey ?? "");
+              if (!key) return;
+              setHidden((current) => {
+                const next = new Set(current);
+                if (next.has(key)) next.delete(key);
+                else if (series.length - next.size > 1) next.add(key);
+                return next;
+              });
+            }}
+          />
+          {visibleSeries.map((s) => (
             <Line key={s.key} type="monotone" dataKey={s.key} name={s.label} stroke={s.color} strokeWidth={2} dot={false} />
           ))}
         </LineChart>

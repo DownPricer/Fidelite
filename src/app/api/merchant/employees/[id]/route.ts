@@ -5,7 +5,7 @@ import { invitationPublicUrl, issueInvitation } from "@/lib/employee-invitation-
 import { revokeEmployeeSessions } from "@/lib/employee-session";
 import { clientIp, jsonError, jsonOk, readJson, userAgent } from "@/lib/http";
 import { prisma } from "@/lib/prisma";
-import { presetPermissions, presetLabel, resolvePermissions, sanitizeStaffPermissions, statusLabel } from "@/lib/staff-permissions";
+import { presetLabel, resolvePermissions, statusLabel } from "@/lib/staff-permissions";
 import { updateEmployeeSchema, zodErrorMessage } from "@/lib/validation";
 
 function mapEmployee(item: {
@@ -101,22 +101,10 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
   if (membership.invitationStatus === "CANCELLED") {
     return jsonError("Cet accès a été retiré.", 410);
   }
-  if (parsed.data.permissions && membership.userId === staff.user.id) {
-    return jsonError("Vous ne pouvez pas modifier vos propres permissions.", 403);
-  }
-
   if (parsed.data.email && parsed.data.email !== membership.user.email) {
     const clash = await prisma.user.findUnique({ where: { email: parsed.data.email } });
     if (clash && clash.id !== membership.userId) return jsonError("Cet e-mail est déjà utilisé.", 409);
   }
-
-  const preset = parsed.data.staffPreset ?? membership.staffPreset;
-  let permissions =
-    parsed.data.permissions !== undefined
-      ? sanitizeStaffPermissions(parsed.data.permissions)
-      : parsed.data.staffPreset
-        ? presetPermissions(parsed.data.staffPreset)
-        : undefined;
 
   const resendInvitation = parsed.data.invitationStatus === "PENDING";
   let invitationToken: string | null = null;
@@ -143,8 +131,6 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
     where: { id: membership.id },
     data: {
       ...(parsed.data.isActive !== undefined ? { isActive: parsed.data.isActive } : {}),
-      ...(parsed.data.staffPreset ? { staffPreset: parsed.data.staffPreset } : {}),
-      ...(permissions ? { permissions } : {}),
       ...(parsed.data.inviteMessage !== undefined ? { inviteMessage: parsed.data.inviteMessage } : {}),
     },
     include: { user: true },
@@ -166,24 +152,6 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
     ip: clientIp(req),
     userAgent: userAgent(req),
   });
-
-  if (permissions) {
-    const before = resolvePermissions(membership);
-    const after = resolvePermissions(updated);
-    const changes = Object.entries(after)
-      .filter(([key, value]) => before[key as keyof typeof before] !== value)
-      .map(([key, value]) => ({ key, before: before[key as keyof typeof before], after: value }));
-    for (const change of changes) {
-      await writeAudit({
-        actorId: staff.user.id,
-        merchantId: staff.membership.merchantId,
-        action: "EMPLOYEE_PERMISSION_UPDATE",
-        metadata: { employeeId: membership.id, ...change },
-        ip: clientIp(req),
-        userAgent: userAgent(req),
-      });
-    }
-  }
 
   if (resendInvitation && invitationToken && invitationExpiresAt) {
     const invitationUrl = invitationPublicUrl(invitationToken);

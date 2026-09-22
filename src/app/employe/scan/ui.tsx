@@ -170,7 +170,7 @@ export function EmployeeScanScreen({
           return;
         }
         if (status === 403) {
-          setError("Compte suspendu ou accès retiré.");
+          setError(typeof data?.error === "string" ? data.error : "Accès au scanner refusé.");
           return;
         }
         setError(resolveCaisseScanError(data, status));
@@ -238,7 +238,7 @@ export function EmployeeScanScreen({
           return;
         }
         if (status === 403) {
-          setError("Compte suspendu ou accès retiré.");
+          setError(typeof data?.error === "string" ? data.error : "Accès au scanner refusé.");
           return;
         }
         setError(resolveCaisseScanError(data, status));
@@ -279,8 +279,8 @@ export function EmployeeScanScreen({
   }, [success]);
 
   return (
-    <div className="obsidian-scene flex h-dvh flex-col overflow-hidden">
-      <header className="flex shrink-0 items-center justify-between gap-3 border-b border-[var(--stroke)] bg-[rgba(12,10,24,0.92)] px-4 py-3 backdrop-blur-md safe-top">
+    <div className="employee-scan-scene flex min-h-dvh flex-col overflow-hidden">
+      <header className="flex shrink-0 items-center justify-between gap-3 border-b border-[var(--stroke)] bg-[var(--surface)] px-4 py-3 safe-top">
         <div className="min-w-0">
           <p className="truncate text-sm font-black text-[var(--panel-text)]">{profile.merchantName}</p>
           <p className="text-xs text-[var(--muted-text)]">{profile.firstName}</p>
@@ -294,9 +294,9 @@ export function EmployeeScanScreen({
         </button>
       </header>
 
-      <div className="flex min-h-0 flex-1 flex-col px-4 py-3 safe-bottom">
+      <div className="mx-auto flex min-h-0 w-full max-w-2xl flex-1 flex-col px-4 py-3 safe-bottom">
         <div className="mb-3 flex items-center justify-between gap-2">
-          <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--violet-bright)]">
+          <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--scan-action)]">
             {statusLabel(phase, cameraError)}
           </p>
           {busy ? <span className="text-xs text-[var(--muted)]">Chargement…</span> : null}
@@ -308,8 +308,8 @@ export function EmployeeScanScreen({
               <CashierCheckout result={result} permissions={profile.permissions} demo={demo} onReset={resetScanner} />
             </motion.div>
           ) : (
-            <motion.div key="scan" className="flex min-h-0 flex-1 flex-col gap-3">
-              <div className="relative shrink-0 overflow-hidden rounded-3xl border border-white/10 bg-black">
+            <motion.div key="scan" className="flex min-h-0 flex-1 flex-col justify-center gap-3">
+              <div className="relative shrink-0 overflow-hidden rounded-2xl border border-[var(--stroke)] bg-black shadow-[0_18px_50px_rgba(0,0,0,0.18)]">
                 {cameraActive ? (
                   <QrScanner
                     key={cameraSession}
@@ -328,17 +328,20 @@ export function EmployeeScanScreen({
                         </p>
                       </>
                     ) : (
-                      <p>Scanner un QR ou saisir le numéro client ci-dessous.</p>
+                      <>
+                        <p className="font-semibold text-white">Caméra inactive</p>
+                        <p className="text-xs text-white/60">Lancez la caméra pour scanner une carte client.</p>
+                      </>
                     )}
                   </div>
                 )}
-                <div className="pointer-events-none absolute inset-3 rounded-2xl border-2 border-white/35" />
+                <div className="pointer-events-none absolute left-1/2 top-1/2 h-[58%] w-[72%] -translate-x-1/2 -translate-y-1/2 rounded-2xl border-2 border-[var(--scan-action)] shadow-[0_0_0_999px_rgba(0,0,0,0.18)]" />
               </div>
 
               <div className="grid grid-cols-2 gap-2">
                 {!cameraActive ? (
                   <Button
-                    className="col-span-2 py-3.5"
+                    className="col-span-2 bg-[var(--scan-action)] py-3.5 text-white hover:bg-[var(--scan-action-strong)]"
                     onClick={() => {
                       setCameraError(null);
                       setCameraActive(true);

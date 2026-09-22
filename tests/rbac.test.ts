@@ -7,6 +7,7 @@ import {
   canOpenCaisse,
   canViewAllCustomers,
   isSuperAdmin,
+  staffHasPermission,
 } from "../src/lib/rbac";
 
 const admin = { role: "MERCHANT_ADMIN" as const, staffPreset: "CASHIER" as const, permissions: null };
@@ -24,15 +25,20 @@ describe("contrôle des rôles", () => {
     expect(canOpenCaisse(employee)).toBe(true);
   });
 
-  it("interdit à l'employé caisse les réglages, clients et employés", () => {
+  it("interdit à l'employé les réglages, clients, employés et corrections manuelles", () => {
     expect(canManageMerchantSettings("EMPLOYEE")).toBe(false);
     expect(canManageEmployees("EMPLOYEE")).toBe(false);
     expect(canViewAllCustomers(employee)).toBe(false);
     expect(canAdjustPoints(employee)).toBe(false);
   });
 
-  it("autorise le responsable à consulter les clients", () => {
-    expect(canViewAllCustomers(manager)).toBe(true);
+  it("applique les mêmes droits fixes à tous les employés", () => {
+    expect(canOpenCaisse(manager)).toBe(true);
+    expect(canViewAllCustomers(manager)).toBe(false);
+    expect(canAdjustPoints(manager)).toBe(false);
+    expect(staffHasPermission(employee as any, "addPoints")).toBe(true);
+    expect(staffHasPermission(employee as any, "redeemReward")).toBe(true);
+    expect(staffHasPermission(employee as any, "editProgram")).toBe(false);
   });
 
   it("autorise l'admin commerçant à gérer son commerce", () => {

@@ -4,6 +4,7 @@ import type { NextRequest } from "next/server";
 import { MerchantRole, SessionKind } from "@prisma/client";
 import { canEmployeeAccess } from "./employee-invitation";
 import { env, isProduction } from "./env";
+import { isMerchantOperational } from "./merchant-status";
 import { prisma } from "./prisma";
 import { hashToken } from "./session";
 
@@ -89,6 +90,11 @@ export async function revokeEmployeeSessions(userId: string) {
 }
 
 export async function employeeFromToken(token: string) {
+  const result = await employeeFromTokenWithReason(token);
+  return result.session;
+}
+
+export async function employeeFromTokenWithReason(token: string) {
   try {
     const session = await prisma.session.findFirst({
       where: { tokenHash: hashToken(token), kind: SessionKind.EMPLOYEE },
@@ -102,32 +108,50 @@ export async function employeeFromToken(token: string) {
 
     if (session?.isQaMagicLogin && !env.qaMagicLoginEnabled) {
       await prisma.session.deleteMany({ where: { id: session.id } });
-      return null;
+      return { session: null, denial: "Session employé expirée." };
     }
-    if (!session || session.expiresAt < new Date()) return null;
-    if (!session.merchantMembership) return null;
+    if (!session) return { session: null, denial: "Session employé expirée." };
+    if (session.expiresAt < new Date()) return { session: null, denial: "Session employé expirée." };
+    if (!session.merchantMembership) return { session: null, denial: "Session employé invalide." };
 
     const membership = session.merchantMembership;
+    if (membership.role !== MerchantRole.EMPLOYEE) {
+      return { session: null, denial: "Session employé invalide." };
+    }
+    if (!session.user.isActive) {
+      return { session: null, denial: "Compte employé inactif." };
+    }
+    if (!membership.isActive || membership.invitationStatus === "CANCELLED") {
+      return { session: null, denial: "Accès employé retiré." };
+    }
+    if (membership.invitationStatus === "PENDING") {
+      return { session: null, denial: "Invitation employé non finalisée." };
+    }
+    if (!membership.merchant.isActive || !isMerchantOperational(membership.merchant.status)) {
+      return { session: null, denial: "Commerce suspendu." };
+    }
     if (
-      membership.role !== MerchantRole.EMPLOYEE ||
       !canEmployeeAccess({
         userActive: session.user.isActive,
         membershipActive: membership.isActive,
         invitationStatus: membership.invitationStatus,
-        merchantActive: membership.merchant.isActive,
+        merchantActive: membership.merchant.isActive && isMerchantOperational(membership.merchant.status),
       })
     ) {
-      return null;
+      return { session: null, denial: "Accès employé refusé." };
     }
 
     return {
-      user: session.user,
-      membership,
-      sessionId: session.id,
+      session: {
+        user: session.user,
+        membership,
+        sessionId: session.id,
+      },
+      denial: null,
     };
   } catch (error) {
     console.error("[employee-session] Impossible de lire la session:", error);
-    return null;
+    return { session: null, denial: "Session employé illisible." };
   }
 }
 
@@ -142,6 +166,12 @@ export async function getRequestEmployee(req: Request | NextRequest) {
   const token = employeeTokenFromRequest(req);
   if (!token) return null;
   return employeeFromToken(token);
+}
+
+export async function getRequestEmployeeWithReason(req: Request | NextRequest) {
+  const token = employeeTokenFromRequest(req);
+  if (!token) return { session: null, denial: null };
+  return employeeFromTokenWithReason(token);
 }
 
 export type EmployeeSession = NonNullable<Awaited<ReturnType<typeof employeeFromToken>>>;

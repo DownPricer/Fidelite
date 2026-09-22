@@ -126,5 +126,17 @@ export const INSIGHT_DEMO_RESPONSE = {
         { customerMembershipId: "c3", firstName: "Sarah", totalCents: 5330 },
       ],
     },
+    comparison: {
+      hasRevenue: true,
+      series: Array.from({ length: 30 }, (_, i) => ({
+        date: `J-${29 - i}`,
+        passages: Math.max(0, Math.round(5 + Math.sin(i / 2.4) * 2 + (i % 4))),
+        scans: Math.max(0, Math.round(6 + Math.cos(i / 2.8) * 2 + (i % 3))),
+        newClients: Math.max(0, Math.round(1 + Math.sin(i / 3) * 1.2)),
+        returningClients: Math.max(0, Math.round(3 + Math.cos(i / 3.5) * 1.5 + (i % 2))),
+        rewardsUsed: Math.max(0, Math.round(1 + Math.sin(i / 4) * 1.1)),
+        revenueCents: Math.max(0, Math.round(5200 + Math.sin(i / 2.5) * 1800 + (i % 5) * 420)),
+      })),
+    },
   },
 };
