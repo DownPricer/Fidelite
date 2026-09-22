@@ -43,9 +43,13 @@ export async function enablePushNotifications(vapidPublicKey: string): Promise<{
       return { ok: false, error: "Autorisation refusée." };
     }
     const registration = await navigator.serviceWorker.ready;
+    const applicationServerKey = urlBase64ToUint8Array(vapidPublicKey);
     const subscription = await registration.pushManager.subscribe({
       userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
+      applicationServerKey: applicationServerKey.buffer.slice(
+        applicationServerKey.byteOffset,
+        applicationServerKey.byteOffset + applicationServerKey.byteLength,
+      ) as ArrayBuffer,
     });
     const json = subscription.toJSON();
     const response = await fetch("/api/customer/push", {

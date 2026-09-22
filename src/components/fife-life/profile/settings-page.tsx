@@ -262,6 +262,88 @@ export function SettingsPage({
 
       <section className="glass-panel profile-panel mt-4 p-4">
         <div className="relative z-[1]">
+          <h3 className="section-title mb-3">Bons plans et publicités</h3>
+          <p className="mb-3 text-xs text-[var(--muted)]">
+            Rien n&apos;est activé par défaut. Vous pouvez retirer votre accord à tout moment, séparément pour
+            chaque canal.
+          </p>
+          <p className="mt-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--muted)]">
+            Commerces dont je possède la carte
+          </p>
+          <div className="mt-2 space-y-2">
+            <ToggleRow
+              label="Offres dans l'application"
+              checked={preferences.notifyMerchantOffers}
+              onChange={(v) => void patchPreferences({ notifyMerchantOffers: v })}
+            />
+            <ToggleRow
+              label="Notifications push"
+              checked={preferences.adsMerchantPush}
+              onChange={(v) => void patchPreferences({ adsMerchantPush: v })}
+            />
+            <ToggleRow
+              label="E-mails"
+              checked={preferences.adsMerchantEmail}
+              onChange={(v) => void patchPreferences({ adsMerchantEmail: v })}
+            />
+          </div>
+          <p className="mt-4 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--muted)]">
+            Bons plans locaux Fidelo (autres commerces de mon secteur)
+          </p>
+          <div className="mt-2 space-y-2">
+            <ToggleRow
+              label="Bons plans dans l'application"
+              checked={preferences.notifyFifeLifeNews}
+              onChange={(v) => void patchPreferences({ notifyFifeLifeNews: v })}
+            />
+            <ToggleRow
+              label="Notifications push"
+              checked={preferences.adsNetworkPush}
+              onChange={(v) => void patchPreferences({ adsNetworkPush: v })}
+            />
+            <ToggleRow
+              label="E-mails"
+              checked={preferences.adsNetworkEmail}
+              onChange={(v) => void patchPreferences({ adsNetworkEmail: v })}
+            />
+          </div>
+          <div className="mt-4 grid grid-cols-2 gap-2">
+            <label className="block text-xs text-[var(--muted)]">
+              Ville (zone des bons plans)
+              <input
+                type="text"
+                className="profile-select mt-1 w-full"
+                defaultValue={preferences.marketingZoneCity ?? ""}
+                placeholder="Ex. Lyon"
+                onBlur={(e) => void patchPreferences({ marketingZoneCity: e.target.value.trim() || null })}
+              />
+            </label>
+            <label className="block text-xs text-[var(--muted)]">
+              Code postal
+              <input
+                type="text"
+                inputMode="numeric"
+                className="profile-select mt-1 w-full"
+                defaultValue={preferences.marketingZonePostalCode ?? ""}
+                placeholder="Ex. 69001"
+                onBlur={(e) => void patchPreferences({ marketingZonePostalCode: e.target.value.trim() || null })}
+              />
+            </label>
+          </div>
+          <p className="mt-2 text-[11px] text-[var(--muted)]">
+            Cette zone déclarée sert uniquement à recevoir des bons plans locaux pertinents — jamais de
+            géolocalisation en arrière-plan.
+          </p>
+          {preferences.consentUpdatedAt ? (
+            <p className="mt-3 text-[10px] text-[var(--muted)]">
+              Dernière mise à jour du consentement : {new Date(preferences.consentUpdatedAt).toLocaleString("fr-FR")}
+            </p>
+          ) : null}
+        </div>
+      </section>
+
+      <section className="glass-panel profile-panel mt-4 p-4">
+        <div className="relative z-[1]">
           <h3 className="section-title mb-3">Confidentialité et préférences</h3>
           <div className="space-y-2">
             <ToggleRow label="Offres personnalisées" checked={preferences.consentPersonalizedOffers} onChange={(v) => void patchPreferences({ consentPersonalizedOffers: v })} />

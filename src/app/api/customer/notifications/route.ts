@@ -15,7 +15,7 @@ export async function GET(req: Request) {
 
   const where = {
     userId: auth.user.id,
-    ...(filter === "offers" ? { kind: { in: ["MERCHANT_OFFER", "NETWORK_DEAL"] as const } } : {}),
+    ...(filter === "offers" ? { kind: { in: ["MERCHANT_OFFER" as const, "NETWORK_DEAL" as const] } } : {}),
     ...(filter === "info" ? { kind: "SERVICE" as const } : {}),
   };
 

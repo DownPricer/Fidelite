@@ -33,9 +33,17 @@ export const PREVIEW_PREFERENCES: PreferencesPayload = {
   notifyChannelPush: true,
   notifyChannelEmail: true,
   notifyChannelSms: false,
+  adsMerchantPush: false,
+  adsMerchantEmail: false,
+  adsNetworkPush: false,
+  adsNetworkEmail: false,
+  marketingZoneCity: null,
+  marketingZonePostalCode: null,
   consentPersonalizedOffers: false,
   consentMarketing: false,
   consentAnalytics: false,
+  consentVersion: null,
+  consentUpdatedAt: null,
   language: "fr",
 };
 

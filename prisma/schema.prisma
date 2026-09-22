@@ -907,18 +907,18 @@ enum EmailSuppressionReason {
 }
 
 model Campaign {
-  id                  String               @id @default(cuid())
+  id                  String                @id @default(cuid())
   merchantId          String
   channel             CampaignChannel
-  audienceType        CampaignAudienceType
-  status              CampaignStatus       @default(DRAFT)
+  audienceType        CampaignAudienceType?
+  status              CampaignStatus        @default(DRAFT)
   title               String
   body                String
   imageUrl            String?
   actionLabel         String?
   actionUrl           String?
   /// Toute programmation est interprétée et affichée en Europe/Paris.
-  timezone            String               @default("Europe/Paris")
+  timezone            String                @default("Europe/Paris")
   scheduledAt         DateTime?
   sentAt              DateTime?
   estimatedRecipients Int?
@@ -927,11 +927,11 @@ model Campaign {
   quotaPeriodKey      String?
   quotaConsumedAt     DateTime?
   priceCents          Int?
-  requiresPayment     Boolean              @default(false)
+  requiresPayment     Boolean               @default(false)
   rejectionReason     String?
   createdBy           String
-  createdAt           DateTime             @default(now())
-  updatedAt           DateTime             @updatedAt
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
 
   merchant   Merchant           @relation(fields: [merchantId], references: [id], onDelete: Cascade)
   payment    CampaignPayment?

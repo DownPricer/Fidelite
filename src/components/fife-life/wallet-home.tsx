@@ -21,6 +21,7 @@ import { usePersonalizedQr } from "./use-personalized-qr";
 import { useWalletUnlockAnimation } from "./use-wallet-unlock-animation";
 import { WalletMotionRoot } from "./wallet-motion-root";
 import { AddToGoogleWalletButton } from "./add-to-google-wallet-button";
+import { DiscoverIconLink, NotificationBellLink } from "./header-icon-links";
 import { WalletQrAction } from "./wallet-qr-action";
 import {
   buildFifeLifeNextReward,
@@ -60,7 +61,6 @@ export function WalletHome({
 }) {
   const displayName = customerName ?? (lastName ? `${firstName} ${lastName}` : firstName);
   const profileHref = preview ? "/compte?demo=1" : "/compte";
-  const settingsHref = preview ? "/compte/parametres?demo=1" : "/compte/parametres";
 
   const [points, setPoints] = useState(fifeLifePoints);
   const [cards, setCards] = useState(initialCards);
@@ -273,7 +273,7 @@ export function WalletHome({
             <Link
               href={profileHref}
               className="avatar-orb-glassy relative z-50 grid h-10 w-10 place-items-center text-sm font-bold"
-              aria-label="Mon profil"
+              aria-label="Mon profil et mes paramètres"
             >
               {firstName.slice(0, 1).toUpperCase()}
             </Link>
@@ -284,13 +284,10 @@ export function WalletHome({
                 <p className="text-[11px] font-medium text-[var(--muted-strong)]">Prism Wallet</p>
               </div>
             </div>
-            <Link
-              href={settingsHref}
-            aria-label="Paramètres du compte"
-              className="settings-btn-glassy relative z-50 grid h-9 w-9 place-items-center rounded-full"
-            >
-              <span className="h-1.5 w-1.5 rounded-full bg-[var(--violet-bright)]" />
-            </Link>
+            <div className="relative z-50 flex items-center gap-2">
+              <DiscoverIconLink href={preview ? "/decouvrir?demo=1" : "/decouvrir"} />
+              <NotificationBellLink href={preview ? "/notifications?demo=1" : "/notifications"} demo={preview} />
+            </div>
           </header>
 
           <div className="wallet-hero-column">
@@ -320,6 +317,9 @@ export function WalletHome({
                 onActiveCardChange={handleActiveCardChange}
                 demoVisual={preview}
               />
+              <p className="mt-1.5 text-center text-[11px] font-medium text-[var(--muted)]">
+                Appuyez sur la carte pour l&apos;afficher en grand
+              </p>
               <section className="wallet-primary-actions" aria-label="Actions QR et Google Wallet">
                 <WalletQrAction
                   qrSrc={personalizedQr}
