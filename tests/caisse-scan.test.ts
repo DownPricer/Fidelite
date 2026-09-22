@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { signQrToken } from "../src/lib/qr";
+import { CaisseScanError } from "../src/lib/caisse-scan-errors";
 
 const fifeLifeQrTokenFindUnique = vi.fn();
 const fifeLifeQrTokenUpdate = vi.fn();
@@ -216,6 +217,54 @@ describe("processCaisseScan — QR global Fidelo", () => {
           type: "CARD_UNLOCKED",
         }),
       }),
+    );
+  });
+
+  it("accepte le scan quand le programme a un brouillon non publié (status DRAFT) — régression 403", async () => {
+    loyaltyProgramFindUnique.mockResolvedValueOnce({
+      id: "prog_demo",
+      merchantId,
+      mode: "VISITS",
+      status: "DRAFT",
+      visitsRequired: 10,
+      rewardLabel: "1 boisson offerte",
+      config: { visitsPerScan: 1 },
+      draftConfig: { mode: "VISITS", rules: {}, rewards: [] },
+      version: 1,
+      publishedAt: new Date(),
+      scheduledAt: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      rewards: [],
+    });
+
+    const token = await signQrToken({ jti });
+    const result = await processCaisseScan({ token, merchantId, actorUserId });
+
+    expect(result.grantId).toBeDefined();
+  });
+
+  it("refuse le scan quand le programme est ARCHIVED", async () => {
+    loyaltyProgramFindUnique.mockResolvedValueOnce({
+      id: "prog_demo",
+      merchantId,
+      mode: "VISITS",
+      status: "ARCHIVED",
+      visitsRequired: 10,
+      rewardLabel: "1 boisson offerte",
+      config: { visitsPerScan: 1 },
+      draftConfig: null,
+      version: 1,
+      publishedAt: new Date(),
+      scheduledAt: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      rewards: [],
+    });
+
+    const token = await signQrToken({ jti });
+    await expect(processCaisseScan({ token, merchantId, actorUserId })).rejects.toBeInstanceOf(
+      CaisseScanError,
     );
   });
 });

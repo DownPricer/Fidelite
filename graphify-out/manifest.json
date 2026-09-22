@@ -546,9 +546,9 @@
     "semantic_hash": "cf51acea8c84ce90e93f4d6f96ba2aa7"
   },
   "src/app/api/merchant/employees/[id]/route.ts": {
-    "mtime": 1790071557.749837,
-    "seen": 1790072318.3139365,
-    "ast_hash": "40fbdb64c7cdbb62062f39ff280e8009",
+    "mtime": 1790073929.7893052,
+    "seen": 1790078181.720271,
+    "ast_hash": "594eb1553d2dc988b50a161e691f559b",
     "semantic_hash": ""
   },
   "src/app/api/merchant/employees/route.ts": {
@@ -558,9 +558,9 @@
     "semantic_hash": "825ba3810515a7d1f503d059edfc83bd"
   },
   "src/app/api/merchant/program/route.ts": {
-    "mtime": 1790072780.9130855,
-    "seen": 1790072810.9952307,
-    "ast_hash": "d62426084350bc8b3e6b3ca1be2d7fae",
+    "mtime": 1790073929.790302,
+    "seen": 1790078181.720271,
+    "ast_hash": "0fa5d2b85ecd7e937c4dec3e92021a87",
     "semantic_hash": ""
   },
   "src/app/api/merchant/settings/route.ts": {
@@ -708,9 +708,9 @@
     "semantic_hash": "595228d40cc59d302ac109af942e84ad"
   },
   "src/app/app/employes/ui.tsx": {
-    "mtime": 1790071538.754029,
-    "seen": 1790072318.3189366,
-    "ast_hash": "ded5537a9cd0808d29877d19b90d89c8",
+    "mtime": 1790073929.7923026,
+    "seen": 1790078181.7361307,
+    "ast_hash": "e284e3ba17990d319e4ceb09775aedad",
     "semantic_hash": ""
   },
   "src/app/app/enter-demo/route.ts": {
@@ -768,15 +768,15 @@
     "semantic_hash": "1317db368cda0f78077ba26124c0dca0"
   },
   "src/app/app/parametres/programme/ui.tsx": {
-    "mtime": 1790071631.0636404,
-    "seen": 1790072318.3209362,
-    "ast_hash": "e3d1c3fcfbcf432a8d13caf1b2a645ea",
+    "mtime": 1790073929.7933085,
+    "seen": 1790078181.7361307,
+    "ast_hash": "91493bb22528befcc06c710fb3810ea2",
     "semantic_hash": ""
   },
   "src/app/app/parametres/ui.tsx": {
-    "mtime": 1790071779.3294506,
-    "seen": 1790072318.3209362,
-    "ast_hash": "0295cdac5e5e22fee91c132d56936b0f",
+    "mtime": 1790073929.7953043,
+    "seen": 1790078181.7361307,
+    "ast_hash": "cd0448e62704606239dfc62e334e07ae",
     "semantic_hash": ""
   },
   "src/app/app/ui.tsx": {
@@ -966,9 +966,9 @@
     "semantic_hash": "1310dc694b286dabd3be0caa6c48afbd"
   },
   "src/app/employe/scan/ui.tsx": {
-    "mtime": 1790071746.1398115,
-    "seen": 1790072318.325936,
-    "ast_hash": "9684cc204a01f959d989ea58d015a063",
+    "mtime": 1790073929.798307,
+    "seen": 1790078181.7361307,
+    "ast_hash": "a68063b8b8fd0f351ca044870825b5aa",
     "semantic_hash": ""
   },
   "src/app/google-wallet/media/merchant/[merchantId]/[kind]/route.ts": {
@@ -1566,9 +1566,9 @@
     "semantic_hash": "88b212a471fbd483a14cd588a1cdc1bb"
   },
   "src/lib/api-guard.ts": {
-    "mtime": 1790071511.464492,
-    "seen": 1790072318.3441718,
-    "ast_hash": "3b1d9fa1662df217b6c4f9de7b18932b",
+    "mtime": 1790073929.802301,
+    "seen": 1790078181.7520754,
+    "ast_hash": "894984a63e4653e4c230169b1ae7356d",
     "semantic_hash": ""
   },
   "src/lib/audit.ts": {
@@ -1836,9 +1836,9 @@
     "semantic_hash": "6d0c2535851edc5186c5fc3421b804fe"
   },
   "src/lib/employee-session.ts": {
-    "mtime": 1790071502.9039006,
-    "seen": 1790072318.3511815,
-    "ast_hash": "d1cc3e94e8a553174cbfd4278a67f2df",
+    "mtime": 1790073929.803301,
+    "seen": 1790078181.7679174,
+    "ast_hash": "14b56bc815cceab2f0a467235661560e",
     "semantic_hash": ""
   },
   "src/lib/env.ts": {
@@ -1890,16 +1890,16 @@
     "semantic_hash": "5c168ad72ec621f258d0afe34ab0f038"
   },
   "src/lib/loyalty-commit.ts": {
-    "mtime": 1789815472.6032832,
-    "seen": 1789912103.9904675,
-    "ast_hash": "d8093485d94aabf62a79a8a8369f4e7f",
+    "mtime": 1790078107.3555613,
+    "seen": 1790078181.7679174,
+    "ast_hash": "fdf678152bab4ee0e1991f72d8deff6f",
     "semantic_hash": ""
   },
   "src/lib/loyalty-context.ts": {
-    "mtime": 1789569578.180143,
-    "seen": 1789638975.0281594,
-    "ast_hash": "65b4c26b0894631432ede8adefceb465",
-    "semantic_hash": "65b4c26b0894631432ede8adefceb465"
+    "mtime": 1790078107.3555613,
+    "seen": 1790078181.7679174,
+    "ast_hash": "043609899b283dcf520b7b33485ded5d",
+    "semantic_hash": ""
   },
   "src/lib/loyalty-engine.ts": {
     "mtime": 1789572335.3408499,
@@ -2118,9 +2118,9 @@
     "semantic_hash": ""
   },
   "src/lib/staff-permissions.ts": {
-    "mtime": 1790071469.1269255,
-    "seen": 1790072318.3591814,
-    "ast_hash": "58ea6f405d2fca8dd091cabf9c52ee56",
+    "mtime": 1790073929.805305,
+    "seen": 1790078181.7679174,
+    "ast_hash": "27b2d9789fc5b60f43a73b22cc45ff38",
     "semantic_hash": ""
   },
   "src/lib/super-admin-entry.ts": {
@@ -2232,9 +2232,9 @@
     "semantic_hash": "57f4d39d3a66628ff1e156658c4928f8"
   },
   "tests/caisse-scan.test.ts": {
-    "mtime": 1789838727.8792892,
-    "seen": 1789912104.0002937,
-    "ast_hash": "c1198fb790b85e35af49882f9b42cb5b",
+    "mtime": 1790078107.3593473,
+    "seen": 1790078181.7679174,
+    "ast_hash": "f8dd157bbf0f506071a2c1053fb02ae9",
     "semantic_hash": ""
   },
   "tests/card-deck-interaction.test.ts": {
@@ -2292,9 +2292,9 @@
     "semantic_hash": "3f56c6bf79ffc61353665b60d1ec8e8e"
   },
   "tests/employee-access.test.ts": {
-    "mtime": 1790071841.2612462,
-    "seen": 1790072318.3643727,
-    "ast_hash": "2415a82a15e7051223924be95ffad3f8",
+    "mtime": 1790073929.806302,
+    "seen": 1790078181.7679174,
+    "ast_hash": "4635842351d4049267c5a582172142b2",
     "semantic_hash": ""
   },
   "tests/employee-create.integration.test.ts": {
@@ -2520,9 +2520,9 @@
     "semantic_hash": "69811eee789b98d74ca69dc85c84ab7c"
   },
   "tests/rbac.test.ts": {
-    "mtime": 1790071886.5985754,
-    "seen": 1790072318.37137,
-    "ast_hash": "cc42cc118451f01979f5c105936580c2",
+    "mtime": 1790073929.8093052,
+    "seen": 1790078181.790819,
+    "ast_hash": "125224778b78eaebad6bf7521d890c54",
     "semantic_hash": ""
   },
   "tests/scan-session.test.ts": {
@@ -4080,9 +4080,9 @@
     "semantic_hash": ""
   },
   "src/app/app/statistiques/insight-demo-data.ts": {
-    "mtime": 1790071943.0283465,
-    "seen": 1790072318.3209362,
-    "ast_hash": "8ae9cdf5c45e3ff830b4c45705205b26",
+    "mtime": 1790073929.796306,
+    "seen": 1790078181.7361307,
+    "ast_hash": "12dcc64696cbf68ebd49a3b855c54ddc",
     "semantic_hash": ""
   },
   "src/app/app/statistiques/page.tsx": {
@@ -4092,9 +4092,9 @@
     "semantic_hash": ""
   },
   "src/app/app/statistiques/statistiques-panel.tsx": {
-    "mtime": 1790071722.4889789,
-    "seen": 1790072318.3209362,
-    "ast_hash": "5943b4dbe7d41ec5f5426b04aaa764d8",
+    "mtime": 1790078107.3555613,
+    "seen": 1790078181.7361307,
+    "ast_hash": "366abc60b45b6acac07c8bb85b344f03",
     "semantic_hash": ""
   },
   "src/app/pro/page.tsx": {
@@ -4110,9 +4110,9 @@
     "semantic_hash": ""
   },
   "src/components/merchant/insight-charts.tsx": {
-    "mtime": 1790071698.865301,
-    "seen": 1790072318.3411818,
-    "ast_hash": "85953408217729934c5bd530d78637de",
+    "mtime": 1790073929.8013024,
+    "seen": 1790078181.7520754,
+    "ast_hash": "b53630e2f628e99df5bb784cc5f7197d",
     "semantic_hash": ""
   },
   "src/lib/insight-definitions.ts": {
@@ -4128,9 +4128,9 @@
     "semantic_hash": ""
   },
   "src/lib/insight-stats.ts": {
-    "mtime": 1790071683.1233978,
-    "seen": 1790072318.3521817,
-    "ast_hash": "39359f4332d98153860246a62d146235",
+    "mtime": 1790073929.8043036,
+    "seen": 1790078181.7679174,
+    "ast_hash": "ae9983a2e36eb7eb2b5bbcd6ed2d909e",
     "semantic_hash": ""
   },
   "src/lib/landing-auth-targets.ts": {
@@ -4152,9 +4152,9 @@
     "semantic_hash": ""
   },
   "tests/insight-permissions.test.ts": {
-    "mtime": 1790071830.6007297,
-    "seen": 1790072318.3663702,
-    "ast_hash": "f7ac8ac460a516fffbd527b995c4e692",
+    "mtime": 1790073929.807305,
+    "seen": 1790078181.7858157,
+    "ast_hash": "9376e294f2ab000e3803f8f350e475f6",
     "semantic_hash": ""
   },
   "tests/insight-stats.test.ts": {
@@ -4188,27 +4188,27 @@
     "semantic_hash": ""
   },
   "src/app/app/parametres/reward-form-dialog.tsx": {
-    "mtime": 1790071803.6718707,
-    "seen": 1790072318.3209362,
-    "ast_hash": "c23a585946cc96879a2957dda6ba1996",
-    "semantic_hash": ""
-  },
-  "src/app/app/parametres/password-section.tsx": {
-    "mtime": 1790071247.1707718,
-    "seen": 1790072318.319936,
-    "ast_hash": "f28481775ddefe25c7a67d86d6449a96",
+    "mtime": 1790073929.794306,
+    "seen": 1790078181.7361307,
+    "ast_hash": "ece3d866dcab13d648d742893781b8af",
     "semantic_hash": ""
   },
   "src/lib/loyalty-reward-removal.ts": {
-    "mtime": 1790072779.801666,
-    "seen": 1790072811.0372398,
-    "ast_hash": "73eae9f05ca06856bbc2bd9191581f82",
+    "mtime": 1790073929.8043036,
+    "seen": 1790078181.7679174,
+    "ast_hash": "2115012aae09e7046f532cde21cf81ba",
     "semantic_hash": ""
   },
   "tests/loyalty-reward-removal.test.ts": {
-    "mtime": 1790072958.0121746,
-    "seen": 1790072999.6400967,
-    "ast_hash": "86222e87d741cd88bead656c093b8ea8",
+    "mtime": 1790073929.8083017,
+    "seen": 1790078181.7868154,
+    "ast_hash": "e35a530706fe6a7f4d61d4fb75651cc2",
+    "semantic_hash": ""
+  },
+  "tests/statistiques-comparison.test.ts": {
+    "mtime": 1790078074.112746,
+    "seen": 1790078181.790819,
+    "ast_hash": "2d21e908b914d4febf545ddeddcb7787",
     "semantic_hash": ""
   }
 }

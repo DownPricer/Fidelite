@@ -49,6 +49,22 @@ const COMPARISON_METRICS = [
   { key: "revenueCents", label: "Chiffre d'affaires", color: "#0F766E" },
 ] as const;
 
+export const MIN_COMPARISON_METRICS = 1;
+export const MAX_COMPARISON_METRICS = 4;
+
+/**
+ * Bascule un seul indicateur du comparateur, sans jamais toucher aux autres.
+ * Pure et testable indépendamment du rendu React.
+ */
+export function toggleComparisonMetric(current: string[], key: string): string[] {
+  if (current.includes(key)) {
+    if (current.length <= MIN_COMPARISON_METRICS) return current;
+    return current.filter((item) => item !== key);
+  }
+  if (current.length >= MAX_COMPARISON_METRICS) return current;
+  return [...current, key];
+}
+
 function fmtNum(n: number) {
   return n.toLocaleString("fr-FR");
 }
@@ -340,13 +356,7 @@ function OverviewTab({
   const comparisonData = normalizeBase100(premium.comparison.series, comparisonKeys);
 
   function toggleMetric(key: string) {
-    if (comparisonKeys.includes(key)) {
-      if (comparisonKeys.length <= 2) return;
-      setComparisonKeys(comparisonKeys.filter((item) => item !== key));
-      return;
-    }
-    if (comparisonKeys.length >= 4) return;
-    setComparisonKeys([...comparisonKeys, key]);
+    setComparisonKeys(toggleComparisonMetric(comparisonKeys, key));
   }
 
   return (
@@ -360,22 +370,23 @@ function OverviewTab({
         <KpiCard label="Scans validés" value={fmtNum(o.scansValidated.current)} changePct={showComparison ? o.scansValidated.changePct : undefined} />
         <KpiCard label="Récompenses utilisées" value={fmtNum(o.rewardsUsed.current)} changePct={showComparison ? o.rewardsUsed.changePct : undefined} />
       </div>
-      <InsightCard title="Passages" subtitle="Évolution sur la période">
-        <InsightLineChart data={premium.frequentation.series} />
-      </InsightCard>
       <InsightCard
         title="Comparer les indicateurs"
-        subtitle="Évolution en base 100 : chaque courbe démarre à 100 lors de sa première valeur non nulle."
+        subtitle="Évolution en base 100 : chaque courbe démarre à 100 lors de sa première valeur non nulle. Passages est affiché par défaut : plus besoin d'un graphique « Passages » séparé au-dessus."
       >
-        <div className="mb-3 flex flex-wrap gap-2">
+        <div className="mb-3 flex flex-wrap gap-2" role="group" aria-label="Indicateurs à comparer (4 maximum)">
           {availableMetrics.map((metric) => {
             const active = comparisonKeys.includes(metric.key);
-            const disabled = (!active && comparisonKeys.length >= 4) || (active && comparisonKeys.length <= 2);
+            const disabled =
+              (!active && comparisonKeys.length >= MAX_COMPARISON_METRICS) ||
+              (active && comparisonKeys.length <= MIN_COMPARISON_METRICS);
             return (
               <button
                 key={metric.key}
+                id={`comparison-metric-${metric.key}`}
                 type="button"
                 disabled={disabled}
+                aria-pressed={active}
                 onClick={() => toggleMetric(metric.key)}
                 className={`merchant-filter-chip ${active ? "merchant-filter-chip-active" : ""} disabled:opacity-45`}
               >

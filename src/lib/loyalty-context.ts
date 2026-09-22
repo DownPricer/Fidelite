@@ -44,8 +44,15 @@ function isMerchantOperational(merchant: Pick<Merchant, "isActive" | "status">) 
   return true;
 }
 
+/**
+ * `status` sur ce modèle sert aussi à signaler "un brouillon non publié existe"
+ * (voir PUT /api/merchant/program qui passe le programme en DRAFT à chaque
+ * sauvegarde de brouillon). La config live utilisée pour le scan/caisse reste
+ * dans `config`/`mode` même pendant l'édition d'un brouillon : seul ARCHIVED
+ * doit rendre le programme non opérationnel pour la caisse.
+ */
 function isProgramOperational(program: Pick<LoyaltyProgram, "status">) {
-  return program.status === "ACTIVE";
+  return program.status !== "ARCHIVED";
 }
 
 export function progressTargetForBalance(config: ProgramConfig, balance: number): number {

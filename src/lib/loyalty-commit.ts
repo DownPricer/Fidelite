@@ -100,7 +100,9 @@ function startOfDay(now: Date) {
 }
 
 function isProgramActive(program: LoyaltyProgram) {
-  return program.status === "ACTIVE";
+  // DRAFT signale un brouillon non publié en attente (voir loyalty-context.ts) :
+  // la config live reste utilisable tant que le programme n'est pas archivé.
+  return program.status !== "ARCHIVED";
 }
 
 function isMerchantActive(merchant: { isActive: boolean; status?: string }) {
