@@ -54,6 +54,15 @@ export const env = {
   qaEmployeeId: read("QA_EMPLOYEE_ID"),
   qaCustomerUserId: read("QA_CUSTOMER_USER_ID"),
   qaMagicLoginOrigin: read("QA_MAGIC_LOGIN_ORIGIN", "https://fidelite.sitereadyshd.fr"),
+  // Campagnes commerçantes — voir src/lib/stripe.ts, src/lib/push.ts, src/lib/campaign-worker.ts
+  stripeSecretKey: read("STRIPE_SECRET_KEY"),
+  stripeWebhookSecret: read("STRIPE_WEBHOOK_SECRET"),
+  vapidPublicKey: read("NEXT_PUBLIC_VAPID_PUBLIC_KEY"),
+  vapidPrivateKey: read("VAPID_PRIVATE_KEY"),
+  vapidSubject: read("VAPID_SUBJECT", "mailto:contact@fidelo.app"),
+  unsubscribeSecret: read("UNSUBSCRIBE_SECRET", "dev-only-change-me-unsubscribe-secret"),
+  campaignWorkerBatchSize: Number(read("CAMPAIGN_WORKER_BATCH_SIZE", "50")),
+  campaignWorkerIntervalMs: Number(read("CAMPAIGN_WORKER_INTERVAL_MS", "15000")),
 };
 
 export function isProduction() {
@@ -85,4 +94,12 @@ export function isGoogleWalletConfigured() {
 
 export function isGoogleAuthConfigured() {
   return Boolean(env.googleClientId && env.googleClientSecret);
+}
+
+export function isStripeConfigured() {
+  return Boolean(env.stripeSecretKey && env.stripeWebhookSecret);
+}
+
+export function isWebPushConfigured() {
+  return Boolean(env.vapidPublicKey && env.vapidPrivateKey);
 }
