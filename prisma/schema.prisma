@@ -211,6 +211,9 @@ model User {
   fifeLifeQrToken       FifeLifeQrToken?
   preferences           CustomerPreferences?
   googleWalletObjects   GoogleWalletObject[]
+  notifications         InAppNotification[]
+  pushSubscriptions     PushSubscription[]
+  consentEvents         ConsentEvent[]
 }
 
 model OAuthAccount {
@@ -230,24 +233,43 @@ model OAuthAccount {
 }
 
 model CustomerPreferences {
-  id                        String   @id @default(cuid())
-  userId                    String   @unique
-  notifyPointsMovements     Boolean  @default(true)
-  notifyNewBenefit          Boolean  @default(true)
-  notifyBenefitExpiring     Boolean  @default(true)
-  notifyNewCard             Boolean  @default(true)
-  notifyMerchantOffers      Boolean  @default(false)
-  notifyFifeLifeNews        Boolean  @default(false)
-  notifySecurity            Boolean  @default(true)
-  notifyChannelPush         Boolean  @default(true)
-  notifyChannelEmail        Boolean  @default(true)
-  notifyChannelSms          Boolean  @default(false)
-  consentPersonalizedOffers Boolean  @default(false)
-  consentMarketing          Boolean  @default(false)
-  consentAnalytics          Boolean  @default(false)
-  language                  String   @default("fr")
-  updatedAt                 DateTime @updatedAt
-  user                      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                        String    @id @default(cuid())
+  userId                    String    @unique
+  notifyPointsMovements     Boolean   @default(true)
+  notifyNewBenefit          Boolean   @default(true)
+  notifyBenefitExpiring     Boolean   @default(true)
+  notifyNewCard             Boolean   @default(true)
+  /// Offres in-app des commerces dont le client possède la carte (Partie 6).
+  notifyMerchantOffers      Boolean   @default(false)
+  /// Bons plans locaux Fidelo (réseau) in-app (Partie 6).
+  notifyFifeLifeNews        Boolean   @default(false)
+  notifySecurity            Boolean   @default(true)
+  /// Réglages globaux existants (service/sécurité). Les cases de prospection ci-dessous
+  /// sont volontairement séparées par canal ET par source (Partie 6 — aucune case précochée).
+  notifyChannelPush         Boolean   @default(true)
+  notifyChannelEmail        Boolean   @default(true)
+  notifyChannelSms          Boolean   @default(false)
+  /// Push des commerces dont le client possède la carte.
+  adsMerchantPush           Boolean   @default(false)
+  /// E-mails des commerces dont le client possède la carte.
+  adsMerchantEmail          Boolean   @default(false)
+  /// Push des bons plans locaux Fidelo (réseau).
+  adsNetworkPush            Boolean   @default(false)
+  /// E-mails des bons plans locaux Fidelo (réseau).
+  adsNetworkEmail           Boolean   @default(false)
+  /// Zone marketing facultative (ville/code postal déclaratifs — jamais de géolocalisation
+  /// précise en arrière-plan), utilisée uniquement pour les bons plans locaux Fidelo.
+  marketingZoneCity         String?
+  marketingZonePostalCode   String?
+  /// Version de la politique de consentement au moment de la dernière modification (audit : voir ConsentEvent).
+  consentVersion            String?
+  consentUpdatedAt          DateTime?
+  consentPersonalizedOffers Boolean   @default(false)
+  consentMarketing          Boolean   @default(false)
+  consentAnalytics          Boolean   @default(false)
+  language                  String    @default("fr")
+  updatedAt                 DateTime  @updatedAt
+  user                      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Session {
@@ -342,6 +364,8 @@ model Merchant {
   payments            MerchantPayment[]
   googleWalletClasses GoogleWalletClass[]
   googleWalletObjects GoogleWalletObject[]
+  campaigns           Campaign[]
+  adRequests          AdRequest[]
 }
 
 model MerchantMembership {
@@ -632,27 +656,27 @@ model MerchantCardTemplateVersion {
 }
 
 model MerchantSubscription {
-  id                String                @id @default(cuid())
-  merchantId        String                @unique
-  plan              SubscriptionPlan      @default(STARTER)
-  amount            Float                 @default(0)
-  currency          String                @default("EUR")
-  frequency         SubscriptionFrequency @default(MONTHLY)
-  status            SubscriptionStatus    @default(DRAFT)
-  trialEndsAt       DateTime?
-  startsAt          DateTime?
-  endsAt            DateTime?
-  nextBillingAt     DateTime?
-  cancelledAt       DateTime?
-  autoRenew         Boolean               @default(true)
-  notes             String?
+  id                 String                @id @default(cuid())
+  merchantId         String                @unique
+  plan               SubscriptionPlan      @default(STARTER)
+  amount             Float                 @default(0)
+  currency           String                @default("EUR")
+  frequency          SubscriptionFrequency @default(MONTHLY)
+  status             SubscriptionStatus    @default(DRAFT)
+  trialEndsAt        DateTime?
+  startsAt           DateTime?
+  endsAt             DateTime?
+  nextBillingAt      DateTime?
+  cancelledAt        DateTime?
+  autoRenew          Boolean               @default(true)
+  notes              String?
   /// Option Fidelo Insight (+10€/mois), activée manuellement par un super-admin.
-  insightEnabled    Boolean               @default(false)
-  insightEnabledAt  DateTime?
+  insightEnabled     Boolean               @default(false)
+  insightEnabledAt   DateTime?
   insightRequestedAt DateTime?
-  createdAt         DateTime              @default(now())
-  updatedAt         DateTime              @updatedAt
-  merchant          Merchant              @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
+  merchant           Merchant              @relation(fields: [merchantId], references: [id], onDelete: Cascade)
 }
 
 model MerchantContract {
@@ -793,4 +817,285 @@ model GoogleWalletObject {
   @@index([userId])
   @@index([merchantId])
   @@index([syncStatus, needsSync])
+}
+
+// ───────────────────────── Campagnes, consentements, push, publicité ─────────────────────────
+
+enum CampaignChannel {
+  IN_APP_PUSH
+  EMAIL
+  SPONSORED_AD
+}
+
+enum CampaignAudienceType {
+  MERCHANT_MEMBERS
+  NETWORK_LOCAL
+}
+
+enum CampaignStatus {
+  DRAFT
+  PENDING_REVIEW
+  PAYMENT_REQUIRED
+  PAID
+  SCHEDULED
+  SENDING
+  SENT
+  PARTIALLY_SENT
+  FAILED
+  REJECTED
+  CANCELLED
+}
+
+/// Quotas mensuels/Insight consommés de façon atomique (voir CampaignQuotaUsage).
+enum CampaignQuotaKind {
+  MEMBER_NOTIFICATION
+  MEMBER_EMAIL
+  NETWORK_NOTIFICATION
+  NETWORK_EMAIL
+  SPONSORED_DAY
+}
+
+enum CampaignPaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+  CANCELLED
+}
+
+enum CampaignDeliveryChannel {
+  IN_APP
+  PUSH
+  EMAIL
+}
+
+enum CampaignDeliveryStatus {
+  PENDING
+  SENT
+  DELIVERED
+  FAILED
+  SKIPPED
+}
+
+enum InAppNotificationKind {
+  SERVICE
+  MERCHANT_OFFER
+  NETWORK_DEAL
+}
+
+enum AdRequestStatus {
+  DRAFT
+  PENDING_REVIEW
+  APPROVED
+  REJECTED
+  SCHEDULED
+  LIVE
+  ENDED
+  CANCELLED
+}
+
+enum AdEventType {
+  IMPRESSION
+  CLICK
+}
+
+enum EmailSuppressionReason {
+  UNSUBSCRIBED
+  BOUNCED
+  COMPLAINED
+  MANUAL
+}
+
+model Campaign {
+  id                  String               @id @default(cuid())
+  merchantId          String
+  channel             CampaignChannel
+  audienceType        CampaignAudienceType
+  status              CampaignStatus       @default(DRAFT)
+  title               String
+  body                String
+  imageUrl            String?
+  actionLabel         String?
+  actionUrl           String?
+  /// Toute programmation est interprétée et affichée en Europe/Paris.
+  timezone            String               @default("Europe/Paris")
+  scheduledAt         DateTime?
+  sentAt              DateTime?
+  estimatedRecipients Int?
+  quotaKind           CampaignQuotaKind?
+  /// Clé de période au format YYYY-MM (Europe/Paris) ou id de période d'abonnement — voir campaign-quota.ts.
+  quotaPeriodKey      String?
+  quotaConsumedAt     DateTime?
+  priceCents          Int?
+  requiresPayment     Boolean              @default(false)
+  rejectionReason     String?
+  createdBy           String
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+
+  merchant   Merchant           @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  payment    CampaignPayment?
+  deliveries CampaignDelivery[]
+  adRequest  AdRequest?
+
+  @@index([merchantId, status])
+  @@index([status, scheduledAt])
+  @@index([merchantId, quotaKind, quotaPeriodKey])
+}
+
+/// Ledger de consommation atomique des quotas inclus (normal/Insight), par commerce/type/période.
+model CampaignQuotaUsage {
+  id         String            @id @default(cuid())
+  merchantId String
+  kind       CampaignQuotaKind
+  periodKey  String
+  count      Int               @default(0)
+  updatedAt  DateTime          @updatedAt
+
+  @@unique([merchantId, kind, periodKey])
+  @@index([merchantId])
+}
+
+model CampaignPayment {
+  id                      String                @id @default(cuid())
+  campaignId              String                @unique
+  merchantId              String
+  amountCents             Int
+  currency                String                @default("eur")
+  status                  CampaignPaymentStatus @default(PENDING)
+  stripeCheckoutSessionId String?               @unique
+  stripePaymentIntentId   String?               @unique
+  stripeRefundId          String?
+  failureReason           String?
+  paidAt                  DateTime?
+  refundedAt              DateTime?
+  createdAt               DateTime              @default(now())
+  updatedAt               DateTime              @updatedAt
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([merchantId, status])
+}
+
+/// Idempotence des webhooks Stripe : un id d'événement Stripe n'est jamais traité deux fois.
+model StripeWebhookEvent {
+  id          String   @id
+  type        String
+  processedAt DateTime @default(now())
+}
+
+model CampaignDelivery {
+  id             String                  @id @default(cuid())
+  campaignId     String
+  userId         String
+  channel        CampaignDeliveryChannel
+  status         CampaignDeliveryStatus  @default(PENDING)
+  attempts       Int                     @default(0)
+  lastError      String?
+  sentAt         DateTime?
+  clickedAt      DateTime?
+  unsubscribedAt DateTime?
+  createdAt      DateTime                @default(now())
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, userId, channel])
+  @@index([campaignId, status])
+  @@index([status, createdAt])
+}
+
+model InAppNotification {
+  id          String                @id @default(cuid())
+  userId      String
+  merchantId  String?
+  campaignId  String?
+  kind        InAppNotificationKind
+  title       String
+  body        String
+  imageUrl    String?
+  actionLabel String?
+  actionUrl   String?
+  readAt      DateTime?
+  createdAt   DateTime              @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([userId, readAt])
+}
+
+/// Un abonnement Web Push par appareil (un même utilisateur peut avoir plusieurs endpoints).
+model PushSubscription {
+  id         String   @id @default(cuid())
+  userId     String
+  endpoint   String   @unique
+  p256dh     String
+  auth       String
+  userAgent  String?
+  createdAt  DateTime @default(now())
+  lastSeenAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+/// Journal d'audit des consentements (append-only) : date, source, version, valeur — jamais réécrit.
+model ConsentEvent {
+  id        String   @id @default(cuid())
+  userId    String
+  field     String
+  value     Boolean
+  source    String
+  version   String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, field, createdAt])
+}
+
+model EmailSuppression {
+  id        String                 @id @default(cuid())
+  email     String                 @unique
+  reason    EmailSuppressionReason
+  createdAt DateTime               @default(now())
+}
+
+model AdRequest {
+  id                String          @id @default(cuid())
+  merchantId        String
+  campaignId        String?         @unique
+  status            AdRequestStatus @default(DRAFT)
+  requestedText     String
+  requestedImageUrl String?
+  objective         String?
+  ctaLabel          String?
+  ctaUrl            String?
+  startDate         DateTime
+  endDate           DateTime
+  finalImageUrl     String?
+  rejectionReason   String?
+  reviewedBy        String?
+  reviewedAt        DateTime?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  merchant Merchant  @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  campaign Campaign? @relation(fields: [campaignId], references: [id])
+  events   AdEvent[]
+
+  @@index([merchantId, status])
+  @@index([status, startDate, endDate])
+}
+
+model AdEvent {
+  id          String      @id @default(cuid())
+  adRequestId String
+  type        AdEventType
+  createdAt   DateTime    @default(now())
+
+  adRequest AdRequest @relation(fields: [adRequestId], references: [id], onDelete: Cascade)
+
+  @@index([adRequestId, type, createdAt])
 }
