@@ -131,6 +131,42 @@ export const pushUnsubscribeSchema = z.object({
   endpoint: z.string().url().max(2000),
 });
 
+export const campaignCreateSchema = z.object({
+  channel: z.enum(["IN_APP_PUSH", "EMAIL"]),
+  audienceType: z.enum(["MERCHANT_MEMBERS", "NETWORK_LOCAL"]),
+});
+
+export const campaignContentSchema = z.object({
+  title: z.string().trim().min(3, "Titre trop court.").max(120),
+  body: z.string().trim().min(3, "Message trop court.").max(2000),
+  imageUrl: z.string().url().max(500).nullable().optional(),
+  actionLabel: z.string().trim().max(40).nullable().optional(),
+  actionUrl: z.string().url().max(500).nullable().optional(),
+  scheduledAt: z.string().datetime().nullable().optional(),
+});
+
+export const campaignMediaUploadSchema = z.object({
+  dataUrl: z.string().min(1),
+});
+
+export const adRequestCreateSchema = z.object({
+  requestedText: z.string().trim().min(3).max(1000),
+  requestedImageUrl: z.string().url().max(500).nullable().optional(),
+  objective: z.string().trim().max(200).nullable().optional(),
+  ctaLabel: z.string().trim().max(40).nullable().optional(),
+  ctaUrl: z.string().url().max(500).nullable().optional(),
+  startDate: z.string().datetime(),
+  endDate: z.string().datetime(),
+});
+
+export const adModerationSchema = z.object({
+  action: z.enum(["approve", "reject"]),
+  rejectionReason: z.string().trim().max(500).nullable().optional(),
+  finalImageUrl: z.string().url().max(500).nullable().optional(),
+  startDate: z.string().datetime().nullable().optional(),
+  endDate: z.string().datetime().nullable().optional(),
+});
+
 export const scanSchema = z.discriminatedUnion("inputType", [
   z.object({
     inputType: z.literal("QR"),

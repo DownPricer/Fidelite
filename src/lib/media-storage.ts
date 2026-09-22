@@ -254,6 +254,25 @@ function randomSuffix() {
   return Math.random().toString(36).slice(2, 10);
 }
 
+/** Image de campagne/publicité (Parties 7/12) — même politique que les fonds de carte : jamais de base64 en base. */
+export async function saveCampaignMedia(merchantId: string, dataUrl: string) {
+  if (!/^[\w-]+$/.test(merchantId)) {
+    throw new Error("Identifiant commerce invalide.");
+  }
+  const parsed = parseImageDataUrl(dataUrl);
+  if (!parsed) throw new Error("Image invalide (PNG, JPEG ou WebP, max 5 Mo).");
+  if (!validateImageDimensions(parsed.buffer, parsed.mime)) {
+    throw new Error("Dimensions d'image invalides ou trop grandes (max 4096 px).");
+  }
+
+  const dir = join(getUploadsRoot(), "campaigns", merchantId);
+  await mkdir(dir, { recursive: true });
+  const filename = `${Date.now()}-${randomSuffix()}.${parsed.ext}`;
+  const filepath = join(dir, filename);
+  await writeFile(filepath, parsed.buffer);
+  return `/api/media/campaigns/${merchantId}/${filename}`;
+}
+
 export async function deleteCardBackground(relativePath: string) {
   const match = /\/api\/media\/card-backgrounds\/([^/]+)\/([^/?]+)/.exec(relativePath);
   if (!match) return;
