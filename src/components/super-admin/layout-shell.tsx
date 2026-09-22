@@ -12,6 +12,7 @@ const NAV = [
   { href: "/super-admin/commerces/nouveau", label: "Créer un commerce", icon: "M12 4v16m8-8H4" },
   { href: "/super-admin/cartes", label: "Cartes", icon: "M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" },
   { href: "/super-admin/abonnements", label: "Abonnements", icon: "M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8V7m0 10v1" },
+  { href: "/super-admin/campagnes", label: "Campagnes", icon: "M3 11v2a2 2 0 002 2h1l3 5V4L6 9H5a2 2 0 00-2 2zM14 8a4 4 0 010 8M17 5a8 8 0 010 14" },
   { href: "/super-admin/contrats", label: "Contrats", icon: "M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" },
   { href: "/super-admin/statistiques", label: "Statistiques", icon: "M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" },
   { href: "/super-admin/audit", label: "Sécurité et audit", icon: "M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" },
