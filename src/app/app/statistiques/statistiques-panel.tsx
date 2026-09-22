@@ -142,7 +142,7 @@ export function StatistiquesPanel({
         eyebrow="Analytique"
         title="Statistiques"
         subtitle="Suivez l'activité de votre programme et découvrez ce qui fidélise réellement vos clients."
-        backHref="/app"
+        backHref="/app/outils"
       />
 
       <div className="mb-6 flex flex-wrap items-center gap-2">

@@ -15,6 +15,9 @@ export function DiscoverIconLink({ href = "/decouvrir" }: { href?: string }) {
   );
 }
 
+/** Rafraîchit toutes les 45 s le temps que le badge reste monté ; pas de système temps réel disponible. */
+const UNREAD_POLL_INTERVAL_MS = 45_000;
+
 /** Cloche Notifications avec badge non lu (Partie 3/5). */
 export function NotificationBellLink({ href = "/notifications", demo = false }: { href?: string; demo?: boolean }) {
   const [unreadCount, setUnreadCount] = useState(0);
@@ -25,16 +28,30 @@ export function NotificationBellLink({ href = "/notifications", demo = false }: 
       return;
     }
     let cancelled = false;
-    void fetch("/api/customer/notifications")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data: { unreadCount?: number } | null) => {
-        if (!cancelled && data && typeof data.unreadCount === "number") {
-          setUnreadCount(data.unreadCount);
-        }
-      })
-      .catch(() => {});
+    const fetchUnread = () => {
+      void fetch("/api/customer/notifications", { cache: "no-store" })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((data: { unreadCount?: number } | null) => {
+          if (!cancelled && data && typeof data.unreadCount === "number") {
+            setUnreadCount(data.unreadCount);
+          }
+        })
+        .catch(() => {});
+    };
+    fetchUnread();
+    const onVisible = () => {
+      if (document.visibilityState === "visible") fetchUnread();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", fetchUnread);
+    const interval = window.setInterval(() => {
+      if (document.visibilityState === "visible") fetchUnread();
+    }, UNREAD_POLL_INTERVAL_MS);
     return () => {
       cancelled = true;
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", fetchUnread);
+      window.clearInterval(interval);
     };
   }, [demo]);
 

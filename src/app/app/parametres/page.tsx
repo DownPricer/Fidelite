@@ -13,7 +13,7 @@ export default async function SettingsPage() {
     return (
       <MerchantPageShell narrow>
         <MerchantPageHeader eyebrow="Configuration" title="Paramètres" subtitle={DEMO_MERCHANT.merchantName} />
-        <SettingsPanel merchantName={DEMO_MERCHANT.merchantName} programSummary="10 passages = 1 boisson offerte" />
+        <SettingsPanel merchantName={DEMO_MERCHANT.merchantName} />
       </MerchantPageShell>
     );
   }
@@ -26,7 +26,7 @@ export default async function SettingsPage() {
   try {
     merchant = await prisma.merchant.findUnique({
       where: { id: membership.merchantId },
-      include: { program: { include: { rewards: { where: { isActive: true }, orderBy: { sortOrder: "asc" }, take: 1 } } } },
+      include: { program: { select: { id: true } } },
     });
   } catch (error) {
     console.error("[parametres] DB error:", error);
@@ -34,15 +34,10 @@ export default async function SettingsPage() {
   }
   if (!merchant?.program) redirect("/app");
 
-  const firstReward = merchant.program.rewards[0];
-  const summary = firstReward
-    ? `${firstReward.threshold} ${firstReward.thresholdUnit === "points" ? "points" : "passages"} = ${firstReward.name}`
-    : `${merchant.program.visitsRequired} passages = ${merchant.program.rewardLabel}`;
-
   return (
     <MerchantPageShell narrow>
       <MerchantPageHeader eyebrow="Configuration" title="Paramètres" subtitle={merchant.name} />
-      <SettingsPanel merchantName={merchant.name} programSummary={summary} />
+      <SettingsPanel merchantName={merchant.name} />
     </MerchantPageShell>
   );
 }

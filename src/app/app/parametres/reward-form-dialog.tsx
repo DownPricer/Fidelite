@@ -17,7 +17,7 @@ const REWARD_TYPES: RewardTypeOption[] = [
   { id: "CUSTOM", label: "Personnalisé", hint: "Décrivez librement l'avantage" },
 ];
 
-function rewardTypeLabel(id: string): string {
+export function rewardTypeLabel(id: string): string {
   return REWARD_TYPES.find((t) => t.id === id)?.label ?? "Personnalisé";
 }
 

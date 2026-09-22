@@ -1,7 +1,6 @@
 "use client";
 
 import { Button } from "@/components/ui";
-import { ToolCard } from "@/components/merchant/merchant-ui";
 
 function SectionLabel({ children }: { children: string }) {
   return <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--violet-bright)]">{children}</p>;
@@ -9,10 +8,8 @@ function SectionLabel({ children }: { children: string }) {
 
 export function SettingsPanel({
   merchantName,
-  programSummary,
 }: {
   merchantName: string;
-  programSummary: string;
 }) {
   async function logout() {
     await fetch("/api/auth/logout", { method: "POST" });
@@ -34,20 +31,6 @@ export function SettingsPanel({
             Pour modifier ces informations, contactez Fidelo.
           </p>
         </div>
-      </section>
-
-      <section className="space-y-3">
-        <SectionLabel>Fidélisation</SectionLabel>
-        <ToolCard
-          href="/app/fidelisation"
-          title="Programme et avantages"
-          hint={programSummary}
-          icon={
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-              <path d="M12 21s-7.5-4.6-10-9.3C.5 7.8 2.6 4.5 6 4.5c2 0 3.5 1.1 4.5 2.6C11.5 5.6 13 4.5 15 4.5c3.4 0 5.5 3.3 4 7.2C16.5 16.4 12 21 12 21z" strokeLinejoin="round" />
-            </svg>
-          }
-        />
       </section>
 
       <section className="space-y-3">

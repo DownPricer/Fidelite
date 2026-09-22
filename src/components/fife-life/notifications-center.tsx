@@ -62,27 +62,50 @@ export function NotificationsCenter({ demo = false }: { demo?: boolean }) {
   const [error, setError] = useState<string | null>(null);
   const [unreadCount, setUnreadCount] = useState(demo ? 1 : 0);
 
-  const load = useCallback(async () => {
-    if (demo) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const params = filter === "all" ? "" : `?filter=${filter}`;
-      const response = await fetch(`/api/customer/notifications${params}`);
-      if (!response.ok) throw new Error();
-      const data = (await response.json()) as { notifications: NotificationItem[]; unreadCount: number };
-      setItems(data.notifications);
-      setUnreadCount(data.unreadCount);
-    } catch {
-      setError("Impossible de charger vos notifications. Réessayez.");
-    } finally {
-      setLoading(false);
-    }
-  }, [demo, filter]);
+  const load = useCallback(
+    async (silent = false) => {
+      if (demo) return;
+      if (!silent) setLoading(true);
+      setError(null);
+      try {
+        const params = filter === "all" ? "" : `?filter=${filter}`;
+        const response = await fetch(`/api/customer/notifications${params}`, { cache: "no-store" });
+        if (!response.ok) throw new Error();
+        const data = (await response.json()) as { notifications: NotificationItem[]; unreadCount: number };
+        setItems(data.notifications);
+        setUnreadCount(data.unreadCount);
+      } catch {
+        if (!silent) setError("Impossible de charger vos notifications. Réessayez.");
+      } finally {
+        if (!silent) setLoading(false);
+      }
+    },
+    [demo, filter],
+  );
 
   useEffect(() => {
     void load();
   }, [load]);
+
+  // Pas de système temps réel : on revalide au retour au premier plan et par
+  // un polling léger, pour que les nouvelles notifications apparaissent sans
+  // que le client ait besoin de se déconnecter/reconnecter.
+  useEffect(() => {
+    if (demo) return;
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void load(true);
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", onVisible);
+    const interval = window.setInterval(() => {
+      if (document.visibilityState === "visible") void load(true);
+    }, 45_000);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", onVisible);
+      window.clearInterval(interval);
+    };
+  }, [demo, load]);
 
   async function markAllRead() {
     if (demo) {

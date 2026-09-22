@@ -28,6 +28,7 @@ type CampaignSummary = {
   rejectionReason: string | null;
   payment?: { status: string; amountCents: number } | null;
   adStatus?: AdStatus | null;
+  failedDeliveries?: number;
   createdAt: string;
 };
 
@@ -215,6 +216,7 @@ export function CampagnesPanel({ demo = false }: { demo?: boolean }) {
     return (
       <SponsorWizard
         demo={demo}
+        quotas={dashboard.quotas}
         onClose={() => setCreating(null)}
         onDone={() => {
           setCreating(null);
@@ -324,6 +326,11 @@ export function CampagnesPanel({ demo = false }: { demo?: boolean }) {
                     {c.rejectionReason ? (
                       <p className="mt-1 text-xs text-[var(--danger)]">Motif : {c.rejectionReason}</p>
                     ) : null}
+                    {c.failedDeliveries ? (
+                      <p className="mt-1 text-xs font-semibold text-[var(--danger)]">
+                        {c.failedDeliveries} envoi{c.failedDeliveries > 1 ? "s" : ""} en échec
+                      </p>
+                    ) : null}
                     {c.estimatedRecipients !== null ? (
                       <p className="mt-1 text-[11px] text-[var(--muted)]">
                         {c.status === "SENT" || c.status === "PARTIALLY_SENT" ? "Envoyés" : "Destinataires estimés"} :{" "}
@@ -383,13 +390,53 @@ function CampaignWizard({ demo, onClose, onDone }: { demo: boolean; onClose: () 
   const [body, setBody] = useState("");
   const [actionUrl, setActionUrl] = useState("");
   const [scheduledAt, setScheduledAt] = useState("");
-  const [estimate, setEstimate] = useState<{ estimatedRecipients: number; priceCents: number; requiresPayment: boolean } | null>(null);
+  const [estimate, setEstimate] = useState<{
+    estimatedRecipients: number;
+    priceCents: number;
+    requiresPayment: boolean;
+    quota: { limit: number; used: number; remaining: number };
+  } | null>(null);
+  const [estimating, setEstimating] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  async function refreshEstimate(id: string) {
+    if (demo) {
+      setEstimate({
+        estimatedRecipients: audience === "MERCHANT_MEMBERS" ? 128 : 860,
+        priceCents: audience === "MERCHANT_MEMBERS" ? 0 : channel === "EMAIL" ? 1200 : 1500,
+        requiresPayment: audience !== "MERCHANT_MEMBERS",
+        quota: { limit: 3, used: 1, remaining: 2 },
+      });
+      return;
+    }
+    setEstimating(true);
+    try {
+      const estimateResponse = await fetch(`/api/merchant/campaigns/${id}/estimate`);
+      if (!estimateResponse.ok) throw new Error();
+      const data = (await estimateResponse.json()) as {
+        audience: { estimatedRecipients: number };
+        pricing: { priceCents: number; requiresPayment: boolean };
+        quota: { limit: number; used: number; remaining: number };
+      };
+      setEstimate({
+        estimatedRecipients: data.audience.estimatedRecipients,
+        priceCents: data.pricing.priceCents,
+        requiresPayment: data.pricing.requiresPayment,
+        quota: data.quota,
+      });
+    } catch {
+      // L'estimation est indicative : une erreur ici n'empêche pas de continuer,
+      // le récapitulatif final reste basé sur le calcul serveur au moment de l'envoi.
+    } finally {
+      setEstimating(false);
+    }
+  }
 
   async function startWizard() {
     if (demo) {
       setCampaignId("demo-new");
+      void refreshEstimate("demo-new");
       setStep("content");
       return;
     }
@@ -404,6 +451,7 @@ function CampaignWizard({ demo, onClose, onDone }: { demo: boolean; onClose: () 
       if (!response.ok) throw new Error();
       const data = (await response.json()) as { campaign: { id: string } };
       setCampaignId(data.campaign.id);
+      void refreshEstimate(data.campaign.id);
       setStep("content");
     } catch {
       setError("Impossible de créer la campagne. Réessayez.");
@@ -415,7 +463,7 @@ function CampaignWizard({ demo, onClose, onDone }: { demo: boolean; onClose: () 
   async function saveAndEstimate() {
     if (!campaignId) return;
     if (demo) {
-      setEstimate({ estimatedRecipients: 42, priceCents: 0, requiresPayment: false });
+      void refreshEstimate(campaignId);
       setStep("review");
       return;
     }
@@ -434,18 +482,7 @@ function CampaignWizard({ demo, onClose, onDone }: { demo: boolean; onClose: () 
         }),
       });
       if (!patchResponse.ok) throw new Error();
-
-      const estimateResponse = await fetch(`/api/merchant/campaigns/${campaignId}/estimate`);
-      if (!estimateResponse.ok) throw new Error();
-      const data = (await estimateResponse.json()) as {
-        audience: { estimatedRecipients: number };
-        pricing: { priceCents: number; requiresPayment: boolean };
-      };
-      setEstimate({
-        estimatedRecipients: data.audience.estimatedRecipients,
-        priceCents: data.pricing.priceCents,
-        requiresPayment: data.pricing.requiresPayment,
-      });
+      await refreshEstimate(campaignId);
       setStep("review");
     } catch {
       setError("Impossible d'enregistrer le contenu. Vérifiez les champs et réessayez.");
@@ -488,6 +525,49 @@ function CampaignWizard({ demo, onClose, onDone }: { demo: boolean; onClose: () 
   ];
   const stepIndex = steps.findIndex((s) => s.key === step);
 
+  const summaryPanel = (
+    <aside className="campaign-wizard-summary glass-panel space-y-1 p-5">
+      <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--muted)]">Récapitulatif</p>
+      <div className="campaign-wizard-summary-row">
+        <span className="text-xs text-[var(--muted)]">Canal</span>
+        <span className="text-sm font-bold text-[var(--ink)]">{CHANNEL_LABELS[channel]}</span>
+      </div>
+      <div className="campaign-wizard-summary-row">
+        <span className="text-xs text-[var(--muted)]">Audience</span>
+        <span className="text-sm font-bold text-[var(--ink)]">{AUDIENCE_LABELS[audience]}</span>
+      </div>
+      <div className="campaign-wizard-summary-row">
+        <span className="text-xs text-[var(--muted)]">Destinataires estimés</span>
+        <span className="text-sm font-bold text-[var(--ink)]">
+          {estimating ? "…" : estimate ? `~${estimate.estimatedRecipients}` : "—"}
+        </span>
+      </div>
+      <div className="campaign-wizard-summary-row">
+        <span className="text-xs text-[var(--muted)]">Quota consommé</span>
+        <span className="text-sm font-bold text-[var(--ink)]">
+          {estimate ? `${estimate.quota.used}/${estimate.quota.limit}` : "—"}
+        </span>
+      </div>
+      <div className="campaign-wizard-summary-row">
+        <span className="text-xs text-[var(--muted)]">Prix</span>
+        <span className="text-sm font-bold text-[var(--ink)]">
+          {estimate ? (estimate.requiresPayment ? formatCents(estimate.priceCents) : "Inclus") : "—"}
+        </span>
+      </div>
+      <div className="campaign-wizard-summary-row">
+        <span className="text-xs text-[var(--muted)]">Date d&apos;envoi</span>
+        <span className="text-sm font-bold text-[var(--ink)]">
+          {scheduledAt ? new Date(scheduledAt).toLocaleString("fr-FR") : "Dès confirmation"}
+        </span>
+      </div>
+      <div className="campaign-wizard-summary-row" style={{ flexDirection: "column", alignItems: "flex-start", gap: "0.25rem" }}>
+        <span className="text-xs text-[var(--muted)]">Contenu</span>
+        <span className="text-sm font-semibold text-[var(--ink)]">{title || "Titre de la campagne"}</span>
+        <span className="text-xs text-[var(--muted-strong)]">{body || "Votre message apparaîtra ici."}</span>
+      </div>
+    </aside>
+  );
+
   return (
     <div className="space-y-4">
       <button type="button" onClick={onClose} className="text-xs font-semibold text-[var(--muted)]">
@@ -503,6 +583,8 @@ function CampaignWizard({ demo, onClose, onDone }: { demo: boolean; onClose: () 
         ))}
       </ol>
 
+      <div className="campaign-wizard-layout">
+      <div>
       {step === "channel" ? (
         <div className="glass-panel space-y-4 p-5">
           <div>
@@ -602,19 +684,8 @@ function CampaignWizard({ demo, onClose, onDone }: { demo: boolean; onClose: () 
       {step === "review" && estimate ? (
         <div className="glass-panel space-y-3 p-5">
           <p className="text-sm text-[var(--muted-strong)]">
-            Vous envoyez <strong className="text-[var(--ink)]">{CHANNEL_LABELS[channel]}</strong> à{" "}
-            <strong className="text-[var(--ink)]">{AUDIENCE_LABELS[audience]}</strong>.
-          </p>
-          <p className="text-sm text-[var(--muted-strong)]">
-            Destinataires estimés : <strong className="text-[var(--ink)]">{estimate.estimatedRecipients}</strong>
-          </p>
-          <p className="text-sm text-[var(--muted-strong)]">
-            {estimate.requiresPayment
-              ? `Paiement requis : ${formatCents(estimate.priceCents)}`
-              : "Couverte par votre quota inclus — gratuit"}
-          </p>
-          <p className="text-xs text-[var(--muted)]">
-            {scheduledAt ? `Envoi programmé pour le ${new Date(scheduledAt).toLocaleString("fr-FR")}.` : "Envoi dès confirmation."}
+            Vérifiez le récapitulatif ci-contre, puis confirmez l&apos;envoi. Vos clients ne recevront rien avant cette
+            confirmation.
           </p>
           {error ? <p className="text-sm text-[var(--danger)]">{error}</p> : null}
           <Button className="w-full" onClick={() => void confirmSend()} disabled={busy}>
@@ -622,12 +693,56 @@ function CampaignWizard({ demo, onClose, onDone }: { demo: boolean; onClose: () 
           </Button>
         </div>
       ) : null}
+      </div>
+      {summaryPanel}
+      </div>
     </div>
   );
 }
 
-function SponsorWizard({ demo, onClose, onDone }: { demo: boolean; onClose: () => void; onDone: () => void }) {
+const SPONSOR_DURATIONS = [3, 7, 14, 21, 30];
+
+function todayDateInputValue() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function nowTimeInputValue() {
+  return new Date().toTimeString().slice(0, 5);
+}
+
+function addDaysToDateInput(dateInput: string, days: number) {
+  const d = new Date(`${dateInput}T00:00:00`);
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+/** Reflète priceSponsoredAd (src/lib/campaign-pricing.ts) pour l'affichage : le serveur
+ * recalcule toujours le prix réel à la confirmation, ceci n'est qu'une estimation. */
+function estimateSponsorPrice(days: number, includedDaysRemaining: number) {
+  const daysFromQuota = Math.min(days, Math.max(0, includedDaysRemaining));
+  const daysToPay = days - daysFromQuota;
+  if (daysToPay <= 0) return { priceCents: 0, requiresPayment: false, daysFromQuota, daysToPay: 0 };
+  const base = 1900;
+  const extraDays = Math.max(0, daysToPay - 7);
+  const priceCents = base + extraDays * 300;
+  return { priceCents, requiresPayment: true, daysFromQuota, daysToPay };
+}
+
+function SponsorWizard({
+  demo,
+  quotas,
+  onClose,
+  onDone,
+}: {
+  demo: boolean;
+  quotas: Quota[];
+  onClose: () => void;
+  onDone: () => void;
+}) {
   const [days, setDays] = useState(7);
+  const [startDate, setStartDate] = useState(todayDateInputValue);
+  const [startTime, setStartTime] = useState(nowTimeInputValue);
+  const [endTime, setEndTime] = useState(nowTimeInputValue);
   const [objective, setObjective] = useState("");
   const [text, setText] = useState("");
   const [ctaUrl, setCtaUrl] = useState("");
@@ -636,6 +751,10 @@ function SponsorWizard({ demo, onClose, onDone }: { demo: boolean; onClose: () =
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
+
+  const endDate = addDaysToDateInput(startDate, days);
+  const includedDaysRemaining = quotas.find((q) => q.kind === "SPONSORED_DAY")?.remaining ?? 0;
+  const pricing = estimateSponsorPrice(days, includedDaysRemaining);
 
   function onFileChange(file: File | null) {
     if (!file) return;
@@ -667,8 +786,13 @@ function SponsorWizard({ demo, onClose, onDone }: { demo: boolean; onClose: () =
         const mediaData = (await mediaRes.json()) as { url: string };
         requestedImageUrl = mediaData.url;
       }
-      const start = new Date();
-      const end = new Date(start.getTime() + days * 86_400_000);
+      const start = new Date(`${startDate}T${startTime}:00`);
+      const end = new Date(`${endDate}T${endTime}:00`);
+      if (end <= start) {
+        setError("La date/heure de fin doit être après le début.");
+        setBusy(false);
+        return;
+      }
       const response = await fetch("/api/merchant/ads", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -689,8 +813,6 @@ function SponsorWizard({ demo, onClose, onDone }: { demo: boolean; onClose: () =
       setBusy(false);
     }
   }
-
-  const price = days <= 7 ? 1900 : 1900 + (days - 7) * 300;
 
   if (done) {
     return (
@@ -724,17 +846,57 @@ function SponsorWizard({ demo, onClose, onDone }: { demo: boolean; onClose: () =
           validez → vous payez → la campagne est programmée automatiquement → vous suivez affichages et clics.
         </div>
 
-        <label className="block text-xs text-[var(--muted)]">
-          Durée
-          <select className="profile-select mt-1 w-full" value={days} onChange={(e) => setDays(Number(e.target.value))}>
-            {[3, 7, 14, 21, 30].map((d) => (
-              <option key={d} value={d}>
-                {d} jours
-              </option>
+        <div>
+          <p className="mb-2 text-xs font-bold uppercase tracking-wide text-[var(--muted)]">Durée</p>
+          <div className="sponsor-duration-grid">
+            {SPONSOR_DURATIONS.map((d) => (
+              <button
+                key={d}
+                type="button"
+                onClick={() => setDays(d)}
+                className={`sponsor-duration-card ${days === d ? "sponsor-duration-card-active" : ""}`}
+              >
+                <span className="sponsor-duration-card-value">{d}</span>
+                <span className="sponsor-duration-card-label">jour{d > 1 ? "s" : ""}</span>
+              </button>
             ))}
-          </select>
-        </label>
-        <p className="text-xs font-semibold text-[var(--violet-bright)]">Tarif estimé : {formatCents(price)}</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <label className="block text-xs text-[var(--muted)]">
+            Date de début
+            <input
+              type="date"
+              className="profile-select mt-1 w-full"
+              value={startDate}
+              min={todayDateInputValue()}
+              onChange={(e) => setStartDate(e.target.value)}
+            />
+          </label>
+          <label className="block text-xs text-[var(--muted)]">
+            Heure de début
+            <input
+              type="time"
+              className="profile-select mt-1 w-full"
+              value={startTime}
+              onChange={(e) => setStartTime(e.target.value)}
+            />
+          </label>
+          <label className="block text-xs text-[var(--muted)]">
+            Date de fin
+            <input type="date" className="profile-select mt-1 w-full" value={endDate} disabled />
+          </label>
+          <label className="block text-xs text-[var(--muted)]">
+            Heure de fin
+            <input
+              type="time"
+              className="profile-select mt-1 w-full"
+              value={endTime}
+              onChange={(e) => setEndTime(e.target.value)}
+            />
+          </label>
+        </div>
 
         <label className="block text-xs text-[var(--muted)]">
           Titre ou objectif (facultatif)
@@ -778,6 +940,42 @@ function SponsorWizard({ demo, onClose, onDone }: { demo: boolean; onClose: () =
             placeholder="https://…"
           />
         </label>
+
+        <div className="campaign-wizard-summary space-y-1 rounded-xl border border-[var(--border)] bg-[var(--panel-bg)] p-4">
+          <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--muted)]">Récapitulatif</p>
+          <div className="campaign-wizard-summary-row">
+            <span className="text-xs text-[var(--muted)]">Dates</span>
+            <span className="text-sm font-bold text-[var(--ink)]">
+              {formatDate(new Date(`${startDate}T00:00:00`).toISOString())} → {formatDate(new Date(`${endDate}T00:00:00`).toISOString())}
+            </span>
+          </div>
+          <div className="campaign-wizard-summary-row">
+            <span className="text-xs text-[var(--muted)]">Horaires</span>
+            <span className="text-sm font-bold text-[var(--ink)]">{startTime} → {endTime}</span>
+          </div>
+          <div className="campaign-wizard-summary-row">
+            <span className="text-xs text-[var(--muted)]">Durée</span>
+            <span className="text-sm font-bold text-[var(--ink)]">{days} jour{days > 1 ? "s" : ""}</span>
+          </div>
+          <div className="campaign-wizard-summary-row">
+            <span className="text-xs text-[var(--muted)]">Audience</span>
+            <span className="text-sm font-bold text-[var(--ink)]">Clients Fidelo de votre secteur</span>
+          </div>
+          <div className="campaign-wizard-summary-row">
+            <span className="text-xs text-[var(--muted)]">Emplacement</span>
+            <span className="text-sm font-bold text-[var(--ink)]">Bandeau Découvrir</span>
+          </div>
+          <div className="campaign-wizard-summary-row">
+            <span className="text-xs text-[var(--muted)]">Crédits utilisés</span>
+            <span className="text-sm font-bold text-[var(--ink)]">{pricing.daysFromQuota} jour{pricing.daysFromQuota > 1 ? "s" : ""} inclus</span>
+          </div>
+          <div className="campaign-wizard-summary-row">
+            <span className="text-xs text-[var(--muted)]">Montant restant à payer</span>
+            <span className="text-sm font-bold text-[var(--ink)]">
+              {pricing.requiresPayment ? formatCents(pricing.priceCents) : "0 € — couvert par votre quota"}
+            </span>
+          </div>
+        </div>
 
         {error ? <p className="text-sm text-[var(--danger)]">{error}</p> : null}
         <Button className="w-full" variant="secondary" onClick={() => void submit()} disabled={busy || !text.trim()}>

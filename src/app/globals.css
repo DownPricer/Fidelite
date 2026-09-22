@@ -2520,6 +2520,79 @@ body:has(.wallet-shell) {
   background: var(--violet);
 }
 
+.campaign-wizard-layout {
+  display: grid;
+  gap: 1.25rem;
+  align-items: start;
+}
+
+@media (min-width: 1024px) {
+  .campaign-wizard-layout {
+    grid-template-columns: minmax(0, 1.4fr) minmax(280px, 0.85fr);
+  }
+
+  .campaign-wizard-summary {
+    position: sticky;
+    top: 1.5rem;
+  }
+}
+
+.campaign-wizard-summary-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid light-dark(rgba(122, 69, 242, 0.1), rgba(255, 255, 255, 0.08));
+}
+
+.campaign-wizard-summary-row:last-child {
+  border-bottom: 0;
+}
+
+.sponsor-duration-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
+  gap: 0.5rem;
+}
+
+.sponsor-duration-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.15rem;
+  min-height: 64px;
+  border-radius: 0.85rem;
+  border: 1px solid light-dark(rgba(122, 69, 242, 0.18), rgba(190, 164, 255, 0.18));
+  background: light-dark(rgba(255, 255, 255, 0.92), rgba(20, 17, 34, 0.9));
+  color: var(--ink);
+  padding: 0.5rem 0.35rem;
+}
+
+.sponsor-duration-card-value {
+  font-size: 17px;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--ink);
+}
+
+.sponsor-duration-card-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted-strong);
+}
+
+.sponsor-duration-card-active {
+  border-color: var(--violet);
+  background: var(--violet);
+}
+
+.sponsor-duration-card-active .sponsor-duration-card-value,
+.sponsor-duration-card-active .sponsor-duration-card-label {
+  color: #fff;
+}
+
 .prism-card {
   position: relative;
   aspect-ratio: 1.586 / 1;
@@ -4220,26 +4293,75 @@ body:has(.wallet-shell) {
   padding: 1.25rem;
 }
 
+.program-steps-bar {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  border-radius: 1rem;
+  border: 1px solid rgba(190, 164, 255, 0.14);
+  background: light-dark(rgba(255, 255, 255, 0.7), rgba(12, 10, 22, 0.6));
+  padding: 6px;
+}
+
+.program-step-tab {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 0 0 auto;
+  border: 0;
+  border-radius: 0.75rem;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  white-space: nowrap;
+  min-height: 42px;
+  padding: 0 0.85rem;
+}
+
+.program-step-tab-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 22px;
+  width: 22px;
+  border-radius: 999px;
+  background: light-dark(rgba(106, 54, 224, 0.1), rgba(255, 255, 255, 0.08));
+  font-size: 11px;
+}
+
+.program-step-tab-active {
+  background: var(--violet);
+  color: var(--ink);
+}
+
+.program-step-tab-active .program-step-tab-number {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.program-workspace {
+  display: grid;
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.program-preview-panel {
+  order: 2;
+}
+
 @media (min-width: 1024px) {
-  .program-config-layout {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
-    gap: 1.5rem;
-    align-items: start;
-    min-height: 0;
-    overflow: visible;
+  .program-workspace {
+    grid-template-columns: minmax(0, 1.45fr) minmax(290px, 0.75fr);
   }
 
-  .program-config-layout > * {
+  .program-workspace > * {
     min-width: 0;
   }
 
-  .program-steps-nav {
+  .program-preview-panel {
+    order: 0;
     position: sticky;
     top: 1.5rem;
-    max-height: calc(100dvh - 3rem);
-    overflow-y: auto;
-    overscroll-behavior: contain;
   }
 
   .program-mode-grid {
@@ -4305,6 +4427,100 @@ body:has(.wallet-shell) {
 .program-mode-option-active {
   border-color: rgba(133, 87, 255, 0.45);
   background: light-dark(rgba(122, 69, 242, 0.1), rgba(133, 87, 255, 0.12));
+}
+
+.advantages-tabs {
+  display: flex;
+  gap: 1.25rem;
+  border-bottom: 1px solid rgba(190, 164, 255, 0.14);
+  overflow-x: auto;
+}
+
+.advantages-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--muted);
+  font-weight: 700;
+  font-size: 0.8rem;
+  white-space: nowrap;
+  min-height: 42px;
+  padding: 0 2px;
+}
+
+.advantages-tab-active {
+  border-bottom-color: var(--violet);
+  color: var(--ink);
+}
+
+.advantages-tab-count {
+  border-radius: 999px;
+  background: light-dark(rgba(106, 54, 224, 0.08), rgba(255, 255, 255, 0.08));
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 700;
+  min-width: 18px;
+  padding: 1px 6px;
+  text-align: center;
+}
+
+.advantages-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.advantages-reward-card {
+  border-radius: 1.25rem;
+  border: 1px solid rgba(190, 164, 255, 0.14);
+  background: light-dark(rgba(255, 255, 255, 0.82), rgba(12, 10, 22, 0.78));
+  backdrop-filter: blur(16px);
+  padding: 1.1rem;
+}
+
+.advantages-reward-menu {
+  position: relative;
+}
+
+.advantages-reward-menu-panel {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 20;
+  min-width: 190px;
+  border-radius: 0.9rem;
+  border: 1px solid rgba(190, 164, 255, 0.18);
+  background: light-dark(#ffffff, #171326);
+  box-shadow: 0 18px 40px light-dark(rgba(76, 46, 148, 0.18), rgba(0, 0, 0, 0.5));
+  padding: 0.35rem;
+  display: grid;
+  gap: 0.15rem;
+}
+
+.advantages-reward-menu-item {
+  display: block;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  border-radius: 0.6rem;
+  padding: 0.55rem 0.65rem;
+  text-align: left;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.advantages-reward-menu-item:hover {
+  background: light-dark(rgba(106, 54, 224, 0.08), rgba(255, 255, 255, 0.06));
+}
+
+.advantages-reward-menu-item-danger {
+  color: var(--danger);
 }
 
 .reward-form-dialog {

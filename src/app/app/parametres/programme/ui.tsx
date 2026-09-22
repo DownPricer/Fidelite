@@ -5,14 +5,13 @@ import { useCallback, useEffect, useState } from "react";
 import { Alert, Button, Field, Input, cn } from "@/components/ui";
 import { ConfirmDialog, EmptyState, MerchantPageHeader, StatusBadge } from "@/components/merchant/merchant-ui";
 import { ProgramPreviewCard } from "@/components/merchant/program-preview-card";
-import { RewardFormDialog } from "../reward-form-dialog";
+import { RewardFormDialog, rewardTypeLabel } from "../reward-form-dialog";
 import type { LoyaltyMode } from "@prisma/client";
 import type { MerchantCardData } from "@/components/fife-life/types";
 import type { ProgramConfig, RewardConfig, ProgramRules } from "@/lib/loyalty-program";
 import { DEFAULT_RULES } from "@/lib/loyalty-program";
 
 const PROGRAM_STEPS = ["Mode", "Règle", "Limites", "Aperçu", "Publication"];
-const PROGRAM_STEP_TARGETS = [0, 1, 3, 4, 5];
 
 function modeTitle(value: LoyaltyMode) {
   return MODES.find((m) => m.id === value)?.title ?? value;
@@ -106,6 +105,9 @@ export function ProgramConfigurator({
   const [modeDecision, setModeDecision] = useState<"ARCHIVE_OLD" | "CONVERT">("ARCHIVE_OLD");
   const [rewardConfirm, setRewardConfirm] = useState<{ index: number; kind: "deactivate" | "delete" } | null>(null);
   const [rewardEditor, setRewardEditor] = useState<{ mode: "create" | "edit"; index: number | null } | null>(null);
+  const [advantagesTab, setAdvantagesTab] = useState<"active" | "scheduled" | "archived">("active");
+  const [reorderMode, setReorderMode] = useState(false);
+  const [openRewardMenu, setOpenRewardMenu] = useState<string | null>(null);
   const [savingDraft, setSavingDraft] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [historicalEntitlements, setHistoricalEntitlements] = useState<HistoricalEntitlement[]>([]);
@@ -368,12 +370,17 @@ export function ProgramConfigurator({
   }
 
   const visibleConfiguredRewards = rewards.filter((reward) => !reward.archivedAt);
-  const currentRewards = visibleConfiguredRewards.filter((reward) => isCurrentReward(reward) && rewardStatus(reward) === "Actif");
-  const scheduledOrDisabledRewards = visibleConfiguredRewards.filter(
-    (reward) => isCurrentReward(reward) && rewardStatus(reward) !== "Actif",
-  );
-  const oldConfiguredRewards = visibleConfiguredRewards.filter((reward) => !isCurrentReward(reward));
-  const currentRewardCount = currentRewards.length + scheduledOrDisabledRewards.length;
+  const archivedConfiguredRewards = rewards.filter((reward) => Boolean(reward.archivedAt));
+  const activeTabRewards = visibleConfiguredRewards.filter((reward) => rewardStatus(reward) !== "Futur");
+  const scheduledTabRewards = visibleConfiguredRewards.filter((reward) => rewardStatus(reward) === "Futur");
+  const currentRewardCount = visibleConfiguredRewards.filter(isCurrentReward).length;
+  const activeRewardCount = visibleConfiguredRewards.filter(
+    (reward) => isCurrentReward(reward) && rewardStatus(reward) === "Actif",
+  ).length;
+  const scheduledRewardCount = visibleConfiguredRewards.filter(
+    (reward) => isCurrentReward(reward) && rewardStatus(reward) === "Futur",
+  ).length;
+  const hasOldProgramRewards = visibleConfiguredRewards.some((reward) => !isCurrentReward(reward));
 
   function updateReward(index: number, patch: Partial<RewardConfig>) {
     const next = [...rewards];
@@ -421,87 +428,175 @@ export function ProgramConfigurator({
     markDirty();
   }
 
-  function renderRewardCard(reward: RewardConfig, index: number) {
+  function renderRewardCard(reward: RewardConfig, position: number | null, allowReorder: boolean) {
+    const index = rewards.indexOf(reward);
     const statusLabel = rewardStatus(reward);
+    const isOldProgram = !isCurrentReward(reward);
+    const menuOpen = openRewardMenu === reward.id;
     return (
-      <div key={reward.id} className="program-step-card space-y-3">
+      <div key={reward.id} className="advantages-reward-card space-y-3">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-sm font-black text-[var(--ink)]">{reward.name}</p>
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-sm font-black text-[var(--ink)]">{reward.name}</p>
+              <StatusBadge
+                tone={
+                  statusLabel === "Actif" ? "ok" : statusLabel === "Futur" ? "warn" : statusLabel === "Expiré" ? "danger" : "muted"
+                }
+              >
+                {statusLabel}
+              </StatusBadge>
+              {isOldProgram ? <StatusBadge tone="muted">Ancien programme</StatusBadge> : null}
+            </div>
             <p className="mt-1 text-xs text-[var(--muted-strong)]">{reward.description || "Aucune description"}</p>
           </div>
-          <StatusBadge
-            tone={
-              statusLabel === "Actif" ? "ok" : statusLabel === "Futur" ? "warn" : statusLabel === "Expiré" ? "danger" : "muted"
-            }
-          >
-            {statusLabel}
-          </StatusBadge>
+          <div className="advantages-reward-menu">
+            <Button variant="secondary" className="h-9 px-3 text-xs" onClick={() => openEditReward(index)}>
+              Modifier
+            </Button>
+          </div>
         </div>
         <div className="grid gap-2 text-xs text-[var(--muted-strong)] sm:grid-cols-2">
+          <p><strong className="text-[var(--ink-soft)]">Type :</strong> {rewardTypeLabel(reward.rewardType)}</p>
           <p><strong className="text-[var(--ink-soft)]">Seuil :</strong> {reward.threshold} {reward.thresholdUnit === "points" ? "points" : "passages"}</p>
-          <p><strong className="text-[var(--ink-soft)]">Période :</strong> {rewardPeriod(reward)}</p>
+          <p><strong className="text-[var(--ink-soft)]">Validité :</strong> {rewardPeriod(reward)}</p>
+          <p><strong className="text-[var(--ink-soft)]">Position :</strong> {position !== null ? `#${position}` : "—"}</p>
           <p className="sm:col-span-2"><strong className="text-[var(--ink-soft)]">Utilisations :</strong> {rewardLimitSummary(reward)}</p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Button variant="secondary" className="h-9 px-3 text-xs" onClick={() => openEditReward(index)}>Modifier</Button>
-          <Button variant="secondary" className="h-9 px-3 text-xs" disabled={index === 0} onClick={() => moveReward(index, -1)}>Monter</Button>
-          <Button variant="secondary" className="h-9 px-3 text-xs" disabled={index === rewards.length - 1} onClick={() => moveReward(index, 1)}>Descendre</Button>
-          <Button
-            variant="secondary"
-            className="h-9 px-3 text-xs"
-            onClick={() =>
-              reward.isActive
-                ? setRewardConfirm({ index, kind: "deactivate" })
-                : updateReward(index, { isActive: true, thresholdUnit: unitForMode(mode) })
-            }
-          >
-            {reward.isActive ? "Désactiver" : "Activer"}
-          </Button>
-          <Button variant="danger" className="h-9 px-3 text-xs" onClick={() => setRewardConfirm({ index, kind: "delete" })}>
-            Supprimer
-          </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          {allowReorder ? (
+            <>
+              <Button variant="secondary" className="h-9 px-3 text-xs" disabled={index === 0} onClick={() => moveReward(index, -1)}>Monter</Button>
+              <Button variant="secondary" className="h-9 px-3 text-xs" disabled={index === rewards.length - 1} onClick={() => moveReward(index, 1)}>Descendre</Button>
+            </>
+          ) : null}
+          <div className="advantages-reward-menu ml-auto">
+            <Button
+              variant="ghost"
+              className="h-9 px-3 text-xs"
+              aria-haspopup="menu"
+              aria-expanded={menuOpen}
+              onClick={(e) => {
+                e.stopPropagation();
+                setOpenRewardMenu(menuOpen ? null : reward.id);
+              }}
+            >
+              Plus d’actions ⋯
+            </Button>
+            {menuOpen ? (
+              <div className="advantages-reward-menu-panel" role="menu">
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="advantages-reward-menu-item"
+                  onClick={() => {
+                    setOpenRewardMenu(null);
+                    reward.isActive
+                      ? setRewardConfirm({ index, kind: "deactivate" })
+                      : updateReward(index, { isActive: true, thresholdUnit: unitForMode(mode) });
+                  }}
+                >
+                  {reward.isActive ? "Désactiver" : "Activer"}
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="advantages-reward-menu-item advantages-reward-menu-item-danger"
+                  onClick={() => {
+                    setOpenRewardMenu(null);
+                    setRewardConfirm({ index, kind: "delete" });
+                  }}
+                >
+                  Supprimer / Archiver
+                </button>
+              </div>
+            ) : null}
+          </div>
         </div>
       </div>
     );
   }
 
-  function renderRewardGroup(title: string, items: RewardConfig[], empty: string) {
-    return (
-      <section className="space-y-3">
-        <div className="flex items-center gap-2">
-          <h2 className="text-base font-black text-[var(--ink)]">{title}</h2>
-          <span className="rounded-full bg-[light-dark(rgba(106,54,224,0.08),rgba(255,255,255,0.08))] px-2 py-0.5 text-[11px] font-bold text-[var(--muted)]">
-            {items.length}
-          </span>
-        </div>
-        {items.length ? (
-          items.map((reward) => renderRewardCard(reward, rewards.indexOf(reward)))
-        ) : (
-          <EmptyState title={empty} />
-        )}
-      </section>
-    );
-  }
-
   function renderAdvantagesEditor() {
+    const tabs: { id: "active" | "scheduled" | "archived"; label: string; items: RewardConfig[]; empty: string }[] = [
+      { id: "active", label: "Actifs", items: activeTabRewards, empty: "Aucun avantage actif pour le moment." },
+      { id: "scheduled", label: "Programmés", items: scheduledTabRewards, empty: "Aucun avantage programmé." },
+      { id: "archived", label: "Archivés", items: archivedConfiguredRewards, empty: "Aucun avantage archivé." },
+    ];
+    const activeTabDef = tabs.find((t) => t.id === advantagesTab) ?? tabs[0]!;
+
     return (
-      <div className="space-y-5">
-        <div className="program-step-card flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 className="text-xl font-black text-[var(--ink)]">Avantages</h2>
-            <p className="mt-1 text-sm text-[var(--muted-strong)]">{currentRewardCount}/10 avantages</p>
+      <div className="space-y-5" onClick={() => setOpenRewardMenu(null)}>
+        <div className="campaign-quota-grid">
+          <div className="metric-card p-3">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted)]">Avantages actifs</p>
+            <p className="mt-1 text-xl font-black text-[var(--ink)]">{activeRewardCount}</p>
           </div>
-          <Button variant="secondary" onClick={openCreateReward}>Ajouter un avantage</Button>
+          <div className="metric-card p-3">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted)]">Avantages programmés</p>
+            <p className="mt-1 text-xl font-black text-[var(--ink)]">{scheduledRewardCount}</p>
+          </div>
+          <div className="metric-card p-3">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted)]">Emplacements utilisés</p>
+            <p className="mt-1 text-xl font-black text-[var(--ink)]">{currentRewardCount}/10</p>
+          </div>
         </div>
-        {rewards.some((reward) => !reward.archivedAt && reward.thresholdUnit !== unitForMode(mode)) ? (
+
+        {hasOldProgramRewards ? (
           <p className="rounded-xl border border-amber-300/25 bg-amber-400/10 p-3 text-xs font-semibold text-amber-100">
-            Certains avantages appartiennent à votre ancien programme. Choisissez un équivalent pour terminer leur conversion.
+            Certains avantages appartiennent à votre ancien programme (badge « Ancien programme »). Choisissez un
+            équivalent pour terminer leur conversion.
           </p>
         ) : null}
-        {renderRewardGroup("Actifs", currentRewards, "Aucun avantage actif pour le programme actuel.")}
-        {renderRewardGroup("Programmés ou désactivés", scheduledOrDisabledRewards, "Aucun avantage programmé ou désactivé.")}
-        {renderRewardGroup("Anciens avantages conservés", oldConfiguredRewards, "Aucun ancien avantage configuré conservé.")}
+
+        <nav className="advantages-tabs" role="tablist" aria-label="État des avantages">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              role="tab"
+              aria-selected={advantagesTab === tab.id}
+              className={cn("advantages-tab", advantagesTab === tab.id && "advantages-tab-active")}
+              onClick={(e) => {
+                e.stopPropagation();
+                setAdvantagesTab(tab.id);
+                setReorderMode(false);
+              }}
+            >
+              {tab.label}
+              <span className="advantages-tab-count">{tab.items.length}</span>
+            </button>
+          ))}
+        </nav>
+
+        <div className="advantages-toolbar">
+          <Button variant="secondary" className="h-9 px-3 text-xs" onClick={openCreateReward}>
+            Créer un avantage
+          </Button>
+          {activeTabDef.id === "active" && activeTabDef.items.length > 1 ? (
+            <Button
+              variant={reorderMode ? "primary" : "ghost"}
+              className="h-9 px-3 text-xs"
+              onClick={(e) => {
+                e.stopPropagation();
+                setReorderMode((v) => !v);
+              }}
+            >
+              {reorderMode ? "Terminer la réorganisation" : "Réorganiser"}
+            </Button>
+          ) : null}
+        </div>
+
+        <section className="space-y-3" role="tabpanel">
+          {activeTabDef.items.length ? (
+            activeTabDef.items.map((reward, i) =>
+              renderRewardCard(reward, activeTabDef.id === "active" ? i + 1 : null, activeTabDef.id === "active" && reorderMode),
+            )
+          ) : (
+            <EmptyState title={activeTabDef.empty} />
+          )}
+        </section>
+
         <section className="space-y-3">
           <h2 className="text-base font-black text-[var(--ink)]">Droits clients conservés</h2>
           {historicalEntitlements.length ? (
@@ -538,8 +633,8 @@ export function ProgramConfigurator({
     return (
       <div className="space-y-6">
         <MerchantPageHeader
-          backHref="/app/parametres"
-          eyebrow="Configuration"
+          backHref="/app/fidelisation"
+          eyebrow="Programme de fidélité"
           title="Avantages"
           subtitle={dirty ? "Modifications non enregistrées" : `${currentRewardCount}/10 avantages`}
         />
@@ -589,7 +684,7 @@ export function ProgramConfigurator({
   return (
     <div className="space-y-6">
       <MerchantPageHeader
-        backHref="/app/parametres"
+        backHref="/app/fidelisation"
         eyebrow="Configurateur"
         title="Programme de fidélité"
         subtitle={dirty ? "Modifications non enregistrées" : hasDraft ? "Brouillon" : "Programme actif"}
@@ -667,27 +762,21 @@ export function ProgramConfigurator({
         </span>
       </Link>
 
-      <div className="program-config-layout">
-        <nav className="program-steps-nav">
-          <div className="flex gap-1 overflow-x-auto pb-1 lg:flex-col lg:overflow-visible lg:pb-0">
-            {PROGRAM_STEPS.map((label, i) => {
-              const targetStep = PROGRAM_STEP_TARGETS[i]!;
-              return (
-              <button
-                key={label}
-                type="button"
-                onClick={() => setStep(targetStep)}
-                className={cn(
-                  "shrink-0 rounded-xl px-3 py-2.5 text-left text-[10px] font-bold uppercase tracking-wider lg:w-full lg:text-xs",
-                  step === targetStep ? "bg-[var(--violet)] text-[var(--ink)]" : "bg-white/6 text-[var(--muted)]",
-                )}
-              >
-                {i + 1}. {label}
-              </button>
-            )})}
-          </div>
-        </nav>
+      <nav className="program-steps-bar" aria-label="Étapes de configuration">
+        {PROGRAM_STEPS.map((label, i) => (
+          <button
+            key={label}
+            type="button"
+            onClick={() => setStep(i)}
+            className={cn("program-step-tab", step === i && "program-step-tab-active")}
+          >
+            <span className="program-step-tab-number">{i + 1}</span>
+            {label}
+          </button>
+        ))}
+      </nav>
 
+      <div className="program-workspace">
         <div className="space-y-6">
       {step === 0 && (
         <div className="space-y-4">
@@ -715,26 +804,6 @@ export function ProgramConfigurator({
                 <span className="text-xs text-[var(--muted)]">{m.hint}</span>
               </button>
             ))}
-          </div>
-          <div className="program-step-card">
-            <p className="text-xs font-bold uppercase tracking-widest text-[var(--muted)]">Aperçu carte client</p>
-            <div className="mt-4 flex justify-center">
-              <div className="w-full max-w-sm">
-                <ProgramPreviewCard
-                  merchantId={merchantMeta.id}
-                  merchantName={merchantMeta.name}
-                  logoUrl={merchantMeta.logoUrl}
-                  primaryColor={merchantMeta.primaryColor}
-                  loyaltyMode={mode}
-                  templateVersion={templateVersion}
-                  fallbackNotice={templateFallbackNotice}
-                  points={Number(simBalance) || 320}
-                  visitsRequired={rewards.find((r) => r.isActive && isCurrentReward(r))?.threshold ?? 500}
-                  rewardLabel={rewards.find((r) => r.isActive && isCurrentReward(r))?.name ?? "Récompense"}
-                  cardTemplate={cardTemplate}
-                />
-              </div>
-            </div>
           </div>
         </div>
       )}
@@ -822,18 +891,6 @@ export function ProgramConfigurator({
       )}
 
       {step === 2 && (
-        <div className="program-step-card flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 className="text-base font-black text-[var(--ink)]">Avantages configurés : {currentRewardCount}/10</h2>
-            <p className="mt-1 text-sm text-[var(--muted-strong)]">La gestion détaillée des avantages est séparée du programme.</p>
-          </div>
-          <Link href="/app/parametres/avantages" className="glass-cta px-4 py-2 text-sm">
-            Gérer les avantages
-          </Link>
-        </div>
-      )}
-
-      {step === 3 && (
         <div className="program-step-card space-y-4">
           <Field
             label="Maximum par client et par jour (0 = illimité)"
@@ -853,34 +910,12 @@ export function ProgramConfigurator({
         </div>
       )}
 
-      {step === 4 && (
+      {step === 3 && (
         <div className="space-y-4">
-          <div className="program-step-card">
-            <p className="text-xs font-bold uppercase tracking-widest text-[var(--muted)]">Aperçu client</p>
-            <div className="mt-4 flex flex-col items-center">
-              <div className="w-full max-w-sm">
-                <ProgramPreviewCard
-                  merchantId={merchantMeta.id}
-                  merchantName={merchantMeta.name}
-                  logoUrl={merchantMeta.logoUrl}
-                  primaryColor={merchantMeta.primaryColor}
-                  loyaltyMode={mode}
-                  templateVersion={templateVersion}
-                  fallbackNotice={templateFallbackNotice}
-                  points={Number(simBalance) || 320}
-                  visitsRequired={rewards.find((r) => r.isActive)?.threshold ?? 500}
-                  rewardLabel={rewards.find((r) => r.isActive)?.name ?? "Récompense"}
-                  cardTemplate={cardTemplate}
-                />
-              </div>
-              <p className="mt-3 text-sm font-bold text-[var(--ink)]">
-                Prochain : {rewards.find((r) => r.isActive)?.name ?? "—"}
-              </p>
-              <div className="mt-3 h-1.5 w-full max-w-xs overflow-hidden rounded-full bg-white/10">
-                <div className="h-full w-2/3 bg-[var(--violet)]" />
-              </div>
-            </div>
-          </div>
+          <p className="text-xs text-[var(--muted-strong)]">
+            L&apos;aperçu à droite reflète en direct le mode et la règle choisis. Utilisez le simulateur pour vérifier un
+            cas concret avant de publier.
+          </p>
           <div className="program-step-card space-y-3">
             <p className="text-xs font-bold uppercase tracking-widest text-[var(--muted)]">Tester mon programme</p>
             <div className="grid grid-cols-2 gap-3">
@@ -899,7 +934,7 @@ export function ProgramConfigurator({
         </div>
       )}
 
-      {step === 5 && (
+      {step === 4 && (
         <div className="program-step-card space-y-4">
           <h3 className="font-black text-[var(--ink)]">Récapitulatif avant publication</h3>
           <ul className="space-y-2 text-sm text-[var(--muted-strong)]">
@@ -942,27 +977,58 @@ export function ProgramConfigurator({
         <Button
           variant="ghost"
           className="h-10 px-4 text-xs"
-          disabled={step === PROGRAM_STEP_TARGETS[0]}
-          onClick={() => {
-            const currentIndex = Math.max(0, PROGRAM_STEP_TARGETS.indexOf(step));
-            setStep(PROGRAM_STEP_TARGETS[Math.max(0, currentIndex - 1)]!);
-          }}
+          disabled={step === 0}
+          onClick={() => setStep((s) => Math.max(0, s - 1))}
         >
           Précédent
         </Button>
-        {step !== PROGRAM_STEP_TARGETS[PROGRAM_STEP_TARGETS.length - 1] ? (
-          <Button
-            className="h-10 px-4 text-xs"
-            onClick={() => {
-              const currentIndex = Math.max(0, PROGRAM_STEP_TARGETS.indexOf(step));
-              setStep(PROGRAM_STEP_TARGETS[Math.min(PROGRAM_STEP_TARGETS.length - 1, currentIndex + 1)]!);
-            }}
-          >
+        {step !== PROGRAM_STEPS.length - 1 ? (
+          <Button className="h-10 px-4 text-xs" onClick={() => setStep((s) => Math.min(PROGRAM_STEPS.length - 1, s + 1))}>
             Suivant
           </Button>
         ) : null}
       </div>
         </div>
+
+        <aside className="program-preview-panel">
+          <div className="program-step-card">
+            <p className="text-xs font-bold uppercase tracking-widest text-[var(--muted)]">Aperçu côté client</p>
+            <div className="mt-4 flex flex-col items-center">
+              <div className="w-full max-w-sm">
+                <ProgramPreviewCard
+                  merchantId={merchantMeta.id}
+                  merchantName={merchantMeta.name}
+                  logoUrl={merchantMeta.logoUrl}
+                  primaryColor={merchantMeta.primaryColor}
+                  loyaltyMode={mode}
+                  templateVersion={templateVersion}
+                  fallbackNotice={templateFallbackNotice}
+                  points={Number(simBalance) || 320}
+                  visitsRequired={rewards.find((r) => r.isActive && isCurrentReward(r))?.threshold ?? 500}
+                  rewardLabel={rewards.find((r) => r.isActive && isCurrentReward(r))?.name ?? "Récompense"}
+                  cardTemplate={cardTemplate}
+                />
+              </div>
+              <p className="mt-3 text-sm font-bold text-[var(--ink)]">
+                Prochain : {rewards.find((r) => r.isActive && isCurrentReward(r))?.name ?? "—"}
+              </p>
+            </div>
+            <div className="mt-4 space-y-2 border-t border-white/10 pt-4 text-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-[var(--muted-strong)]">Progression</span>
+                <span className="font-bold text-[var(--ink)]">{modeTitle(mode)}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-[var(--muted-strong)]">Avantages actifs</span>
+                <span className="font-bold text-[var(--ink)]">{currentRewardCount}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-[var(--muted-strong)]">Modification</span>
+                <span className="font-bold text-[var(--ink)]">Non visible avant publication</span>
+              </div>
+            </div>
+          </div>
+        </aside>
       </div>
     </div>
   );

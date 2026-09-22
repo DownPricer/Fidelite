@@ -15,7 +15,7 @@ export default async function CampagnesPage() {
           eyebrow="Marketing"
           title="Campagnes"
           subtitle={DEMO_MERCHANT.merchantName}
-          backHref="/app"
+          backHref="/app/outils"
         />
         <CampagnesPanel demo />
       </MerchantPageShell>
@@ -28,7 +28,7 @@ export default async function CampagnesPage() {
 
   return (
     <MerchantPageShell>
-      <MerchantPageHeader eyebrow="Marketing" title="Campagnes" backHref="/app" />
+      <MerchantPageHeader eyebrow="Marketing" title="Campagnes" backHref="/app/outils" />
       <CampagnesPanel />
     </MerchantPageShell>
   );

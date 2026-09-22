@@ -183,7 +183,7 @@ export function WalletCardsList({
                     return (
                       <li key={merchant.slug}>
                         <Link
-                          href={`/rejoindre/${merchant.slug}`}
+                          href={`/c/${merchant.slug}`}
                           className="merchant-search-row group flex items-center gap-3"
                         >
                           <div className="wallet-card-preview shrink-0" aria-hidden="true">

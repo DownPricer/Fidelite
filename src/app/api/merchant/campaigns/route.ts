@@ -33,19 +33,33 @@ export async function GET(req: Request) {
     include: { payment: true, adRequest: true },
   });
 
+  // Comptage des échecs de livraison (Partie 7.2) — une seule requête groupée
+  // plutôt qu'un N+1 par campagne.
+  const failedCounts = campaigns.length
+    ? await prisma.campaignDelivery.groupBy({
+        by: ["campaignId"],
+        where: { campaignId: { in: campaigns.map((c) => c.id) }, status: "FAILED" },
+        _count: { _all: true },
+      })
+    : [];
+  const failedByCampaignId = new Map(failedCounts.map((row) => [row.campaignId, row._count._all]));
+
   return jsonOk({
     plan: tier,
     period: periodKey,
     quotas,
-    campaigns: campaigns.map(serializeCampaign),
+    campaigns: campaigns.map((c) => serializeCampaign(c, failedByCampaignId.get(c.id) ?? 0)),
     statusLabels: CAMPAIGN_STATUS_LABELS,
   });
 }
 
-function serializeCampaign(campaign: Awaited<ReturnType<typeof prisma.campaign.findFirst>> & {
-  payment?: { status: string; amountCents: number } | null;
-  adRequest?: { status: string } | null;
-}) {
+function serializeCampaign(
+  campaign: Awaited<ReturnType<typeof prisma.campaign.findFirst>> & {
+    payment?: { status: string; amountCents: number } | null;
+    adRequest?: { status: string } | null;
+  },
+  failedDeliveries: number,
+) {
   if (!campaign) return null;
   return {
     id: campaign.id,
@@ -66,6 +80,7 @@ function serializeCampaign(campaign: Awaited<ReturnType<typeof prisma.campaign.f
     rejectionReason: campaign.rejectionReason,
     payment: campaign.payment ? { status: campaign.payment.status, amountCents: campaign.payment.amountCents } : null,
     adStatus: campaign.adRequest?.status ?? null,
+    failedDeliveries,
     createdAt: campaign.createdAt,
   };
 }
@@ -105,5 +120,5 @@ export async function POST(req: Request) {
     userAgent: userAgent(req),
   });
 
-  return jsonOk({ campaign: serializeCampaign({ ...campaign, payment: null, adRequest: null }) });
+  return jsonOk({ campaign: serializeCampaign({ ...campaign, payment: null, adRequest: null }, 0) });
 }

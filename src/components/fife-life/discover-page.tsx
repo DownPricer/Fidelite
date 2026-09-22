@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { WalletMotionRoot } from "./wallet-motion-root";
 import { SponsoredBanner, type SponsoredAd } from "./sponsored-banner";
@@ -19,6 +20,7 @@ type Merchant = {
 type Sponsored = SponsoredAd;
 
 export function DiscoverPage() {
+  const router = useRouter();
   const [query, setQuery] = useState("");
   const [merchants, setMerchants] = useState<Merchant[]>([]);
   const [sponsored, setSponsored] = useState<Sponsored[]>([]);
@@ -60,18 +62,42 @@ export function DiscoverPage() {
     }
   }, [sponsored, trackedImpressions]);
 
+  function closeDiscover() {
+    // Retour naturel si on a bien navigué depuis l'app (évite un router.back()
+    // aveugle qui sortirait de l'app si la page a été ouverte directement, ex.
+    // raccourci PWA) ; sinon restauration explicite du Wallet.
+    const cameFromApp =
+      typeof window !== "undefined" &&
+      window.history.length > 1 &&
+      document.referrer.startsWith(window.location.origin);
+    if (cameFromApp) router.back();
+    else router.push("/carte");
+  }
+
   return (
     <WalletMotionRoot>
       <main className="wallet-shell fife-page-shell obsidian-scene flex w-full flex-col px-5 pb-8 pt-3">
-        <header className="mb-4">
-          <h1 className="text-xl font-black text-[var(--ink)]">Découvrir</h1>
-          <p className="mt-1 text-xs text-[var(--muted-strong)]">
-            Recherchez un commerce par nom ou ville, ou retrouvez{" "}
-            <Link href="/carte" className="profile-inline-link">
-              vos cartes
-            </Link>
-            .
-          </p>
+        <header className="mb-4 flex items-start gap-3">
+          <button
+            type="button"
+            onClick={closeDiscover}
+            aria-label="Fermer la recherche et revenir au Wallet"
+            className="settings-btn-glassy mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-full"
+          >
+            <svg viewBox="0 0 24 24" width={18} height={18} fill="none" stroke="currentColor" strokeWidth="2.2">
+              <path d="M15 18l-6-6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+          <div className="min-w-0 flex-1">
+            <h1 className="text-xl font-black text-[var(--ink)]">Découvrir</h1>
+            <p className="mt-1 text-xs text-[var(--muted-strong)]">
+              Recherchez un commerce par nom ou ville, ou retrouvez{" "}
+              <Link href="/carte" className="profile-inline-link">
+                vos cartes
+              </Link>
+              .
+            </p>
+          </div>
         </header>
 
         <input
