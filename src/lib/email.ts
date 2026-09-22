@@ -170,3 +170,107 @@ export async function sendEmployeeInvitationEmail(input: EmployeeInvitationEmail
 export function canExposeInvitationLinkInAdmin() {
   return !isProduction() || env.publicDemoMode;
 }
+
+// ───────────────────────── E-mails de campagne (Partie 10) ─────────────────────────
+
+export type CampaignEmailInput = {
+  to: string;
+  merchantName: string;
+  merchantLogoUrl?: string | null;
+  merchantAddress?: string | null;
+  imageUrl?: string | null;
+  subject: string;
+  title: string;
+  message: string;
+  actionLabel?: string | null;
+  actionUrl?: string | null;
+  /** Explique pourquoi la personne reçoit ce message (Partie 10 — obligatoire). */
+  reasonLabel: string;
+  unsubscribeUrl: string;
+  preferencesUrl: string;
+};
+
+function buildCampaignEmailContent(input: CampaignEmailInput) {
+  const logo = input.merchantLogoUrl
+    ? `<img src="${escapeHtml(input.merchantLogoUrl)}" alt="${escapeHtml(input.merchantName)}" width="40" height="40" style="border-radius:10px;object-fit:cover;vertical-align:middle;" />`
+    : "";
+  const image = input.imageUrl
+    ? `<tr><td style="padding:0 0 16px;"><img src="${escapeHtml(input.imageUrl)}" alt="" width="100%" style="border-radius:12px;display:block;max-width:100%;" /></td></tr>`
+    : "";
+  const action =
+    input.actionLabel && input.actionUrl
+      ? `<p style="margin:0 0 24px;text-align:center;">
+          <a href="${escapeHtml(input.actionUrl)}" style="display:inline-block;padding:14px 24px;border-radius:999px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;font-weight:700;text-decoration:none;font-size:15px;">
+            ${escapeHtml(input.actionLabel)}
+          </a>
+        </p>`
+      : "";
+
+  const html = `<!DOCTYPE html>
+<html lang="fr">
+<body style="margin:0;padding:0;background:#0b0f19;font-family:Segoe UI,Helvetica,Arial,sans-serif;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#0b0f19;padding:32px 16px;">
+    <tr><td align="center">
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:520px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:16px;padding:32px;">
+        <tr><td>
+          <p style="margin:0 0 16px;font-size:12px;letter-spacing:0.12em;text-transform:uppercase;color:#94a3b8;">
+            ${logo} <span style="vertical-align:middle;margin-left:8px;">Fidelo · ${escapeHtml(input.merchantName)}</span>
+          </p>
+        </td></tr>
+        ${image}
+        <tr><td>
+          <h1 style="margin:0 0 16px;font-size:22px;color:#f8fafc;">${escapeHtml(input.title)}</h1>
+          <p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:#cbd5e1;white-space:pre-line;">${escapeHtml(input.message)}</p>
+          ${action}
+          <p style="margin:0 0 8px;font-size:12px;line-height:1.5;color:#64748b;">${escapeHtml(input.reasonLabel)}</p>
+          ${input.merchantAddress ? `<p style="margin:0 0 16px;font-size:11px;color:#475569;">${escapeHtml(input.merchantAddress)}</p>` : ""}
+          <p style="margin:16px 0 0;font-size:11px;color:#475569;">
+            <a href="${escapeHtml(input.preferencesUrl)}" style="color:#94a3b8;">Gérer mes préférences</a>
+            &nbsp;·&nbsp;
+            <a href="${escapeHtml(input.unsubscribeUrl)}" style="color:#94a3b8;">Se désinscrire</a>
+          </p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+
+  const text = [
+    `Fidelo · ${input.merchantName}`,
+    "",
+    input.title,
+    "",
+    input.message,
+    "",
+    input.actionLabel && input.actionUrl ? `${input.actionLabel} : ${input.actionUrl}` : "",
+    "",
+    input.reasonLabel,
+    `Préférences : ${input.preferencesUrl}`,
+    `Se désinscrire : ${input.unsubscribeUrl}`,
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  return { subject: input.subject, html, text };
+}
+
+export async function sendCampaignEmail(input: CampaignEmailInput): Promise<EmailSendResult> {
+  if (!isEmailConfigured()) {
+    return { ok: false, error: emailConfigHint() ?? "Service e-mail non configuré." };
+  }
+
+  const content = buildCampaignEmailContent(input);
+
+  if (env.resendApiKey) {
+    return sendViaResend({ to: input.to, ...content });
+  }
+
+  return sendViaSmtp({ to: input.to, ...content });
+}
+
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+export function isValidEmailAddress(value: string): boolean {
+  return EMAIL_PATTERN.test(value.trim());
+}

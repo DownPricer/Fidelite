@@ -32,9 +32,17 @@ export type PreferencesPayload = {
   notifyChannelPush: boolean;
   notifyChannelEmail: boolean;
   notifyChannelSms: boolean;
+  adsMerchantPush: boolean;
+  adsMerchantEmail: boolean;
+  adsNetworkPush: boolean;
+  adsNetworkEmail: boolean;
+  marketingZoneCity: string | null;
+  marketingZonePostalCode: string | null;
   consentPersonalizedOffers: boolean;
   consentMarketing: boolean;
   consentAnalytics: boolean;
+  consentVersion: string | null;
+  consentUpdatedAt: string | null;
   language: string;
 };
 
@@ -77,9 +85,17 @@ export function serializePreferences(prefs: CustomerPreferences): PreferencesPay
     notifyChannelPush: prefs.notifyChannelPush,
     notifyChannelEmail: prefs.notifyChannelEmail,
     notifyChannelSms: prefs.notifyChannelSms,
+    adsMerchantPush: prefs.adsMerchantPush,
+    adsMerchantEmail: prefs.adsMerchantEmail,
+    adsNetworkPush: prefs.adsNetworkPush,
+    adsNetworkEmail: prefs.adsNetworkEmail,
+    marketingZoneCity: prefs.marketingZoneCity,
+    marketingZonePostalCode: prefs.marketingZonePostalCode,
     consentPersonalizedOffers: prefs.consentPersonalizedOffers,
     consentMarketing: prefs.consentMarketing,
     consentAnalytics: prefs.consentAnalytics,
+    consentVersion: prefs.consentVersion,
+    consentUpdatedAt: prefs.consentUpdatedAt ? prefs.consentUpdatedAt.toISOString() : null,
     language: prefs.language,
   };
 }

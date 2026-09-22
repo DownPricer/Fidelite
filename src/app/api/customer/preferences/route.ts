@@ -1,4 +1,5 @@
 import { requireMutatingRequest, requireUser } from "@/lib/api-guard";
+import { CONSENT_POLICY_VERSION, extractConsentChanges, recordConsentEvents } from "@/lib/consent";
 import { ensureCustomerPreferences, serializePreferences } from "@/lib/customer-profile";
 import { jsonError, jsonOk, readJson } from "@/lib/http";
 import { prisma } from "@/lib/prisma";
@@ -22,9 +23,25 @@ export async function PATCH(req: Request) {
   if (!parsed.success) return jsonError(zodErrorMessage(parsed.error));
 
   await ensureCustomerPreferences(auth.user.id);
-  const updated = await prisma.customerPreferences.update({
-    where: { userId: auth.user.id },
-    data: parsed.data,
+  const consentChanges = extractConsentChanges(parsed.data);
+  const hasConsentChange = Object.keys(consentChanges).length > 0;
+
+  const updated = await prisma.$transaction(async (tx) => {
+    const next = await tx.customerPreferences.update({
+      where: { userId: auth.user!.id },
+      data: {
+        ...parsed.data,
+        ...(hasConsentChange
+          ? { consentVersion: CONSENT_POLICY_VERSION, consentUpdatedAt: new Date() }
+          : {}),
+      },
+    });
+    await recordConsentEvents(tx, {
+      userId: auth.user!.id,
+      changes: consentChanges,
+      source: "customer_preferences_page",
+    });
+    return next;
   });
 
   return jsonOk({ preferences: serializePreferences(updated) });

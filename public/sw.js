@@ -16,6 +16,40 @@ self.addEventListener("activate", (event) => {
   );
 });
 
+// Web Push (Partie 11) — n'est enregistré que si l'utilisateur a cliqué sur
+// "Activer les notifications" (voir src/lib/push-client.ts) ; jamais demandé au chargement.
+self.addEventListener("push", (event) => {
+  if (!event.data) return;
+  let payload = {};
+  try {
+    payload = event.data.json();
+  } catch {
+    payload = { title: "Fidelo", body: event.data.text() };
+  }
+  const title = payload.title || "Fidelo";
+  const options = {
+    body: payload.body || "",
+    icon: "/icon.svg",
+    badge: "/icon.svg",
+    image: payload.imageUrl || undefined,
+    data: { url: payload.url || "/carte", campaignId: payload.campaignId || null },
+  };
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const url = (event.notification.data && event.notification.data.url) || "/carte";
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
+      for (const client of clients) {
+        if (client.url.includes(url) && "focus" in client) return client.focus();
+      }
+      if (self.clients.openWindow) return self.clients.openWindow(url);
+    }),
+  );
+});
+
 self.addEventListener("fetch", (event) => {
   const { request } = event;
   if (request.method !== "GET") return;

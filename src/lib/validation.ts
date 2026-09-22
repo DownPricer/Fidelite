@@ -100,6 +100,17 @@ export const preferencesUpdateSchema = z.object({
   notifyChannelPush: z.boolean().optional(),
   notifyChannelEmail: z.boolean().optional(),
   notifyChannelSms: z.boolean().optional(),
+  adsMerchantPush: z.boolean().optional(),
+  adsMerchantEmail: z.boolean().optional(),
+  adsNetworkPush: z.boolean().optional(),
+  adsNetworkEmail: z.boolean().optional(),
+  marketingZoneCity: z.string().trim().max(120).nullable().optional(),
+  marketingZonePostalCode: z
+    .string()
+    .trim()
+    .regex(/^[0-9]{4,10}$/, "Code postal invalide.")
+    .nullable()
+    .optional(),
   consentPersonalizedOffers: z.boolean().optional(),
   consentMarketing: z.boolean().optional(),
   consentAnalytics: z.boolean().optional(),
@@ -107,6 +118,18 @@ export const preferencesUpdateSchema = z.object({
 });
 
 export const historyFilterSchema = z.enum(["all", "earned", "used", "expired", "correction"]);
+
+export const pushSubscribeSchema = z.object({
+  endpoint: z.string().url().max(2000),
+  keys: z.object({
+    p256dh: z.string().min(1).max(500),
+    auth: z.string().min(1).max(500),
+  }),
+});
+
+export const pushUnsubscribeSchema = z.object({
+  endpoint: z.string().url().max(2000),
+});
 
 export const scanSchema = z.discriminatedUnion("inputType", [
   z.object({
