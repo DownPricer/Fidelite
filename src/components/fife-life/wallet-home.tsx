@@ -269,22 +269,22 @@ export function WalletHome({
     <WalletMotionRoot>
       <main className="wallet-shell fife-page-shell obsidian-scene flex w-full flex-col px-5 pb-8 pt-3">
         <div className="wallet-page-body flex min-h-0 flex-1 flex-col">
-          <header className="wallet-page-header relative z-50 flex shrink-0 items-center justify-between">
+          <header className="wallet-page-header relative z-50 grid shrink-0 grid-cols-[1fr_auto_1fr] items-center">
             <Link
               href={profileHref}
-              className="avatar-orb-glassy relative z-50 grid h-10 w-10 place-items-center text-sm font-bold"
+              className="avatar-orb-glassy relative z-50 grid h-10 w-10 place-items-center justify-self-start text-sm font-bold"
               aria-label="Mon profil et mes paramètres"
             >
               {firstName.slice(0, 1).toUpperCase()}
             </Link>
-            <div className="brand-pill-glassy pointer-events-none flex flex-col items-center gap-1 px-3 py-2">
+            <div className="brand-pill-glassy pointer-events-none flex flex-col items-center gap-1 px-3 py-2 justify-self-center">
               <span className="h-3 w-3 rounded-full bg-[radial-gradient(circle_at_30%_20%,#c4b5ff,#8557ff)] shadow-[0_0_14px_rgba(166,139,255,0.75)]" />
               <div className="text-center leading-tight">
                 <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[var(--ink-soft)]">Fidelo</p>
                 <p className="text-[11px] font-medium text-[var(--muted-strong)]">Prism Wallet</p>
               </div>
             </div>
-            <div className="relative z-50 flex items-center gap-2">
+            <div className="relative z-50 flex items-center justify-self-end gap-2">
               <DiscoverIconLink href={preview ? "/decouvrir?demo=1" : "/decouvrir"} />
               <NotificationBellLink href={preview ? "/notifications?demo=1" : "/notifications"} demo={preview} />
             </div>
@@ -317,7 +317,7 @@ export function WalletHome({
                 onActiveCardChange={handleActiveCardChange}
                 demoVisual={preview}
               />
-              <p className="mt-1.5 text-center text-[11px] font-medium text-[var(--muted)]">
+              <p className="wallet-deck-hint text-center text-[11px] font-medium text-[var(--muted)]">
                 Appuyez sur la carte pour l&apos;afficher en grand
               </p>
               <section className="wallet-primary-actions" aria-label="Actions QR et Google Wallet">

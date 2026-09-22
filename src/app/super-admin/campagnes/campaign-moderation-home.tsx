@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 import { SuperAdminShell } from "@/components/super-admin/layout-shell";
 import { Button, Card } from "@/components/ui";
 
+type RejectTarget = { id: string; kind: "campaign" | "ad" };
+
 type NetworkCampaign = {
   id: string;
   channel: string;
@@ -42,6 +44,10 @@ export function CampaignModerationHome({ firstName }: { firstName: string }) {
   const [ads, setAds] = useState<AdRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [rejectTarget, setRejectTarget] = useState<RejectTarget | null>(null);
+  const [rejectReason, setRejectReason] = useState("");
+  const [approveAdId, setApproveAdId] = useState<string | null>(null);
+  const [finalImageUrl, setFinalImageUrl] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -63,40 +69,47 @@ export function CampaignModerationHome({ firstName }: { firstName: string }) {
     void load();
   }, [load]);
 
-  async function moderateCampaign(id: string, action: "approve" | "reject") {
+  async function approveCampaign(id: string) {
     setBusyId(id);
-    const rejectionReason = action === "reject" ? window.prompt("Motif du refus (visible par le commerçant) :") ?? "" : undefined;
     await fetch(`/api/super-admin/campaigns/${id}/moderate`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action, rejectionReason }),
+      body: JSON.stringify({ action: "approve" }),
     }).catch(() => {});
     setBusyId(null);
     void load();
   }
 
-  async function moderateAd(id: string, action: "approve" | "reject") {
-    setBusyId(id);
-    if (action === "approve") {
-      const finalImageUrl = window.prompt("URL du visuel final (hébergé par Fidelo) :");
-      if (!finalImageUrl) {
-        setBusyId(null);
-        return;
-      }
-      await fetch(`/api/super-admin/ads/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "approve", finalImageUrl }),
-      }).catch(() => {});
-    } else {
-      const rejectionReason = window.prompt("Motif du refus :") ?? "";
-      await fetch(`/api/super-admin/ads/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "reject", rejectionReason }),
-      }).catch(() => {});
-    }
+  async function submitReject() {
+    if (!rejectTarget) return;
+    setBusyId(rejectTarget.id);
+    const path =
+      rejectTarget.kind === "campaign"
+        ? `/api/super-admin/campaigns/${rejectTarget.id}/moderate`
+        : `/api/super-admin/ads/${rejectTarget.id}`;
+    const method = rejectTarget.kind === "campaign" ? "POST" : "PATCH";
+    await fetch(path, {
+      method,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "reject", rejectionReason: rejectReason }),
+    }).catch(() => {});
     setBusyId(null);
+    setRejectTarget(null);
+    setRejectReason("");
+    void load();
+  }
+
+  async function submitApproveAd() {
+    if (!approveAdId || !finalImageUrl.trim()) return;
+    setBusyId(approveAdId);
+    await fetch(`/api/super-admin/ads/${approveAdId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "approve", finalImageUrl: finalImageUrl.trim() }),
+    }).catch(() => {});
+    setBusyId(null);
+    setApproveAdId(null);
+    setFinalImageUrl("");
     void load();
   }
 
@@ -142,18 +155,42 @@ export function CampaignModerationHome({ firstName }: { firstName: string }) {
                       </p>
                     </div>
                     <div className="flex shrink-0 flex-col gap-2">
-                      <Button disabled={busyId === c.id} onClick={() => void moderateCampaign(c.id, "approve")}>
+                      <Button disabled={busyId === c.id} onClick={() => void approveCampaign(c.id)}>
                         Approuver
                       </Button>
                       <Button
                         variant="secondary"
                         disabled={busyId === c.id}
-                        onClick={() => void moderateCampaign(c.id, "reject")}
+                        onClick={() => {
+                          setRejectTarget({ id: c.id, kind: "campaign" });
+                          setRejectReason("");
+                        }}
                       >
                         Refuser
                       </Button>
                     </div>
                   </div>
+                  {rejectTarget?.id === c.id ? (
+                    <div className="mt-3 space-y-2 border-t border-[var(--border)] pt-3">
+                      <label className="block text-xs text-[var(--muted-text)]">
+                        Motif du refus (visible par le commerçant)
+                        <textarea
+                          className="profile-select mt-1 w-full"
+                          rows={2}
+                          value={rejectReason}
+                          onChange={(e) => setRejectReason(e.target.value)}
+                        />
+                      </label>
+                      <div className="flex gap-2">
+                        <Button disabled={busyId === c.id} onClick={() => void submitReject()}>
+                          Confirmer le refus
+                        </Button>
+                        <Button variant="secondary" onClick={() => setRejectTarget(null)}>
+                          Annuler
+                        </Button>
+                      </div>
+                    </div>
+                  ) : null}
                 </Card>
               ))}
             </div>
@@ -183,14 +220,69 @@ export function CampaignModerationHome({ firstName }: { firstName: string }) {
                     ) : null}
                   </div>
                   <div className="flex shrink-0 flex-col gap-2">
-                    <Button disabled={busyId === ad.id} onClick={() => void moderateAd(ad.id, "approve")}>
+                    <Button
+                      disabled={busyId === ad.id}
+                      onClick={() => {
+                        setApproveAdId(ad.id);
+                        setFinalImageUrl(ad.finalImageUrl ?? "");
+                      }}
+                    >
                       Ajouter le visuel et approuver
                     </Button>
-                    <Button variant="secondary" disabled={busyId === ad.id} onClick={() => void moderateAd(ad.id, "reject")}>
+                    <Button
+                      variant="secondary"
+                      disabled={busyId === ad.id}
+                      onClick={() => {
+                        setRejectTarget({ id: ad.id, kind: "ad" });
+                        setRejectReason("");
+                      }}
+                    >
                       Refuser
                     </Button>
                   </div>
                 </div>
+                {approveAdId === ad.id ? (
+                  <div className="mt-3 space-y-2 border-t border-[var(--border)] pt-3">
+                    <label className="block text-xs text-[var(--muted-text)]">
+                      URL du visuel final (hébergé par Fidelo)
+                      <input
+                        className="profile-select mt-1 w-full"
+                        value={finalImageUrl}
+                        onChange={(e) => setFinalImageUrl(e.target.value)}
+                        placeholder="https://…"
+                      />
+                    </label>
+                    <div className="flex gap-2">
+                      <Button disabled={busyId === ad.id || !finalImageUrl.trim()} onClick={() => void submitApproveAd()}>
+                        Confirmer l&apos;approbation
+                      </Button>
+                      <Button variant="secondary" onClick={() => setApproveAdId(null)}>
+                        Annuler
+                      </Button>
+                    </div>
+                  </div>
+                ) : null}
+                {rejectTarget?.id === ad.id ? (
+                  <div className="mt-3 space-y-2 border-t border-[var(--border)] pt-3">
+                    <label className="block text-xs text-[var(--muted-text)]">
+                      Motif du refus
+                      <textarea
+                        className="profile-select mt-1 w-full"
+                        rows={2}
+                        value={rejectReason}
+                        onChange={(e) => setRejectReason(e.target.value)}
+                      />
+                    </label>
+                    <div className="flex gap-2">
+                      <Button disabled={busyId === ad.id} onClick={() => void submitReject()}>
+                        Confirmer le refus
+                      </Button>
+                      <Button variant="secondary" onClick={() => setRejectTarget(null)}>
+                        Annuler
+                      </Button>
+                    </div>
+                  </div>
+                ) : null}
               </Card>
             ))}
           </div>

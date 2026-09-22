@@ -42,9 +42,9 @@ export function isDuplicable(status: CampaignStatus): boolean {
 }
 
 export const CAMPAIGN_STATUS_LABELS: Record<CampaignStatus, string> = {
-  DRAFT: "Préparée",
+  DRAFT: "Brouillon",
   PENDING_REVIEW: "En attente de validation",
-  PAYMENT_REQUIRED: "Paiement requis",
+  PAYMENT_REQUIRED: "À payer",
   PAID: "Payée",
   SCHEDULED: "Programmée",
   SENDING: "En cours",

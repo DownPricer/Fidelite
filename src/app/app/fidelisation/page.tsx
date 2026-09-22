@@ -13,7 +13,7 @@ export default async function FidelisationPage() {
     return (
       <MerchantPageShell narrow>
         <MerchantPageHeader eyebrow="Programme" title="Fidélisation" subtitle={DEMO_MERCHANT.merchantName} />
-        <FidelisationPanel programSummary="10 passages = 1 boisson offerte" />
+        <FidelisationPanel programSummary="10 passages = 1 boisson offerte" activeRewardsCount={3} />
       </MerchantPageShell>
     );
   }
@@ -26,7 +26,13 @@ export default async function FidelisationPage() {
   try {
     merchant = await prisma.merchant.findUnique({
       where: { id: membership.merchantId },
-      include: { program: { include: { rewards: { where: { isActive: true }, orderBy: { sortOrder: "asc" }, take: 1 } } } },
+      include: {
+        program: {
+          include: {
+            rewards: { where: { isActive: true }, orderBy: { sortOrder: "asc" } },
+          },
+        },
+      },
     });
   } catch (error) {
     console.error("[fidelisation] DB error:", error);
@@ -34,7 +40,8 @@ export default async function FidelisationPage() {
   }
   if (!merchant?.program) redirect("/app");
 
-  const firstReward = merchant.program.rewards[0];
+  const activeRewards = merchant.program.rewards;
+  const firstReward = activeRewards[0];
   const summary = firstReward
     ? `${firstReward.threshold} ${firstReward.thresholdUnit === "points" ? "points" : "passages"} = ${firstReward.name}`
     : `${merchant.program.visitsRequired} passages = ${merchant.program.rewardLabel}`;
@@ -42,7 +49,7 @@ export default async function FidelisationPage() {
   return (
     <MerchantPageShell narrow>
       <MerchantPageHeader eyebrow="Programme" title="Fidélisation" subtitle={merchant.name} />
-      <FidelisationPanel programSummary={summary} />
+      <FidelisationPanel programSummary={summary} activeRewardsCount={activeRewards.length} />
     </MerchantPageShell>
   );
 }

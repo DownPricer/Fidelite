@@ -324,6 +324,10 @@ body:has(.wallet-shell) {
   gap: 0.75rem;
 }
 
+.wallet-deck-hint {
+  margin-top: 0.375rem;
+}
+
 .wallet-shell.fife-page-shell {
   min-height: 100dvh;
   height: auto;
@@ -379,9 +383,16 @@ body:has(.wallet-shell) {
   }
 
   /* meme contrainte que ci-dessus, mais pour le debordement de la carte
-     du fond EN DESSOUS de la carte active. */
-  .wallet-primary-actions {
+     du fond EN DESSOUS de la carte active : le texte d'aide "Appuyez sur
+     la carte..." vit dans cette zone de chevauchement, donc c'est LUI qui
+     porte la marge de degagement (et non wallet-primary-actions, qui vient
+     apres et n'a plus qu'un petit espacement a fournir). */
+  .wallet-deck-hint {
     margin-top: clamp(40px, 9vw, 48px);
+  }
+
+  .wallet-primary-actions {
+    margin-top: clamp(10px, 2.5vw, 16px);
     margin-bottom: clamp(10px, 2.5vw, 16px);
   }
 
@@ -2364,6 +2375,149 @@ body:has(.wallet-shell) {
     radial-gradient(ellipse 80% 60% at 0% 0%, light-dark(rgba(122, 69, 242, 0.08), rgba(133, 87, 255, 0.12)), transparent 55%),
     light-dark(rgba(255, 255, 255, 0.9), rgba(14, 12, 26, 0.92));
   box-shadow: 0 16px 40px light-dark(rgba(76, 46, 148, 0.12), rgba(0, 0, 0, 0.45));
+}
+
+.tool-card {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  border-radius: 1.1rem;
+  border: 1px solid light-dark(rgba(122, 69, 242, 0.14), rgba(190, 164, 255, 0.14));
+  background: light-dark(rgba(255, 255, 255, 0.9), rgba(14, 12, 26, 0.92));
+  padding: 0.9rem 1rem;
+  transition: transform 0.12s, background 0.12s;
+}
+
+.tool-card:hover {
+  transform: translateY(-1px);
+  background: light-dark(rgba(122, 69, 242, 0.06), rgba(133, 87, 255, 0.1));
+}
+
+.tool-card-icon {
+  display: grid;
+  place-items: center;
+  width: 2.6rem;
+  height: 2.6rem;
+  flex: 0 0 auto;
+  border-radius: 0.85rem;
+  color: var(--violet-bright);
+  background: light-dark(rgba(122, 69, 242, 0.1), rgba(133, 87, 255, 0.16));
+}
+
+.tool-card-icon svg {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.tool-cards-grid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 640px) {
+  .tool-cards-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.campaign-quota-grid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 640px) {
+  .campaign-quota-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.campaign-type-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 768px) {
+  .campaign-type-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.campaign-type-card {
+  border-radius: 1.25rem;
+  border: 1px solid light-dark(rgba(122, 69, 242, 0.14), rgba(190, 164, 255, 0.14));
+  background: light-dark(rgba(255, 255, 255, 0.9), rgba(14, 12, 26, 0.92));
+  box-shadow: 0 16px 40px light-dark(rgba(76, 46, 148, 0.1), rgba(0, 0, 0, 0.4));
+  padding: 1.25rem;
+}
+
+.campaign-type-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.85rem;
+}
+
+.campaign-type-icon {
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  flex: 0 0 auto;
+  border-radius: 0.9rem;
+}
+
+.campaign-type-icon svg {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.campaign-type-icon-blue {
+  color: light-dark(#176fc0, #74baff);
+  background: light-dark(rgba(23, 111, 192, 0.12), rgba(116, 186, 255, 0.16));
+}
+
+.campaign-type-icon-orange {
+  color: light-dark(#a45b15, #f7b46b);
+  background: light-dark(rgba(164, 91, 21, 0.12), rgba(247, 180, 107, 0.16));
+}
+
+.campaign-wizard-steps {
+  display: flex;
+  gap: 0.5rem;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.campaign-wizard-steps li {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex: 1;
+}
+
+.campaign-wizard-steps li span {
+  display: grid;
+  place-items: center;
+  width: 1.35rem;
+  height: 1.35rem;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--surface-raised);
+}
+
+.campaign-wizard-steps li.is-active {
+  color: var(--violet-bright);
+}
+
+.campaign-wizard-steps li.is-active span {
+  color: #fff;
+  background: var(--violet);
 }
 
 .prism-card {

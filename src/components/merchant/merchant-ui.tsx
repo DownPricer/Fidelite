@@ -63,6 +63,36 @@ export function MerchantPageHeader({
   );
 }
 
+export function ToolCard({
+  href,
+  icon,
+  title,
+  hint,
+  badge,
+}: {
+  href: string;
+  icon: ReactNode;
+  title: string;
+  hint: string;
+  badge?: ReactNode;
+}) {
+  return (
+    <Link href={href} className="tool-card">
+      <span className="tool-card-icon">{icon}</span>
+      <span className="min-w-0 flex-1">
+        <span className="flex items-center gap-2">
+          <span className="truncate text-[15px] font-bold text-[var(--ink)]">{title}</span>
+          {badge}
+        </span>
+        <span className="mt-0.5 block truncate text-xs text-[var(--muted)]">{hint}</span>
+      </span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-4 w-4 shrink-0 text-[var(--muted)]">
+        <path d="M9 18l6-6-6-6" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    </Link>
+  );
+}
+
 export function CompactListHeader({
   columns,
 }: {

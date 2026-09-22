@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { WalletMotionRoot } from "./wallet-motion-root";
+import { SponsoredBanner, type SponsoredAd } from "./sponsored-banner";
 
 type Merchant = {
   slug: string;
@@ -15,17 +16,7 @@ type Merchant = {
   rewardLabel: string;
 };
 
-type Sponsored = {
-  id: string;
-  merchantSlug: string;
-  merchantName: string;
-  merchantLogoUrl: string | null;
-  imageUrl: string | null;
-  text: string;
-  ctaLabel: string | null;
-  impressionUrl: string;
-  clickUrl: string;
-};
+type Sponsored = SponsoredAd;
 
 export function DiscoverPage() {
   const [query, setQuery] = useState("");
@@ -95,32 +86,7 @@ export function DiscoverPage() {
         {sponsored.length > 0 ? (
           <section className="mt-4 space-y-2">
             {sponsored.map((ad) => (
-              <a
-                key={ad.id}
-                href={ad.clickUrl}
-                className="glass-panel profile-panel relative block overflow-hidden p-3"
-              >
-                <span className="absolute right-2 top-2 rounded-full bg-black/60 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white">
-                  Sponsorisé
-                </span>
-                <div className="flex items-center gap-3">
-                  {ad.imageUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={ad.imageUrl} alt="" className="h-14 w-14 shrink-0 rounded-xl object-cover" />
-                  ) : null}
-                  <div className="min-w-0">
-                    <p className="truncate text-xs font-bold uppercase tracking-wide text-[var(--muted)]">
-                      {ad.merchantName}
-                    </p>
-                    <p className="text-sm font-semibold text-[var(--ink)]">{ad.text}</p>
-                    {ad.ctaLabel ? (
-                      <span className="mt-1 inline-block text-xs font-bold text-[var(--violet-bright)]">
-                        {ad.ctaLabel}
-                      </span>
-                    ) : null}
-                  </div>
-                </div>
-              </a>
+              <SponsoredBanner key={ad.id} ad={ad} />
             ))}
           </section>
         ) : null}

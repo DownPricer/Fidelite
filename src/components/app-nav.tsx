@@ -47,10 +47,22 @@ const icons = {
       <path d="M14 8a4 4 0 010 8M17 5a8 8 0 010 14" strokeLinecap="round" />
     </svg>
   ),
+  tools: (
+    <svg viewBox="0 0 24 24" width={20} height={20} fill="none" stroke="currentColor" strokeWidth="2.2" className="h-5 w-5 shrink-0">
+      <rect x="3" y="3" width="7" height="7" rx="1.5" />
+      <rect x="14" y="3" width="7" height="7" rx="1.5" />
+      <rect x="3" y="14" width="7" height="7" rx="1.5" />
+      <rect x="14" y="14" width="7" height="7" rx="1.5" />
+    </svg>
+  ),
 };
+
+// Sous-routes regroupées derrière l'entrée "Outils" du menu compact.
+const TOOLS_PREFIXES = ["/app/outils", "/app/fidelisation", "/app/campagnes", "/app/employes", "/app/statistiques", "/app/parametres"];
 
 function isActive(pathname: string, href: string) {
   if (href === "/app") return pathname === "/app";
+  if (href === "/app/outils") return TOOLS_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
@@ -62,12 +74,8 @@ export function AppNav({ admin, canViewStatistics }: { admin: boolean; canViewSt
     ? [
         { href: "/app", label: "Accueil", icon: icons.home },
         { href: "/app/caisse", label: "Caisse", icon: icons.scan, emphasize: true },
-        { href: "/app/statistiques", label: "Statistiques", mobileLabel: "Stats", icon: icons.stats },
         { href: "/app/clients", label: "Clients", icon: icons.clients },
-        { href: "/app/employes", label: "Équipe", icon: icons.team },
-        { href: "/app/fidelisation", label: "Fidélisation", mobileLabel: "Fidél.", icon: icons.loyalty },
-        { href: "/app/campagnes", label: "Campagnes", icon: icons.campaigns },
-        { href: "/app/parametres", label: "Paramètres", mobileLabel: "Régl.", icon: icons.settings },
+        { href: "/app/outils", label: "Outils", icon: icons.tools },
       ]
     : canViewStatistics
       ? [

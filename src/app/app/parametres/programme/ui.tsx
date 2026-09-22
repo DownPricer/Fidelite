@@ -94,6 +94,8 @@ export function ProgramConfigurator({
   const [rewards, setRewards] = useState<RewardConfig[]>([]);
   const [status, setStatus] = useState("ACTIVE");
   const [hasDraft, setHasDraft] = useState(false);
+  const [impact, setImpact] = useState<{ customers: number; totalPoints: number; rewardsUnlocked: number } | null>(null);
+  const [publishedAt, setPublishedAt] = useState<string | null>(null);
   const [dirty, setDirty] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
@@ -171,6 +173,8 @@ export function ProgramConfigurator({
     setRewards(src.rewards);
     setHistoricalEntitlements(data.historicalEntitlements ?? []);
     setStatus(data.status);
+    setImpact(data.impact ?? null);
+    setPublishedAt(data.publishedAt ?? null);
     if (dashboardRes.ok) {
       const dashboardData = await dashboardRes.json();
       setMerchantMeta({
@@ -611,7 +615,29 @@ export function ProgramConfigurator({
           <p className="text-sm text-[var(--muted-strong)]">{publishedMinimumPurchaseLabel(activeRules)}</p>
         ) : null}
         <p className="text-xs font-bold uppercase tracking-widest text-[var(--positive)]">Statut : Publié</p>
+        {publishedAt ? (
+          <p className="text-xs text-[var(--muted)]">
+            Dernière publication : {new Date(publishedAt).toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" })}
+          </p>
+        ) : null}
       </section>
+
+      {impact ? (
+        <div className="campaign-quota-grid">
+          <div className="metric-card p-3">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted)]">Clients inscrits</p>
+            <p className="mt-1 text-xl font-black text-[var(--ink)]">{impact.customers}</p>
+          </div>
+          <div className="metric-card p-3">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted)]">Points/passages cumulés</p>
+            <p className="mt-1 text-xl font-black text-[var(--ink)]">{impact.totalPoints}</p>
+          </div>
+          <div className="metric-card p-3">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted)]">Récompenses débloquées</p>
+            <p className="mt-1 text-xl font-black text-[var(--ink)]">{impact.rewardsUnlocked}</p>
+          </div>
+        </div>
+      ) : null}
 
       {hasDraft ? (
         <section className="rounded-xl border border-amber-300/25 bg-amber-400/10 p-4 space-y-2">

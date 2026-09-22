@@ -1,38 +1,54 @@
 "use client";
 
-import Link from "next/link";
-
-function SectionLabel({ children }: { children: string }) {
-  return <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--violet-bright)]">{children}</p>;
-}
+import { ToolCard } from "@/components/merchant/merchant-ui";
 
 /** Programme de fidélité et avantages (Partie 4) — séparé de Paramètres et de Campagnes. */
-export function FidelisationPanel({ programSummary }: { programSummary: string }) {
+export function FidelisationPanel({
+  programSummary,
+  activeRewardsCount,
+}: {
+  programSummary: string;
+  activeRewardsCount: number;
+}) {
   return (
-    <div className="space-y-8">
-      <section className="space-y-3">
-        <SectionLabel>Programme de fidélité</SectionLabel>
-        <div className="space-y-3">
-          {[
-            ["Programme de fidélité", "/app/parametres/programme", programSummary],
-            ["Avantages", "/app/parametres/avantages", "Créer, modifier et archiver les avantages"],
-          ].map(([title, href, subtitle]) => (
-            <Link
-              key={href}
-              href={href}
-              className="flex items-center justify-between gap-4 rounded-2xl border border-[var(--violet)]/35 bg-[rgba(133,87,255,0.12)] p-5 transition hover:bg-[rgba(133,87,255,0.18)]"
-            >
-              <div className="min-w-0">
-                <h3 className="text-lg font-black text-[var(--ink)]">{title}</h3>
-                <p className="mt-1 truncate text-sm text-[var(--muted-strong)]">{subtitle}</p>
-              </div>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-5 w-5 shrink-0 text-[var(--violet-bright)]">
-                <path d="M9 18l6-6-6-6" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </Link>
-          ))}
+    <div className="space-y-6">
+      <article className="glass-panel p-6">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--violet-bright)]">
+              Programme actuel
+            </p>
+            <p className="mt-2 text-lg font-black text-[var(--ink)]">{programSummary}</p>
+            <p className="mt-1 text-sm text-[var(--muted-strong)]">
+              Chaque passage rapproche votre client de sa prochaine récompense.
+            </p>
+          </div>
         </div>
-      </section>
+      </article>
+
+      <div className="tool-cards-grid">
+        <ToolCard
+          href="/app/parametres/avantages"
+          title="Gérer les avantages"
+          hint={`${activeRewardsCount} avantage${activeRewardsCount > 1 ? "s" : ""} actif${activeRewardsCount > 1 ? "s" : ""}`}
+          icon={
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+              <path d="M20 12v9H4v-9M2 7h20v5H2V7zM12 22V7M12 7H7.5a2.5 2.5 0 010-5C11 2 12 7 12 7zM12 7h4.5a2.5 2.5 0 000-5C13 2 12 7 12 7z" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          }
+        />
+        <ToolCard
+          href="/app/parametres/programme"
+          title="Modifier le programme"
+          hint="Objectif, règle et publication"
+          icon={
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+              <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          }
+        />
+      </div>
     </div>
   );
 }

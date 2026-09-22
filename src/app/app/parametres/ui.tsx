@@ -1,7 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { Button } from "@/components/ui";
+import { ToolCard } from "@/components/merchant/merchant-ui";
 
 function SectionLabel({ children }: { children: string }) {
   return <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--violet-bright)]">{children}</p>;
@@ -38,18 +38,16 @@ export function SettingsPanel({
 
       <section className="space-y-3">
         <SectionLabel>Fidélisation</SectionLabel>
-        <Link
+        <ToolCard
           href="/app/fidelisation"
-          className="flex items-center justify-between gap-4 rounded-2xl border border-[var(--violet)]/35 bg-[rgba(133,87,255,0.12)] p-5 transition hover:bg-[rgba(133,87,255,0.18)]"
-        >
-          <div className="min-w-0">
-            <h3 className="text-lg font-black text-[var(--ink)]">Programme et avantages</h3>
-            <p className="mt-1 truncate text-sm text-[var(--muted-strong)]">{programSummary}</p>
-          </div>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-5 w-5 shrink-0 text-[var(--violet-bright)]">
-            <path d="M9 18l6-6-6-6" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </Link>
+          title="Programme et avantages"
+          hint={programSummary}
+          icon={
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+              <path d="M12 21s-7.5-4.6-10-9.3C.5 7.8 2.6 4.5 6 4.5c2 0 3.5 1.1 4.5 2.6C11.5 5.6 13 4.5 15 4.5c3.4 0 5.5 3.3 4 7.2C16.5 16.4 12 21 12 21z" strokeLinejoin="round" />
+            </svg>
+          }
+        />
       </section>
 
       <section className="space-y-3">
