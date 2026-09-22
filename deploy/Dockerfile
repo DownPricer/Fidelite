@@ -40,6 +40,11 @@ COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+# Requis uniquement par le service worker (voir deploy/docker-compose.yml), qui réutilise
+# cette même image avec CMD ["npm", "run", "worker"] : le serveur web standalone ne s'en sert pas.
+COPY --from=builder /app/scripts ./scripts
+COPY --from=builder /app/src ./src
+COPY --from=builder /app/tsconfig.json ./tsconfig.json
 COPY deploy/docker-entrypoint.sh /docker-entrypoint.sh
 
 RUN chmod +x /docker-entrypoint.sh \

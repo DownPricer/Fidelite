@@ -3,9 +3,14 @@
 #   docker compose up -d --build
 #
 # Le fichier ../.env (racine du dépôt) fournit POSTGRES_* et DATABASE_URL.
-# Conteneurs : fifelite-web, fifelite-postgres
+# Conteneurs : fifelite-web, fifelite-worker, fifelite-postgres
 # Réseau interne : fifelite-internal
 # Accès Nginx : downpricer_downpricer-network
+#
+# Nouveau service à partir de ce commit : fifelite-worker (campagnes, voir
+# src/lib/campaign-worker.ts). Au premier déploiement après ce commit, recréer
+# explicitement web ET worker :
+#   docker compose up -d --build --force-recreate web worker
 #
 # Ne pas joindre fifelite-postgres au réseau du reverse proxy.
 # Ne pas modifier les autres stacks du VPS.
@@ -65,6 +70,26 @@ services:
     networks:
       - fifelite-internal
       - proxy_net
+
+  worker:
+    container_name: fifelite-worker
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    command: ["npm", "run", "worker"]
+    restart: unless-stopped
+    env_file:
+      - ../.env
+    environment:
+      NODE_ENV: production
+      UPLOADS_DIR: /var/lib/fifelite/uploads
+    volumes:
+      - /opt/fifelite/data/uploads:/var/lib/fifelite/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - fifelite-internal
 
 volumes:
   fifelite-postgres-data:

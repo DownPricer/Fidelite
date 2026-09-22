@@ -992,6 +992,8 @@ model CampaignDelivery {
   status         CampaignDeliveryStatus  @default(PENDING)
   attempts       Int                     @default(0)
   lastError      String?
+  /// Nouvelle tentative interdite avant cette date (délai progressif — Partie 15). Null = éligible immédiatement.
+  nextAttemptAt  DateTime?
   sentAt         DateTime?
   clickedAt      DateTime?
   unsubscribedAt DateTime?
@@ -1001,7 +1003,7 @@ model CampaignDelivery {
 
   @@unique([campaignId, userId, channel])
   @@index([campaignId, status])
-  @@index([status, createdAt])
+  @@index([status, nextAttemptAt])
 }
 
 model InAppNotification {
