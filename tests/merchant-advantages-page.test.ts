@@ -7,14 +7,16 @@ describe("page avantages commerçant", () => {
     const root = process.cwd();
     const advantagesPage = readFileSync(join(root, "src/app/app/parametres/avantages/page.tsx"), "utf8");
     const programUi = readFileSync(join(root, "src/app/app/parametres/programme/ui.tsx"), "utf8");
-    const settingsUi = readFileSync(join(root, "src/app/app/parametres/ui.tsx"), "utf8");
+    // Depuis la Partie 4 (réorganisation Fidélisation/Campagnes/Paramètres), le lien vers
+    // les avantages vit dans fidelisation/ui.tsx et non plus dans parametres/ui.tsx.
+    const fidelisationUi = readFileSync(join(root, "src/app/app/fidelisation/ui.tsx"), "utf8");
     const dashboardUi = readFileSync(join(root, "src/app/app/ui.tsx"), "utf8");
 
     expect(advantagesPage).toContain('view="advantages"');
     expect(programUi).toContain('href="/app/parametres/avantages"');
     expect(programUi).toContain("Avantages configurés");
     expect(programUi).toContain("Gérer les avantages");
-    expect(settingsUi).toContain("/app/parametres/avantages");
+    expect(fidelisationUi).toContain("/app/parametres/avantages");
     expect(dashboardUi).toContain("/app/parametres/avantages");
   });
 

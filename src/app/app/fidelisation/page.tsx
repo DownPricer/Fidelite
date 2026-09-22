@@ -3,17 +3,17 @@ import { DEMO_MERCHANT } from "@/lib/demo-visual";
 import { prisma } from "@/lib/prisma";
 import { resolveMerchantDemo } from "@/lib/merchant-demo-server";
 import { canManageMerchantSettings, firstActiveStaffMembership } from "@/lib/rbac";
-import { SettingsPanel } from "./ui";
+import { FidelisationPanel } from "./ui";
 import { MerchantPageHeader, MerchantPageShell } from "@/components/merchant/merchant-ui";
 
-export default async function SettingsPage() {
+export default async function FidelisationPage() {
   const { user, demo } = await resolveMerchantDemo();
 
   if (demo) {
     return (
       <MerchantPageShell narrow>
-        <MerchantPageHeader eyebrow="Configuration" title="Paramètres" subtitle={DEMO_MERCHANT.merchantName} />
-        <SettingsPanel merchantName={DEMO_MERCHANT.merchantName} programSummary="10 passages = 1 boisson offerte" />
+        <MerchantPageHeader eyebrow="Programme" title="Fidélisation" subtitle={DEMO_MERCHANT.merchantName} />
+        <FidelisationPanel programSummary="10 passages = 1 boisson offerte" />
       </MerchantPageShell>
     );
   }
@@ -29,7 +29,7 @@ export default async function SettingsPage() {
       include: { program: { include: { rewards: { where: { isActive: true }, orderBy: { sortOrder: "asc" }, take: 1 } } } },
     });
   } catch (error) {
-    console.error("[parametres] DB error:", error);
+    console.error("[fidelisation] DB error:", error);
     redirect("/app/enter-demo");
   }
   if (!merchant?.program) redirect("/app");
@@ -41,8 +41,8 @@ export default async function SettingsPage() {
 
   return (
     <MerchantPageShell narrow>
-      <MerchantPageHeader eyebrow="Configuration" title="Paramètres" subtitle={merchant.name} />
-      <SettingsPanel merchantName={merchant.name} programSummary={summary} />
+      <MerchantPageHeader eyebrow="Programme" title="Fidélisation" subtitle={merchant.name} />
+      <FidelisationPanel programSummary={summary} />
     </MerchantPageShell>
   );
 }

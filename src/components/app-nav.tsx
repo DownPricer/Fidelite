@@ -36,6 +36,17 @@ const icons = {
       <path d="M4 20V10m6.5 10V4m6.5 16v-7" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   ),
+  loyalty: (
+    <svg viewBox="0 0 24 24" width={20} height={20} fill="none" stroke="currentColor" strokeWidth="2.2" className="h-5 w-5 shrink-0">
+      <path d="M12 21s-7.5-4.6-10-9.3C.5 7.8 2.6 4.5 6 4.5c2 0 3.5 1.1 4.5 2.6C11.5 5.6 13 4.5 15 4.5c3.4 0 5.5 3.3 4 7.2C16.5 16.4 12 21 12 21z" strokeLinejoin="round" />
+    </svg>
+  ),
+  campaigns: (
+    <svg viewBox="0 0 24 24" width={20} height={20} fill="none" stroke="currentColor" strokeWidth="2.2" className="h-5 w-5 shrink-0">
+      <path d="M3 11v2a2 2 0 002 2h1l3 5V4L6 9H5a2 2 0 00-2 2z" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M14 8a4 4 0 010 8M17 5a8 8 0 010 14" strokeLinecap="round" />
+    </svg>
+  ),
 };
 
 function isActive(pathname: string, href: string) {
@@ -54,7 +65,9 @@ export function AppNav({ admin, canViewStatistics }: { admin: boolean; canViewSt
         { href: "/app/statistiques", label: "Statistiques", mobileLabel: "Stats", icon: icons.stats },
         { href: "/app/clients", label: "Clients", icon: icons.clients },
         { href: "/app/employes", label: "Équipe", icon: icons.team },
-        { href: "/app/parametres", label: "Réglages", icon: icons.settings },
+        { href: "/app/fidelisation", label: "Fidélisation", mobileLabel: "Fidél.", icon: icons.loyalty },
+        { href: "/app/campagnes", label: "Campagnes", icon: icons.campaigns },
+        { href: "/app/parametres", label: "Paramètres", mobileLabel: "Régl.", icon: icons.settings },
       ]
     : canViewStatistics
       ? [
