@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { MerchantPageShell } from "@/components/merchant/merchant-ui";
 import { canManageMerchantSettings, firstActiveStaffMembership } from "@/lib/rbac";
 import { resolveMerchantDemo } from "@/lib/merchant-demo-server";
-import { ProgramConfigurator } from "../programme/ui";
+import { AdvantagesEditor } from "./advantages-ui";
 
 export default async function AdvantagesPage() {
   const { user, demo } = await resolveMerchantDemo();
@@ -10,7 +10,7 @@ export default async function AdvantagesPage() {
   if (demo) {
     return (
       <MerchantPageShell>
-        <ProgramConfigurator demo view="advantages" />
+        <AdvantagesEditor demo />
       </MerchantPageShell>
     );
   }
@@ -21,7 +21,7 @@ export default async function AdvantagesPage() {
 
   return (
     <MerchantPageShell>
-      <ProgramConfigurator view="advantages" />
+      <AdvantagesEditor />
     </MerchantPageShell>
   );
 }

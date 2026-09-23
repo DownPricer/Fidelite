@@ -26,23 +26,25 @@ describe("Test A — programme publié vs brouillon (paramètres commerçant)", 
     expect(ui).toContain("setActiveRules(data.active.rules)");
     expect(ui).toContain("setActiveVersion(typeof data.version");
 
-    // Bloc "Programme actuellement publié" : titre, version, règle, minimum, statut.
-    expect(ui).toContain("Programme actuellement publié");
+    // Bloc "Programme actuellement publié" (bandeau fidelo-loyalty-program-redesign-v2,
+    // renommé "live strip" depuis la refonte) : titre, version, règle, minimum.
+    // Toujours construit depuis activeMode/activeRules/activeVersion (= data.active),
+    // jamais depuis mode/rules (le formulaire de brouillon).
+    expect(ui).toContain("Programme actuellement en ligne");
     expect(ui).toContain("{modeTitle(activeMode)}");
-    expect(ui).toContain("Version {activeVersion");
+    expect(ui).toContain('activeVersion ? ` · v${activeVersion}` : ""');
     expect(ui).toContain("publishedEarnDescription(activeMode, activeRules)");
     expect(ui).toContain("publishedMinimumPurchaseLabel(activeRules)");
-    expect(ui).toContain("Statut : Publié");
 
-    // Bloc brouillon distinct, affiché seulement si data.draft existe, avec
-    // un titre explicite et un texte qui ne présente jamais le brouillon
-    // comme le programme actif.
-    expect(ui).toContain("Brouillon non publié");
-    expect(ui).toContain('n&apos;est pas encore visible par les clients');
-    expect(ui).toContain("Le programme actuellement publié reste « {modeTitle(activeMode)} »");
+    // Statut affiché dans le badge d'en-tête (Programme publié / Brouillon non
+    // publié / Modifications non enregistrées) : ne présente jamais le
+    // brouillon comme le programme actif.
+    expect(ui).toContain('"Modifications non enregistrées" : hasDraft ? "Brouillon non publié" : "Programme publié"');
 
-    // Le bloc brouillon est bien conditionné par hasDraft.
-    expect(ui).toMatch(/\{hasDraft \? \(\s*<section[^>]*>\s*<div className="flex flex-wrap items-center gap-2">\s*<h2[^>]*>Brouillon non publié/);
+    // Rappel explicite dans l'étape Mode quand un brouillon existe : le mode
+    // sélectionné dans le formulaire n'est pas (encore) le mode publié.
+    expect(ui).toContain("Brouillon non publié — mode sélectionné dans le formulaire");
+    expect(ui).toMatch(/\{hasDraft \? \(\s*<p[^>]*>\s*Brouillon non publié/);
   });
 
   it("modeTitle+version+règle correspondent au cas de production (POINTS_BY_AMOUNT v7) et non au brouillon (VISITS)", () => {

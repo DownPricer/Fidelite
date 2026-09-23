@@ -21,6 +21,48 @@ export function rewardTypeLabel(id: string): string {
   return REWARD_TYPES.find((t) => t.id === id)?.label ?? "Personnalisé";
 }
 
+export function RewardTypeIcon({ type, className = "h-[18px] w-[18px]" }: { type: string; className?: string }) {
+  const common = { viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 2, className };
+  switch (type) {
+    case "FREE_PRODUCT":
+    case "GIFT":
+      return (
+        <svg {...common}>
+          <path d="M20 12v9H4v-9M2 7h20v5H2zM12 22V7M12 7c-1.5-3-5-4-6-2s1 4 6 2zM12 7c1.5-3 5-4 6-2s-1 4-6 2z" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      );
+    case "PERCENT_DISCOUNT":
+      return (
+        <svg {...common}>
+          <circle cx="7" cy="7" r="2" />
+          <circle cx="17" cy="17" r="2" />
+          <path d="M17 7L7 17" strokeLinecap="round" />
+        </svg>
+      );
+    case "FIXED_DISCOUNT":
+      return (
+        <svg {...common}>
+          <path d="M18 6.5a6 6 0 1 0 0 11" strokeLinecap="round" />
+          <path d="M6 10h8M6 14h6" strokeLinecap="round" />
+        </svg>
+      );
+    case "FREE_SERVICE":
+    case "UPGRADE":
+      return (
+        <svg {...common}>
+          <path d="M12 3l1.9 4.4L18 9l-4.1 1.6L12 15l-1.9-4.4L6 9l4.1-1.6L12 3z" strokeLinejoin="round" />
+          <path d="M19 13l.8 1.8L22 16l-2.2.8L19 19l-.8-2.2L16 16l2.2-1.2L19 13z" strokeLinejoin="round" />
+        </svg>
+      );
+    default:
+      return (
+        <svg {...common}>
+          <path d="M12 4v4M12 16v4M4 12h4M16 12h4M6.5 6.5l2.5 2.5M15 15l2.5 2.5M17.5 6.5L15 9M9 15l-2.5 2.5" strokeLinecap="round" />
+        </svg>
+      );
+  }
+}
+
 function unitWord(unit: "visits" | "points", count: number): string {
   if (unit === "points") return count <= 1 ? "point" : "points";
   return count <= 1 ? "passage" : "passages";
@@ -229,6 +271,11 @@ export function RewardFormDialog({
               </button>
             </div>
 
+            <p className="reward-form-step-label">Étape 1 sur 2 · Récompense</p>
+            <div className="reward-form-progress" aria-hidden>
+              <span />
+            </div>
+
             <div className="reward-form-body">
               {Object.keys(errors).length > 0 ? (
                 <Alert>Corrigez les champs indiqués ci-dessous avant d&apos;enregistrer.</Alert>
@@ -262,10 +309,13 @@ export function RewardFormDialog({
                       key={t.id}
                       type="button"
                       onClick={() => patch({ rewardType: t.id })}
-                      className={cn("program-mode-option", values.rewardType === t.id && "program-mode-option-active")}
+                      className={cn("program-mode-option flex-row items-start gap-2.5", values.rewardType === t.id && "program-mode-option-active")}
                     >
-                      <span className="font-bold text-[var(--ink)]">{t.label}</span>
-                      <span className="text-xs text-[var(--muted)]">{t.hint}</span>
+                      <RewardTypeIcon type={t.id} />
+                      <span className="min-w-0">
+                        <span className="block font-bold text-[var(--ink)]">{t.label}</span>
+                        <span className="block text-xs text-[var(--muted)]">{t.hint}</span>
+                      </span>
                     </button>
                   ))}
                 </div>
@@ -417,10 +467,15 @@ export function RewardFormDialog({
                 </label>
               </section>
 
-              <section className="reward-form-preview">
-                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--muted)]">4. Résumé avant enregistrement</p>
-                <p className="mt-1 text-sm font-bold text-[var(--ink)]">{previewLine(values, unit)}</p>
-                <p className="mt-1 text-xs text-[var(--muted-strong)]">Type : {rewardTypeLabel(values.rewardType)}</p>
+              <section className="reward-form-preview flex items-center gap-3">
+                <span className="advantages-reward-visual">
+                  <RewardTypeIcon type={values.rewardType} />
+                </span>
+                <span className="min-w-0">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--muted)]">4. Résumé avant enregistrement</p>
+                  <p className="mt-1 text-sm font-bold text-[var(--ink)]">{previewLine(values, unit)}</p>
+                  <p className="mt-1 text-xs text-[var(--muted-strong)]">Type : {rewardTypeLabel(values.rewardType)}</p>
+                </span>
               </section>
             </div>
 

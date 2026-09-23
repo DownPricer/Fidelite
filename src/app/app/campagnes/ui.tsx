@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui";
 
 type Channel = "IN_APP_PUSH" | "EMAIL";
@@ -58,7 +58,7 @@ const AUDIENCE_LABELS: Record<Audience, string> = {
 const QUOTA_LABELS: Record<string, string> = {
   MEMBER_NOTIFICATION: "Notifications restantes",
   MEMBER_EMAIL: "E-mails restants",
-  SPONSORED_DAY: "Jours de mise en avant",
+  SPONSORED_DAY: "Mise en avant incluse",
 };
 
 const AD_STATUS_LABELS: Record<AdStatus, string> = {
@@ -72,12 +72,156 @@ const AD_STATUS_LABELS: Record<AdStatus, string> = {
   CANCELLED: "Annulée",
 };
 
+/** Reflète CAMPAIGN_PRICE_CENTS (src/lib/campaign-quota.ts) pour l'affichage : le serveur
+ * recalcule toujours le prix réel, ceci n'est qu'un rappel tarifaire statique à l'écran. */
+const CAMPAIGN_PRICE_CENTS = {
+  MEMBER_NOTIFICATION: 500,
+  MEMBER_EMAIL: 300,
+  NETWORK_NOTIFICATION: 1500,
+  NETWORK_EMAIL: 1200,
+};
+
 function formatCents(cents: number) {
   return (cents / 100).toLocaleString("fr-FR", { style: "currency", currency: "EUR" });
 }
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" });
+}
+
+function statusTone(status: string): "sent" | "scheduled" | "muted" | "danger" {
+  if (status === "SENT" || status === "PARTIALLY_SENT") return "sent";
+  if (status === "SCHEDULED" || status === "PAID" || status === "PENDING_REVIEW" || status === "PAYMENT_REQUIRED") {
+    return "scheduled";
+  }
+  if (status === "REJECTED" || status === "FAILED" || status === "CANCELLED") return "danger";
+  return "muted";
+}
+
+/* ---------------------------------------------------------------------- */
+/* Icônes (traits, sans dépendance externe)                                */
+/* ---------------------------------------------------------------------- */
+
+function IconSparkles({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}>
+      <path
+        d="M12 3l1.6 4.4L18 9l-4.4 1.6L12 15l-1.6-4.4L6 9l4.4-1.6L12 3z"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8L19 15z" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function IconBell({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}>
+      <path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M13.73 21a2 2 0 01-3.46 0" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function IconMail({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}>
+      <rect x="2" y="4" width="20" height="16" rx="2" />
+      <path d="M22 6l-10 7L2 6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function IconPanelBottom({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}>
+      <rect x="3" y="3" width="18" height="18" rx="2" />
+      <path d="M3 15h18" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function IconSend({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}>
+      <path d="M22 2L11 13" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M22 2l-7 20-4-9-9-4 20-7z" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function IconBadgeAd({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}>
+      <rect x="3" y="7" width="13" height="10" rx="2" />
+      <path d="M16 10l5-3v10l-5-3" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function IconMapPin({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}>
+      <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 1116 0z" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx="12" cy="10" r="3" />
+    </svg>
+  );
+}
+
+function IconUsers({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}>
+      <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx="9" cy="7" r="4" />
+      <path d="M23 21v-2a4 4 0 00-3-3.87" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M16 3.13a4 4 0 010 7.75" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function IconCalendarPlus({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}>
+      <rect x="3" y="4" width="18" height="18" rx="2" />
+      <path d="M3 10h18M8 2v4M16 2v4M12 14v6M9 17h6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function IconEllipsis({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
+      <circle cx="5" cy="12" r="1.6" />
+      <circle cx="12" cy="12" r="1.6" />
+      <circle cx="19" cy="12" r="1.6" />
+    </svg>
+  );
+}
+
+function IconCheck({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className={className}>
+      <path d="M20 6L9 17l-5-5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function IconCircleCheck({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}>
+      <circle cx="12" cy="12" r="10" />
+      <path d="M9 12l2 2 4-4" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function IconArrowRight({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}>
+      <path d="M5 12h14M13 5l7 7-7 7" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
 }
 
 const DEMO_DASHBOARD: Dashboard = {
@@ -116,6 +260,7 @@ export function CampagnesPanel({ demo = false }: { demo?: boolean }) {
   const [loading, setLoading] = useState(!demo);
   const [error, setError] = useState<string | null>(null);
   const [creating, setCreating] = useState<"announcement" | "sponsor" | null>(null);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (demo) return;
@@ -203,6 +348,7 @@ export function CampagnesPanel({ demo = false }: { demo?: boolean }) {
     return (
       <CampaignWizard
         demo={demo}
+        dashboard={dashboard}
         onClose={() => setCreating(null)}
         onDone={() => {
           setCreating(null);
@@ -227,35 +373,42 @@ export function CampagnesPanel({ demo = false }: { demo?: boolean }) {
   }
 
   const adsByCampaignId = new Map(ads.filter((a) => a.campaignId).map((a) => [a.campaignId as string, a]));
+  const planLabel = dashboard.plan === "insight" ? "Fidelo Insight" : "Fidelo";
+
+  const notifQuota = dashboard.quotas.find((q) => q.kind === "MEMBER_NOTIFICATION");
+  const emailQuota = dashboard.quotas.find((q) => q.kind === "MEMBER_EMAIL");
+  const sponsoredQuota = dashboard.quotas.find((q) => q.kind === "SPONSORED_DAY");
 
   return (
     <div className="space-y-6">
-      <section aria-label="Quotas du mois">
-        <p className="mb-3 text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--violet-bright)]">
-          Quotas — {dashboard.plan === "insight" ? "Fidelo Insight" : "Fidelo"} · {dashboard.period}
-        </p>
-        <div className="campaign-quota-grid">
-          {dashboard.quotas.map((q) => (
-            <div key={q.kind} className="metric-card p-3">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted)]">
-                {QUOTA_LABELS[q.kind] ?? q.kind}
-              </p>
-              <p className="mt-1 text-xl font-black text-[var(--ink)]">
-                {q.remaining}/{q.limit}
-              </p>
-            </div>
-          ))}
-        </div>
+      <div className="flex items-center justify-end">
+        <span className="campaign-plan-badge">
+          <IconSparkles />
+          {planLabel}
+        </span>
+      </div>
+
+      <section className="campaign-quota-grid" aria-label="Quotas du mois">
+        {dashboard.quotas.map((q) => (
+          <div key={q.kind} className="campaign-quota-card">
+            <span className="campaign-quota-icon">
+              {q.kind === "MEMBER_NOTIFICATION" ? <IconBell /> : q.kind === "MEMBER_EMAIL" ? <IconMail /> : <IconPanelBottom />}
+            </span>
+            <span>
+              <span className="campaign-quota-label">{QUOTA_LABELS[q.kind] ?? q.kind}</span>
+              <strong className="campaign-quota-value">
+                {q.kind === "SPONSORED_DAY" ? `${q.remaining} jour${q.remaining > 1 ? "s" : ""}` : `${q.remaining} sur ${q.limit}`}
+              </strong>
+            </span>
+          </div>
+        ))}
       </section>
 
       <section className="campaign-type-grid" aria-label="Créer une campagne">
         <article className="campaign-type-card">
           <div className="campaign-type-head">
             <span className="campaign-type-icon campaign-type-icon-blue">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M22 2L11 13" strokeLinecap="round" strokeLinejoin="round" />
-                <path d="M22 2l-7 20-4-9-9-4 20-7z" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
+              <IconSend />
             </span>
             <div>
               <h2 className="text-base font-black text-[var(--ink)]">Envoyer une annonce</h2>
@@ -264,7 +417,31 @@ export function CampagnesPanel({ demo = false }: { demo?: boolean }) {
               </p>
             </div>
           </div>
-          <Button className="mt-4 w-full" onClick={() => setCreating("announcement")}>
+          <div className="campaign-channel-list">
+            <div className="campaign-channel-row">
+              <span className="campaign-channel-name">
+                <IconBell />
+                {CHANNEL_LABELS.IN_APP_PUSH}
+              </span>
+              <span className="campaign-channel-meta">
+                <strong>
+                  {notifQuota ? `${notifQuota.remaining} incluse${notifQuota.remaining > 1 ? "s" : ""}` : "—"}
+                </strong>
+                puis {formatCents(CAMPAIGN_PRICE_CENTS.MEMBER_NOTIFICATION)}
+              </span>
+            </div>
+            <div className="campaign-channel-row">
+              <span className="campaign-channel-name">
+                <IconMail />
+                {CHANNEL_LABELS.EMAIL}
+              </span>
+              <span className="campaign-channel-meta">
+                <strong>{emailQuota ? `${emailQuota.remaining} inclus${emailQuota.remaining > 1 ? "" : ""}` : "—"}</strong>
+                puis {formatCents(CAMPAIGN_PRICE_CENTS.MEMBER_EMAIL)}
+              </span>
+            </div>
+          </div>
+          <Button className="w-full" onClick={() => setCreating("announcement")}>
             Créer une annonce
           </Button>
         </article>
@@ -272,10 +449,7 @@ export function CampagnesPanel({ demo = false }: { demo?: boolean }) {
         <article className="campaign-type-card">
           <div className="campaign-type-head">
             <span className="campaign-type-icon campaign-type-icon-orange">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <rect x="3" y="7" width="13" height="10" rx="2" />
-                <path d="M16 10l5-3v10l-5-3" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
+              <IconBadgeAd />
             </span>
             <div>
               <h2 className="text-base font-black text-[var(--ink)]">Mettre mon commerce en avant</h2>
@@ -284,8 +458,28 @@ export function CampagnesPanel({ demo = false }: { demo?: boolean }) {
               </p>
             </div>
           </div>
-          <p className="mt-3 text-xs text-[var(--muted)]">3 € / jour · 19 € les 7 jours</p>
-          <Button className="mt-4 w-full" variant="secondary" onClick={() => setCreating("sponsor")}>
+          <div className="campaign-price-row">
+            <div>
+              <span>Diffusion locale</span>
+              <strong>3 € / jour</strong>
+            </div>
+            <small>19 € les 7 jours</small>
+          </div>
+          <div className="campaign-channel-list">
+            <div className="campaign-channel-row">
+              <span className="campaign-channel-name">
+                <IconMapPin />
+                Clients Fidelo de votre secteur
+              </span>
+              <span className="campaign-channel-meta">
+                <strong>
+                  {sponsoredQuota ? `${sponsoredQuota.limit} jour${sponsoredQuota.limit > 1 ? "s" : ""} inclus` : "—"}
+                </strong>
+                avec {planLabel}
+              </span>
+            </div>
+          </div>
+          <Button className="w-full" variant="secondary" onClick={() => setCreating("sponsor")}>
             Demander une mise en avant
           </Button>
         </article>
@@ -293,10 +487,18 @@ export function CampagnesPanel({ demo = false }: { demo?: boolean }) {
 
       {error ? <p className="text-sm text-[var(--danger)]">{error}</p> : null}
 
-      <section className="space-y-2" aria-label="Historique des campagnes">
-        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--muted)]">Activité récente</p>
+      <section className="campaign-history-panel" aria-label="Activité récente">
+        <div className="campaign-history-head">
+          <div>
+            <h3 className="text-[15px] font-black text-[var(--ink)]">Activité récente</h3>
+            <p className="mt-0.5 text-xs text-[var(--muted-strong)]">
+              Vos annonces et mises en avant, avec un statut compréhensible.
+            </p>
+          </div>
+        </div>
+
         {dashboard.campaigns.length === 0 ? (
-          <p className="glass-panel p-8 text-center text-sm text-[var(--muted)]">
+          <p className="py-8 text-center text-sm text-[var(--muted)]">
             Aucune campagne pour le moment. Créez-en une pour toucher vos clients.
           </p>
         ) : (
@@ -311,64 +513,87 @@ export function CampagnesPanel({ demo = false }: { demo?: boolean }) {
                   ? AUDIENCE_LABELS[c.audienceType]
                   : "—";
             const canConfirmSponsor = ad && ad.status === "APPROVED" && ad.finalImageUrl && c.status === "PENDING_REVIEW";
+            const canCancel =
+              ["DRAFT", "PENDING_REVIEW", "PAYMENT_REQUIRED", "PAID", "SCHEDULED"].includes(c.status) &&
+              !canConfirmSponsor;
+            const canDuplicate = c.status !== "SENDING" && c.channel !== "SPONSORED_AD";
+            const tone = statusTone(c.status);
+            const recipientsLabel =
+              c.estimatedRecipients !== null
+                ? `${c.status === "SENT" || c.status === "PARTIALLY_SENT" ? "" : "~"}${c.estimatedRecipients} destinataires`
+                : "—";
             return (
-              <div key={c.id} className="glass-panel p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="text-[10px] font-bold uppercase tracking-wide text-[var(--muted)]">
-                      {typeLabel} · {audienceLabel}
-                    </p>
-                    <p className="truncate text-sm font-bold text-[var(--ink)]">{c.title || "(Sans titre)"}</p>
-                    <p className="mt-1 text-xs text-[var(--muted-strong)]">
-                      {formatDate(c.createdAt)} · {c.statusLabel}
-                      {ad ? ` · ${AD_STATUS_LABELS[ad.status]}` : ""}
-                    </p>
-                    {c.rejectionReason ? (
-                      <p className="mt-1 text-xs text-[var(--danger)]">Motif : {c.rejectionReason}</p>
-                    ) : null}
-                    {c.failedDeliveries ? (
-                      <p className="mt-1 text-xs font-semibold text-[var(--danger)]">
-                        {c.failedDeliveries} envoi{c.failedDeliveries > 1 ? "s" : ""} en échec
-                      </p>
-                    ) : null}
-                    {c.estimatedRecipients !== null ? (
-                      <p className="mt-1 text-[11px] text-[var(--muted)]">
-                        {c.status === "SENT" || c.status === "PARTIALLY_SENT" ? "Envoyés" : "Destinataires estimés"} :{" "}
-                        ~{c.estimatedRecipients}
-                        {c.priceCents ? ` · ${formatCents(c.priceCents)}` : ""}
-                      </p>
-                    ) : null}
-                  </div>
-                  <div className="flex shrink-0 flex-col items-end gap-1">
-                    {canConfirmSponsor ? (
-                      <button
-                        type="button"
-                        onClick={() => void confirmSponsor(ad!.id)}
-                        className="text-xs font-semibold text-[var(--violet-bright)]"
-                      >
-                        Valider le visuel
-                      </button>
-                    ) : null}
-                    {["DRAFT", "PENDING_REVIEW", "PAYMENT_REQUIRED", "PAID", "SCHEDULED"].includes(c.status) &&
-                    !canConfirmSponsor ? (
-                      <button
-                        type="button"
-                        onClick={() => void cancelCampaign(c.id)}
-                        className="text-xs font-semibold text-[var(--danger)]"
-                      >
-                        Annuler
-                      </button>
-                    ) : null}
-                    {c.status !== "SENDING" && c.channel !== "SPONSORED_AD" ? (
-                      <button
-                        type="button"
-                        onClick={() => void duplicateCampaign(c.id)}
-                        className="text-xs font-semibold text-[var(--muted-strong)]"
-                      >
-                        Dupliquer
-                      </button>
-                    ) : null}
-                  </div>
+              <div key={c.id} className="campaign-activity-row">
+                <div className="campaign-activity-title">
+                  <strong>{c.title || "(Sans titre)"}</strong>
+                  <span>
+                    {typeLabel} · {audienceLabel}
+                  </span>
+                  {c.rejectionReason ? (
+                    <span className="text-[var(--danger)]">Motif : {c.rejectionReason}</span>
+                  ) : null}
+                  {c.failedDeliveries ? (
+                    <span className="text-[var(--danger)]">
+                      {c.failedDeliveries} envoi{c.failedDeliveries > 1 ? "s" : ""} en échec
+                    </span>
+                  ) : null}
+                </div>
+                <span className="campaign-activity-meta">{recipientsLabel}</span>
+                <span className={`campaign-status-pill campaign-status-pill-${tone}`}>
+                  <span className="campaign-status-pill-dot" />
+                  {ad ? AD_STATUS_LABELS[ad.status] : c.statusLabel}
+                </span>
+                <div className="relative">
+                  {canConfirmSponsor || canCancel || canDuplicate ? (
+                    <button
+                      type="button"
+                      onClick={() => setOpenMenuId(openMenuId === c.id ? null : c.id)}
+                      className="campaign-more-btn"
+                      aria-label="Actions"
+                    >
+                      <IconEllipsis />
+                    </button>
+                  ) : (
+                    <span className="campaign-more-btn opacity-0" aria-hidden />
+                  )}
+                  {openMenuId === c.id ? (
+                    <div className="campaign-more-menu">
+                      {canConfirmSponsor ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setOpenMenuId(null);
+                            void confirmSponsor(ad!.id);
+                          }}
+                        >
+                          Valider le visuel
+                        </button>
+                      ) : null}
+                      {canDuplicate ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setOpenMenuId(null);
+                            void duplicateCampaign(c.id);
+                          }}
+                        >
+                          Dupliquer
+                        </button>
+                      ) : null}
+                      {canCancel ? (
+                        <button
+                          type="button"
+                          className="is-danger"
+                          onClick={() => {
+                            setOpenMenuId(null);
+                            void cancelCampaign(c.id);
+                          }}
+                        >
+                          Annuler
+                        </button>
+                      ) : null}
+                    </div>
+                  ) : null}
                 </div>
               </div>
             );
@@ -379,9 +604,30 @@ export function CampagnesPanel({ demo = false }: { demo?: boolean }) {
   );
 }
 
+/* ---------------------------------------------------------------------- */
+/* Créer une annonce — assistant 3 étapes (mockup B)                       */
+/* ---------------------------------------------------------------------- */
+
 type WizardStep = "channel" | "content" | "review";
 
-function CampaignWizard({ demo, onClose, onDone }: { demo: boolean; onClose: () => void; onDone: () => void }) {
+type LiveEstimate = {
+  estimatedRecipients: number;
+  priceCents: number;
+  requiresPayment: boolean;
+  quota: { limit: number; used: number; remaining: number };
+};
+
+function CampaignWizard({
+  demo,
+  dashboard,
+  onClose,
+  onDone,
+}: {
+  demo: boolean;
+  dashboard: Dashboard;
+  onClose: () => void;
+  onDone: () => void;
+}) {
   const [step, setStep] = useState<WizardStep>("channel");
   const [channel, setChannel] = useState<Channel>("IN_APP_PUSH");
   const [audience, setAudience] = useState<Audience>("MERCHANT_MEMBERS");
@@ -390,80 +636,115 @@ function CampaignWizard({ demo, onClose, onDone }: { demo: boolean; onClose: () 
   const [body, setBody] = useState("");
   const [actionUrl, setActionUrl] = useState("");
   const [scheduledAt, setScheduledAt] = useState("");
-  const [estimate, setEstimate] = useState<{
-    estimatedRecipients: number;
-    priceCents: number;
-    requiresPayment: boolean;
-    quota: { limit: number; used: number; remaining: number };
-  } | null>(null);
+  const [estimateByCombo, setEstimateByCombo] = useState<Record<string, LiveEstimate>>({});
   const [estimating, setEstimating] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function refreshEstimate(id: string) {
-    if (demo) {
-      setEstimate({
-        estimatedRecipients: audience === "MERCHANT_MEMBERS" ? 128 : 860,
-        priceCents: audience === "MERCHANT_MEMBERS" ? 0 : channel === "EMAIL" ? 1200 : 1500,
-        requiresPayment: audience !== "MERCHANT_MEMBERS",
-        quota: { limit: 3, used: 1, remaining: 2 },
-      });
-      return;
-    }
-    setEstimating(true);
-    try {
-      const estimateResponse = await fetch(`/api/merchant/campaigns/${id}/estimate`);
-      if (!estimateResponse.ok) throw new Error();
-      const data = (await estimateResponse.json()) as {
-        audience: { estimatedRecipients: number };
-        pricing: { priceCents: number; requiresPayment: boolean };
-        quota: { limit: number; used: number; remaining: number };
-      };
-      setEstimate({
-        estimatedRecipients: data.audience.estimatedRecipients,
-        priceCents: data.pricing.priceCents,
-        requiresPayment: data.pricing.requiresPayment,
-        quota: data.quota,
-      });
-    } catch {
-      // L'estimation est indicative : une erreur ici n'empêche pas de continuer,
-      // le récapitulatif final reste basé sur le calcul serveur au moment de l'envoi.
-    } finally {
-      setEstimating(false);
-    }
-  }
+  const comboKey = `${channel}:${audience}`;
+  const estimate = estimateByCombo[comboKey] ?? null;
+  const requestSeq = useRef(0);
+  const activeCampaignRef = useRef<string | null>(null);
 
-  async function startWizard() {
-    if (demo) {
-      setCampaignId("demo-new");
-      void refreshEstimate("demo-new");
-      setStep("content");
-      return;
+  const staticQuotaFor = useCallback(
+    (ch: Channel, aud: Audience) => {
+      if (aud === "NETWORK_LOCAL") return null;
+      const kind = ch === "EMAIL" ? "MEMBER_EMAIL" : "MEMBER_NOTIFICATION";
+      return dashboard.quotas.find((q) => q.kind === kind) ?? null;
+    },
+    [dashboard.quotas],
+  );
+
+  const staticPriceFor = useCallback((ch: Channel, aud: Audience) => {
+    if (aud === "MERCHANT_MEMBERS") {
+      return ch === "EMAIL" ? CAMPAIGN_PRICE_CENTS.MEMBER_EMAIL : CAMPAIGN_PRICE_CENTS.MEMBER_NOTIFICATION;
     }
-    setBusy(true);
-    setError(null);
-    try {
-      const response = await fetch("/api/merchant/campaigns", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ channel, audienceType: audience }),
-      });
-      if (!response.ok) throw new Error();
-      const data = (await response.json()) as { campaign: { id: string } };
-      setCampaignId(data.campaign.id);
-      void refreshEstimate(data.campaign.id);
-      setStep("content");
-    } catch {
-      setError("Impossible de créer la campagne. Réessayez.");
-    } finally {
-      setBusy(false);
-    }
-  }
+    return ch === "EMAIL" ? CAMPAIGN_PRICE_CENTS.NETWORK_EMAIL : CAMPAIGN_PRICE_CENTS.NETWORK_NOTIFICATION;
+  }, []);
+
+  const ensureEstimate = useCallback(
+    async (ch: Channel, aud: Audience) => {
+      const key = `${ch}:${aud}`;
+      if (estimateByCombo[key]) return;
+
+      if (demo) {
+        const recipients = aud === "MERCHANT_MEMBERS" ? 128 : 860;
+        const quota = staticQuotaFor(ch, aud);
+        const price = staticPriceFor(ch, aud);
+        setEstimateByCombo((prev) => ({
+          ...prev,
+          [key]: {
+            estimatedRecipients: recipients,
+            priceCents: aud === "MERCHANT_MEMBERS" && quota && quota.remaining > 0 ? 0 : price,
+            requiresPayment: !(aud === "MERCHANT_MEMBERS" && quota && quota.remaining > 0),
+            quota: quota ?? { limit: 0, used: 0, remaining: 0 },
+          },
+        }));
+        return;
+      }
+
+      const seq = ++requestSeq.current;
+      setEstimating(true);
+      setError(null);
+      try {
+        // Un brouillon doit exister côté serveur pour estimer une audience réelle : on annule
+        // le brouillon précédent (s'il ne correspond plus à la sélection courante) et on en
+        // recrée un pour le nouveau couple canal/audience, sans jamais rien envoyer.
+        if (activeCampaignRef.current) {
+          const staleId = activeCampaignRef.current;
+          void fetch(`/api/merchant/campaigns/${staleId}`, { method: "DELETE" }).catch(() => {});
+          activeCampaignRef.current = null;
+        }
+        const createResponse = await fetch("/api/merchant/campaigns", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ channel: ch, audienceType: aud }),
+        });
+        if (!createResponse.ok) throw new Error();
+        const created = (await createResponse.json()) as { campaign: { id: string } };
+        if (seq !== requestSeq.current) return;
+        activeCampaignRef.current = created.campaign.id;
+        setCampaignId(created.campaign.id);
+
+        const estimateResponse = await fetch(`/api/merchant/campaigns/${created.campaign.id}/estimate`);
+        if (!estimateResponse.ok) throw new Error();
+        const data = (await estimateResponse.json()) as {
+          audience: { estimatedRecipients: number };
+          pricing: { priceCents: number; requiresPayment: boolean };
+          quota: { limit: number; used: number; remaining: number };
+        };
+        if (seq !== requestSeq.current) return;
+        setEstimateByCombo((prev) => ({
+          ...prev,
+          [key]: {
+            estimatedRecipients: data.audience.estimatedRecipients,
+            priceCents: data.pricing.priceCents,
+            requiresPayment: data.pricing.requiresPayment,
+            quota: data.quota,
+          },
+        }));
+      } catch {
+        if (seq === requestSeq.current) {
+          setError("Impossible d'estimer l'audience pour le moment. Vous pouvez tout de même continuer.");
+        }
+      } finally {
+        if (seq === requestSeq.current) setEstimating(false);
+      }
+    },
+    [demo, estimateByCombo, staticPriceFor, staticQuotaFor],
+  );
+
+  useEffect(() => {
+    void ensureEstimate(channel, audience);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [channel, audience]);
 
   async function saveAndEstimate() {
-    if (!campaignId) return;
+    if (!campaignId) {
+      setStep("review");
+      return;
+    }
     if (demo) {
-      void refreshEstimate(campaignId);
       setStep("review");
       return;
     }
@@ -482,7 +763,6 @@ function CampaignWizard({ demo, onClose, onDone }: { demo: boolean; onClose: () 
         }),
       });
       if (!patchResponse.ok) throw new Error();
-      await refreshEstimate(campaignId);
       setStep("review");
     } catch {
       setError("Impossible d'enregistrer le contenu. Vérifiez les champs et réessayez.");
@@ -492,11 +772,11 @@ function CampaignWizard({ demo, onClose, onDone }: { demo: boolean; onClose: () 
   }
 
   async function confirmSend() {
-    if (!campaignId) return;
     if (demo) {
       onDone();
       return;
     }
+    if (!campaignId) return;
     setBusy(true);
     setError(null);
     try {
@@ -518,6 +798,13 @@ function CampaignWizard({ demo, onClose, onDone }: { demo: boolean; onClose: () 
     }
   }
 
+  function handleClose() {
+    if (!demo && activeCampaignRef.current) {
+      void fetch(`/api/merchant/campaigns/${activeCampaignRef.current}`, { method: "DELETE" }).catch(() => {});
+    }
+    onClose();
+  }
+
   const steps: { key: WizardStep; label: string }[] = [
     { key: "channel", label: "Canal et audience" },
     { key: "content", label: "Contenu" },
@@ -525,176 +812,299 @@ function CampaignWizard({ demo, onClose, onDone }: { demo: boolean; onClose: () 
   ];
   const stepIndex = steps.findIndex((s) => s.key === step);
 
-  const summaryPanel = (
-    <aside className="campaign-wizard-summary glass-panel space-y-1 p-5">
-      <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--muted)]">Récapitulatif</p>
-      <div className="campaign-wizard-summary-row">
-        <span className="text-xs text-[var(--muted)]">Canal</span>
-        <span className="text-sm font-bold text-[var(--ink)]">{CHANNEL_LABELS[channel]}</span>
-      </div>
-      <div className="campaign-wizard-summary-row">
-        <span className="text-xs text-[var(--muted)]">Audience</span>
-        <span className="text-sm font-bold text-[var(--ink)]">{AUDIENCE_LABELS[audience]}</span>
-      </div>
-      <div className="campaign-wizard-summary-row">
-        <span className="text-xs text-[var(--muted)]">Destinataires estimés</span>
-        <span className="text-sm font-bold text-[var(--ink)]">
-          {estimating ? "…" : estimate ? `~${estimate.estimatedRecipients}` : "—"}
-        </span>
-      </div>
-      <div className="campaign-wizard-summary-row">
-        <span className="text-xs text-[var(--muted)]">Quota consommé</span>
-        <span className="text-sm font-bold text-[var(--ink)]">
-          {estimate ? `${estimate.quota.used}/${estimate.quota.limit}` : "—"}
-        </span>
-      </div>
-      <div className="campaign-wizard-summary-row">
-        <span className="text-xs text-[var(--muted)]">Prix</span>
-        <span className="text-sm font-bold text-[var(--ink)]">
-          {estimate ? (estimate.requiresPayment ? formatCents(estimate.priceCents) : "Inclus") : "—"}
-        </span>
-      </div>
-      <div className="campaign-wizard-summary-row">
-        <span className="text-xs text-[var(--muted)]">Date d&apos;envoi</span>
-        <span className="text-sm font-bold text-[var(--ink)]">
-          {scheduledAt ? new Date(scheduledAt).toLocaleString("fr-FR") : "Dès confirmation"}
-        </span>
-      </div>
-      <div className="campaign-wizard-summary-row" style={{ flexDirection: "column", alignItems: "flex-start", gap: "0.25rem" }}>
-        <span className="text-xs text-[var(--muted)]">Contenu</span>
-        <span className="text-sm font-semibold text-[var(--ink)]">{title || "Titre de la campagne"}</span>
-        <span className="text-xs text-[var(--muted-strong)]">{body || "Votre message apparaîtra ici."}</span>
-      </div>
-    </aside>
-  );
+  const memberQuota = staticQuotaFor(channel, "MERCHANT_MEMBERS");
+  const memberComboEstimate = estimateByCombo[`${channel}:MERCHANT_MEMBERS`];
+  const localComboEstimate = estimateByCombo[`${channel}:NETWORK_LOCAL`];
+  const memberPrice = staticPriceFor(channel, "MERCHANT_MEMBERS");
+  const localPrice = staticPriceFor(channel, "NETWORK_LOCAL");
+
+  const summaryPrice = estimate
+    ? estimate.requiresPayment
+      ? formatCents(estimate.priceCents)
+      : "Inclus"
+    : estimating
+      ? "…"
+      : "—";
+  const summaryRecipients = estimate ? `~${estimate.estimatedRecipients}` : estimating ? "…" : "—";
+  const summaryCredit =
+    audience === "MERCHANT_MEMBERS" && estimate && !estimate.requiresPayment ? "1 crédit sera utilisé" : null;
 
   return (
-    <div className="space-y-4">
-      <button type="button" onClick={onClose} className="text-xs font-semibold text-[var(--muted)]">
+    <div className="announce-form space-y-4">
+      <button type="button" onClick={handleClose} className="text-xs font-semibold text-[var(--muted)]">
         ← Retour aux campagnes
       </button>
 
-      <ol className="campaign-wizard-steps">
-        {steps.map((s, i) => (
-          <li key={s.key} className={i <= stepIndex ? "is-active" : ""}>
-            <span>{i + 1}</span>
-            {s.label}
-          </li>
-        ))}
-      </ol>
+      <div className="glass-panel p-5 sm:p-6">
+        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--violet-bright)]">Campagnes</p>
+        <h2 className="mt-1 text-2xl font-black tracking-tight text-[var(--ink)]">Créer une annonce</h2>
+        <p className="mt-1 text-sm text-[var(--muted-strong)]">
+          Choisissez le canal et les clients que vous souhaitez contacter.
+        </p>
 
-      <div className="campaign-wizard-layout">
-      <div>
-      {step === "channel" ? (
-        <div className="glass-panel space-y-4 p-5">
-          <div>
-            <p className="mb-2 text-xs font-bold uppercase tracking-wide text-[var(--muted)]">
-              Comment souhaitez-vous communiquer ?
-            </p>
-            <div className="grid grid-cols-2 gap-2">
-              {(["IN_APP_PUSH", "EMAIL"] as Channel[]).map((c) => (
+        <ol className="announce-stepper" aria-label="Progression">
+          {steps.map((s, i) => (
+            <li key={s.key} className={`announce-step ${i === stepIndex ? "is-active" : i < stepIndex ? "is-done" : ""}`}>
+              <span className="announce-step-number">{i < stepIndex ? <IconCheck className="h-3 w-3" /> : i + 1}</span>
+              <span className="announce-step-label">{s.label}</span>
+            </li>
+          ))}
+        </ol>
+
+        {step === "channel" ? (
+          <div className="space-y-6">
+            <section>
+              <div className="announce-section-head">
+                <h3>Comment souhaitez-vous les contacter ?</h3>
+                <p>Un seul canal par annonce</p>
+              </div>
+              <div className="announce-choice-grid">
                 <button
-                  key={c}
                   type="button"
-                  onClick={() => setChannel(c)}
-                  className={`merchant-filter-chip ${channel === c ? "merchant-filter-chip-active" : ""}`}
+                  onClick={() => setChannel("IN_APP_PUSH")}
+                  className={`announce-choice ${channel === "IN_APP_PUSH" ? "is-selected" : ""}`}
+                  aria-pressed={channel === "IN_APP_PUSH"}
                 >
-                  {CHANNEL_LABELS[c]}
+                  <span className="announce-choice-icon">
+                    <IconBell />
+                  </span>
+                  <span className="announce-choice-copy">
+                    <strong>Notification dans l&apos;application</strong>
+                    <span>Visible dans Fidelo et envoyée sur le téléphone si les notifications sont autorisées.</span>
+                  </span>
+                  <span className="announce-choice-check">
+                    <IconCheck />
+                  </span>
                 </button>
-              ))}
-            </div>
-          </div>
-          <div>
-            <p className="mb-2 text-xs font-bold uppercase tracking-wide text-[var(--muted)]">À qui l&apos;envoyer ?</p>
-            <div className="grid grid-cols-1 gap-2">
-              <button
-                type="button"
-                onClick={() => setAudience("MERCHANT_MEMBERS")}
-                className={`merchant-filter-chip text-left ${audience === "MERCHANT_MEMBERS" ? "merchant-filter-chip-active" : ""}`}
-              >
-                Mes membres — clients possédant déjà votre carte
-              </button>
-              <button
-                type="button"
-                onClick={() => setAudience("NETWORK_LOCAL")}
-                className={`merchant-filter-chip text-left ${audience === "NETWORK_LOCAL" ? "merchant-filter-chip-active" : ""}`}
-              >
-                Clients Fidelo de mon secteur — toujours payant, sous réserve de leur consentement
-              </button>
-            </div>
-          </div>
-          {error ? <p className="text-sm text-[var(--danger)]">{error}</p> : null}
-          <Button className="w-full" onClick={() => void startWizard()} disabled={busy}>
-            {busy ? "…" : "Continuer"}
-          </Button>
-        </div>
-      ) : null}
+                <button
+                  type="button"
+                  onClick={() => setChannel("EMAIL")}
+                  className={`announce-choice ${channel === "EMAIL" ? "is-selected" : ""}`}
+                  aria-pressed={channel === "EMAIL"}
+                >
+                  <span className="announce-choice-icon">
+                    <IconMail />
+                  </span>
+                  <span className="announce-choice-copy">
+                    <strong>E-mail</strong>
+                    <span>Un message Fidelo personnalisé, envoyé uniquement aux clients ayant donné leur accord.</span>
+                  </span>
+                  <span className="announce-choice-check">
+                    <IconCheck />
+                  </span>
+                </button>
+              </div>
+            </section>
 
-      {step === "content" ? (
-        <div className="glass-panel space-y-3 p-5">
-          <label className="block text-xs text-[var(--muted)]">
-            Titre
-            <input
-              className="profile-select mt-1 w-full"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              maxLength={120}
-            />
-          </label>
-          <label className="block text-xs text-[var(--muted)]">
-            Message
-            <textarea
-              className="profile-select mt-1 w-full"
-              rows={4}
-              value={body}
-              onChange={(e) => setBody(e.target.value)}
-              maxLength={2000}
-            />
-          </label>
-          <label className="block text-xs text-[var(--muted)]">
-            Lien du bouton (facultatif)
-            <input
-              className="profile-select mt-1 w-full"
-              value={actionUrl}
-              onChange={(e) => setActionUrl(e.target.value)}
-              placeholder="https://…"
-            />
-          </label>
-          <label className="block text-xs text-[var(--muted)]">
-            Programmer pour (facultatif — sinon envoi dès confirmation)
-            <input
-              type="datetime-local"
-              className="profile-select mt-1 w-full"
-              value={scheduledAt}
-              onChange={(e) => setScheduledAt(e.target.value)}
-            />
-          </label>
-          <div className="rounded-xl border border-[var(--border)] bg-[var(--panel-bg)] p-3">
-            <p className="text-[10px] font-bold uppercase tracking-wide text-[var(--muted)]">Aperçu réel</p>
-            <p className="mt-1 text-sm font-bold text-[var(--ink)]">{title || "Titre de la campagne"}</p>
-            <p className="text-xs text-[var(--muted-strong)]">{body || "Votre message apparaîtra ici."}</p>
-          </div>
-          {error ? <p className="text-sm text-[var(--danger)]">{error}</p> : null}
-          <Button className="w-full" onClick={() => void saveAndEstimate()} disabled={busy || !title.trim() || !body.trim()}>
-            {busy ? "…" : "Voir le récapitulatif"}
-          </Button>
-        </div>
-      ) : null}
+            <section>
+              <div className="announce-section-head">
+                <h3>À qui souhaitez-vous l&apos;envoyer ?</h3>
+                <p>Consentements vérifiés automatiquement</p>
+              </div>
+              <div className="announce-audience-grid">
+                <button
+                  type="button"
+                  onClick={() => setAudience("MERCHANT_MEMBERS")}
+                  className={`announce-audience ${audience === "MERCHANT_MEMBERS" ? "is-selected" : ""}`}
+                  aria-pressed={audience === "MERCHANT_MEMBERS"}
+                >
+                  <span className="announce-audience-icon">
+                    <IconUsers />
+                  </span>
+                  <span className="announce-audience-copy">
+                    <strong>Mes membres</strong>
+                    <span>Clients qui possèdent déjà votre carte Fidelo.</span>
+                  </span>
+                  <span className="announce-audience-meta">
+                    <strong>
+                      {memberComboEstimate
+                        ? `${memberComboEstimate.estimatedRecipients} clients`
+                        : estimating && audience === "MERCHANT_MEMBERS"
+                          ? "…"
+                          : "—"}
+                    </strong>
+                    <span>
+                      {memberQuota
+                        ? memberQuota.remaining > 0
+                          ? `${memberQuota.remaining} crédit${memberQuota.remaining > 1 ? "s" : ""} disponible${memberQuota.remaining > 1 ? "s" : ""}`
+                          : `${formatCents(memberPrice)}`
+                        : "—"}
+                    </span>
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAudience("NETWORK_LOCAL")}
+                  className={`announce-audience ${audience === "NETWORK_LOCAL" ? "is-selected" : ""}`}
+                  aria-pressed={audience === "NETWORK_LOCAL"}
+                >
+                  <span className="announce-audience-icon">
+                    <IconMapPin />
+                  </span>
+                  <span className="announce-audience-copy">
+                    <strong>Clients Fidelo de mon secteur</strong>
+                    <span>Utilisateurs locaux correspondant à votre zone et à leurs préférences.</span>
+                  </span>
+                  <span className="announce-audience-meta">
+                    <strong>
+                      {localComboEstimate
+                        ? `≈ ${localComboEstimate.estimatedRecipients} clients`
+                        : estimating && audience === "NETWORK_LOCAL"
+                          ? "…"
+                          : "—"}
+                    </strong>
+                    <span>{formatCents(localPrice)}</span>
+                  </span>
+                </button>
+              </div>
+            </section>
 
-      {step === "review" && estimate ? (
-        <div className="glass-panel space-y-3 p-5">
-          <p className="text-sm text-[var(--muted-strong)]">
-            Vérifiez le récapitulatif ci-contre, puis confirmez l&apos;envoi. Vos clients ne recevront rien avant cette
-            confirmation.
-          </p>
-          {error ? <p className="text-sm text-[var(--danger)]">{error}</p> : null}
-          <Button className="w-full" onClick={() => void confirmSend()} disabled={busy}>
-            {busy ? "…" : estimate.requiresPayment ? "Payer et confirmer" : "Confirmer l'envoi"}
-          </Button>
-        </div>
-      ) : null}
-      </div>
-      {summaryPanel}
+            <div className="announce-summary" aria-live="polite">
+              <IconCircleCheck />
+              <div>
+                <strong>
+                  {CHANNEL_LABELS[channel]} à{" "}
+                  {audience === "MERCHANT_MEMBERS"
+                    ? estimate
+                      ? `vos ${estimate.estimatedRecipients} membres`
+                      : "vos membres"
+                    : estimate
+                      ? `environ ${estimate.estimatedRecipients} clients de votre secteur`
+                      : "vos clients du secteur"}
+                </strong>
+                <span>
+                  {audience === "MERCHANT_MEMBERS"
+                    ? summaryCredit ?? (estimate?.requiresPayment ? `Quota épuisé · ${summaryPrice}` : "Incluse dans votre forfait")
+                    : "Audience locale · seuls les clients ayant donné leur accord seront contactés"}
+                </span>
+              </div>
+            </div>
+
+            {error ? <p className="text-sm text-[var(--danger)]">{error}</p> : null}
+          </div>
+        ) : null}
+
+        {step === "content" ? (
+          <div className="space-y-3">
+            <div className="announce-content-card">
+              <label className="announce-field">
+                Titre
+                <input
+                  className="profile-select mt-1 w-full"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  maxLength={120}
+                />
+              </label>
+              <label className="announce-field">
+                Message
+                <textarea
+                  className="profile-select mt-1 w-full"
+                  rows={4}
+                  value={body}
+                  onChange={(e) => setBody(e.target.value)}
+                  maxLength={2000}
+                />
+              </label>
+              <label className="announce-field">
+                Bouton d&apos;action (facultatif)
+                <input
+                  className="profile-select mt-1 w-full"
+                  value={actionUrl}
+                  onChange={(e) => setActionUrl(e.target.value)}
+                  placeholder="https://…"
+                />
+              </label>
+              <label className="announce-field">
+                Programmer pour (facultatif — sinon envoi dès confirmation)
+                <input
+                  type="datetime-local"
+                  className="profile-select mt-1 w-full"
+                  value={scheduledAt}
+                  onChange={(e) => setScheduledAt(e.target.value)}
+                />
+              </label>
+            </div>
+
+            <div className="announce-preview">
+              <p className="announce-preview-label">Aperçu réel</p>
+              <p className="mt-1 text-sm font-bold text-[var(--ink)]">{title || "Titre de la campagne"}</p>
+              <p className="text-xs text-[var(--muted-strong)]">{body || "Votre message apparaîtra ici."}</p>
+            </div>
+
+            {error ? <p className="text-sm text-[var(--danger)]">{error}</p> : null}
+          </div>
+        ) : null}
+
+        {step === "review" ? (
+          <div className="space-y-3">
+            <div className="announce-content-card">
+              <div className="announce-recap-grid">
+                <div className="announce-recap-row">
+                  <span className="text-xs text-[var(--muted)]">Canal</span>
+                  <span className="text-sm font-bold text-[var(--ink)]">{CHANNEL_LABELS[channel]}</span>
+                </div>
+                <div className="announce-recap-row">
+                  <span className="text-xs text-[var(--muted)]">Audience</span>
+                  <span className="text-sm font-bold text-[var(--ink)]">{AUDIENCE_LABELS[audience]}</span>
+                </div>
+                <div className="announce-recap-row">
+                  <span className="text-xs text-[var(--muted)]">Destinataires estimés</span>
+                  <span className="text-sm font-bold text-[var(--ink)]">{summaryRecipients}</span>
+                </div>
+                <div className="announce-recap-row">
+                  <span className="text-xs text-[var(--muted)]">Date d&apos;envoi</span>
+                  <span className="text-sm font-bold text-[var(--ink)]">
+                    {scheduledAt ? new Date(scheduledAt).toLocaleString("fr-FR") : "Dès confirmation"}
+                  </span>
+                </div>
+                <div className="announce-recap-row">
+                  <span className="text-xs text-[var(--muted)]">Prix</span>
+                  <span className="text-sm font-bold text-[var(--ink)]">{summaryPrice}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="announce-preview">
+              <p className="announce-preview-label">Contenu</p>
+              <p className="mt-1 text-sm font-bold text-[var(--ink)]">{title || "Titre de la campagne"}</p>
+              <p className="text-xs text-[var(--muted-strong)]">{body || "Votre message apparaîtra ici."}</p>
+            </div>
+
+            <p className="text-sm text-[var(--muted-strong)]">
+              Vérifiez le récapitulatif ci-dessus, puis confirmez l&apos;envoi. Vos clients ne recevront rien avant
+              cette confirmation.
+            </p>
+
+            {error ? <p className="text-sm text-[var(--danger)]">{error}</p> : null}
+          </div>
+        ) : null}
+
+        <footer className="announce-footer">
+          <div className="announce-footer-price">
+            <strong>Total : {summaryPrice}</strong>
+            <span>{step === "channel" ? "Aucun paiement demandé à cette étape" : "Payé uniquement à la confirmation"}</span>
+          </div>
+          <div className="announce-footer-actions">
+            <Button type="button" variant="secondary" onClick={handleClose}>
+              Annuler
+            </Button>
+            {step === "channel" ? (
+              <Button type="button" onClick={() => setStep("content")} disabled={estimating && !estimate}>
+                Continuer
+                <IconArrowRight className="ml-1 h-4 w-4" />
+              </Button>
+            ) : step === "content" ? (
+              <Button type="button" onClick={() => void saveAndEstimate()} disabled={busy || !title.trim() || !body.trim()}>
+                {busy ? "…" : "Voir le récapitulatif"}
+              </Button>
+            ) : (
+              <Button type="button" onClick={() => void confirmSend()} disabled={busy}>
+                {busy ? "…" : estimate?.requiresPayment ? "Payer et confirmer" : "Confirmer l'envoi"}
+              </Button>
+            )}
+          </div>
+        </footer>
       </div>
     </div>
   );

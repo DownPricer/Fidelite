@@ -1,5 +1,4 @@
 import { redirect } from "next/navigation";
-import { DEMO_MERCHANT } from "@/lib/demo-visual";
 import { resolveMerchantDemo } from "@/lib/merchant-demo-server";
 import { canManageMerchantSettings, firstActiveStaffMembership } from "@/lib/rbac";
 import { CampagnesPanel } from "./ui";
@@ -12,9 +11,9 @@ export default async function CampagnesPage() {
     return (
       <MerchantPageShell>
         <MerchantPageHeader
-          eyebrow="Marketing"
+          eyebrow="Outils · Communication"
           title="Campagnes"
-          subtitle={DEMO_MERCHANT.merchantName}
+          subtitle="Envoyez une annonce à vos clients ou mettez votre commerce en avant dans Fidelo."
           backHref="/app/outils"
         />
         <CampagnesPanel demo />
@@ -28,7 +27,12 @@ export default async function CampagnesPage() {
 
   return (
     <MerchantPageShell>
-      <MerchantPageHeader eyebrow="Marketing" title="Campagnes" backHref="/app/outils" />
+      <MerchantPageHeader
+        eyebrow="Outils · Communication"
+        title="Campagnes"
+        subtitle="Envoyez une annonce à vos clients ou mettez votre commerce en avant dans Fidelo."
+        backHref="/app/outils"
+      />
       <CampagnesPanel />
     </MerchantPageShell>
   );

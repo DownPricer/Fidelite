@@ -32,8 +32,24 @@ export async function GET(req: Request) {
   const hasMore = items.length > limit;
   const page = hasMore ? items.slice(0, limit) : items;
 
+  // Le modèle InAppNotification ne porte pas de relation Prisma vers Merchant
+  // (merchantId est un simple identifiant libre) : on résout les commerces
+  // séparément pour afficher logo/nom/couleur sur chaque notification commerciale,
+  // sans toucher au schéma ni au flux d'envoi des campagnes.
+  const merchantIds = Array.from(new Set(page.map((n) => n.merchantId).filter((id): id is string => Boolean(id))));
+  const merchants = merchantIds.length
+    ? await prisma.merchant.findMany({
+        where: { id: { in: merchantIds } },
+        select: { id: true, name: true, slug: true, logoUrl: true, primaryColor: true },
+      })
+    : [];
+  const merchantById = new Map(merchants.map((m) => [m.id, m]));
+
   return jsonOk({
-    notifications: page,
+    notifications: page.map((n) => ({
+      ...n,
+      merchant: n.merchantId ? (merchantById.get(n.merchantId) ?? null) : null,
+    })),
     nextCursor: hasMore ? page[page.length - 1]?.id : null,
     unreadCount,
   });
