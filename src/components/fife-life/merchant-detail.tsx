@@ -25,6 +25,15 @@ import { WalletQrAction } from "./wallet-qr-action";
 
 type CustomerProgramView = ReturnType<typeof buildCustomerProgramView>;
 
+// Référence stable pour la valeur par défaut de `recentActivity` : un littéral
+// `[]` en valeur par défaut de paramètre est réévalué (nouvelle référence) à
+// chaque appel du composant. Combiné à un useEffect qui dépend de cette prop
+// (pour resynchroniser l'état interne quand le serveur renvoie de nouvelles
+// données), ça provoque une boucle de rendu infinie dès qu'un appelant omet
+// `recentActivity` (ex. la page carte en mode démo) : effet → setState →
+// re-render → nouveau `[]` → effet à nouveau déclenché, etc.
+const EMPTY_RECENT_ACTIVITY: ActivityItem[] = [];
+
 export function MerchantCardDetail({
   slug,
   merchant,
@@ -32,7 +41,7 @@ export function MerchantCardDetail({
   programView,
   nextReward: initialNextReward = null,
   rewardProgress: initialRewardProgress = null,
-  recentActivity: initialRecentActivity = [],
+  recentActivity: initialRecentActivity = EMPTY_RECENT_ACTIVITY,
   activityTotal: initialActivityTotal = 0,
   clientName = null,
   clientNumber = null,
