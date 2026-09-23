@@ -4335,13 +4335,14 @@ body:has(.wallet-shell) {
     display: grid;
     place-items: center;
     position: absolute;
-    left: 50%;
+    left: auto;
+    right: calc(50% - var(--wallet-card-width) / 2 - 3.5rem);
     top: auto;
     bottom: auto;
     z-index: 60;
     height: 2.5rem;
     width: 2.5rem;
-    transform: translateX(-50%);
+    transform: none;
     border-radius: 999px;
     border: 1px solid rgba(190, 164, 255, 0.22);
     background: light-dark(rgba(255, 255, 255, 0.8), rgba(12, 10, 22, 0.72));
@@ -4351,12 +4352,28 @@ body:has(.wallet-shell) {
     transition: opacity 0.2s ease, background 0.2s ease;
   }
 
+  /* Flèches sur le côté de la carte (et non sur ses bords haut/bas) pour ne
+     pas chevaucher les cartes du fond qui dépassent au-dessus/en dessous. */
   .deck-nav-prev {
-    top: -0.5rem;
+    top: calc(50% - 2.75rem);
   }
 
   .deck-nav-next {
-    bottom: -0.5rem;
+    top: calc(50% + 0.25rem);
+  }
+
+  /* Réserve la place du débordement des cartes du fond (--wallet-spread)
+     au-dessus et en dessous de la carte active. */
+  .wallet-deck-block {
+    padding-top: var(--wallet-spread);
+  }
+
+  .wallet-deck-hint {
+    margin-top: calc(var(--wallet-spread) + 0.5rem);
+  }
+
+  .wallet-primary-actions {
+    margin-top: 1rem;
   }
 
   .fife-deck-wrap:hover .deck-nav-btn,
