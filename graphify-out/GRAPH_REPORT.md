@@ -1,17 +1,17 @@
 # Graph Report - Cartefidelité  (2026-09-23)
 
 ## Corpus Check
-- 587 files · ~4,726,166 words
+- 587 files · ~4,726,259 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 18 file(s) not represented in the graph (top: (none) 6, .example 3, .css 3)
 
 ## Summary
-- 3122 nodes · 9656 edges · 152 communities (133 shown, 19 thin omitted)
+- 3122 nodes · 9653 edges · 144 communities (125 shown, 19 thin omitted)
 - Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 66 edges (avg confidence: 0.85)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `38f3b166`
+- Built from commit: `af03da99`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -28,12 +28,12 @@
 - loyalty-widget-view.tsx
 - loyalty-widget.ts
 - validation.ts
-- profile-shared.tsx
-- card-editor-canvas.tsx
+- insight-period.ts
+- card-editor-properties.tsx
 - jsonOk
 - loyalty-service.ts
 - google-wallet/route.ts
-- wallet-home.tsx
+- wallet-hydration.test.tsx
 - cn
 - events/route.ts
 - outils/ui.tsx
@@ -41,40 +41,37 @@
 - cashier-checkout.tsx
 - customer-loyalty-overview.ts
 - google-auth.ts
-- isProduction
-- loyalty-labels.ts
-- session.ts
+- env.ts
+- loyalty-card-view-model.ts
+- qa-login/page.tsx
 - loyalty-program.ts
-- reward-form-dialog.tsx
-- use-wallet-unlock-animation.ts
-- app/statistiques/page.tsx
+- advantages-ui.tsx
+- campaign-quota.test.ts
+- create-super-admin.ts
 - requireMerchantAdmin
 - card-editor.tsx
 - package.json
 - [id]/merchant-detail.tsx
 - statistiques-panel.tsx
-- google-wallet.ts
+- globalObjectBody
 - demo-session.ts
 - What You Must Do When Invoked
-- card-editor-properties.tsx
 - media-storage.ts
 - loyalty-commit.test.ts
-- interactive-loyalty-card.tsx
+- card-enlarged-view.tsx
 - ref_fs_promises
-- ref_next_headers
+- demo-routing.test.ts
 - src/app/page.tsx
 - compilerOptions
-- card-editor-polish.test.ts
+- wallet-home.tsx
 - loyalty-program-publication.ts
-- qr-cache.ts
 - qa-login.ts
 - ref_node_path
 - dependencies
-- syncGoogleWalletMembershipObject
+- google-wallet.ts
 - email.ts
 - devDependencies
 - insight-stats.ts
-- resolvePublishedMerchantCardTemplate
 - demo-visual.ts
 - ref_next_link
 - loyalty-service.test.ts
@@ -82,25 +79,23 @@
 - api-merchant-statistics-route.test.ts
 - platform-stats.ts
 - google-wallet-appearance.ts
-- ProgramConfigurator
+- programme/ui.tsx
 - @prisma/client
-- customer-history.ts
 - webhook/route.ts
 - card-deck.tsx
 - merchants-list.tsx
 - types.ts
 - AdvantagesEditor
-- SettingsPage
 - caisse-scan.ts
 - unsubscribe-token.ts
 - EmployeeDetailPanel
 - MerchantDetailPage
 - [kind]/route.ts
-- layout-shell.tsx
+- dashboard-home.tsx
 - cartes.js
 - Fidelo
 - docker-entrypoint.sh
-- seed.ts
+- qr.ts
 - merchant-card-renderer.tsx
 - vitest
 - Notes pour le prochain agent - Carousel de cartes
@@ -136,14 +131,12 @@
 - employee-session.ts
 - insight-definitions.ts
 - CreateMerchantWizard
-- env.ts
 - EmployeeLoginScreen
 - campaign-confirm-route.test.ts
 - customer-qr.ts
 - landing-page.test.ts
 - caisse-scan-route.test.ts
 - merchant-card-finish.test.ts
-- landing-hero-visual.tsx
 - lib/campaign-worker.ts
 - discover-page.tsx
 - cards-index.tsx
@@ -152,11 +145,10 @@
 - push.ts
 - landing-faq.tsx
 - campaign-crud-routes.test.ts
-- customer-qr-route.test.ts
 - jsonError
 - push-client.ts
 - google-wallet-doctor.ts
-- getSessionUser
+- session.ts
 - loyalty-reward-removal.ts
 - landing-merchant-preview.tsx
 - employees/[id]/route.ts
@@ -181,49 +173,49 @@
 10. `readJson()` - 81 edges
 
 ## Surprising Connections (you probably didn't know these)
-- `main()` --calls--> `signQrToken()`  [EXTRACTED]
-  prisma/seed.ts → src/lib/qr.ts
 - `main()` --calls--> `getActiveMerchantLoyaltyContext()`  [EXTRACTED]
   scripts/diagnose-loyalty-program.ts → src/lib/loyalty-context.ts
-- `main()` --calls--> `googleWalletLogoUrl()`  [EXTRACTED]
-  scripts/google-wallet-doctor.ts → src/lib/google-wallet.ts
 - `legacyHeavyConfig()` --calls--> `defaultCardTemplateConfig()`  [EXTRACTED]
   tests/card-editor-legacy-reset.test.ts → src/lib/card-template-schema.ts
+- `configWithWidget()` --calls--> `defaultCardTemplateConfig()`  [EXTRACTED]
+  tests/loyalty-widget.test.tsx → src/lib/card-template-schema.ts
+- `mockLoyaltyContext()` --calls--> `progressTargetForBalance()`  [EXTRACTED]
+  tests/helpers/loyalty-context-fixtures.ts → src/lib/loyalty-context.ts
 - `mockLoyaltyContext()` --calls--> `loyaltyUnitForMode()`  [EXTRACTED]
   tests/helpers/loyalty-context-fixtures.ts → src/lib/loyalty-labels.ts
 
 ## Import Cycles
 - 2-file cycle: `src/lib/card-template-schema.ts -> src/lib/card-template-validation.ts -> src/lib/card-template-schema.ts`
 
-## Communities (152 total, 19 thin omitted)
+## Communities (144 total, 19 thin omitted)
 
 ### Community 0 - "customer-reward-progress.ts"
-Cohesion: 0.22
-Nodes (16): buildTargetView(), getCustomerMerchantRewardProgress(), resolveVisualState(), CustomerMerchantRewardProgress, MerchantRewardProgressTarget, REWARD_ALMOST_THRESHOLD_PERCENT, RewardProgressVisualState, evaluateCustomerRewards() (+8 more)
+Cohesion: 0.15
+Nodes (22): MerchantRewardProgressPanel(), TargetBlock(), buildTargetView(), getCustomerMerchantRewardProgress(), resolveVisualState(), CustomerMerchantRewardProgress, MerchantRewardProgressTarget, REWARD_ALMOST_THRESHOLD_PERCENT (+14 more)
 
 ### Community 1 - "card-template-schema.ts"
-Cohesion: 0.10
-Nodes (28): LoyaltyWidgetProgress, baseStyle(), NextRewardView(), Props, shellStyle(), NextRewardStylePicker(), CARD_SCHEMA_VERSION, CardDecorativeStyle (+20 more)
+Cohesion: 0.11
+Nodes (20): CardTemplateBackground(), buildCardBackgroundImageStyle(), CardBackgroundSettings, DEFAULT_BACKGROUND, CARD_ASPECT_RATIO, CARD_SCHEMA_VERSION, QR_MIN_SIZE, CardDecorativeStyle (+12 more)
 
 ### Community 2 - "scan/ui.tsx"
 Cohesion: 0.06
 Nodes (56): GET(), ADMIN_PERMISSIONS, CaisseScreen(), ScanResult, EmployeeScanPage(), EmployeeProfile, EmployeeScanScreen(), Phase (+48 more)
 
 ### Community 3 - "merchant-card-template-service.ts"
-Cohesion: 0.07
-Nodes (52): LegacyCardEditorRedirect(), CardEditorVariantRoute(), ALL_MERCHANT_CARD_SLOTS, CARD_SLOT_SLUGS, CARD_SLOT_TITLES, cardSlotEditorPath(), cardSlotForLoyaltyMode(), isLoyaltyProgramSlot() (+44 more)
+Cohesion: 0.06
+Nodes (62): GET(), GET(), LegacyCardEditorRedirect(), CardEditorVariantRoute(), ALL_MERCHANT_CARD_SLOTS, CARD_SLOT_SLUGS, CARD_SLOT_TITLES, cardSlotEditorPath() (+54 more)
 
 ### Community 4 - "next"
 Cohesion: 0.17
 Nodes (5): nextConfig, next, metadata, viewport, metadata
 
 ### Community 5 - "react"
-Cohesion: 0.08
-Nodes (27): react, Merchant, MerchantPublic(), CustomerLoginForm(), googleMessage(), EmployeeInvitationScreen(), ChangePasswordPage(), SPACES (+19 more)
+Cohesion: 0.09
+Nodes (26): react, Merchant, MerchantPublic(), CustomerLoginForm(), googleMessage(), EmployeeInvitationScreen(), ChangePasswordPage(), LOYALTY_MODES (+18 more)
 
 ### Community 6 - "loyalty-commit.ts"
-Cohesion: 0.18
-Nodes (19): appliedTierLabel(), assembleView(), buildView(), commitLoyaltyTransaction(), customerName(), isMerchantActive(), isProgramActive(), loadEarnHistory() (+11 more)
+Cohesion: 0.12
+Nodes (35): buildProgramSnapshot(), buildProgramSnapshotFromContext(), CaisseProgramSnapshot, publicScanPayload(), appliedTierLabel(), assembleView(), buildView(), commitLoyaltyTransaction() (+27 more)
 
 ### Community 7 - "ref_next_navigation"
 Cohesion: 0.25
@@ -231,47 +223,47 @@ Nodes (20): ref_next_navigation, CampagnesPage(), CustomerDetailPage(), ClientsP
 
 ### Community 8 - "fife-life/merchant-detail.tsx"
 Cohesion: 0.09
-Nodes (20): ref_react_dom_server, AddToGoogleWalletButton(), CustomerProgramView, DETAIL_TABS, DetailTabId, EMPTY_RECENT_ACTIVITY, MerchantCardDetail(), fallbackCopyLink() (+12 more)
+Nodes (17): ref_react_dom_server, AddToGoogleWalletButton(), CustomerProgramView, DETAIL_TABS, DetailTabId, EMPTY_RECENT_ACTIVITY, MerchantCardDetail(), fallbackCopyLink() (+9 more)
 
 ### Community 9 - "loyalty-widget-view.tsx"
-Cohesion: 0.10
-Nodes (21): BigBalance(), BigCounter(), CounterWithNextGoal(), glowStyle(), LoyaltyWidgetProgressInput, LoyaltyWidgetView(), pct(), ProgressCircle() (+13 more)
+Cohesion: 0.08
+Nodes (34): BigBalance(), BigCounter(), CounterWithNextGoal(), glowStyle(), LoyaltyWidgetProgress, LoyaltyWidgetProgressInput, LoyaltyWidgetView(), pct() (+26 more)
 
 ### Community 10 - "loyalty-widget.ts"
-Cohesion: 0.07
-Nodes (53): LoyaltyGaugeThumbnail(), LoyaltyWidgetStylePicker(), dedupeIssues(), EditorValidationIssue, EditorValidationSummary, migrateLegacyOnLoad(), missingWidgetLabel(), publishValidationResult() (+45 more)
+Cohesion: 0.09
+Nodes (42): LoyaltyGaugeThumbnail(), LoyaltyWidgetStylePicker(), EditorValidationIssue, EditorValidationSummary, migrateLegacyOnLoad(), missingWidgetLabel(), publishValidationResult(), CardLoyaltyWidgetConfig (+34 more)
 
 ### Community 11 - "validation.ts"
 Cohesion: 0.06
 Nodes (50): DELETE(), POST(), GET(), POST(), GET(), POST(), GET(), GET() (+42 more)
 
-### Community 12 - "profile-shared.tsx"
-Cohesion: 0.22
-Nodes (11): APP_VERSION, APPEARANCE_OPTIONS, AppearanceRow(), demoQuery(), EditField, fieldLabels, PasswordStrength(), ProfileShell() (+3 more)
+### Community 12 - "insight-period.ts"
+Cohesion: 0.23
+Nodes (20): addParisDays(), addParisMonths(), enumerateBucketKeys(), enumerateDayKeys(), enumerateMonthKeys(), enumerateWeekKeys(), InsightBucket, InsightPeriodKey (+12 more)
 
-### Community 13 - "card-editor-canvas.tsx"
-Cohesion: 0.11
-Nodes (35): ALL_HANDLES, CardEditorCanvas(), onKey(), onMove(), CORNER_HANDLES, DragState, GuideLine, handlesForElement() (+27 more)
+### Community 13 - "card-editor-properties.tsx"
+Cohesion: 0.07
+Nodes (62): elementShellStyle(), ALL_HANDLES, CardEditorCanvas(), onKey(), onMove(), CORNER_HANDLES, DragState, GuideLine (+54 more)
 
 ### Community 14 - "jsonOk"
 Cohesion: 0.11
 Nodes (66): POST(), POST(), POST(), POST(), POST(), POST(), logScanBody(), POST() (+58 more)
 
 ### Community 15 - "loyalty-service.ts"
-Cohesion: 0.30
-Nodes (11): applyAdjustment(), applyEarnVisit(), applyRedeemReward(), computeLoyalty(), LoyaltyError, LoyaltySnapshot, applyLoyaltyAction(), ApplyLoyaltyInput (+3 more)
+Cohesion: 0.14
+Nodes (22): availableRewardModules(), buildGoogleWalletMerchantView(), loyaltyPointLabel(), merchantObjectBody(), textModule(), applyAdjustment(), applyEarnVisit(), applyRedeemReward() (+14 more)
 
 ### Community 16 - "google-wallet/route.ts"
 Cohesion: 0.09
 Nodes (41): GET(), POST(), POST(), dynamic, logCustomerQr(), POST(), runtime, schema (+33 more)
 
-### Community 17 - "wallet-home.tsx"
-Cohesion: 0.11
-Nodes (22): ref_motion_react, react-dom, ref_react_dom_client, CardEnlargedView(), CardEnlargedViewProps, isFifeLifeCard(), CardsSheet(), ExpandableQrCode() (+14 more)
+### Community 17 - "wallet-hydration.test.tsx"
+Cohesion: 0.15
+Nodes (16): ref_motion_react, react-dom, ref_react_dom_client, ExpandableQrCode(), handleActivate(), openQr(), ExpandableQrCodeProps, NewCardToast() (+8 more)
 
 ### Community 18 - "cn"
 Cohesion: 0.09
-Nodes (32): Customer, CustomerDetailPanel(), CustomersPanel(), DEMO, formatActivity(), DEMO, Employee, EmployeesPanel() (+24 more)
+Nodes (29): Customer, CustomerDetailPanel(), CustomersPanel(), DEMO, formatActivity(), DEMO, Employee, EmployeesPanel() (+21 more)
 
 ### Community 19 - "events/route.ts"
 Cohesion: 0.19
@@ -282,56 +274,56 @@ Cohesion: 0.29
 Nodes (5): FidelisationPanel(), icons, OutilsPanel(), TOOLS, ToolCard()
 
 ### Community 21 - "profile-page.tsx"
-Cohesion: 0.18
-Nodes (15): AvatarFileInput(), AvatarPreviewEditor(), cropCircleToDataUrl(), loadImage(), useAvatarEditor(), GlassBottomSheet(), SheetAction(), HistoryFilter (+7 more)
+Cohesion: 0.07
+Nodes (36): AvatarFileInput(), AvatarPreviewEditor(), cropCircleToDataUrl(), loadImage(), useAvatarEditor(), GlassBottomSheet(), SheetAction(), HistoryFilter (+28 more)
 
 ### Community 22 - "cashier-checkout.tsx"
 Cohesion: 0.10
 Nodes (33): AmountField(), press(), KEYS, CashierCheckout(), askRedeem(), commitEarn(), confirmRedeem(), Phase (+25 more)
 
 ### Community 23 - "customer-loyalty-overview.ts"
-Cohesion: 0.15
-Nodes (21): activityFromWalletEvent(), buildCardNextRewardEntry(), buildFifeLifeNextReward(), buildHistoricalRewardOverview(), buildNextRewardCandidates(), CardNextRewardEntry, CardRewardProgress, CustomerLoyaltyOverview (+13 more)
+Cohesion: 0.13
+Nodes (30): main(), dynamic, GET(), CarteIndexPage(), dynamic, CardPage(), dynamic, activityFromWalletEvent() (+22 more)
 
 ### Community 24 - "google-auth.ts"
 Cohesion: 0.12
 Nodes (28): GET(), GET(), AppLoginPage(), CustomerLoginPage(), isGoogleAuthConfigured(), consumeGoogleCallback(), createGoogleAuthUrl(), decodeStateCookie() (+20 more)
 
-### Community 25 - "isProduction"
-Cohesion: 0.16
-Nodes (18): isProduction(), hostnameOf(), isAdminHost(), isAppHost(), isCustomerHost(), isEmployeeHost(), isLocalHost(), assertSuperAdminProductionConfig() (+10 more)
+### Community 25 - "env.ts"
+Cohesion: 0.08
+Nodes (25): ref_next_server, assertSameOrigin(), CsrfError, env, getAllowedOrigins(), isProduction(), hostnameOf(), isAdminHost() (+17 more)
 
-### Community 26 - "loyalty-labels.ts"
-Cohesion: 0.17
-Nodes (22): TargetBlock(), buildProgramSnapshot(), buildProgramSnapshotFromContext(), CaisseProgramSnapshot, publicScanPayload(), progressLineForTarget(), availableRewardModules(), buildGoogleWalletMerchantView() (+14 more)
+### Community 26 - "loyalty-card-view-model.ts"
+Cohesion: 0.18
+Nodes (13): DEMO_TIER_DECK_ORDER, getLoyaltyCardTierLabel(), LOYALTY_CARD_BACKGROUNDS, LOYALTY_CARD_TIER_LABELS, LoyaltyCardTierKey, WALLET_TIER_TO_CARD_KEY, walletTierToCardKey(), buildLoyaltyCardViewModel() (+5 more)
 
-### Community 27 - "session.ts"
-Cohesion: 0.23
-Nodes (6): ref_next_server, GET(), getRequestUser(), SessionUser, tokenFromRequest(), userFromToken()
+### Community 27 - "qa-login/page.tsx"
+Cohesion: 0.36
+Nodes (5): dynamic, QaLoginPage(), QaLoginClient(), readFragmentToken(), isQaMagicLoginEnabled()
 
 ### Community 28 - "loyalty-program.ts"
-Cohesion: 0.09
-Nodes (38): DEMO_CONFIG, MODES, PROGRAM_STEPS, block(), buildNextBenefit(), centsToEarnAtLeast(), EarnEvaluation, evaluateEarn() (+30 more)
+Cohesion: 0.10
+Nodes (33): assertEarnProgramRules(), block(), buildNextBenefit(), centsToEarnAtLeast(), EarnEvaluation, EarnHistory, evaluateEarn(), formatDurationMinutes() (+25 more)
 
-### Community 29 - "reward-form-dialog.tsx"
-Cohesion: 0.20
-Nodes (12): emptyReward(), FieldErrors, previewLine(), REWARD_TYPES, RewardFormDialog(), handleSubmit(), rewardTypeLabel(), RewardTypeOption (+4 more)
+### Community 29 - "advantages-ui.tsx"
+Cohesion: 0.16
+Nodes (15): DEMO_CONFIG, HistoricalEntitlement, emptyReward(), FieldErrors, previewLine(), REWARD_TYPES, RewardFormDialog(), handleSubmit() (+7 more)
 
-### Community 30 - "use-wallet-unlock-animation.ts"
-Cohesion: 0.20
-Nodes (17): isDocumentVisible(), UnlockRevealPhase, useWalletUnlockAnimation(), flushWhenVisible(), hasRenderReadyTemplate(), cardFromUnlockPayload(), fetchUnlockCardDetail(), isUnlockCardReadyForReveal() (+9 more)
+### Community 30 - "campaign-quota.test.ts"
+Cohesion: 0.47
+Nodes (5): campaignQuotaUsageFindUnique, campaignQuotaUsageUpsert, executeRaw, fakeTx(), merchantSubscriptionFindUnique
 
-### Community 31 - "app/statistiques/page.tsx"
-Cohesion: 0.18
-Nodes (9): heatmap, INSIGHT_DEMO_RESPONSE, StatistiquesPage(), FideliteTab(), fmtDays(), fmtNum(), FrequentationTab(), RecompensesTab() (+1 more)
+### Community 31 - "create-super-admin.ts"
+Cohesion: 0.50
+Nodes (4): bcryptjs, main(), prisma, required()
 
 ### Community 32 - "requireMerchantAdmin"
 Cohesion: 0.18
 Nodes (29): POST(), POST(), GET(), GET(), POST(), serializeCampaign(), requireMerchantAdmin(), AudienceEstimate (+21 more)
 
 ### Community 33 - "card-editor.tsx"
-Cohesion: 0.11
-Nodes (33): buildElementCatalog(), CardEditorPage(), addElement(), applyAutoFix(), fitToScreen(), onResize(), publish(), runResetAction() (+25 more)
+Cohesion: 0.08
+Nodes (44): buildElementCatalog(), CardEditorPage(), addElement(), applyAutoFix(), fitToScreen(), onResize(), publish(), runResetAction() (+36 more)
 
 ### Community 34 - "package.json"
 Cohesion: 0.07
@@ -343,23 +335,19 @@ Nodes (18): MEDIA_TO_APPEARANCE_KEY, RECOMMENDED_WALLET_COLORS, WalletAppearance
 
 ### Community 36 - "statistiques-panel.tsx"
 Cohesion: 0.09
-Nodes (30): ApiResponse, COMPARISON_METRICS, FinancesTab(), LockedPlaceholder, MAX_COMPARISON_METRICS, MIN_COMPARISON_METRICS, normalizeBase100(), OverviewTab() (+22 more)
+Nodes (31): ApiResponse, COMPARISON_METRICS, FideliteTab(), FinancesTab(), fmtDays(), fmtNum(), FrequentationTab(), LockedPlaceholder (+23 more)
 
-### Community 37 - "google-wallet.ts"
-Cohesion: 0.25
-Nodes (18): appLinkData(), cardUrl(), classTemplateInfo(), globalClassPatchBody(), globalObjectBody(), GoogleWalletImage, googleWalletLogoUrl(), GoogleWalletMerchantView (+10 more)
+### Community 37 - "globalObjectBody"
+Cohesion: 0.32
+Nodes (12): appLinkData(), cardUrl(), classTemplateInfo(), globalClassPatchBody(), globalObjectBody(), imageData(), isPublicHttpsImageUrl(), localized() (+4 more)
 
 ### Community 38 - "demo-session.ts"
-Cohesion: 0.16
+Cohesion: 0.19
 Nodes (16): GET(), GET(), GET(), GET(), GET(), demoCookieNamesForRole(), demoEnterTarget(), applyDemoRoleCookies() (+8 more)
 
 ### Community 39 - "What You Must Do When Invoked"
 Cohesion: 0.07
 Nodes (26): For /graphify add and --watch, For /graphify query, For the commit hook and native CLAUDE.md integration, For --update and --cluster-only, /graphify, Honesty Rules, Interpreter guard for subcommands, Part A - Structural extraction for code files (+18 more)
-
-### Community 40 - "card-editor-properties.tsx"
-Cohesion: 0.14
-Nodes (19): REQUIRED_BY_SLOT, TEXT_TYPES, BACKGROUND_FIT_LABELS, containsForbiddenTechnicalLabel(), DATA_KEY_LABELS, dataKeyLabel(), ELEMENT_TYPE_LABELS, FIT_MODE_LABELS (+11 more)
 
 ### Community 41 - "media-storage.ts"
 Cohesion: 0.15
@@ -369,41 +357,37 @@ Nodes (24): appearanceKeyForGoogleWalletMedia(), assertExactDimensions(), delete
 Cohesion: 0.09
 Nodes (21): entitlementFindMany, entitlementUpdate, entitlementUpdateMany, grant, grantFindFirst, grantUpdate, loyaltyProgramFindUnique, membership (+13 more)
 
-### Community 43 - "interactive-loyalty-card.tsx"
-Cohesion: 0.09
-Nodes (30): DEMO_TIER_POINTS, GlobalCard(), GlobalCardMode, loyaltyCardDisplayName(), InteractiveCardShell(), InteractiveCardShellProps, InteractiveLoyaltyCard(), InteractiveLoyaltyCardProps (+22 more)
+### Community 43 - "card-enlarged-view.tsx"
+Cohesion: 0.08
+Nodes (37): CardEnlargedView(), CardEnlargedViewProps, isFifeLifeCard(), DEMO_TIER_POINTS, GlobalCard(), GlobalCardMode, loyaltyCardDisplayName(), InteractiveCardShell() (+29 more)
 
 ### Community 44 - "ref_fs_promises"
 Cohesion: 0.11
 Nodes (15): ref_fs_promises, ref_sharp, OUT, tiers, files, INPUT_DIR, GET(), MIME (+7 more)
 
-### Community 45 - "ref_next_headers"
-Cohesion: 0.14
+### Community 45 - "demo-routing.test.ts"
+Cohesion: 0.12
 Nodes (19): ref_next_headers, CaisseAliasPage(), EmployeeHomePage(), CLIENT_DEMO_COOKIE, EMPLOYEE_DEMO_COOKIE, isClientDemoMode(), isDemoCookie(), isPublicDemoEnabled() (+11 more)
 
 ### Community 46 - "src/app/page.tsx"
-Cohesion: 0.13
-Nodes (20): BENTO_ITEMS, CLIENT_STEPS, GUARANTEES, MERCHANT_BENEFITS, metadata, PROOF_ITEMS, ArrowRightIcon(), base (+12 more)
+Cohesion: 0.11
+Nodes (25): BENTO_ITEMS, CLIENT_STEPS, GUARANTEES, MERCHANT_BENEFITS, metadata, PROOF_ITEMS, ArrowRightIcon(), base (+17 more)
 
 ### Community 47 - "compilerOptions"
 Cohesion: 0.11
 Nodes (18): compilerOptions, allowJs, esModuleInterop, incremental, isolatedModules, jsx, lib, module (+10 more)
 
-### Community 48 - "card-editor-polish.test.ts"
-Cohesion: 0.17
-Nodes (22): useWalletEvents(), connect(), disconnect(), onVisibility(), WalletHome(), googleWalletEndpointForActiveCard(), canUseSessionStorage(), getStoredLastEventId() (+14 more)
+### Community 48 - "wallet-home.tsx"
+Cohesion: 0.11
+Nodes (34): DiscoverIconLink(), NotificationBellLink(), WalletEventPayload, useWalletEvents(), connect(), disconnect(), onVisibility(), isDocumentVisible() (+26 more)
 
 ### Community 49 - "loyalty-program-publication.ts"
 Cohesion: 0.16
 Nodes (21): activeEligibleRewards(), assertRewardLimit(), countConfiguredRewards(), createAcquiredRewardEntitlements(), LoyaltyDraftReward, LoyaltyProgramDraft, MAX_CONFIGURED_REWARDS, ModeChangeDecision (+13 more)
 
-### Community 50 - "qr-cache.ts"
-Cohesion: 0.17
-Nodes (16): MerchantInteractiveCard(), MerchantInteractiveCardProps, PREVIEW_QR, QrBlock(), cache, cacheKey(), failedOnce, fetchCustomerQr() (+8 more)
-
 ### Community 51 - "qa-login.ts"
-Cohesion: 0.08
-Nodes (36): ref_crypto, assertNoUnknownArgs(), main(), parseTtlMinutes(), dynamic, QaLoginPage(), QaLoginClient(), readFragmentToken() (+28 more)
+Cohesion: 0.10
+Nodes (29): ref_crypto, assertNoUnknownArgs(), main(), parseTtlMinutes(), assertQaLoginTtlMinutes(), auditQaLogin(), configuredSubjectId(), createQaMagicLoginToken() (+21 more)
 
 ### Community 52 - "ref_node_path"
 Cohesion: 0.04
@@ -413,9 +397,9 @@ Nodes (39): ref_node_buffer, ref_node_fs, ref_node_fs_promises, ref_node_path, r
 Cohesion: 0.11
 Nodes (19): dependencies, bcryptjs, google-auth-library, html5-qrcode, jose, motion, next, next-themes (+11 more)
 
-### Community 54 - "syncGoogleWalletMembershipObject"
-Cohesion: 0.15
-Nodes (26): accessToken(), assertConfigured(), buildGoogleWalletIds(), classProfileForMode(), createGlobalGoogleWalletSaveUrl(), createMerchantGoogleWalletSaveUrl(), customerQrValue(), ensureGlobalClassRecord() (+18 more)
+### Community 54 - "google-wallet.ts"
+Cohesion: 0.16
+Nodes (31): accessToken(), assertConfigured(), buildGoogleWalletIds(), classProfileForMode(), createGlobalGoogleWalletSaveUrl(), createMerchantGoogleWalletSaveUrl(), customerQrValue(), ensureGlobalClassRecord() (+23 more)
 
 ### Community 55 - "email.ts"
 Cohesion: 0.25
@@ -426,20 +410,16 @@ Cohesion: 0.12
 Nodes (16): devDependencies, eslint, eslint-config-next, happy-dom, playwright, tailwindcss, @tailwindcss/postcss, @types/bcryptjs (+8 more)
 
 ### Community 57 - "insight-stats.ts"
-Cohesion: 0.08
-Nodes (56): addParisDays(), addParisMonths(), bucketKey(), enumerateBucketKeys(), enumerateDayKeys(), enumerateMonthKeys(), enumerateWeekKeys(), InsightBucket (+48 more)
-
-### Community 58 - "resolvePublishedMerchantCardTemplate"
-Cohesion: 0.23
-Nodes (12): GET(), GET(), logMerchantCardSwitch(), MerchantCardSwitchContext, MerchantCardSwitchStep, adaptTemplateConfigForGeneralSlot(), findPublishedForSlot(), normalizeResolvedPublishedTemplate() (+4 more)
+Cohesion: 0.10
+Nodes (36): bucketKey(), InsightRange, percentChange(), buildCohorts(), buildComparison(), buildFinancial(), buildFrequentation(), buildOverview() (+28 more)
 
 ### Community 59 - "demo-visual.ts"
-Cohesion: 0.15
-Nodes (21): CarteIdentitePage(), AccountPage(), ParametresPage(), PREVIEW_BENEFITS, PREVIEW_CARDS, PREVIEW_PREFERENCES, PREVIEW_PROFILE, PREVIEW_PROFILE_HISTORY (+13 more)
+Cohesion: 0.14
+Nodes (23): CarteIdentitePage(), AccountPage(), ParametresPage(), PREVIEW_BENEFITS, PREVIEW_CARDS, PREVIEW_PREFERENCES, PREVIEW_PROFILE, PREVIEW_PROFILE_HISTORY (+15 more)
 
 ### Community 60 - "ref_next_link"
-Cohesion: 0.13
-Nodes (9): ref_next_link, SPACES, COLUMNS, isInternalPath(), LandingFooter(), MerchantCardsGallery(), slotStatusLabel(), slotTone() (+1 more)
+Cohesion: 0.10
+Nodes (14): ref_next_link, HomeStats, QUICK_ACTIONS, StatsPreview, TrendMetric, SPACES, COLUMNS, isInternalPath() (+6 more)
 
 ### Community 61 - "loyalty-service.test.ts"
 Cohesion: 0.14
@@ -461,17 +441,13 @@ Nodes (14): GET(), GET(), PERIODS, dateKey(), fillDailySeries(), getPlatformAler
 Cohesion: 0.16
 Nodes (12): contrastWithWhite(), GOOGLE_WALLET_RECOMMENDED_COLORS, GoogleWalletAppearance, googleWalletAppearanceSchema, googleWalletButtonLabelSchema, GoogleWalletConfigMap, googleWalletHexSchema, isReadableGoogleWalletColor() (+4 more)
 
-### Community 66 - "ProgramConfigurator"
-Cohesion: 0.23
-Nodes (10): modeTitle(), ProgramConfigurator(), goToStep(), isCurrentReward(), primaryFooterAction(), publish(), saveDraft(), unitForMode() (+2 more)
+### Community 66 - "programme/ui.tsx"
+Cohesion: 0.17
+Nodes (13): DEMO_CONFIG, MODES, modeTitle(), PROGRAM_STEPS, ProgramConfigurator(), goToStep(), isCurrentReward(), primaryFooterAction() (+5 more)
 
 ### Community 67 - "@prisma/client"
-Cohesion: 0.14
-Nodes (24): @prisma/client, formatAddress(), MerchantProfile(), join(), MerchantProfileData, safeExternalUrl(), ActiveMerchantLoyaltyContext, buildCustomerProgramView() (+16 more)
-
-### Community 68 - "customer-history.ts"
-Cohesion: 0.32
-Nodes (6): BenefitEntry, formatLoyaltyEntry(), HistoryCategory, HistoryEntry, mapLoyaltyCategory(), mapLoyaltyTone()
+Cohesion: 0.16
+Nodes (20): @prisma/client, formatAddress(), MerchantProfile(), join(), MerchantProfileData, safeExternalUrl(), getActiveMerchantLoyaltyContextBySlug(), isMerchantOperational() (+12 more)
 
 ### Community 69 - "webhook/route.ts"
 Cohesion: 0.09
@@ -479,27 +455,23 @@ Nodes (30): stripe, handleChargeRefunded(), handleCheckoutSessionCompleted(), ha
 
 ### Community 70 - "card-deck.tsx"
 Cohesion: 0.18
-Nodes (14): activeCardFromDeck(), CardDeck(), handleCardExpand(), handleDragEnd(), handleKeyDown(), snapTo(), DeckItem, demoStartIndex() (+6 more)
+Nodes (13): activeCardFromDeck(), CardDeck(), handleCardExpand(), handleDragEnd(), handleKeyDown(), snapTo(), DeckItem, demoStartIndex() (+5 more)
 
 ### Community 71 - "merchants-list.tsx"
 Cohesion: 0.18
 Nodes (12): formatActivity(), MerchantRow, MerchantsListPage(), modeLabel(), pickPreviewTemplate(), statusLabel(), ACTION_DESCRIPTION, ACTION_LABEL (+4 more)
 
 ### Community 72 - "types.ts"
-Cohesion: 0.16
-Nodes (8): LinearGauge(), MerchantCardPublicPreview(), MerchantFace(), MerchantRoulette(), MerchantCardData, PublicMerchant, ProgramPreviewCard(), ScanResultCardPayload
+Cohesion: 0.14
+Nodes (10): CardsSheet(), LinearGauge(), MerchantCardPublicPreview(), MerchantFace(), MerchantRoulette(), MerchantCardData, PublicMerchant, WalletCardsList() (+2 more)
 
 ### Community 73 - "AdvantagesEditor"
 Cohesion: 0.26
 Nodes (16): AdvantagesEditor(), deleteReward(), handleRewardSave(), isCurrentReward(), markDirty(), moveReward(), openCreateReward(), openEditReward() (+8 more)
 
-### Community 74 - "SettingsPage"
-Cohesion: 0.33
-Nodes (3): SettingsPage(), patchProfile(), saveFieldEdit()
-
 ### Community 75 - "caisse-scan.ts"
-Cohesion: 0.11
-Nodes (26): main(), dynamic, GET(), CarteIndexPage(), dynamic, CardPage(), dynamic, buildScanResult() (+18 more)
+Cohesion: 0.25
+Nodes (11): buildScanResult(), CaisseScanError, maskClientNumberForLog(), findUserByCustomerNumber(), processCaisseScanByClientNumber(), deriveClientNumber(), formatClientNumberDisplay(), normalizeClientNumber() (+3 more)
 
 ### Community 76 - "unsubscribe-token.ts"
 Cohesion: 0.22
@@ -517,9 +489,9 @@ Nodes (6): MerchantDetailPage(), clearWalletLocalPreviews(), reloadMerchant(), s
 Cohesion: 0.24
 Nodes (6): ref_os, GET(), notFound(), config(), loadRoute(), PNG_BYTES
 
-### Community 80 - "layout-shell.tsx"
-Cohesion: 0.09
-Nodes (18): recharts, AdRequest, CampaignModerationHome(), formatCents(), NetworkCampaign, RejectTarget, ACTIVITY_LABELS, DashboardHome() (+10 more)
+### Community 80 - "dashboard-home.tsx"
+Cohesion: 0.18
+Nodes (9): recharts, ACTIVITY_LABELS, DashboardHome(), Overview, QUICK_LINKS, PlatformChart(), Point, StatCard() (+1 more)
 
 ### Community 81 - "cartes.js"
 Cohesion: 0.53
@@ -533,17 +505,17 @@ Nodes (14): Checklist de déploiement, Configuration Google Wallet, Création de
 Cohesion: 0.70
 Nodes (4): fail(), is_placeholder_secret(), docker-entrypoint.sh script, validate_production_secrets()
 
-### Community 84 - "seed.ts"
-Cohesion: 0.27
-Nodes (8): main(), prisma, requiredEnv(), upsertEmployee(), bcryptjs, main(), prisma, required()
+### Community 84 - "qr.ts"
+Cohesion: 0.25
+Nodes (11): main(), prisma, requiredEnv(), upsertEmployee(), processCaisseScan(), assertQrUsable(), QrError, QrPayload (+3 more)
 
 ### Community 85 - "merchant-card-renderer.tsx"
-Cohesion: 0.13
-Nodes (30): CardTemplateBackground(), COMPACT_HIDDEN, displayClientName(), elementShellStyle(), ElementView(), MerchantCardDisplayMode, MerchantCardRenderer(), MerchantCardRendererProps (+22 more)
+Cohesion: 0.14
+Nodes (31): COMPACT_HIDDEN, displayClientName(), ElementView(), MerchantCardDisplayMode, MerchantCardRenderer(), MerchantCardRendererProps, resolveDisplayQrSrc(), shouldHideElement() (+23 more)
 
 ### Community 86 - "vitest"
-Cohesion: 0.09
-Nodes (16): vitest, customerMembershipFindMany, customerPreferencesFindMany, inAppNotificationCount, inAppNotificationFindMany, inAppNotificationUpdateMany, requireMutatingRequest, requireUser (+8 more)
+Cohesion: 0.07
+Nodes (21): vitest, customerMembershipFindMany, customerPreferencesFindMany, inAppNotificationCount, inAppNotificationFindMany, inAppNotificationUpdateMany, requireMutatingRequest, requireUser (+13 more)
 
 ### Community 87 - "Notes pour le prochain agent - Carousel de cartes"
 Cohesion: 0.20
@@ -554,8 +526,8 @@ Cohesion: 0.22
 Nodes (8): Adaptation et validation, Cartes de fidélité — pack pour Cursor, Démarrage, Fonds, cadrage et QR, Intégration minimale avec données dynamiques, Paliers et images de référence, Paramètres, À donner à Cursor
 
 ### Community 90 - "super-admin-session.ts"
-Cohesion: 0.10
-Nodes (24): SuperAdminSubscriptionsPage(), SubscriptionsPage(), load(), toggleInsight(), AuditPage(), SuperAdminAuditPage(), SuperAdminCampagnesPage(), SuperAdminCardsPage() (+16 more)
+Cohesion: 0.06
+Nodes (33): SuperAdminSubscriptionsPage(), SubscriptionsPage(), load(), toggleInsight(), AuditPage(), SuperAdminAuditPage(), AdRequest, CampaignModerationHome() (+25 more)
 
 ### Community 93 - "campagnes/ui.tsx"
 Cohesion: 0.05
@@ -570,20 +542,20 @@ Cohesion: 0.11
 Nodes (15): ref_fs, ref_path, ref_vitest_config, main(), outDir, shot(), outDir, main() (+7 more)
 
 ### Community 102 - "rbac.ts"
-Cohesion: 0.12
-Nodes (23): CaissePage(), DashboardLayout(), hasMerchantStaffAccess(), isMerchantAppPublicPath(), MERCHANT_APP_PUBLIC_PATHS, resolveMerchantAppAccess(), shouldRedirectAppToEmployeeSpace(), assertCanAddEmployee() (+15 more)
+Cohesion: 0.10
+Nodes (26): CaissePage(), DashboardLayout(), heatmap, INSIGHT_DEMO_RESPONSE, StatistiquesPage(), hasMerchantStaffAccess(), isMerchantAppPublicPath(), MERCHANT_APP_PUBLIC_PATHS (+18 more)
 
 ### Community 103 - "program/route.ts"
 Cohesion: 0.29
 Nodes (8): GET(), sortOrder(), GET(), loadProgram(), PUT(), balanceFieldForUnit(), loyaltyDraftSchema, programSimulateSchema
 
 ### Community 104 - "src/app/layout.tsx"
-Cohesion: 0.16
-Nodes (9): ref_next_font_google, src_app_globals, dynamic, manrope, metadata, viewport, PwaRegister(), THEME_COLOR (+1 more)
+Cohesion: 0.15
+Nodes (10): ref_next_font_google, next-themes, src_app_globals, dynamic, manrope, metadata, viewport, PwaRegister() (+2 more)
 
 ### Community 105 - "landing-header.tsx"
-Cohesion: 0.29
-Nodes (6): next-themes, MoonIcon(), SunIcon(), LandingHeader(), NAV_LINKS, ThemeToggle()
+Cohesion: 0.33
+Nodes (5): MoonIcon(), SunIcon(), LandingHeader(), NAV_LINKS, ThemeToggle()
 
 ### Community 106 - "graphify reference: query, path, explain"
 Cohesion: 0.33
@@ -610,20 +582,16 @@ Cohesion: 0.50
 Nodes (3): For --cluster-only, For --update (incremental re-extraction), graphify reference: incremental update and cluster-only
 
 ### Community 114 - "notifications-center.tsx"
-Cohesion: 0.24
-Nodes (8): DEMO_NOTIFICATIONS, kindLabel(), NotificationItem, NotificationKind, NotificationMerchant, NotificationsCenter(), markOneRead(), openNotification()
+Cohesion: 0.19
+Nodes (10): dynamic, NotificationsPage(), DEMO_NOTIFICATIONS, kindLabel(), NotificationItem, NotificationKind, NotificationMerchant, NotificationsCenter() (+2 more)
 
 ### Community 118 - "employee-session.ts"
-Cohesion: 0.17
-Nodes (17): EmployeeLoginPage(), cookieOptions(), createEmployeeSession(), destroyEmployeeSession(), employeeCookieName(), employeeFromToken(), employeeFromTokenWithReason(), EmployeeSession (+9 more)
+Cohesion: 0.15
+Nodes (19): EmployeeLoginPage(), cookieOptions(), createEmployeeSession(), destroyEmployeeSession(), employeeCookieName(), employeeFromToken(), employeeFromTokenWithReason(), EmployeeSession (+11 more)
 
 ### Community 120 - "CreateMerchantWizard"
 Cohesion: 0.50
 Nodes (3): CreateMerchantWizard(), goNext(), stepError()
-
-### Community 121 - "env.ts"
-Cohesion: 0.14
-Nodes (9): assertSameOrigin(), CsrfError, employeeCookieName(), employeeTokenFromRequest(), hasEmployeeCookie(), env, getAllowedOrigins(), MerchantAppAccess (+1 more)
 
 ### Community 122 - "EmployeeLoginScreen"
 Cohesion: 0.40
@@ -646,12 +614,8 @@ Cohesion: 0.25
 Nodes (6): processCaisseScan, processCaisseScanByClientNumber, rateLimit, requireCaisse, requireMutatingRequest, writeAudit
 
 ### Community 127 - "merchant-card-finish.test.ts"
-Cohesion: 0.19
-Nodes (16): BillingSummary, buildBillingSummary(), computeArr(), computeBillableMrr(), computeMrr(), computeTrialPotentialMrr(), normalizeToMrr(), sumCollectedRevenue() (+8 more)
-
-### Community 128 - "landing-hero-visual.tsx"
-Cohesion: 0.33
-Nodes (5): CoffeeIcon(), QrCodeIcon(), WalletCardsIcon(), WifiIcon(), LandingHeroVisual()
+Cohesion: 0.27
+Nodes (12): BillingSummary, buildBillingSummary(), computeArr(), computeBillableMrr(), computeMrr(), computeTrialPotentialMrr(), normalizeToMrr(), sumCollectedRevenue() (+4 more)
 
 ### Community 129 - "lib/campaign-worker.ts"
 Cohesion: 0.21
@@ -685,10 +649,6 @@ Nodes (4): PlusIcon(), FAQ_ITEMS, FaqItem, LandingFaq()
 Cohesion: 0.22
 Nodes (7): campaignCreate, campaignFindFirst, campaignFindMany, campaignUpdate, requireMerchantAdmin, requireMutatingRequest, writeAudit
 
-### Community 137 - "customer-qr-route.test.ts"
-Cohesion: 0.29
-Nodes (5): generateCustomerQrDataUrl, isCustomerQrInfrastructureError, requireMutatingRequest, requireUser, tryEnsureCustomerMembershipForSlug
-
 ### Community 138 - "jsonError"
 Cohesion: 0.08
 Nodes (42): GET(), PATCH(), GET(), POST(), GET(), DELETE(), FILTER_MAP, GET() (+34 more)
@@ -698,12 +658,12 @@ Cohesion: 0.39
 Nodes (5): enablePushNotifications(), getPushSupportState(), isIosNotStandalone(), PushSupportState, urlBase64ToUint8Array()
 
 ### Community 140 - "google-wallet-doctor.ts"
-Cohesion: 0.24
-Nodes (11): google-auth-library, accessToken(), fail(), main(), ok(), pngSize(), campaignQuotaUsageFindUnique, campaignQuotaUsageUpsert (+3 more)
+Cohesion: 0.46
+Nodes (7): google-auth-library, accessToken(), fail(), main(), ok(), pngSize(), googleWalletLogoUrl()
 
-### Community 141 - "getSessionUser"
-Cohesion: 0.29
-Nodes (8): dynamic, MerchantProfilePage(), dynamic, NotificationsPage(), ProEntryPage(), JoinMerchantPage(), getPublishedCardTemplate(), getSessionUser()
+### Community 141 - "session.ts"
+Cohesion: 0.18
+Nodes (11): GET(), dynamic, MerchantProfilePage(), ProEntryPage(), SPACES, JoinMerchantPage(), getPublishedCardTemplate(), getRequestUser() (+3 more)
 
 ### Community 142 - "loyalty-reward-removal.ts"
 Cohesion: 0.47
@@ -722,12 +682,12 @@ Cohesion: 0.40
 Nodes (3): HomePage(), resolveLandingAuthTargets(), { getSessionUserMock, getEmployeeSessionMock }
 
 ### Community 149 - "caisse-scan.test.ts"
-Cohesion: 0.11
-Nodes (21): processCaisseScan(), assertQrUsable(), QrError, QrPayload, secretKey(), signQrToken(), verifyQrToken(), caisseGrantCreate (+13 more)
+Cohesion: 0.13
+Nodes (14): caisseGrantCreate, customerMembershipCreate, customerMembershipFindFirst, customerMembershipUpdate, entitlementFindMany, entitlementUpdateMany, fifeLifeQrTokenFindUnique, fifeLifeQrTokenUpdate (+6 more)
 
 ### Community 150 - "employee-invitation-service.ts"
-Cohesion: 0.26
-Nodes (13): buildInvitationLink(), canEmployeeAccess(), createInvitationToken(), hashInvitationToken(), INVITATION_ERROR, invitationExpiryDate(), isInvitationExpired(), createMembershipInvitation() (+5 more)
+Cohesion: 0.19
+Nodes (16): employeeCookieName(), employeeTokenFromRequest(), hasEmployeeCookie(), buildInvitationLink(), canEmployeeAccess(), createInvitationToken(), hashInvitationToken(), INVITATION_ERROR (+8 more)
 
 ## Knowledge Gaps
 - **761 isolated node(s):** `examples`, `cards`, `deploy.sh script`, `eslintConfig`, `nextConfig` (+756 more)
@@ -737,17 +697,17 @@ Nodes (13): buildInvitationLink(), canEmployeeAccess(), createInvitationToken(),
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `@prisma/client` connect `@prisma/client` to `customer-reward-progress.ts`, `lib/campaign-worker.ts`, `scan/ui.tsx`, `cards-index.tsx`, `merchant-card-template-service.ts`, `loyalty-commit.ts`, `fife-life/merchant-detail.tsx`, `loyalty-widget.ts`, `jsonError`, `card-editor-canvas.tsx`, `jsonOk`, `getSessionUser`, `loyalty-reward-removal.ts`, `wallet-home.tsx`, `cn`, `events/route.ts`, `loyalty-service.ts`, `cashier-checkout.tsx`, `customer-loyalty-overview.ts`, `employee-invitation-service.ts`, `google-auth.ts`, `loyalty-labels.ts`, `session.ts`, `loyalty-program.ts`, `use-wallet-unlock-animation.ts`, `requireMerchantAdmin`, `card-editor.tsx`, `package.json`, `google-wallet.ts`, `card-editor-properties.tsx`, `loyalty-program-publication.ts`, `qa-login.ts`, `insight-stats.ts`, `resolvePublishedMerchantCardTemplate`, `demo-visual.ts`, `ref_next_link`, `loyalty-service.test.ts`, `platform-stats.ts`, `customer-history.ts`, `webhook/route.ts`, `types.ts`, `caisse-scan.ts`, `seed.ts`, `merchant-card-renderer.tsx`, `super-admin-session.ts`, `rbac.ts`, `program/route.ts`, `api-guard.ts`, `employee-session.ts`, `env.ts`, `customer-qr.ts`, `merchant-card-finish.test.ts`?**
-  _High betweenness centrality (0.169) - this node is a cross-community bridge._
-- **Why does `vitest` connect `vitest` to `customer-reward-progress.ts`, `lib/campaign-worker.ts`, `scan/ui.tsx`, `merchant-card-template-service.ts`, `customer-push-route.test.ts`, `react`, `super-admin-campaign-moderation.test.ts`, `card-template-schema.ts`, `campaign-crud-routes.test.ts`, `customer-qr-route.test.ts`, `loyalty-widget.ts`, `fife-life/merchant-detail.tsx`, `google-wallet-doctor.ts`, `push-client.ts`, `loyalty-reward-removal.ts`, `loyalty-service.ts`, `profile-shared.tsx`, `wallet-home.tsx`, `resolveLandingAuthTargets`, `caisse-scan.test.ts`, `employee-invitation-service.ts`, `customer-loyalty-overview.ts`, `google-auth.ts`, `isProduction`, `loyalty-labels.ts`, `cashier-checkout.tsx`, `loyalty-program.ts`, `use-wallet-unlock-animation.ts`, `requireMerchantAdmin`, `package.json`, `[id]/merchant-detail.tsx`, `statistiques-panel.tsx`, `demo-session.ts`, `media-storage.ts`, `loyalty-commit.test.ts`, `card-editor-polish.test.ts`, `loyalty-program-publication.ts`, `qa-login.ts`, `ref_node_path`, `email.ts`, `insight-stats.ts`, `resolvePublishedMerchantCardTemplate`, `loyalty-service.test.ts`, `api-merchant-statistics-route.test.ts`, `platform-stats.ts`, `google-wallet-appearance.ts`, `@prisma/client`, `webhook/route.ts`, `card-deck.tsx`, `caisse-scan.ts`, `unsubscribe-token.ts`, `[kind]/route.ts`, `merchant-card-renderer.tsx`, `ref_path`, `rbac.ts`, `campaign-worker.test.ts`, `api-guard.ts`, `env.ts`, `campaign-confirm-route.test.ts`, `landing-page.test.ts`, `caisse-scan-route.test.ts`, `merchant-card-finish.test.ts`?**
-  _High betweenness centrality (0.139) - this node is a cross-community bridge._
-- **Why does `react` connect `react` to `scan/ui.tsx`, `cards-index.tsx`, `merchant-card-template-service.ts`, `discover-page.tsx`, `landing-faq.tsx`, `fife-life/merchant-detail.tsx`, `loyalty-widget-view.tsx`, `profile-shared.tsx`, `card-editor-canvas.tsx`, `wallet-home.tsx`, `cn`, `use-media-query.ts`, `profile-page.tsx`, `cashier-checkout.tsx`, `loyalty-labels.ts`, `loyalty-program.ts`, `reward-form-dialog.tsx`, `use-wallet-unlock-animation.ts`, `card-editor.tsx`, `package.json`, `[id]/merchant-detail.tsx`, `statistiques-panel.tsx`, `card-editor-properties.tsx`, `interactive-loyalty-card.tsx`, `card-editor-polish.test.ts`, `qr-cache.ts`, `qa-login.ts`, `ref_next_link`, `@prisma/client`, `card-deck.tsx`, `merchants-list.tsx`, `types.ts`, `layout-shell.tsx`, `merchant-card-renderer.tsx`, `super-admin-session.ts`, `campagnes/ui.tsx`, `src/app/layout.tsx`, `landing-header.tsx`, `notifications-center.tsx`?**
-  _High betweenness centrality (0.132) - this node is a cross-community bridge._
+- **Why does `@prisma/client` connect `@prisma/client` to `customer-reward-progress.ts`, `lib/campaign-worker.ts`, `scan/ui.tsx`, `cards-index.tsx`, `merchant-card-template-service.ts`, `loyalty-commit.ts`, `loyalty-widget.ts`, `jsonError`, `card-editor-properties.tsx`, `jsonOk`, `session.ts`, `loyalty-service.ts`, `loyalty-reward-removal.ts`, `events/route.ts`, `profile-page.tsx`, `cashier-checkout.tsx`, `customer-loyalty-overview.ts`, `employee-invitation-service.ts`, `google-auth.ts`, `env.ts`, `loyalty-program.ts`, `advantages-ui.tsx`, `create-super-admin.ts`, `requireMerchantAdmin`, `card-editor.tsx`, `package.json`, `wallet-home.tsx`, `loyalty-program-publication.ts`, `qa-login.ts`, `google-wallet.ts`, `insight-stats.ts`, `ref_next_link`, `loyalty-service.test.ts`, `platform-stats.ts`, `programme/ui.tsx`, `webhook/route.ts`, `types.ts`, `qr.ts`, `merchant-card-renderer.tsx`, `super-admin-session.ts`, `rbac.ts`, `program/route.ts`, `api-guard.ts`, `employee-session.ts`, `customer-qr.ts`, `merchant-card-finish.test.ts`?**
+  _High betweenness centrality (0.170) - this node is a cross-community bridge._
+- **Why does `vitest` connect `vitest` to `customer-reward-progress.ts`, `lib/campaign-worker.ts`, `scan/ui.tsx`, `merchant-card-template-service.ts`, `customer-push-route.test.ts`, `react`, `loyalty-commit.ts`, `super-admin-campaign-moderation.test.ts`, `campaign-crud-routes.test.ts`, `fife-life/merchant-detail.tsx`, `loyalty-widget.ts`, `push-client.ts`, `insight-period.ts`, `card-editor-properties.tsx`, `loyalty-reward-removal.ts`, `loyalty-service.ts`, `loyalty-widget-view.tsx`, `wallet-hydration.test.tsx`, `resolveLandingAuthTargets`, `caisse-scan.test.ts`, `employee-invitation-service.ts`, `customer-loyalty-overview.ts`, `google-auth.ts`, `cashier-checkout.tsx`, `env.ts`, `profile-page.tsx`, `loyalty-program.ts`, `campaign-quota.test.ts`, `requireMerchantAdmin`, `card-editor.tsx`, `package.json`, `[id]/merchant-detail.tsx`, `statistiques-panel.tsx`, `media-storage.ts`, `loyalty-commit.test.ts`, `demo-routing.test.ts`, `wallet-home.tsx`, `loyalty-program-publication.ts`, `qa-login.ts`, `ref_node_path`, `email.ts`, `insight-stats.ts`, `loyalty-service.test.ts`, `api-merchant-statistics-route.test.ts`, `platform-stats.ts`, `google-wallet-appearance.ts`, `@prisma/client`, `webhook/route.ts`, `card-deck.tsx`, `caisse-scan.ts`, `unsubscribe-token.ts`, `[kind]/route.ts`, `qr.ts`, `merchant-card-renderer.tsx`, `ref_path`, `rbac.ts`, `campaign-worker.test.ts`, `api-guard.ts`, `campaign-confirm-route.test.ts`, `landing-page.test.ts`, `caisse-scan-route.test.ts`, `merchant-card-finish.test.ts`?**
+  _High betweenness centrality (0.136) - this node is a cross-community bridge._
+- **Why does `react` connect `react` to `customer-reward-progress.ts`, `card-template-schema.ts`, `scan/ui.tsx`, `cards-index.tsx`, `merchant-card-template-service.ts`, `discover-page.tsx`, `landing-faq.tsx`, `fife-life/merchant-detail.tsx`, `loyalty-widget-view.tsx`, `card-editor-properties.tsx`, `wallet-hydration.test.tsx`, `cn`, `use-media-query.ts`, `profile-page.tsx`, `cashier-checkout.tsx`, `qa-login/page.tsx`, `advantages-ui.tsx`, `card-editor.tsx`, `package.json`, `[id]/merchant-detail.tsx`, `statistiques-panel.tsx`, `card-enlarged-view.tsx`, `wallet-home.tsx`, `ref_next_link`, `programme/ui.tsx`, `@prisma/client`, `card-deck.tsx`, `merchants-list.tsx`, `types.ts`, `dashboard-home.tsx`, `merchant-card-renderer.tsx`, `super-admin-session.ts`, `campagnes/ui.tsx`, `src/app/layout.tsx`, `landing-header.tsx`, `notifications-center.tsx`?**
+  _High betweenness centrality (0.130) - this node is a cross-community bridge._
 - **What connects `examples`, `cards`, `deploy.sh script` to the rest of the system?**
   _761 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `card-template-schema.ts` be split into smaller, more focused modules?**
-  _Cohesion score 0.10160427807486631 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.10507246376811594 - nodes in this community are weakly interconnected._
 - **Should `scan/ui.tsx` be split into smaller, more focused modules?**
   _Cohesion score 0.06378378378378378 - nodes in this community are weakly interconnected._
 - **Should `merchant-card-template-service.ts` be split into smaller, more focused modules?**
-  _Cohesion score 0.07188778492109878 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.06050228310502283 - nodes in this community are weakly interconnected._

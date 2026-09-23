@@ -9,7 +9,6 @@ import type {
   CustomerMerchantRewardProgress,
   MerchantRewardProgressTarget,
 } from "@/lib/customer-reward-progress-types";
-import { progressLineForTarget } from "@/lib/customer-reward-progress-view";
 import { formatUnitCount } from "@/lib/loyalty-labels";
 import type { EvaluatedReward } from "@/lib/loyalty-rewards";
 
@@ -241,43 +240,44 @@ function TargetBlock({
   reduced: boolean;
   pulse: boolean;
 }) {
-  const toneClass =
-    target.visualState === "unlocked"
-      ? "reward-progress-unlocked"
-      : target.visualState === "almost"
-        ? "reward-progress-almost"
-        : "reward-progress-normal";
+  const unlocked = target.visualState === "unlocked";
 
   return (
-    <div className={`mt-3 rounded-2xl border p-4 ${toneClass}`}>
-      <div className="flex items-start gap-3">
-        <div className="reward-progress-icon grid h-10 w-10 shrink-0 place-items-center rounded-xl text-lg" aria-hidden>
-          {target.visualState === "unlocked" ? "✓" : "🎁"}
+    <div className="merchant-progress-block mt-3">
+      <div className="merchant-progress-top">
+        <span className={`merchant-progress-icon${unlocked ? " is-unlocked" : ""}`} aria-hidden>
+          {unlocked ? (
+            <svg className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+              <path d="M5 13l4 4L19 7" />
+            </svg>
+          ) : (
+            <svg className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <path d="M20 12v9H4v-9M2 7h20v5H2V7zm10 0v14M12 7a2.5 2.5 0 010-5C13.5 2 15 3.5 15 5a2.5 2.5 0 01-2.5 2h-.5zm0 0a2.5 2.5 0 000-5C10.5 2 9 3.5 9 5a2.5 2.5 0 002.5 2h.5z" />
+            </svg>
+          )}
+        </span>
+        <div className="merchant-progress-copy">
+          <p className="merchant-progress-kicker">{target.statusHeadline}</p>
+          <h3 className="merchant-progress-title">{target.name}</h3>
+          <p className="merchant-progress-desc">{target.statusText}</p>
         </div>
-        <div className="min-w-0 flex-1">
-          <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">
-            {target.statusHeadline}
-          </p>
-          <p className="mt-1 text-base font-bold text-[var(--ink)]">{target.name}</p>
-          <p className="mt-1 text-sm text-[var(--ink-soft)]">{progressLineForTarget(target)}</p>
-          {target.visualState !== "unlocked" ? (
-            <p className="mt-1 text-xs text-[var(--muted-strong)]">
-              Encore {formatUnitCount(target.remaining, target.unit)}
-            </p>
-          ) : null}
-          <p className="mt-2 text-sm font-medium text-[var(--ink-soft)]">{target.statusText}</p>
-        </div>
-        <span className="text-sm font-black tabular-nums text-[var(--violet-bright)]">{target.percent} %</span>
+        <span className="merchant-progress-count">
+          {target.current}/{target.threshold}
+        </span>
       </div>
 
-      <div className="reward-progress-track mt-4 h-2 overflow-hidden rounded-full">
+      <div className="merchant-progress-meter">
         <motion.div
-          className="reward-progress-fill h-full rounded-full"
+          className={`merchant-progress-meter-fill${unlocked ? " is-unlocked" : ""}`}
           initial={false}
           animate={{ width: `${target.percent}%` }}
           transition={reduced ? { duration: 0 } : { type: "spring", stiffness: 120, damping: 20 }}
           data-pulse={pulse ? "1" : "0"}
         />
+      </div>
+      <div className="merchant-progress-meter-labels">
+        <span>{formatUnitCount(target.current, target.unit)}</span>
+        <span>Objectif : {target.threshold}</span>
       </div>
     </div>
   );

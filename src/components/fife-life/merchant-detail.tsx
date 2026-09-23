@@ -466,21 +466,40 @@ Le commerçant se réserve le droit de modifier ou d'annuler le programme de fid
           >
           {/* Avantages : détail des récompenses du programme actif publié (canonique) */}
           <section className="merchant-advantages-block glass-panel mt-4 p-5">
-            <h2 className="section-title">Avantages</h2>
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="section-title">Avantages</h2>
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)]">
+                {rewards.length} avantage{rewards.length > 1 ? "s" : ""}
+              </span>
+            </div>
             {rewards.length ? (
-              <ul className="mt-4 divide-y divide-white/8">
-                {rewards.map((reward, idx) => (
-                  <li key={idx} className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0">
-                    <span className="text-sm font-semibold text-[var(--positive)]">
-                      {formatUnitCount(
-                        reward.threshold,
-                        reward.thresholdUnit === "points" ? "points" : "passages",
-                      )}
-                    </span>
-                    <span className="text-sm text-[var(--ink-soft)]">=</span>
-                    <span className="text-sm font-medium text-[var(--ink)]">{reward.reward}</span>
-                  </li>
-                ))}
+              <ul className="merchant-reward-list mt-4">
+                {rewards.map((reward, idx) => {
+                  const unit = reward.thresholdUnit === "points" ? "points" : "passages";
+                  const unlocked = card.points >= reward.threshold;
+                  return (
+                    <li key={idx} className="merchant-reward-row">
+                      <span className={`merchant-reward-level${unlocked ? " is-unlocked" : ""}`}>
+                        {unlocked ? (
+                          <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                            <path d="M5 13l4 4L19 7" />
+                          </svg>
+                        ) : (
+                          reward.threshold
+                        )}
+                      </span>
+                      <div className="min-w-0">
+                        <strong className="block text-sm font-semibold text-[var(--ink)]">{reward.reward}</strong>
+                        <span className="block text-xs text-[var(--muted)] mt-0.5">
+                          {unlocked ? "Débloqué" : `Débloqué après ${formatUnitCount(reward.threshold, unit)}`}
+                        </span>
+                      </div>
+                      <svg className="merchant-reward-chevron h-4 w-4 shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden>
+                        <path d="M9 18l6-6-6-6" />
+                      </svg>
+                    </li>
+                  );
+                })}
               </ul>
             ) : (
               <p className="mt-4 text-sm text-[var(--muted)]">
@@ -490,6 +509,43 @@ Le commerçant se réserve le droit de modifier ou d'annuler le programme de fid
               </p>
             )}
           </section>
+
+          {/* Localisation : adresse réelle du commerce, jamais de position inventée */}
+          {hasLocation && (
+            <section className="merchant-location-block glass-panel mt-4 overflow-hidden p-0">
+              <div className="merchant-mini-map" role="img" aria-label={`Localisation approximative de ${card.name}`}>
+                <span className="merchant-mini-map-road" />
+                <span className="merchant-mini-map-road is-second" />
+                <span className="merchant-mini-map-road is-third" />
+                <span className="merchant-mini-map-block is-one" />
+                <span className="merchant-mini-map-block is-two" />
+                <span className="merchant-mini-map-block is-three" />
+                <span className="merchant-mini-map-pin">
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                    <path d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                    <path d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                </span>
+              </div>
+              <div className="merchant-location-body">
+                <div className="min-w-0">
+                  <strong className="block text-sm font-semibold text-[var(--ink)]">{card.name}</strong>
+                  <span className="block text-xs text-[var(--muted)] mt-0.5">{fullAddress}</span>
+                </div>
+                <a
+                  href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(fullAddress ?? "")}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="merchant-route-btn"
+                >
+                  <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                    <path d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                  </svg>
+                  Itinéraire
+                </a>
+              </div>
+            </section>
+          )}
           </div>
 
           <div
@@ -671,43 +727,6 @@ Le commerçant se réserve le droit de modifier ou d'annuler le programme de fid
                     </span>
                   </a>
                 )}
-              </div>
-            </section>
-          )}
-
-          {/* Localisation : adresse réelle du commerce, jamais de position inventée */}
-          {hasLocation && (
-            <section className="merchant-location-block glass-panel mt-4 overflow-hidden p-0">
-              <div className="merchant-mini-map" role="img" aria-label={`Localisation approximative de ${card.name}`}>
-                <span className="merchant-mini-map-road" />
-                <span className="merchant-mini-map-road is-second" />
-                <span className="merchant-mini-map-road is-third" />
-                <span className="merchant-mini-map-block is-one" />
-                <span className="merchant-mini-map-block is-two" />
-                <span className="merchant-mini-map-block is-three" />
-                <span className="merchant-mini-map-pin">
-                  <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                    <path d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                    <path d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                </span>
-              </div>
-              <div className="merchant-location-body">
-                <div className="min-w-0">
-                  <strong className="block text-sm font-semibold text-[var(--ink)]">{card.name}</strong>
-                  <span className="block text-xs text-[var(--muted)] mt-0.5">{fullAddress}</span>
-                </div>
-                <a
-                  href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(fullAddress ?? "")}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="merchant-route-btn"
-                >
-                  <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                    <path d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                  </svg>
-                  Itinéraire
-                </a>
               </div>
             </section>
           )}

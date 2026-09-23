@@ -2208,46 +2208,93 @@ body:has(.wallet-shell) {
   border: 1px solid rgba(190, 164, 255, 0.16);
 }
 
-.reward-progress-normal {
-  border-color: rgba(133, 87, 255, 0.22);
-  background: rgba(133, 87, 255, 0.08);
+/* Bloc "Prochain avantage" : icône + texte + jauge sur une seule carte
+   plate, au plus près de la maquette fc-progress (pas de carte imbriquée). */
+.merchant-progress-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
 }
 
-.reward-progress-almost {
-  border-color: rgba(166, 139, 255, 0.38);
-  background:
-    radial-gradient(ellipse 90% 80% at 50% 0%, rgba(166, 139, 255, 0.22), transparent 70%),
-    rgba(112, 133, 255, 0.1);
-  box-shadow: 0 0 24px rgba(133, 87, 255, 0.16);
+.merchant-progress-icon {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  height: 2.625rem;
+  width: 2.625rem;
+  border-radius: 0.7rem;
+  background: light-dark(rgba(122, 69, 242, 0.1), rgba(133, 87, 255, 0.16));
+  color: var(--violet-bright);
 }
 
-.reward-progress-unlocked {
-  border-color: rgba(72, 214, 154, 0.42);
-  background:
-    radial-gradient(ellipse 90% 80% at 50% 0%, rgba(72, 214, 154, 0.24), transparent 70%),
-    rgba(36, 120, 86, 0.12);
-  box-shadow: 0 0 24px rgba(72, 214, 154, 0.18);
+.merchant-progress-icon.is-unlocked {
+  background: light-dark(rgba(47, 143, 87, 0.14), rgba(72, 214, 154, 0.2));
+  color: var(--positive);
 }
 
-.reward-progress-icon {
-  background: light-dark(rgba(106, 54, 224, 0.06), rgba(255, 255, 255, 0.06));
-  border: 1px solid light-dark(rgba(122, 69, 242, 0.14), rgba(255, 255, 255, 0.1));
+.merchant-progress-copy {
+  min-width: 0;
+  flex: 1;
 }
 
-.reward-progress-track {
+.merchant-progress-kicker {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.merchant-progress-title {
+  margin-top: 0.2rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.merchant-progress-desc {
+  margin-top: 0.2rem;
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+}
+
+.merchant-progress-count {
+  flex: 0 0 auto;
+  font-size: 0.9rem;
+  font-weight: 800;
+  white-space: nowrap;
+  color: var(--violet-bright);
+}
+
+.merchant-progress-meter {
+  margin-top: 0.9rem;
+  height: 6px;
+  border-radius: 999px;
+  overflow: hidden;
   background: light-dark(rgba(106, 54, 224, 0.1), rgba(255, 255, 255, 0.08));
 }
 
-.reward-progress-fill {
+.merchant-progress-meter-fill {
+  height: 100%;
+  border-radius: 999px;
   background: linear-gradient(90deg, rgba(133, 87, 255, 0.95), rgba(166, 139, 255, 0.95));
 }
 
-.reward-progress-unlocked .reward-progress-fill {
+.merchant-progress-meter-fill.is-unlocked {
   background: linear-gradient(90deg, rgba(72, 214, 154, 0.95), rgba(120, 236, 186, 0.95));
 }
 
-.reward-progress-fill[data-pulse="1"] {
+.merchant-progress-meter-fill[data-pulse="1"] {
   filter: brightness(1.15);
+}
+
+.merchant-progress-meter-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 0.45rem;
+  font-size: 0.7rem;
+  color: var(--muted);
 }
 
 .reward-use-btn {
@@ -2279,6 +2326,53 @@ body:has(.wallet-shell) {
 .delete-btn:hover:not(:disabled) {
   background: rgba(241, 93, 116, 0.15);
   border-color: rgba(241, 93, 116, 0.4);
+}
+
+/* Liste des avantages (onglet Avantages) : badge de seuil + libellé + chevron,
+   au plus près de la maquette (une seule carte glass, lignes séparées). */
+.merchant-reward-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.merchant-reward-row {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.8rem 0;
+  border-top: 1px solid light-dark(rgba(122, 69, 242, 0.1), rgba(255, 255, 255, 0.08));
+}
+
+.merchant-reward-row:first-child {
+  padding-top: 0.9rem;
+  border-top: 0;
+}
+
+.merchant-reward-row:last-child {
+  padding-bottom: 0;
+}
+
+.merchant-reward-level {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 2.2rem;
+  width: 2.2rem;
+  border-radius: 0.7rem;
+  background: light-dark(rgba(122, 69, 242, 0.1), rgba(133, 87, 255, 0.16));
+  color: var(--violet-bright);
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.merchant-reward-level.is-unlocked {
+  background: light-dark(rgba(47, 143, 87, 0.14), rgba(72, 214, 154, 0.2));
+  color: var(--positive);
+}
+
+.merchant-reward-chevron {
+  color: var(--muted);
 }
 
 /* Onglets de la fiche commerçant : Avantages / Activité / Informations —
