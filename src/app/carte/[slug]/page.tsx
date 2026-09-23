@@ -100,6 +100,14 @@ export default async function CardPage({
       visitsRequired: objective.visitsRequired,
       rewardLabel: objective.rewardLabel,
       loyaltyMode: loyaltyContext.mode,
+      addressLine1: membership.merchant.addressLine1,
+      addressLine2: membership.merchant.addressLine2,
+      postalCode: membership.merchant.postalCode,
+      city: membership.merchant.city,
+      country: membership.merchant.country,
+      website: membership.merchant.website,
+      publicPhone: membership.merchant.publicPhone,
+      publicEmail: membership.merchant.publicEmail,
     },
   ]);
 

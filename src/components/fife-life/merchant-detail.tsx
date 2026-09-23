@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import type { KeyboardEvent } from "react";
 import { MerchantCardRenderer } from "./merchant-card-renderer";
 import { CardEnlargedView } from "./card-enlarged-view";
 import type { CardHistoryItem, MerchantCardData, WalletEventPayload } from "./types";
@@ -33,6 +34,14 @@ type CustomerProgramView = ReturnType<typeof buildCustomerProgramView>;
 // `recentActivity` (ex. la page carte en mode démo) : effet → setState →
 // re-render → nouveau `[]` → effet à nouveau déclenché, etc.
 const EMPTY_RECENT_ACTIVITY: ActivityItem[] = [];
+
+const DETAIL_TABS = [
+  { id: "rewards", label: "Avantages" },
+  { id: "activity", label: "Activité" },
+  { id: "info", label: "Informations" },
+] as const;
+
+type DetailTabId = (typeof DETAIL_TABS)[number]["id"];
 
 export function MerchantCardDetail({
   slug,
@@ -75,7 +84,20 @@ export function MerchantCardDetail({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [conditionsExpanded, setConditionsExpanded] = useState(false);
+  const [activeTab, setActiveTab] = useState<DetailTabId>("rewards");
+  const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const { qrSrc: personalizedQr, qrFailed, reload: reloadQr } = usePersonalizedQr(!preview);
+
+  const handleTabKeyDown = useCallback((event: KeyboardEvent<HTMLButtonElement>, index: number) => {
+    if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") return;
+    event.preventDefault();
+    const nextIndex =
+      event.key === "ArrowRight"
+        ? (index + 1) % DETAIL_TABS.length
+        : (index - 1 + DETAIL_TABS.length) % DETAIL_TABS.length;
+    setActiveTab(DETAIL_TABS[nextIndex].id);
+    tabRefs.current[nextIndex]?.focus();
+  }, []);
 
   const mode = programView?.mode ?? card.loyaltyMode ?? "VISITS";
   // En présence d'un programView réel (client connecté), l'existence d'un
@@ -287,12 +309,17 @@ Les récompenses doivent être utilisées dans les 30 jours suivant leur obtenti
 
 Le commerçant se réserve le droit de modifier ou d'annuler le programme de fidélité à tout moment.`;
 
+  // Coordonnées réelles du commerce (super-admin) — jamais de valeur fabriquée.
+  const streetLine = [card.addressLine1, card.addressLine2].filter(Boolean).join(", ");
+  const cityLine = [card.postalCode, card.city].filter(Boolean).join(" ");
+  const fullAddress = [streetLine, cityLine].filter(Boolean).join(", ") || null;
+  const hasLocation = Boolean(fullAddress);
   const merchantInfo = {
-    address: card.logoUrl ? "12 Rue de la République, 75001 Paris" : null,
-    phone: card.logoUrl ? "+33 1 23 45 67 89" : null,
-    email: card.logoUrl ? `contact@${slug}.fr` : null,
-    website: card.logoUrl ? `https://${slug}.fr` : null,
+    phone: card.publicPhone || null,
+    email: card.publicEmail || null,
+    website: card.website || null,
   };
+  const hasContactInfo = Boolean(merchantInfo.phone || merchantInfo.email || merchantInfo.website);
 
   return (
     <>
@@ -409,6 +436,34 @@ Le commerçant se réserve le droit de modifier ou d'annuler le programme de fid
           </div>
 
           <div className="merchant-side-panel">
+          <nav className="merchant-tabs" role="tablist" aria-label="Sections de la carte">
+            {DETAIL_TABS.map((tab, index) => (
+              <button
+                key={tab.id}
+                ref={(el) => {
+                  tabRefs.current[index] = el;
+                }}
+                type="button"
+                role="tab"
+                id={`merchant-tab-${tab.id}`}
+                aria-selected={activeTab === tab.id}
+                aria-controls={`merchant-panel-${tab.id}`}
+                tabIndex={activeTab === tab.id ? 0 : -1}
+                className={`merchant-tab${activeTab === tab.id ? " is-active" : ""}`}
+                onClick={() => setActiveTab(tab.id)}
+                onKeyDown={(event) => handleTabKeyDown(event, index)}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </nav>
+
+          <div
+            id="merchant-panel-rewards"
+            role="tabpanel"
+            aria-labelledby="merchant-tab-rewards"
+            hidden={activeTab !== "rewards"}
+          >
           {/* Avantages : détail des récompenses du programme actif publié (canonique) */}
           <section className="merchant-advantages-block glass-panel mt-4 p-5">
             <h2 className="section-title">Avantages</h2>
@@ -435,7 +490,14 @@ Le commerçant se réserve le droit de modifier ou d'annuler le programme de fid
               </p>
             )}
           </section>
+          </div>
 
+          <div
+            id="merchant-panel-activity"
+            role="tabpanel"
+            aria-labelledby="merchant-tab-activity"
+            hidden={activeTab !== "activity"}
+          >
           <section className="merchant-activity-block glass-panel mt-4 p-5">
             <h2 className="section-title">Activité récente</h2>
             {overviewError ? (
@@ -483,17 +545,6 @@ Le commerçant se réserve le droit de modifier ou d'annuler le programme de fid
                 ) : null}
               </>
             )}
-          </section>
-
-          <section className="merchant-program-block glass-panel mt-4 p-5">
-            <h2 className="section-title">Programme</h2>
-            <div className="mt-3 space-y-1 text-sm text-[var(--ink-soft)]">
-              <p className="font-semibold text-[var(--ink)]">
-                {programView?.programTitle ?? (mode === "FIXED_POINTS" ? "Points fixes par achat" : "Programme fidélité")}
-              </p>
-              {programView?.programDescription ? <p>{programView.programDescription}</p> : null}
-              {programView?.minimumPurchaseLabel ? <p>{programView.minimumPurchaseLabel}</p> : null}
-            </div>
           </section>
 
           {/* History section */}
@@ -544,6 +595,24 @@ Le commerçant se réserve le droit de modifier ou d'annuler le programme de fid
             )}
           </section>
           ) : null}
+          </div>
+
+          <div
+            id="merchant-panel-info"
+            role="tabpanel"
+            aria-labelledby="merchant-tab-info"
+            hidden={activeTab !== "info"}
+          >
+          <section className="merchant-program-block glass-panel mt-4 p-5">
+            <h2 className="section-title">Programme</h2>
+            <div className="mt-3 space-y-1 text-sm text-[var(--ink-soft)]">
+              <p className="font-semibold text-[var(--ink)]">
+                {programView?.programTitle ?? (mode === "FIXED_POINTS" ? "Points fixes par achat" : "Programme fidélité")}
+              </p>
+              {programView?.programDescription ? <p>{programView.programDescription}</p> : null}
+              {programView?.minimumPurchaseLabel ? <p>{programView.minimumPurchaseLabel}</p> : null}
+            </div>
+          </section>
 
           {/* Conditions section */}
           <section className="merchant-conditions-block glass-panel mt-4 p-5">
@@ -563,26 +632,10 @@ Le commerçant se réserve le droit de modifier ou d'annuler le programme de fid
           </section>
 
           {/* Merchant info section */}
-          {(merchantInfo.address || merchantInfo.phone || merchantInfo.email || merchantInfo.website) && (
+          {hasContactInfo && (
             <section className="merchant-info-block glass-panel mt-4 p-5">
               <h2 className="section-title">Informations</h2>
               <div className="mt-4 space-y-3">
-                {merchantInfo.address && (
-                  <a
-                    href={`https://maps.google.com/?q=${encodeURIComponent(merchantInfo.address)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="merchant-info-row group"
-                  >
-                    <svg className="h-5 w-5 text-[var(--muted)]" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                      <path d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                      <path d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                    <span className="text-sm text-[var(--ink-soft)] group-hover:text-[var(--violet-bright)]">
-                      {merchantInfo.address}
-                    </span>
-                  </a>
-                )}
                 {merchantInfo.phone && (
                   <a href={`tel:${merchantInfo.phone}`} className="merchant-info-row group">
                     <svg className="h-5 w-5 text-[var(--muted)]" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
@@ -618,6 +671,43 @@ Le commerçant se réserve le droit de modifier ou d'annuler le programme de fid
                     </span>
                   </a>
                 )}
+              </div>
+            </section>
+          )}
+
+          {/* Localisation : adresse réelle du commerce, jamais de position inventée */}
+          {hasLocation && (
+            <section className="merchant-location-block glass-panel mt-4 overflow-hidden p-0">
+              <div className="merchant-mini-map" role="img" aria-label={`Localisation approximative de ${card.name}`}>
+                <span className="merchant-mini-map-road" />
+                <span className="merchant-mini-map-road is-second" />
+                <span className="merchant-mini-map-road is-third" />
+                <span className="merchant-mini-map-block is-one" />
+                <span className="merchant-mini-map-block is-two" />
+                <span className="merchant-mini-map-block is-three" />
+                <span className="merchant-mini-map-pin">
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                    <path d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                    <path d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                </span>
+              </div>
+              <div className="merchant-location-body">
+                <div className="min-w-0">
+                  <strong className="block text-sm font-semibold text-[var(--ink)]">{card.name}</strong>
+                  <span className="block text-xs text-[var(--muted)] mt-0.5">{fullAddress}</span>
+                </div>
+                <a
+                  href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(fullAddress ?? "")}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="merchant-route-btn"
+                >
+                  <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                    <path d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                  </svg>
+                  Itinéraire
+                </a>
               </div>
             </section>
           )}
@@ -663,6 +753,7 @@ Le commerçant se réserve le droit de modifier ou d'annuler le programme de fid
               </div>
             )}
           </section>
+          </div>
           </div>
         </div>
       </main>

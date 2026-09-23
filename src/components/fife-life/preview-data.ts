@@ -166,6 +166,12 @@ export const PREVIEW_CARDS: MerchantCardData[] = [
     points: 7,
     visitsRequired: 10,
     rewardLabel: "1 boisson offerte",
+    addressLine1: "12 Rue du Commerce",
+    postalCode: "75015",
+    city: "Paris",
+    country: "FR",
+    website: "https://cafe-demo.fr",
+    publicPhone: "+33 1 23 45 67 89",
   },
   {
     id: "preview-hotel",

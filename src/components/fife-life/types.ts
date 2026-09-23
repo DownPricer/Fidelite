@@ -25,6 +25,15 @@ export type MerchantCardData = {
   cardTemplateUsedFallback?: boolean;
   /** Niveau Fidelo pour l’image statique en mode démo. */
   demoTier?: WalletTier;
+  /** Coordonnées réelles du commerce, si renseignées côté super-admin. */
+  addressLine1?: string | null;
+  addressLine2?: string | null;
+  postalCode?: string | null;
+  city?: string | null;
+  country?: string | null;
+  website?: string | null;
+  publicPhone?: string | null;
+  publicEmail?: string | null;
 };
 
 export type CardHistoryItem = {

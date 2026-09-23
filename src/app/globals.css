@@ -2281,6 +2281,151 @@ body:has(.wallet-shell) {
   border-color: rgba(241, 93, 116, 0.4);
 }
 
+/* Onglets de la fiche commerçant : Avantages / Activité / Informations —
+   un seul panneau visible à la fois pour éviter une page mobile sans fin. */
+.merchant-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.25rem;
+  margin-top: 1.25rem;
+  padding: 0.3rem;
+  border-radius: 1.1rem;
+  background: light-dark(rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0.04));
+  backdrop-filter: blur(18px) saturate(1.3);
+  border: 1px solid light-dark(rgba(122, 69, 242, 0.14), rgba(255, 255, 255, 0.1));
+}
+
+.merchant-tab {
+  min-height: 42px;
+  border-radius: 0.85rem;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 700;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.merchant-tab.is-active {
+  background: light-dark(rgba(255, 255, 255, 0.85), rgba(133, 87, 255, 0.22));
+  color: var(--ink);
+  box-shadow: 0 4px 14px light-dark(rgba(76, 46, 148, 0.14), rgba(0, 0, 0, 0.3));
+}
+
+.merchant-tab:focus-visible {
+  outline: 2px solid var(--violet-bright);
+  outline-offset: 2px;
+}
+
+/* Mini-carte décorative + adresse réelle du commerce */
+.merchant-mini-map {
+  position: relative;
+  height: 116px;
+  overflow: hidden;
+  background: light-dark(#dfe6df, #201a2f);
+}
+
+.merchant-mini-map-road {
+  position: absolute;
+  top: 46px;
+  left: -18px;
+  width: 260px;
+  height: 12px;
+  border-radius: 999px;
+  background: light-dark(#fff, #3a3350);
+  transform: rotate(-12deg);
+}
+
+.merchant-mini-map-road.is-second {
+  top: 21px;
+  left: 128px;
+  width: 180px;
+  height: 9px;
+  transform: rotate(72deg);
+}
+
+.merchant-mini-map-road.is-third {
+  top: 91px;
+  left: 4px;
+  width: 180px;
+  height: 7px;
+  transform: rotate(18deg);
+}
+
+.merchant-mini-map-block {
+  position: absolute;
+  width: 54px;
+  height: 27px;
+  border-radius: 7px;
+  background: light-dark(#cbd7cc, #362f47);
+}
+
+.merchant-mini-map-block.is-one {
+  top: 8px;
+  left: 25px;
+}
+
+.merchant-mini-map-block.is-two {
+  top: 66px;
+  left: 84px;
+  width: 42px;
+}
+
+.merchant-mini-map-block.is-three {
+  top: 68px;
+  right: 21px;
+  width: 64px;
+}
+
+.merchant-mini-map-pin {
+  position: absolute;
+  top: 44%;
+  left: 53%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50% 50% 50% 0;
+  border: 3px solid #fff;
+  background: var(--violet-bright);
+  color: #fff;
+  box-shadow: 0 7px 18px rgba(54, 24, 91, 0.28);
+  transform: rotate(-45deg);
+}
+
+.merchant-mini-map-pin svg {
+  transform: rotate(45deg);
+}
+
+.merchant-location-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.85rem;
+}
+
+.merchant-route-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 36px;
+  padding: 0 0.7rem;
+  border-radius: 0.65rem;
+  border: 0;
+  background: light-dark(rgba(122, 69, 242, 0.12), rgba(133, 87, 255, 0.18));
+  color: var(--violet-bright);
+  font-size: 0.7rem;
+  font-weight: 700;
+  white-space: nowrap;
+  transition: background 0.2s ease;
+}
+
+.merchant-route-btn:hover {
+  background: light-dark(rgba(122, 69, 242, 0.2), rgba(133, 87, 255, 0.28));
+}
+
 .sheet-filter {
   border: 1px solid rgba(190, 164, 255, 0.22);
   background: light-dark(rgba(106, 54, 224, 0.05), rgba(255, 255, 255, 0.04));
