@@ -351,6 +351,8 @@ model Merchant {
 
   program             LoyaltyProgram?
   memberships         MerchantMembership[]
+  marketingBalance    MarketingBalance?
+  marketingLedger     MarketingLedgerEntry[]
   customerMemberships CustomerMembership[]
   transactions        LoyaltyTransaction[]
   auditLogs           AuditLog[]
@@ -937,6 +939,7 @@ model Campaign {
   payment    CampaignPayment?
   deliveries CampaignDelivery[]
   adRequest  AdRequest?
+  ledgerEntry MarketingLedgerEntry?
 
   @@index([merchantId, status])
   @@index([status, scheduledAt])
@@ -975,6 +978,52 @@ model CampaignPayment {
   campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
 
   @@index([merchantId, status])
+}
+
+enum MarketingLedgerType {
+  TOPUP
+  DEBIT
+  REFUND
+}
+
+enum MarketingLedgerStatus {
+  PENDING
+  PAID
+  FAILED
+  CANCELLED
+}
+
+/// Solde marketing prépayé par commerce (centimes entiers, jamais négatif — CHECK en base).
+model MarketingBalance {
+  merchantId   String   @id
+  balanceCents Int      @default(0)
+  updatedAt    DateTime @updatedAt
+
+  merchant Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+}
+
+/// Historique des recharges (TOPUP), débits d'envoi (DEBIT) et restitutions avant diffusion (REFUND).
+/// `campaignId` unique : un envoi ne peut être débité qu'une fois. `stripeCheckoutSessionId` unique :
+/// une recharge ne peut être créditée qu'une fois. `reversalOfId` unique : un débit n'est restitué qu'une fois.
+model MarketingLedgerEntry {
+  id                      String                @id @default(cuid())
+  merchantId              String
+  type                    MarketingLedgerType
+  status                  MarketingLedgerStatus @default(PAID)
+  /// Toujours positif ; le signe est porté par `type`.
+  amountCents             Int
+  balanceAfterCents       Int?
+  campaignId              String?               @unique
+  reversalOfId            String?               @unique
+  stripeCheckoutSessionId String?               @unique
+  stripePaymentIntentId   String?
+  description             String
+  createdAt               DateTime              @default(now())
+
+  merchant Merchant  @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  campaign Campaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+
+  @@index([merchantId, createdAt])
 }
 
 /// Idempotence des webhooks Stripe : un id d'événement Stripe n'est jamais traité deux fois.

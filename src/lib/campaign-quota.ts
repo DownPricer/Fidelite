@@ -20,15 +20,7 @@ export const INCLUDED_QUOTAS: Record<PlanTier, Partial<Record<CampaignQuotaKind,
   },
 };
 
-/** Tarifs serveur en centimes (Partie 8) — jamais transmis ni acceptés depuis le navigateur. */
-export const CAMPAIGN_PRICE_CENTS = {
-  MEMBER_NOTIFICATION: 500,
-  MEMBER_EMAIL: 300,
-  NETWORK_NOTIFICATION: 1500,
-  NETWORK_EMAIL: 1200,
-  SPONSORED_AD_BASE_7_DAYS: 1900,
-  SPONSORED_AD_EXTRA_DAY: 300,
-} as const;
+export { CAMPAIGN_PRICE_CENTS } from "./campaign-prices";
 
 export function includedQuotaFor(tier: PlanTier, kind: CampaignQuotaKind): number {
   return INCLUDED_QUOTAS[tier][kind] ?? 0;
@@ -87,9 +79,10 @@ export class QuotaExceededError extends Error {
  */
 export async function tryConsumeIncludedQuota(
   tx: Prisma.TransactionClient,
-  input: { merchantId: string; kind: CampaignQuotaKind; periodKey: string; limit: number },
+  input: { merchantId: string; kind: CampaignQuotaKind; periodKey: string; limit: number; amount?: number },
 ): Promise<boolean> {
-  if (input.limit <= 0) return false;
+  const amount = input.amount ?? 1;
+  if (input.limit <= 0 || amount <= 0 || amount > input.limit) return false;
 
   await tx.campaignQuotaUsage.upsert({
     where: {
@@ -105,11 +98,11 @@ export async function tryConsumeIncludedQuota(
 
   const updated = await tx.$executeRaw`
     UPDATE "CampaignQuotaUsage"
-    SET "count" = "count" + 1, "updatedAt" = now()
+    SET "count" = "count" + ${amount}, "updatedAt" = now()
     WHERE "merchantId" = ${input.merchantId}
       AND "kind" = ${input.kind}::"CampaignQuotaKind"
       AND "periodKey" = ${input.periodKey}
-      AND "count" < ${input.limit}
+      AND "count" + ${amount} <= ${input.limit}
   `;
 
   return updated > 0;

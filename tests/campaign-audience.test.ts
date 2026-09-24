@@ -56,7 +56,7 @@ describe("estimateMerchantMembersAudience", () => {
 
 describe("estimateNetworkLocalAudience", () => {
   it("zéro audience sans adresse commerce exploitable (jamais de coordonnées inventées)", async () => {
-    const result = await estimateNetworkLocalAudience({ city: null, postalCode: null }, "IN_APP_PUSH");
+    const result = await estimateNetworkLocalAudience({ id: "m1", city: null, postalCode: null }, "IN_APP_PUSH");
     expect(result.totalInAudience).toBe(0);
     expect(customerPreferencesFindMany).not.toHaveBeenCalled();
   });
@@ -66,7 +66,7 @@ describe("estimateNetworkLocalAudience", () => {
       { notifyFifeLifeNews: true, adsNetworkPush: true, adsNetworkEmail: false },
       { notifyFifeLifeNews: false, adsNetworkPush: false, adsNetworkEmail: true },
     ]);
-    const result = await estimateNetworkLocalAudience({ city: "Lyon", postalCode: "69001" }, "EMAIL");
+    const result = await estimateNetworkLocalAudience({ id: "m1", city: "Lyon", postalCode: "69001" }, "EMAIL");
     expect(result.emailConsented).toBe(1);
     expect(result.estimatedRecipients).toBe(1);
     expect(customerPreferencesFindMany).toHaveBeenCalledWith(
@@ -75,6 +75,26 @@ describe("estimateNetworkLocalAudience", () => {
           OR: [{ marketingZonePostalCode: "69001" }, { marketingZoneCity: { equals: "Lyon", mode: "insensitive" } }],
         }),
       }),
+    );
+  });
+
+  it("e-mail réseau = prospects : exclut les clients qui possèdent déjà la carte du commerce", async () => {
+    customerPreferencesFindMany.mockResolvedValueOnce([]);
+    await estimateNetworkLocalAudience({ id: "m1", city: "Lyon", postalCode: "69001" }, "EMAIL");
+    expect(customerPreferencesFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          user: { isActive: true, customerMemberships: { none: { merchantId: "m1", removedAt: null } } },
+        }),
+      }),
+    );
+  });
+
+  it("notification secteur : clients avec ou sans la carte (aucune exclusion)", async () => {
+    customerPreferencesFindMany.mockResolvedValueOnce([]);
+    await estimateNetworkLocalAudience({ id: "m1", city: "Lyon", postalCode: "69001" }, "IN_APP_PUSH");
+    expect(customerPreferencesFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ user: { isActive: true } }) }),
     );
   });
 });

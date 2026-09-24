@@ -39,7 +39,7 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
 
   if (!pricing.requiresPayment) {
     const consumed = await prisma.$transaction(async (tx) => {
-      const ok = await consumeQuotaForCampaign(tx, { merchantId, kind: "SPONSORED_DAY", periodKey, limit });
+      const ok = await consumeQuotaForCampaign(tx, { merchantId, kind: "SPONSORED_DAY", periodKey, limit, amount: days });
       if (!ok) return false;
       await tx.campaign.update({
         where: { id: adRequest.campaign!.id },
@@ -62,7 +62,8 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
       merchantId,
       campaignType: "SPONSORED_AD",
       amountCents: pricing.priceCents,
-      description: `Publicité sponsorisée Fidelo — ${days} jours`,
+      quantity: days,
+      description: `Mise en avant Fidelo — ${days} jour${days > 1 ? "s" : ""} (5 € / jour)`,
       successUrl: `${env.appUrl}/app/campagnes/${adRequest.campaign.id}?paid=1`,
       cancelUrl: `${env.appUrl}/app/campagnes/${adRequest.campaign.id}?cancelled=1`,
     });
@@ -78,13 +79,23 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
   }
 
   await prisma.$transaction(async (tx) => {
-    await tx.campaignPayment.create({
-      data: {
+    // upsert : un paiement abandonné/annulé/expiré peut être relancé avec une nouvelle session.
+    // Le webhook ne prend en compte que la session enregistrée ici.
+    await tx.campaignPayment.upsert({
+      where: { campaignId: adRequest.campaign!.id },
+      create: {
         campaignId: adRequest.campaign!.id,
         merchantId,
         amountCents: pricing.priceCents,
         status: "PENDING",
         stripeCheckoutSessionId: checkoutSessionId,
+      },
+      update: {
+        amountCents: pricing.priceCents,
+        status: "PENDING",
+        failureReason: null,
+        stripeCheckoutSessionId: checkoutSessionId,
+        stripePaymentIntentId: null,
       },
     });
     await tx.campaign.update({

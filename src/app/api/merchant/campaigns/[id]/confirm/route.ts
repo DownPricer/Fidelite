@@ -4,18 +4,17 @@ import { statusAfterFundingConfirmed } from "@/lib/campaign-lifecycle";
 import { consumeQuotaForCampaign, priceMemberOrNetworkCampaign } from "@/lib/campaign-pricing";
 import { calendarPeriodKeyEuropeParis, getQuotaUsage, includedQuotaFor, resolvePlanTier } from "@/lib/campaign-quota";
 import { writeAudit } from "@/lib/audit";
-import { env } from "@/lib/env";
 import { clientIp, jsonError, jsonOk, userAgent } from "@/lib/http";
 import { prisma } from "@/lib/prisma";
-import { StripeNotConfiguredError, createCampaignCheckoutSession } from "@/lib/stripe";
+import { debitForCampaign, getMarketingBalanceCents } from "@/lib/marketing-balance";
 import { LIMITS, rateLimit } from "@/lib/rate-limit";
 
 /**
  * Confirme l'envoi d'une campagne (Partie 7.4 → 9) : tarif et quota recalculés
  * intégralement côté serveur à cet instant précis (jamais de valeur reçue du
- * navigateur), consommation atomique du quota si couverte, sinon création d'une
- * session Stripe Checkout. Aucun envoi ne part avant confirmation serveur du paiement
- * (voir le webhook), et une campagne réseau/publicité passe toujours par la modération.
+ * navigateur), consommation atomique du quota si couverte, sinon débit atomique du solde
+ * marketing prépayé (rechargé via Stripe Checkout + webhook signé, voir /api/merchant/marketing-balance).
+ * Solde insuffisant = 402, rien n'est écrit. Une campagne réseau passe toujours par la modération.
  */
 export async function POST(req: Request, context: { params: Promise<{ id: string }> }) {
   const csrf = await requireMutatingRequest(req);
@@ -112,62 +111,62 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
     return jsonOk({ ok: true, requiresPayment: false, status: outcome.campaign.status });
   }
 
-  // Payant : créer la session Stripe AVANT toute écriture (échec Stripe = aucune écriture en base).
-  let checkoutUrl: string | null;
-  let checkoutSessionId: string;
+  // Payant : débit atomique du solde marketing prépayé, dans la même transaction que le
+  // passage en statut confirmé. Solde insuffisant = aucune écriture, aucun envoi.
+  class InsufficientBalance extends Error {}
+  const balanceBefore = await getMarketingBalanceCents(merchantId);
   try {
-    const session = await createCampaignCheckoutSession({
-      campaignId: campaign.id,
-      merchantId,
-      campaignType: `${campaign.channel}_${campaign.audienceType}`,
-      amountCents: pricing.priceCents,
-      description: `Campagne Fidelo — ${campaign.title.slice(0, 80)}`,
-      successUrl: `${env.appUrl}/app/campagnes/${campaign.id}?paid=1`,
-      cancelUrl: `${env.appUrl}/app/campagnes/${campaign.id}?cancelled=1`,
-    });
-    checkoutUrl = session.url;
-    checkoutSessionId = session.id;
-  } catch (error) {
-    if (error instanceof StripeNotConfiguredError) {
-      return jsonError(
-        "Les achats de campagnes ne sont pas disponibles : Stripe n'est pas configuré sur cet environnement.",
-        503,
-        { code: "STRIPE_NOT_CONFIGURED" },
-      );
-    }
-    console.error("[campaign-confirm] échec de création de la session Stripe", error);
-    return jsonError("Impossible de démarrer le paiement.", 502);
-  }
+    const outcome = await prisma.$transaction(async (tx) => {
+      // Réclamation atomique : seule la requête qui fait passer DRAFT → confirmée poursuit,
+      // ce qui rend le débit unique même si la confirmation est rejouée ou concurrente.
+      const claimed = await tx.campaign.updateMany({
+        where: { id: campaign.id, status: "DRAFT" },
+        data: {
+          status: statusAfterFundingConfirmed({ channel: campaign.channel, audienceType: campaign.audienceType }),
+          estimatedRecipients: audience.estimatedRecipients,
+          priceCents: pricing.priceCents,
+          requiresPayment: true,
+        },
+      });
+      if (claimed.count === 0) return { claimed: false as const };
 
-  await prisma.$transaction(async (tx) => {
-    await tx.campaignPayment.create({
-      data: {
-        campaignId: campaign.id,
+      const debit = await debitForCampaign(tx, {
         merchantId,
+        campaignId: campaign.id,
         amountCents: pricing.priceCents,
-        status: "PENDING",
-        stripeCheckoutSessionId: checkoutSessionId,
-      },
+        description: `Envoi — ${campaign.title.slice(0, 80)}`,
+      });
+      if (!debit.ok) throw new InsufficientBalance();
+      return { claimed: true as const, balanceAfterCents: debit.balanceAfterCents };
     });
-    await tx.campaign.update({
-      where: { id: campaign.id },
-      data: {
-        status: "PAYMENT_REQUIRED",
-        estimatedRecipients: audience.estimatedRecipients,
-        priceCents: pricing.priceCents,
-        requiresPayment: true,
-      },
+
+    if (!outcome.claimed) {
+      return jsonError("Cette campagne a déjà été confirmée.", 409, { code: "ALREADY_CONFIRMED" });
+    }
+
+    await writeAudit({
+      actorId: staff.user.id,
+      merchantId,
+      action: "CAMPAIGN_CONFIRMED_BALANCE",
+      metadata: { campaignId: campaign.id, amountCents: pricing.priceCents, balanceAfterCents: outcome.balanceAfterCents },
+      ip: clientIp(req),
+      userAgent: userAgent(req),
     });
-  });
 
-  await writeAudit({
-    actorId: staff.user.id,
-    merchantId,
-    action: "CAMPAIGN_CHECKOUT_CREATED",
-    metadata: { campaignId: campaign.id, amountCents: pricing.priceCents, stripeCheckoutSessionId: checkoutSessionId },
-    ip: clientIp(req),
-    userAgent: userAgent(req),
-  });
-
-  return jsonOk({ ok: true, requiresPayment: true, checkoutUrl, amountCents: pricing.priceCents });
+    return jsonOk({
+      ok: true,
+      requiresPayment: true,
+      amountCents: pricing.priceCents,
+      balanceAfterCents: outcome.balanceAfterCents,
+    });
+  } catch (error) {
+    if (error instanceof InsufficientBalance) {
+      return jsonError("Solde marketing insuffisant. Rechargez votre solde pour envoyer cette campagne.", 402, {
+        code: "INSUFFICIENT_BALANCE",
+        balanceCents: balanceBefore,
+        requiredCents: pricing.priceCents,
+      });
+    }
+    throw error;
+  }
 }

@@ -1,6 +1,7 @@
 import type Stripe from "stripe";
 import { statusAfterFundingConfirmed } from "@/lib/campaign-lifecycle";
 import { refundIncludedQuota } from "@/lib/campaign-quota";
+import { creditTopup } from "@/lib/marketing-balance";
 import { writeAudit } from "@/lib/audit";
 import { jsonError, jsonOk } from "@/lib/http";
 import { prisma } from "@/lib/prisma";
@@ -38,6 +39,9 @@ export async function POST(req: Request) {
     await handleStripeEvent(event);
   } catch (error) {
     console.error("[stripe-webhook] échec de traitement", event.type, error instanceof Error ? error.message : error);
+    // Libère l'événement pour que le rejeu automatique de Stripe puisse le retraiter
+    // (les handlers sont idempotents par états gardés : aucun double crédit possible).
+    await prisma.stripeWebhookEvent.delete({ where: { id: event.id } }).catch(() => undefined);
     return jsonError("Erreur de traitement du webhook.", 500);
   }
 
@@ -59,13 +63,47 @@ async function handleStripeEvent(event: Stripe.Event) {
   }
 }
 
+function paymentIntentIdOf(session: Stripe.Checkout.Session) {
+  return typeof session.payment_intent === "string" ? session.payment_intent : (session.payment_intent?.id ?? null);
+}
+
 async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) {
+  // Rien n'est crédité ni activé tant que Stripe ne confirme pas un paiement encaissé.
+  if (session.payment_status !== "paid") return;
+
+  if (session.metadata?.kind === "MARKETING_TOPUP") {
+    await prisma.$transaction(async (tx) => {
+      const result = await creditTopup(tx, {
+        checkoutSessionId: session.id,
+        paymentIntentId: paymentIntentIdOf(session),
+        amountPaidCents: session.amount_total ?? null,
+      });
+      if (result === "amount_mismatch") {
+        throw new Error("Montant Stripe différent du montant de la recharge enregistrée.");
+      }
+      if (result === "credited") {
+        await writeAudit({
+          actorId: null,
+          merchantId: session.metadata?.merchantId ?? null,
+          action: "MARKETING_TOPUP_PAID",
+          metadata: { stripeCheckoutSessionId: session.id, amountCents: session.amount_total },
+        });
+      }
+    });
+    return;
+  }
+
   const campaignId = session.metadata?.campaignId;
   if (!campaignId) return;
 
   await prisma.$transaction(async (tx) => {
     const payment = await tx.campaignPayment.findUnique({ where: { campaignId } });
     if (!payment || payment.status === "PAID") return;
+    // Session obsolète (paiement relancé avec une nouvelle session) ou montant inattendu : on n'active rien.
+    if (payment.stripeCheckoutSessionId !== session.id) return;
+    if (session.amount_total !== payment.amountCents) {
+      throw new Error("Montant Stripe différent du montant de la campagne enregistré.");
+    }
 
     const campaign = await tx.campaign.findUnique({ where: { id: campaignId } });
     if (!campaign) return;
@@ -75,8 +113,7 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
       data: {
         status: "PAID",
         paidAt: new Date(),
-        stripePaymentIntentId:
-          typeof session.payment_intent === "string" ? session.payment_intent : (session.payment_intent?.id ?? null),
+        stripePaymentIntentId: paymentIntentIdOf(session),
       },
     });
 
@@ -106,19 +143,40 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
 }
 
 async function handleCheckoutSessionExpired(session: Stripe.Checkout.Session) {
+  if (session.metadata?.kind === "MARKETING_TOPUP") {
+    await prisma.marketingLedgerEntry.updateMany({
+      where: { stripeCheckoutSessionId: session.id, type: "TOPUP", status: "PENDING" },
+      data: { status: "CANCELLED" },
+    });
+    return;
+  }
+
   const campaignId = session.metadata?.campaignId;
   if (!campaignId) return;
 
   await prisma.$transaction(async (tx) => {
     const payment = await tx.campaignPayment.findUnique({ where: { campaignId } });
-    if (!payment || payment.status !== "PENDING") return;
+    if (!payment || payment.status !== "PENDING" || payment.stripeCheckoutSessionId !== session.id) return;
 
     await tx.campaignPayment.update({ where: { id: payment.id }, data: { status: "CANCELLED" } });
-    await tx.campaign.update({ where: { id: campaignId }, data: { status: "CANCELLED" } });
+    // Une mise en avant reste « à payer » (relançable) ; rien n'est activé.
+    if (session.metadata?.campaignType !== "SPONSORED_AD") {
+      await tx.campaign.update({ where: { id: campaignId }, data: { status: "CANCELLED" } });
+    }
   });
 }
 
 async function handlePaymentIntentFailed(paymentIntent: Stripe.PaymentIntent) {
+  if (paymentIntent.metadata?.kind === "MARKETING_TOPUP") {
+    const ledgerEntryId = paymentIntent.metadata.ledgerEntryId;
+    if (!ledgerEntryId) return;
+    await prisma.marketingLedgerEntry.updateMany({
+      where: { id: ledgerEntryId, type: "TOPUP", status: "PENDING" },
+      data: { status: "FAILED" },
+    });
+    return;
+  }
+
   const campaignId = paymentIntent.metadata?.campaignId;
   if (!campaignId) return;
 
@@ -133,7 +191,9 @@ async function handlePaymentIntentFailed(paymentIntent: Stripe.PaymentIntent) {
         failureReason: paymentIntent.last_payment_error?.message ?? "Paiement refusé.",
       },
     });
-    await tx.campaign.update({ where: { id: campaignId }, data: { status: "FAILED" } });
+    if (paymentIntent.metadata?.campaignType !== "SPONSORED_AD") {
+      await tx.campaign.update({ where: { id: campaignId }, data: { status: "FAILED" } });
+    }
   });
 }
 

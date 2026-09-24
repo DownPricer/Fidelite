@@ -9,10 +9,12 @@ const campaignPaymentUpdate = vi.fn();
 const refundIncludedQuota = vi.fn();
 const refundCampaignPayment = vi.fn();
 const writeAudit = vi.fn();
+const refundCampaignDebit = vi.fn();
 
 vi.mock("@/lib/api-guard", () => ({ requireMutatingRequest, requireSuperAdmin }));
 vi.mock("@/lib/audit", () => ({ writeAudit }));
 vi.mock("@/lib/campaign-quota", () => ({ refundIncludedQuota: (...args: unknown[]) => refundIncludedQuota(...args) }));
+vi.mock("@/lib/marketing-balance", () => ({ refundCampaignDebit: (...args: unknown[]) => refundCampaignDebit(...args) }));
 vi.mock("@/lib/stripe", () => ({ refundCampaignPayment: (...args: unknown[]) => refundCampaignPayment(...args) }));
 vi.mock("@/lib/prisma", () => ({
   prisma: {
@@ -103,6 +105,8 @@ describe("POST /api/super-admin/campaigns/[id]/moderate", () => {
       expect.objectContaining({ merchantId: "m1", kind: "MEMBER_NOTIFICATION", periodKey: "2026-09" }),
     );
     expect(refundCampaignPayment).not.toHaveBeenCalled();
+    // Refus avant diffusion : restitution du débit du solde marketing (idempotent), s'il y en a un.
+    expect(refundCampaignDebit).toHaveBeenCalledWith(expect.anything(), "camp_1", expect.any(String));
   });
 
   it("refuse de modérer deux fois la même campagne", async () => {

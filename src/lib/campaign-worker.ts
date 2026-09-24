@@ -1,5 +1,5 @@
 import type { Campaign, CampaignDelivery, CampaignDeliveryChannel, Merchant } from "@prisma/client";
-import { estimateMerchantMembersAudience, estimateNetworkLocalAudience } from "./campaign-audience";
+import { estimateMerchantMembersAudience, estimateNetworkLocalAudience, networkAudienceWhere } from "./campaign-audience";
 import { sendCampaignEmail, isValidEmailAddress } from "./email";
 import { env } from "./env";
 import { prisma } from "./prisma";
@@ -62,12 +62,13 @@ export async function materializeDeliveries(campaign: Campaign, merchant: Pick<M
       }
     }
   } else {
-    const zoneFilters: Record<string, unknown>[] = [];
-    if (merchant.postalCode) zoneFilters.push({ marketingZonePostalCode: merchant.postalCode });
-    if (merchant.city) zoneFilters.push({ marketingZoneCity: { equals: merchant.city, mode: "insensitive" } });
-    if (zoneFilters.length > 0) {
+    const where = networkAudienceWhere(
+      { id: campaign.merchantId, city: merchant.city, postalCode: merchant.postalCode },
+      campaign.channel,
+    );
+    if (where) {
       const prefs = await prisma.customerPreferences.findMany({
-        where: { OR: zoneFilters, user: { isActive: true } },
+        where,
         select: { userId: true, notifyFifeLifeNews: true, adsNetworkPush: true, adsNetworkEmail: true },
       });
       for (const p of prefs) {

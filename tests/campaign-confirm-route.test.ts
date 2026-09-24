@@ -6,21 +6,20 @@ const requireMerchantAdmin = vi.fn();
 const campaignFindFirst = vi.fn();
 const merchantFindUnique = vi.fn();
 const campaignUpdate = vi.fn();
-const campaignPaymentCreate = vi.fn();
+const campaignUpdateMany = vi.fn();
+const debitForCampaign = vi.fn();
+const getMarketingBalanceCents = vi.fn();
 const writeAudit = vi.fn();
-const createCampaignCheckoutSession = vi.fn();
 const estimateMerchantMembersAudience = vi.fn();
 const estimateNetworkLocalAudience = vi.fn();
 const getQuotaUsage = vi.fn();
 const rateLimit = vi.fn(() => ({ ok: true as const, remaining: 1 }));
 
-class FakeStripeNotConfiguredError extends Error {}
-
 vi.mock("@/lib/api-guard", () => ({ requireMutatingRequest, requireMerchantAdmin }));
 vi.mock("@/lib/audit", () => ({ writeAudit }));
-vi.mock("@/lib/stripe", () => ({
-  createCampaignCheckoutSession: (...args: unknown[]) => createCampaignCheckoutSession(...args),
-  StripeNotConfiguredError: FakeStripeNotConfiguredError,
+vi.mock("@/lib/marketing-balance", () => ({
+  debitForCampaign: (...args: unknown[]) => debitForCampaign(...args),
+  getMarketingBalanceCents: (...args: unknown[]) => getMarketingBalanceCents(...args),
 }));
 vi.mock("@/lib/campaign-audience", () => ({
   estimateMerchantMembersAudience: (...args: unknown[]) => estimateMerchantMembersAudience(...args),
@@ -41,9 +40,11 @@ vi.mock("@/lib/campaign-quota", async () => {
 
 function tx() {
   return {
-    campaign: { update: (...args: unknown[]) => campaignUpdate(...args) },
+    campaign: {
+      update: (...args: unknown[]) => campaignUpdate(...args),
+      updateMany: (...args: unknown[]) => campaignUpdateMany(...args),
+    },
     campaignQuotaUsage: { upsert: vi.fn() },
-    campaignPayment: { create: (...args: unknown[]) => campaignPaymentCreate(...args) },
     $executeRaw: vi.fn(async () => 1), // simule un crédit de quota disponible par défaut
   };
 }
@@ -86,6 +87,9 @@ beforeEach(() => {
   merchantFindUnique.mockResolvedValue({ id: "merchant_A", name: "Café Demo", city: "Lyon", postalCode: "69001" });
   estimateMerchantMembersAudience.mockResolvedValue({ estimatedRecipients: 12 });
   getQuotaUsage.mockResolvedValue(0);
+  getMarketingBalanceCents.mockResolvedValue(1000);
+  campaignUpdateMany.mockResolvedValue({ count: 1 });
+  debitForCampaign.mockResolvedValue({ ok: true, balanceAfterCents: 801 });
   campaignUpdate.mockImplementation(async ({ data }: { data: Record<string, unknown> }) => ({
     ...baseCampaign,
     ...data,
@@ -127,71 +131,120 @@ describe("POST /api/merchant/campaigns/[id]/confirm — quota gratuit", () => {
 
     expect(response.status).toBe(200);
     expect(payload.requiresPayment).toBe(false);
-    expect(createCampaignCheckoutSession).not.toHaveBeenCalled();
+    expect(debitForCampaign).not.toHaveBeenCalled(); // couvert par le quota : jamais facturé
     expect(campaignUpdate).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ status: "SCHEDULED", priceCents: 0 }) }),
     );
   });
 });
 
-describe("POST /api/merchant/campaigns/[id]/confirm — paiement requis", () => {
-  it("réseau : toujours payant même sans consommation de quota membre, crée une session Stripe avec les métadonnées", async () => {
+const paidMemberCampaign = { ...baseCampaign };
+
+describe("POST /api/merchant/campaigns/[id]/confirm — solde marketing", () => {
+  it("réseau (notification secteur) : débite exactement 1,99 € et envoie en modération", async () => {
     campaignFindFirst.mockResolvedValueOnce({
       ...baseCampaign,
       audienceType: "NETWORK_LOCAL",
       quotaKind: "NETWORK_NOTIFICATION",
     });
     estimateNetworkLocalAudience.mockResolvedValueOnce({ estimatedRecipients: 40 });
-    createCampaignCheckoutSession.mockResolvedValueOnce({ id: "cs_1", url: "https://checkout.stripe.test/cs_1" });
 
     const { POST } = await import("../src/app/api/merchant/campaigns/[id]/confirm/route");
     const response = await POST(req(), { params: Promise.resolve({ id: "camp_1" }) });
-    const payload = (await response.json()) as { requiresPayment: boolean; checkoutUrl: string; amountCents: number };
+    const payload = (await response.json()) as { requiresPayment: boolean; amountCents: number };
 
     expect(response.status).toBe(200);
-    expect(payload.requiresPayment).toBe(true);
-    expect(payload.amountCents).toBe(1500);
-    expect(createCampaignCheckoutSession).toHaveBeenCalledWith(
-      expect.objectContaining({ campaignId: "camp_1", merchantId: "merchant_A", amountCents: 1500 }),
+    expect(payload).toMatchObject({ requiresPayment: true, amountCents: 199 });
+    expect(debitForCampaign).toHaveBeenCalledTimes(1);
+    expect(debitForCampaign).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ merchantId: "merchant_A", campaignId: "camp_1", amountCents: 199 }),
     );
-    expect(campaignPaymentCreate).toHaveBeenCalledWith(
+    expect(campaignUpdateMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: expect.objectContaining({ status: "PENDING", stripeCheckoutSessionId: "cs_1", amountCents: 1500 }),
+        where: { id: "camp_1", status: "DRAFT" },
+        data: expect.objectContaining({ status: "PENDING_REVIEW", priceCents: 199 }),
       }),
     );
   });
 
-  it("le prix vient uniquement du serveur : un montant envoyé dans le body est ignoré", async () => {
-    campaignFindFirst.mockResolvedValueOnce({
-      ...baseCampaign,
-      audienceType: "NETWORK_LOCAL",
-      quotaKind: "NETWORK_NOTIFICATION",
-    });
-    estimateNetworkLocalAudience.mockResolvedValueOnce({ estimatedRecipients: 40 });
-    createCampaignCheckoutSession.mockResolvedValueOnce({ id: "cs_2", url: "https://checkout.stripe.test/cs_2" });
-
+  it("e-mail prospects : 1,20 € ; e-mail membres hors quota : 0,50 € ; notification membres hors quota : 0,99 €", async () => {
     const { POST } = await import("../src/app/api/merchant/campaigns/[id]/confirm/route");
-    await POST(req({ amountCents: 1 }), { params: Promise.resolve({ id: "camp_1" }) });
-
-    expect(createCampaignCheckoutSession).toHaveBeenCalledWith(expect.objectContaining({ amountCents: 1500 }));
+    const cases = [
+      { channel: "EMAIL", audienceType: "NETWORK_LOCAL", quotaKind: "NETWORK_EMAIL", expected: 120 },
+      { channel: "EMAIL", audienceType: "MERCHANT_MEMBERS", quotaKind: "MEMBER_EMAIL", expected: 50 },
+      { channel: "IN_APP_PUSH", audienceType: "MERCHANT_MEMBERS", quotaKind: "MEMBER_NOTIFICATION", expected: 99 },
+    ] as const;
+    for (const c of cases) {
+      debitForCampaign.mockClear();
+      getQuotaUsage.mockResolvedValue(1); // quota gratuit du forfait normal (1) épuisé
+      estimateNetworkLocalAudience.mockResolvedValue({ estimatedRecipients: 5 });
+      campaignFindFirst.mockResolvedValueOnce({ ...paidMemberCampaign, ...c });
+      const response = await POST(req(), { params: Promise.resolve({ id: "camp_1" }) });
+      expect(response.status).toBe(200);
+      expect(debitForCampaign).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ amountCents: c.expected }),
+      );
+    }
   });
 
-  it("503 clair quand Stripe n'est pas configuré, sans écrire d'état payant en base", async () => {
+  it("solde insuffisant : 402, aucune campagne confirmée, aucun audit de confirmation", async () => {
     campaignFindFirst.mockResolvedValueOnce({
       ...baseCampaign,
       audienceType: "NETWORK_LOCAL",
       quotaKind: "NETWORK_NOTIFICATION",
     });
     estimateNetworkLocalAudience.mockResolvedValueOnce({ estimatedRecipients: 40 });
-    createCampaignCheckoutSession.mockRejectedValueOnce(new FakeStripeNotConfiguredError());
+    getMarketingBalanceCents.mockResolvedValue(100);
+    debitForCampaign.mockResolvedValueOnce({ ok: false });
 
     const { POST } = await import("../src/app/api/merchant/campaigns/[id]/confirm/route");
     const response = await POST(req(), { params: Promise.resolve({ id: "camp_1" }) });
-    const payload = (await response.json()) as { code: string };
+    const payload = (await response.json()) as { code: string; requiredCents: number };
 
-    expect(response.status).toBe(503);
-    expect(payload.code).toBe("STRIPE_NOT_CONFIGURED");
-    expect(campaignPaymentCreate).not.toHaveBeenCalled();
-    expect(campaignUpdate).not.toHaveBeenCalled();
+    expect(response.status).toBe(402);
+    expect(payload.code).toBe("INSUFFICIENT_BALANCE");
+    expect(payload.requiredCents).toBe(199);
+    expect(writeAudit).not.toHaveBeenCalled();
+  });
+
+  it("confirmation rejouée/concurrente : un seul débit (la réclamation DRAFT échoue → 409, pas de débit)", async () => {
+    campaignFindFirst.mockResolvedValueOnce({
+      ...baseCampaign,
+      audienceType: "NETWORK_LOCAL",
+      quotaKind: "NETWORK_NOTIFICATION",
+    });
+    estimateNetworkLocalAudience.mockResolvedValueOnce({ estimatedRecipients: 40 });
+    campaignUpdateMany.mockResolvedValueOnce({ count: 0 });
+
+    const { POST } = await import("../src/app/api/merchant/campaigns/[id]/confirm/route");
+    const response = await POST(req(), { params: Promise.resolve({ id: "camp_1" }) });
+
+    expect(response.status).toBe(409);
+    expect(debitForCampaign).not.toHaveBeenCalled();
+  });
+
+  it("le prix et l'audience viennent uniquement du serveur : montant et audience du body ignorés", async () => {
+    campaignFindFirst.mockResolvedValueOnce({
+      ...baseCampaign,
+      audienceType: "NETWORK_LOCAL",
+      quotaKind: "NETWORK_NOTIFICATION",
+    });
+    estimateNetworkLocalAudience.mockResolvedValueOnce({ estimatedRecipients: 40 });
+
+    const { POST } = await import("../src/app/api/merchant/campaigns/[id]/confirm/route");
+    await POST(req({ amountCents: 1, audienceType: "MERCHANT_MEMBERS", estimatedRecipients: 99999 }), {
+      params: Promise.resolve({ id: "camp_1" }),
+    });
+
+    expect(debitForCampaign).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ amountCents: 199 }));
+    expect(estimateNetworkLocalAudience).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "merchant_A" }),
+      "IN_APP_PUSH",
+    );
+    expect(campaignUpdateMany).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ estimatedRecipients: 40 }) }),
+    );
   });
 });

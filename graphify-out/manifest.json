@@ -4236,9 +4236,9 @@
     "semantic_hash": ""
   },
   "src/app/api/merchant/ads/[id]/confirm/route.ts": {
-    "mtime": 1790082014.6605034,
-    "seen": 1790084051.533846,
-    "ast_hash": "f4b2bd180b6e3e788cf5cf9f51431dee",
+    "mtime": 1790269736.7230365,
+    "seen": 1790269893.2660384,
+    "ast_hash": "3d463ea86a6bfb97608265303177d373",
     "semantic_hash": ""
   },
   "src/app/api/merchant/ads/route.ts": {
@@ -4248,9 +4248,9 @@
     "semantic_hash": ""
   },
   "src/app/api/merchant/campaigns/[id]/confirm/route.ts": {
-    "mtime": 1790081573.72071,
-    "seen": 1790084051.533846,
-    "ast_hash": "249880d4ec7bf00876a840be4a60e185",
+    "mtime": 1790269736.7240326,
+    "seen": 1790269893.2670388,
+    "ast_hash": "d17f916333aaafdd2780f84d535aefd4",
     "semantic_hash": ""
   },
   "src/app/api/merchant/campaigns/[id]/duplicate/route.ts": {
@@ -4260,15 +4260,15 @@
     "semantic_hash": ""
   },
   "src/app/api/merchant/campaigns/[id]/estimate/route.ts": {
-    "mtime": 1790081469.3875365,
-    "seen": 1790084051.533846,
-    "ast_hash": "fb3bf3b1085590b82c677159f131e7dc",
+    "mtime": 1790269736.725034,
+    "seen": 1790269893.2670388,
+    "ast_hash": "9520ed9ecd3fef8576eddfe1f9eed81f",
     "semantic_hash": ""
   },
   "src/app/api/merchant/campaigns/[id]/route.ts": {
-    "mtime": 1790081461.5006914,
-    "seen": 1790084051.533846,
-    "ast_hash": "545e86af00c0f7bea405fd928ec51094",
+    "mtime": 1790269736.725034,
+    "seen": 1790269893.2670388,
+    "ast_hash": "794e9390cdb92c9f0243fb6c4890d7df",
     "semantic_hash": ""
   },
   "src/app/api/merchant/campaigns/media/route.ts": {
@@ -4302,9 +4302,9 @@
     "semantic_hash": ""
   },
   "src/app/api/stripe/webhook/route.ts": {
-    "mtime": 1790082027.1228209,
-    "seen": 1790084051.5393698,
-    "ast_hash": "f5e06a71958e5af7bc09c8060ba6dd9b",
+    "mtime": 1790269736.7260323,
+    "seen": 1790269893.2700386,
+    "ast_hash": "7e13131e0021b9c1965d46a90c4a90b7",
     "semantic_hash": ""
   },
   "src/app/api/super-admin/ads/[id]/route.ts": {
@@ -4320,9 +4320,9 @@
     "semantic_hash": ""
   },
   "src/app/api/super-admin/campaigns/[id]/moderate/route.ts": {
-    "mtime": 1790082050.8608117,
-    "seen": 1790084051.5403898,
-    "ast_hash": "86caf872a37da8767675025e630860ba",
+    "mtime": 1790269736.727031,
+    "seen": 1790269893.2710385,
+    "ast_hash": "ccfd35665069f57370e63a40c9af4783",
     "semantic_hash": ""
   },
   "src/app/api/super-admin/campaigns/route.ts": {
@@ -4338,9 +4338,9 @@
     "semantic_hash": ""
   },
   "src/app/app/campagnes/ui.tsx": {
-    "mtime": 1790157106.890325,
-    "seen": 1790158405.4958632,
-    "ast_hash": "405dbffcdc745f50c573796731cd0761",
+    "mtime": 1790269736.728037,
+    "seen": 1790269893.2740386,
+    "ast_hash": "423b57820f952338f62827d6a870971b",
     "semantic_hash": ""
   },
   "src/app/app/fidelisation/page.tsx": {
@@ -4398,9 +4398,9 @@
     "semantic_hash": ""
   },
   "src/lib/campaign-audience.ts": {
-    "mtime": 1790081353.3129156,
-    "seen": 1790084051.6478922,
-    "ast_hash": "c06e055e1932837c1ba06e3a9680cfc2",
+    "mtime": 1790269736.7300298,
+    "seen": 1790269893.304467,
+    "ast_hash": "7ad5ea44e15dc7f31f07030ef09c7c92",
     "semantic_hash": ""
   },
   "src/lib/campaign-lifecycle.ts": {
@@ -4410,21 +4410,21 @@
     "semantic_hash": ""
   },
   "src/lib/campaign-pricing.ts": {
-    "mtime": 1790080915.8464873,
-    "seen": 1790084051.6478922,
-    "ast_hash": "be0496be2b03672ce577e00b63038acb",
+    "mtime": 1790269736.73103,
+    "seen": 1790269893.304467,
+    "ast_hash": "7e34572f370f6969c4e92b86c87f2359",
     "semantic_hash": ""
   },
   "src/lib/campaign-quota.ts": {
-    "mtime": 1790080776.4492044,
-    "seen": 1790084051.6478922,
-    "ast_hash": "d1eeb2314cac3434eff09f069b348df7",
+    "mtime": 1790269736.732029,
+    "seen": 1790269893.304467,
+    "ast_hash": "09c656c36864d7b75653e5d4cd76a465",
     "semantic_hash": ""
   },
   "src/lib/campaign-worker.ts": {
-    "mtime": 1790081801.184589,
-    "seen": 1790084051.6478922,
-    "ast_hash": "2eaa9bb0ae66bc6b12dee02975e7bd54",
+    "mtime": 1790269736.732029,
+    "seen": 1790269893.304467,
+    "ast_hash": "f0c5a1374a03591de609e78e02997017",
     "semantic_hash": ""
   },
   "src/lib/consent.ts": {
@@ -4446,9 +4446,9 @@
     "semantic_hash": ""
   },
   "src/lib/stripe.ts": {
-    "mtime": 1790080890.3120022,
-    "seen": 1790084051.6968632,
-    "ast_hash": "20ad1a7803fad46e2055beeac2308173",
+    "mtime": 1790269736.7330322,
+    "seen": 1790269893.3194668,
+    "ast_hash": "c6db1aa236f56f7a97a6f9c38abe9840",
     "semantic_hash": ""
   },
   "src/lib/unsubscribe-token.ts": {
@@ -4458,21 +4458,21 @@
     "semantic_hash": ""
   },
   "tests/campaign-audience.test.ts": {
-    "mtime": 1790081365.5504491,
-    "seen": 1790084051.7099264,
-    "ast_hash": "c675e4e1e598b9820761f6578717607a",
+    "mtime": 1790269736.7340274,
+    "seen": 1790269893.3224669,
+    "ast_hash": "2ea60cb9c89a1c6d9e22d166b12d1ad7",
     "semantic_hash": ""
   },
   "tests/campaign-confirm-route.test.ts": {
-    "mtime": 1790081585.4865718,
-    "seen": 1790084051.7099264,
-    "ast_hash": "110fbcd5cf5cd0bb2e095e9c7d0bac21",
+    "mtime": 1790269736.7340274,
+    "seen": 1790269893.3224669,
+    "ast_hash": "2c840f5cfc55e9dda84f8a513f1dc942",
     "semantic_hash": ""
   },
   "tests/campaign-crud-routes.test.ts": {
-    "mtime": 1790081608.8081427,
-    "seen": 1790084051.7099264,
-    "ast_hash": "dbf3ec68f0e3d93c1396c8b4501cc280",
+    "mtime": 1790269736.7350302,
+    "seen": 1790269893.3224669,
+    "ast_hash": "dcbb00db221f7f3e31792accea49229c",
     "semantic_hash": ""
   },
   "tests/campaign-email.test.ts": {
@@ -4488,15 +4488,15 @@
     "semantic_hash": ""
   },
   "tests/campaign-pricing.test.ts": {
-    "mtime": 1790080929.3438897,
-    "seen": 1790084051.7099264,
-    "ast_hash": "867ba5f324636e46349775b93dd217c0",
+    "mtime": 1790269736.736027,
+    "seen": 1790269893.3224669,
+    "ast_hash": "56830746110f840f3138902711126745",
     "semantic_hash": ""
   },
   "tests/campaign-quota.test.ts": {
-    "mtime": 1790080798.7299562,
-    "seen": 1790084051.7099264,
-    "ast_hash": "8a2f74eb42903f2601859adf7e1674d3",
+    "mtime": 1790269736.736027,
+    "seen": 1790269893.3224669,
+    "ast_hash": "18fd803e16d46470226c3384c23f4719",
     "semantic_hash": ""
   },
   "tests/campaign-worker.test.ts": {
@@ -4542,15 +4542,15 @@
     "semantic_hash": ""
   },
   "tests/stripe-webhook-route.test.ts": {
-    "mtime": 1790081037.3446298,
-    "seen": 1790084051.741584,
-    "ast_hash": "572f41e4963325f7ccd9479fb0351c58",
+    "mtime": 1790269736.7370324,
+    "seen": 1790269893.3334558,
+    "ast_hash": "ac1da67bda836e4c60995671ee7c71cd",
     "semantic_hash": ""
   },
   "tests/super-admin-campaign-moderation.test.ts": {
-    "mtime": 1790082091.4607327,
-    "seen": 1790084051.741584,
-    "ast_hash": "82efceeb62531affea8b8d77b5cb8c81",
+    "mtime": 1790269751.5797882,
+    "seen": 1790269893.3334558,
+    "ast_hash": "bdf706ab2472c7d074fb20ce8f880c38",
     "semantic_hash": ""
   },
   "tests/unsubscribe-token.test.ts": {
@@ -4587,6 +4587,54 @@
     "mtime": 1790155742.457471,
     "seen": 1790158405.4988678,
     "ast_hash": "5b465e7d45f24fb83ac63edc6a9bd250",
+    "semantic_hash": ""
+  },
+  "src/app/api/merchant/marketing-balance/route.ts": {
+    "mtime": 1790269244.454105,
+    "seen": 1790269893.2690387,
+    "ast_hash": "96530cfcd3c41714c04f56b96711d1f9",
+    "semantic_hash": ""
+  },
+  "src/lib/campaign-prices.ts": {
+    "mtime": 1790269370.692566,
+    "seen": 1790269893.304467,
+    "ast_hash": "5310ca026badeb452468313d7f569c36",
+    "semantic_hash": ""
+  },
+  "src/lib/marketing-balance.ts": {
+    "mtime": 1790269136.661294,
+    "seen": 1790269893.3144546,
+    "ast_hash": "90536b7bb36960ef6a16a4149c9cbb85",
+    "semantic_hash": ""
+  },
+  "tests/ad-confirm-route.test.ts": {
+    "mtime": 1790269645.8281653,
+    "seen": 1790269893.3214574,
+    "ast_hash": "9d2fae288fd6c8c2f62b4fc946f2181d",
+    "semantic_hash": ""
+  },
+  "tests/marketing-balance.test.ts": {
+    "mtime": 1790269590.3893063,
+    "seen": 1790269893.3294692,
+    "ast_hash": "aa8034bf95aca8be9f3286117ea7b2f2",
+    "semantic_hash": ""
+  },
+  "tests/marketing-topup-route.test.ts": {
+    "mtime": 1790269603.309716,
+    "seen": 1790269893.3294692,
+    "ast_hash": "b6c355aa268ebd905533dc589d4336f8",
+    "semantic_hash": ""
+  },
+  "tests/stripe-checkout-amounts.test.ts": {
+    "mtime": 1790269656.2933483,
+    "seen": 1790269893.3334558,
+    "ast_hash": "b583a2483113f1e416879e43c15da74f",
+    "semantic_hash": ""
+  },
+  "tests/stripe-webhook-marketing.test.ts": {
+    "mtime": 1790269630.5405965,
+    "seen": 1790269893.3334558,
+    "ast_hash": "c99d7c530321a79cbaed58918a0a1134",
     "semantic_hash": ""
   }
 }

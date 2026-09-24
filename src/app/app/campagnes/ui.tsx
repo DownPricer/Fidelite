@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui";
+import { CAMPAIGN_PRICE_CENTS } from "@/lib/campaign-prices";
 
 type Channel = "IN_APP_PUSH" | "EMAIL";
 type Audience = "MERCHANT_MEMBERS" | "NETWORK_LOCAL";
@@ -55,6 +56,12 @@ const AUDIENCE_LABELS: Record<Audience, string> = {
   NETWORK_LOCAL: "Clients Fidelo de mon secteur",
 };
 
+/** Libellé d'audience réseau selon le canal : un e-mail réseau vise les prospects (sans la carte). */
+function audienceDisplay(aud: Audience, ch: Channel) {
+  if (aud === "NETWORK_LOCAL" && ch === "EMAIL") return "Prospects de mon secteur (sans ma carte)";
+  return AUDIENCE_LABELS[aud];
+}
+
 const QUOTA_LABELS: Record<string, string> = {
   MEMBER_NOTIFICATION: "Notifications restantes",
   MEMBER_EMAIL: "E-mails restants",
@@ -70,15 +77,6 @@ const AD_STATUS_LABELS: Record<AdStatus, string> = {
   LIVE: "En cours de diffusion",
   ENDED: "Terminée",
   CANCELLED: "Annulée",
-};
-
-/** Reflète CAMPAIGN_PRICE_CENTS (src/lib/campaign-quota.ts) pour l'affichage : le serveur
- * recalcule toujours le prix réel, ceci n'est qu'un rappel tarifaire statique à l'écran. */
-const CAMPAIGN_PRICE_CENTS = {
-  MEMBER_NOTIFICATION: 500,
-  MEMBER_EMAIL: 300,
-  NETWORK_NOTIFICATION: 1500,
-  NETWORK_EMAIL: 1200,
 };
 
 function formatCents(cents: number) {
@@ -404,6 +402,8 @@ export function CampagnesPanel({ demo = false }: { demo?: boolean }) {
         ))}
       </section>
 
+      <MarketingBalanceCard demo={demo} />
+
       <section className="campaign-type-grid" aria-label="Créer une campagne">
         <article className="campaign-type-card">
           <div className="campaign-type-head">
@@ -461,9 +461,9 @@ export function CampagnesPanel({ demo = false }: { demo?: boolean }) {
           <div className="campaign-price-row">
             <div>
               <span>Diffusion locale</span>
-              <strong>3 € / jour</strong>
+              <strong>{formatCents(CAMPAIGN_PRICE_CENTS.SPONSORED_AD_PER_DAY)} / jour</strong>
             </div>
-            <small>19 € les 7 jours</small>
+            <small>Payé à la validation du visuel</small>
           </div>
           <div className="campaign-channel-list">
             <div className="campaign-channel-row">
@@ -510,7 +510,7 @@ export function CampagnesPanel({ demo = false }: { demo?: boolean }) {
               c.channel === "SPONSORED_AD"
                 ? "Clients Fidelo de votre secteur"
                 : c.audienceType
-                  ? AUDIENCE_LABELS[c.audienceType]
+                  ? audienceDisplay(c.audienceType, c.channel as Channel)
                   : "—";
             const canConfirmSponsor = ad && ad.status === "APPROVED" && ad.finalImageUrl && c.status === "PENDING_REVIEW";
             const canCancel =
@@ -615,6 +615,7 @@ type LiveEstimate = {
   priceCents: number;
   requiresPayment: boolean;
   quota: { limit: number; used: number; remaining: number };
+  balanceCents: number;
 };
 
 function CampaignWizard({
@@ -678,6 +679,7 @@ function CampaignWizard({
             priceCents: aud === "MERCHANT_MEMBERS" && quota && quota.remaining > 0 ? 0 : price,
             requiresPayment: !(aud === "MERCHANT_MEMBERS" && quota && quota.remaining > 0),
             quota: quota ?? { limit: 0, used: 0, remaining: 0 },
+            balanceCents: 1000,
           },
         }));
         return;
@@ -712,6 +714,7 @@ function CampaignWizard({
           audience: { estimatedRecipients: number };
           pricing: { priceCents: number; requiresPayment: boolean };
           quota: { limit: number; used: number; remaining: number };
+          balanceCents: number;
         };
         if (seq !== requestSeq.current) return;
         setEstimateByCombo((prev) => ({
@@ -721,6 +724,7 @@ function CampaignWizard({
             priceCents: data.pricing.priceCents,
             requiresPayment: data.pricing.requiresPayment,
             quota: data.quota,
+            balanceCents: data.balanceCents,
           },
         }));
       } catch {
@@ -825,6 +829,7 @@ function CampaignWizard({
     : estimating
       ? "…"
       : "—";
+  const insufficientBalance = Boolean(estimate?.requiresPayment && estimate.balanceCents < estimate.priceCents);
   const summaryRecipients = estimate ? `~${estimate.estimatedRecipients}` : estimating ? "…" : "—";
   const summaryCredit =
     audience === "MERCHANT_MEMBERS" && estimate && !estimate.requiresPayment ? "1 crédit sera utilisé" : null;
@@ -942,8 +947,12 @@ function CampaignWizard({
                     <IconMapPin />
                   </span>
                   <span className="announce-audience-copy">
-                    <strong>Clients Fidelo de mon secteur</strong>
-                    <span>Utilisateurs locaux correspondant à votre zone et à leurs préférences.</span>
+                    <strong>{channel === "EMAIL" ? "Prospects de mon secteur" : "Clients Fidelo de mon secteur"}</strong>
+                    <span>
+                      {channel === "EMAIL"
+                        ? "Clients locaux éligibles qui ne possèdent pas votre carte."
+                        : "Clients locaux éligibles, avec ou sans votre carte."}
+                    </span>
                   </span>
                   <span className="announce-audience-meta">
                     <strong>
@@ -1046,7 +1055,7 @@ function CampaignWizard({
                 </div>
                 <div className="announce-recap-row">
                   <span className="text-xs text-[var(--muted)]">Audience</span>
-                  <span className="text-sm font-bold text-[var(--ink)]">{AUDIENCE_LABELS[audience]}</span>
+                  <span className="text-sm font-bold text-[var(--ink)]">{audienceDisplay(audience, channel)}</span>
                 </div>
                 <div className="announce-recap-row">
                   <span className="text-xs text-[var(--muted)]">Destinataires estimés</span>
@@ -1059,9 +1068,23 @@ function CampaignWizard({
                   </span>
                 </div>
                 <div className="announce-recap-row">
-                  <span className="text-xs text-[var(--muted)]">Prix</span>
+                  <span className="text-xs text-[var(--muted)]">Coût de l&apos;envoi (prix fixe)</span>
                   <span className="text-sm font-bold text-[var(--ink)]">{summaryPrice}</span>
                 </div>
+                {estimate?.requiresPayment ? (
+                  <>
+                    <div className="announce-recap-row">
+                      <span className="text-xs text-[var(--muted)]">Solde marketing</span>
+                      <span className="text-sm font-bold text-[var(--ink)]">{formatCents(estimate.balanceCents)}</span>
+                    </div>
+                    <div className="announce-recap-row">
+                      <span className="text-xs text-[var(--muted)]">Solde après envoi</span>
+                      <span className="text-sm font-bold text-[var(--ink)]">
+                        {insufficientBalance ? "Insuffisant" : formatCents(estimate.balanceCents - estimate.priceCents)}
+                      </span>
+                    </div>
+                  </>
+                ) : null}
               </div>
             </div>
 
@@ -1076,6 +1099,21 @@ function CampaignWizard({
               cette confirmation.
             </p>
 
+            {insufficientBalance && estimate ? (
+              <div className="announce-content-card space-y-2">
+                <p className="text-sm font-semibold text-[var(--danger)]">
+                  Solde insuffisant : il manque {formatCents(estimate.priceCents - estimate.balanceCents)} pour cet envoi.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {[500, 1000, 2000].map((cents) => (
+                    <Button key={cents} type="button" variant="secondary" onClick={() => void startTopup(cents, setError)}>
+                      Recharger {formatCents(cents)}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
             {error ? <p className="text-sm text-[var(--danger)]">{error}</p> : null}
           </div>
         ) : null}
@@ -1083,7 +1121,7 @@ function CampaignWizard({
         <footer className="announce-footer">
           <div className="announce-footer-price">
             <strong>Total : {summaryPrice}</strong>
-            <span>{step === "channel" ? "Aucun paiement demandé à cette étape" : "Payé uniquement à la confirmation"}</span>
+            <span>{step === "channel" ? "Rien n'est débité à cette étape" : "Débité de votre solde uniquement à la confirmation"}</span>
           </div>
           <div className="announce-footer-actions">
             <Button type="button" variant="secondary" onClick={handleClose}>
@@ -1099,8 +1137,12 @@ function CampaignWizard({
                 {busy ? "…" : "Voir le récapitulatif"}
               </Button>
             ) : (
-              <Button type="button" onClick={() => void confirmSend()} disabled={busy}>
-                {busy ? "…" : estimate?.requiresPayment ? "Payer et confirmer" : "Confirmer l'envoi"}
+              <Button type="button" onClick={() => void confirmSend()} disabled={busy || insufficientBalance}>
+                {busy
+                  ? "…"
+                  : estimate?.requiresPayment
+                    ? `Confirmer et débiter ${formatCents(estimate.priceCents)}`
+                    : "Confirmer l'envoi"}
               </Button>
             )}
           </div>
@@ -1129,13 +1171,8 @@ function addDaysToDateInput(dateInput: string, days: number) {
 /** Reflète priceSponsoredAd (src/lib/campaign-pricing.ts) pour l'affichage : le serveur
  * recalcule toujours le prix réel à la confirmation, ceci n'est qu'une estimation. */
 function estimateSponsorPrice(days: number, includedDaysRemaining: number) {
-  const daysFromQuota = Math.min(days, Math.max(0, includedDaysRemaining));
-  const daysToPay = days - daysFromQuota;
-  if (daysToPay <= 0) return { priceCents: 0, requiresPayment: false, daysFromQuota, daysToPay: 0 };
-  const base = 1900;
-  const extraDays = Math.max(0, daysToPay - 7);
-  const priceCents = base + extraDays * 300;
-  return { priceCents, requiresPayment: true, daysFromQuota, daysToPay };
+  if (includedDaysRemaining >= days) return { priceCents: 0, requiresPayment: false, daysFromQuota: days };
+  return { priceCents: days * CAMPAIGN_PRICE_CENTS.SPONSORED_AD_PER_DAY, requiresPayment: true, daysFromQuota: 0 };
 }
 
 function SponsorWizard({
@@ -1393,5 +1430,189 @@ function SponsorWizard({
         </Button>
       </div>
     </div>
+  );
+}
+
+/* ---------------------------------------------------------------------- */
+/* Solde marketing prépayé                                                 */
+/* ---------------------------------------------------------------------- */
+
+type LedgerEntry = {
+  id: string;
+  type: "TOPUP" | "DEBIT" | "REFUND";
+  status: "PENDING" | "PAID" | "FAILED" | "CANCELLED";
+  amountCents: number;
+  balanceAfterCents: number | null;
+  description: string;
+  createdAt: string;
+  campaignTitle: string | null;
+  campaignStatus: string | null;
+};
+
+type BalanceData = {
+  balanceCents: number;
+  presetsCents: number[];
+  minTopupCents: number;
+  maxTopupCents: number;
+  history: LedgerEntry[];
+};
+
+const DEMO_BALANCE: BalanceData = {
+  balanceCents: 1000,
+  presetsCents: [500, 1000, 2000],
+  minTopupCents: 500,
+  maxTopupCents: 50000,
+  history: [],
+};
+
+/** Démarre une recharge Stripe Checkout. Le montant est revalidé côté serveur. */
+async function startTopup(amountCents: number, onError: (message: string) => void) {
+  try {
+    const response = await fetch("/api/merchant/marketing-balance", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ amountCents }),
+    });
+    const data = (await response.json()) as { checkoutUrl?: string; error?: string };
+    if (!response.ok || !data.checkoutUrl) {
+      onError(data.error ?? "Impossible de démarrer la recharge.");
+      return;
+    }
+    window.location.href = data.checkoutUrl;
+  } catch {
+    onError("Impossible de démarrer la recharge. Réessayez.");
+  }
+}
+
+function ledgerLabel(entry: LedgerEntry) {
+  if (entry.type === "TOPUP") {
+    if (entry.status === "PAID") return "Recharge";
+    if (entry.status === "PENDING") return "Recharge en attente de paiement";
+    if (entry.status === "FAILED") return "Recharge échouée";
+    return "Recharge annulée";
+  }
+  if (entry.type === "REFUND") return entry.description;
+  return entry.campaignTitle ? `Envoi — ${entry.campaignTitle}` : entry.description;
+}
+
+function MarketingBalanceCard({ demo }: { demo: boolean }) {
+  const [data, setData] = useState<BalanceData | null>(demo ? DEMO_BALANCE : null);
+  const [custom, setCustom] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const load = useCallback(async () => {
+    if (demo) return;
+    try {
+      const response = await fetch("/api/merchant/marketing-balance");
+      if (response.ok) setData((await response.json()) as BalanceData);
+    } catch {
+      // Le solde reste masqué ; les campagnes gratuites continuent de fonctionner.
+    }
+  }, [demo]);
+
+  useEffect(() => {
+    void load();
+    const topup = new URLSearchParams(window.location.search).get("topup");
+    if (topup === "success") {
+      setNotice("Paiement reçu. Votre solde sera crédité dès la confirmation de Stripe (quelques secondes).");
+      // Le crédit arrive par webhook : on relit le solde après un court délai.
+      const timer = window.setTimeout(() => void load(), 4000);
+      return () => window.clearTimeout(timer);
+    }
+    if (topup === "cancelled") setNotice("Recharge annulée : aucun montant n'a été débité ni crédité.");
+  }, [load]);
+
+  if (!data) return null;
+
+  const customCents = Math.round(Number(custom.replace(",", ".")) * 100);
+  const customValid = Number.isFinite(customCents) && customCents >= data.minTopupCents && customCents <= data.maxTopupCents;
+
+  async function topup(cents: number) {
+    if (demo) return;
+    setBusy(true);
+    setError(null);
+    await startTopup(cents, setError);
+    setBusy(false);
+  }
+
+  return (
+    <section className="glass-panel space-y-4 p-5 sm:p-6" aria-label="Solde marketing">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--violet-bright)]">Solde marketing</p>
+          <p className="mt-1 text-3xl font-black text-[var(--ink)]">{formatCents(data.balanceCents)}</p>
+          <p className="text-xs text-[var(--muted-strong)]">
+            Débité à chaque envoi payant : notification membres {formatCents(CAMPAIGN_PRICE_CENTS.MEMBER_NOTIFICATION)},
+            secteur {formatCents(CAMPAIGN_PRICE_CENTS.NETWORK_NOTIFICATION)}, e-mail membres{" "}
+            {formatCents(CAMPAIGN_PRICE_CENTS.MEMBER_EMAIL)}, e-mail prospects{" "}
+            {formatCents(CAMPAIGN_PRICE_CENTS.NETWORK_EMAIL)} — prix fixes, quel que soit le nombre de destinataires.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          {data.presetsCents.map((cents) => (
+            <Button key={cents} type="button" variant="secondary" disabled={busy} onClick={() => void topup(cents)}>
+              +{formatCents(cents)}
+            </Button>
+          ))}
+        </div>
+      </div>
+
+      <form
+        className="flex flex-wrap items-center gap-2"
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (customValid) void topup(customCents);
+        }}
+      >
+        <label className="text-xs text-[var(--muted)]" htmlFor="marketing-topup-custom">
+          Autre montant (min. {formatCents(data.minTopupCents)})
+        </label>
+        <input
+          id="marketing-topup-custom"
+          inputMode="decimal"
+          value={custom}
+          onChange={(event) => setCustom(event.target.value)}
+          placeholder="25"
+          className="w-24 rounded-lg border border-[var(--line)] bg-transparent px-2 py-1 text-sm"
+        />
+        <span className="text-sm text-[var(--muted)]">€</span>
+        <Button type="submit" disabled={busy || !customValid}>
+          Recharger
+        </Button>
+      </form>
+
+      {notice ? <p className="text-sm text-[var(--muted-strong)]">{notice}</p> : null}
+      {error ? <p className="text-sm text-[var(--danger)]">{error}</p> : null}
+
+      {data.history.length > 0 ? (
+        <div>
+          <p className="text-xs font-bold text-[var(--muted)]">Historique</p>
+          <ul className="mt-2 divide-y divide-[var(--line)]">
+            {data.history.map((entry) => {
+              const sign = entry.type === "DEBIT" ? "−" : entry.status === "PAID" ? "+" : "";
+              return (
+                <li key={entry.id} className="flex items-center justify-between gap-3 py-2 text-sm">
+                  <span>
+                    <span className="font-semibold text-[var(--ink)]">{ledgerLabel(entry)}</span>
+                    <span className="block text-xs text-[var(--muted)]">
+                      {formatDate(entry.createdAt)}
+                      {entry.type === "DEBIT" && entry.campaignStatus === "PARTIALLY_SENT" ? " · livraison partielle" : ""}
+                      {entry.type === "DEBIT" && entry.campaignStatus === "FAILED" ? " · envoi échoué" : ""}
+                      {entry.type === "DEBIT" && entry.campaignStatus === "SCHEDULED" ? " · programmé" : ""}
+                    </span>
+                  </span>
+                  <strong className="text-[var(--ink)]">
+                    {sign}
+                    {formatCents(entry.amountCents)}
+                  </strong>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      ) : null}
+    </section>
   );
 }

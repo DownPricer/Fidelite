@@ -1,5 +1,6 @@
 import { requireMutatingRequest, requireSuperAdmin } from "@/lib/api-guard";
 import { refundIncludedQuota } from "@/lib/campaign-quota";
+import { refundCampaignDebit } from "@/lib/marketing-balance";
 import { refundCampaignPayment } from "@/lib/stripe";
 import { writeAudit } from "@/lib/audit";
 import { clientIp, jsonError, jsonOk, readJson, userAgent } from "@/lib/http";
@@ -58,6 +59,7 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
         periodKey: campaign.quotaPeriodKey,
       });
     }
+    await refundCampaignDebit(tx, id, "Restitution — campagne refusée par Fidelo");
     if (campaign.payment?.status === "PAID") {
       await tx.campaignPayment.update({ where: { id: campaign.payment.id }, data: { status: "REFUNDED", refundedAt: new Date() } });
     }

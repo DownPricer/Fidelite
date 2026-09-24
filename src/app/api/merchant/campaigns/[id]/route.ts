@@ -1,5 +1,6 @@
 import { requireMerchantAdmin, requireMutatingRequest } from "@/lib/api-guard";
 import { CAMPAIGN_STATUS_LABELS, isCancellable } from "@/lib/campaign-lifecycle";
+import { refundCampaignDebit } from "@/lib/marketing-balance";
 import { writeAudit } from "@/lib/audit";
 import { clientIp, jsonError, jsonOk, readJson, userAgent } from "@/lib/http";
 import { prisma } from "@/lib/prisma";
@@ -72,7 +73,11 @@ export async function DELETE(req: Request, context: { params: Promise<{ id: stri
     });
   }
 
-  await prisma.campaign.update({ where: { id: campaign.id }, data: { status: "CANCELLED" } });
+  // Annulation avant toute diffusion : le montant débité du solde marketing est restitué.
+  await prisma.$transaction(async (tx) => {
+    await tx.campaign.update({ where: { id: campaign.id }, data: { status: "CANCELLED" } });
+    await refundCampaignDebit(tx, campaign.id, "Restitution — campagne annulée avant envoi");
+  });
 
   await writeAudit({
     actorId: staff.user.id,

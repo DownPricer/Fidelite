@@ -67,20 +67,44 @@ export async function estimateMerchantMembersAudience(
 }
 
 /**
+ * Filtre Prisma de l'audience réseau : clients actifs dont la zone marketing correspond au
+ * commerce. Pour un e-mail (« prospects »), on exclut ceux qui possèdent déjà la carte du
+ * commerce ; une notification secteur vise les clients avec ou sans la carte.
+ * Retourne null si le commerce n'a pas d'adresse exploitable. Partagé avec le worker d'envoi.
+ */
+export function networkAudienceWhere(
+  merchant: { id: string; city: string | null; postalCode: string | null },
+  channel: CampaignChannel,
+) {
+  const zoneFilters: Record<string, unknown>[] = [];
+  if (merchant.postalCode) zoneFilters.push({ marketingZonePostalCode: merchant.postalCode });
+  if (merchant.city) zoneFilters.push({ marketingZoneCity: { equals: merchant.city, mode: "insensitive" } });
+  if (zoneFilters.length === 0) return null;
+
+  return {
+    OR: zoneFilters,
+    user: {
+      isActive: true,
+      ...(channel === "EMAIL"
+        ? { customerMemberships: { none: { merchantId: merchant.id, removedAt: null } } }
+        : {}),
+    },
+  };
+}
+
+/**
  * Audience "Clients Fidelo de mon secteur" (Partie 7 étape 2 / Partie 6) : uniquement des
  * clients ayant explicitement accepté les bons plans Fidelo réseau ET déclaré une zone
  * marketing (ville ou code postal) correspondant à celle du commerce. Jamais de
  * géolocalisation précise, jamais de coordonnées inventées.
  */
 export async function estimateNetworkLocalAudience(
-  merchant: { city: string | null; postalCode: string | null },
+  merchant: { id: string; city: string | null; postalCode: string | null },
   channel: CampaignChannel,
 ): Promise<AudienceEstimate> {
-  const zoneFilters: Record<string, unknown>[] = [];
-  if (merchant.postalCode) zoneFilters.push({ marketingZonePostalCode: merchant.postalCode });
-  if (merchant.city) zoneFilters.push({ marketingZoneCity: { equals: merchant.city, mode: "insensitive" } });
+  const where = networkAudienceWhere(merchant, channel);
 
-  if (zoneFilters.length === 0) {
+  if (!where) {
     // Le commerce n'a pas d'adresse exploitable : aucune audience locale fiable, jamais inventée.
     return {
       audienceType: "NETWORK_LOCAL",
@@ -94,10 +118,7 @@ export async function estimateNetworkLocalAudience(
   }
 
   const prefs = await prisma.customerPreferences.findMany({
-    where: {
-      OR: zoneFilters,
-      user: { isActive: true },
-    },
+    where,
     select: { notifyFifeLifeNews: true, adsNetworkPush: true, adsNetworkEmail: true },
   });
 

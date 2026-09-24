@@ -3,6 +3,7 @@ import { estimateMerchantMembersAudience, estimateNetworkLocalAudience } from "@
 import { priceMemberOrNetworkCampaign } from "@/lib/campaign-pricing";
 import { calendarPeriodKeyEuropeParis, getQuotaUsage, includedQuotaFor, resolvePlanTier } from "@/lib/campaign-quota";
 import { jsonError, jsonOk } from "@/lib/http";
+import { getMarketingBalanceCents } from "@/lib/marketing-balance";
 import { prisma } from "@/lib/prisma";
 
 /** Estimation réelle de l'audience et du prix avant validation (Partie 7.2 étape 2). */
@@ -20,12 +21,12 @@ export async function GET(req: Request, context: { params: Promise<{ id: string 
 
   const merchant = await prisma.merchant.findUnique({
     where: { id: merchantId },
-    select: { city: true, postalCode: true },
+    select: { id: true, city: true, postalCode: true },
   });
 
   const audience =
     campaign.audienceType === "NETWORK_LOCAL"
-      ? await estimateNetworkLocalAudience(merchant ?? { city: null, postalCode: null }, campaign.channel)
+      ? await estimateNetworkLocalAudience(merchant ?? { id: merchantId, city: null, postalCode: null }, campaign.channel)
       : await estimateMerchantMembersAudience(merchantId, campaign.channel);
 
   const tier = await resolvePlanTier(merchantId);
@@ -40,7 +41,11 @@ export async function GET(req: Request, context: { params: Promise<{ id: string 
     includedRemaining: remaining,
   });
 
+  const balanceCents = await getMarketingBalanceCents(merchantId);
+
   return jsonOk({
+    balanceCents,
+    sufficientBalance: !pricing.requiresPayment || balanceCents >= pricing.priceCents,
     audience,
     plan: tier,
     quota: { limit, used, remaining },

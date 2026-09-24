@@ -30,9 +30,8 @@ export type PricingResult = {
 };
 
 /**
- * Tarification serveur (jamais côté navigateur). Pour un bandeau sponsorisé, `sponsoredDays`
- * fixe la durée : 1900 centimes pour les 7 premiers jours, 300 par jour supplémentaire ;
- * les jours couverts par le quota Insight (3/mois) sont déduits avant application du tarif.
+ * Tarification serveur (jamais côté navigateur), en centimes entiers. Un envoi couvert par
+ * le quota inclus n'est jamais facturé ; sinon prix fixe par envoi (voir CAMPAIGN_PRICE_CENTS).
  */
 export function priceMemberOrNetworkCampaign(input: {
   channel: Exclude<CampaignChannel, "SPONSORED_AD">;
@@ -54,22 +53,19 @@ export function priceMemberOrNetworkCampaign(input: {
   return { quotaKind, isNetwork, priceCents, requiresPayment: true };
 }
 
+/**
+ * Mise en avant : 5 € par jour. Entièrement couverte par les jours Insight restants → gratuite
+ * (les jours du quota sont alors consommés d'un bloc) ; sinon toute la durée est payante, sans
+ * consommation partielle du quota.
+ */
 export function priceSponsoredAd(input: { days: number; includedDaysRemaining: number }): {
   priceCents: number;
   requiresPayment: boolean;
-  daysFromQuota: number;
-  daysToPay: number;
+  days: number;
 } {
   const days = Math.max(1, Math.round(input.days));
-  const daysFromQuota = Math.min(days, Math.max(0, input.includedDaysRemaining));
-  const daysToPay = days - daysFromQuota;
-  if (daysToPay <= 0) {
-    return { priceCents: 0, requiresPayment: false, daysFromQuota, daysToPay: 0 };
-  }
-  const base = Math.min(daysToPay, 7) > 0 ? CAMPAIGN_PRICE_CENTS.SPONSORED_AD_BASE_7_DAYS : 0;
-  const extraDays = Math.max(0, daysToPay - 7);
-  const priceCents = base + extraDays * CAMPAIGN_PRICE_CENTS.SPONSORED_AD_EXTRA_DAY;
-  return { priceCents, requiresPayment: true, daysFromQuota, daysToPay };
+  if (input.includedDaysRemaining >= days) return { priceCents: 0, requiresPayment: false, days };
+  return { priceCents: days * CAMPAIGN_PRICE_CENTS.SPONSORED_AD_PER_DAY, requiresPayment: true, days };
 }
 
 /**
@@ -97,7 +93,7 @@ export async function planAndRemainingQuota(
  */
 export async function consumeQuotaForCampaign(
   tx: Prisma.TransactionClient,
-  input: { merchantId: string; kind: CampaignQuotaKind; periodKey: string; limit: number },
+  input: { merchantId: string; kind: CampaignQuotaKind; periodKey: string; limit: number; amount?: number },
 ): Promise<boolean> {
   if (isNetworkQuotaKind(input.kind)) return false;
   return tryConsumeIncludedQuota(tx, input);

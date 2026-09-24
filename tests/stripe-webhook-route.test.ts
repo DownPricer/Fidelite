@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const constructStripeWebhookEvent = vi.fn();
 const stripeWebhookEventCreate = vi.fn();
+const stripeWebhookEventDelete = vi.fn();
 const campaignPaymentFindUnique = vi.fn();
 const campaignPaymentFindFirst = vi.fn();
 const campaignPaymentUpdate = vi.fn();
@@ -9,6 +10,10 @@ const campaignFindUnique = vi.fn();
 const campaignUpdate = vi.fn();
 const writeAudit = vi.fn();
 const refundIncludedQuota = vi.fn();
+const creditTopup = vi.fn();
+const adRequestFindUnique = vi.fn();
+const adRequestUpdate = vi.fn();
+const ledgerUpdateMany = vi.fn();
 
 class FakeStripeNotConfiguredError extends Error {}
 
@@ -18,6 +23,10 @@ vi.mock("@/lib/stripe", () => ({
 }));
 
 vi.mock("@/lib/audit", () => ({ writeAudit: (...args: unknown[]) => writeAudit(...args) }));
+
+vi.mock("@/lib/marketing-balance", () => ({
+  creditTopup: (...args: unknown[]) => creditTopup(...args),
+}));
 
 vi.mock("@/lib/campaign-quota", () => ({
   refundIncludedQuota: (...args: unknown[]) => refundIncludedQuota(...args),
@@ -34,12 +43,17 @@ function tx() {
       findUnique: campaignFindUnique,
       update: campaignUpdate,
     },
+    adRequest: { findUnique: adRequestFindUnique, update: adRequestUpdate },
   };
 }
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
-    stripeWebhookEvent: { create: (...args: unknown[]) => stripeWebhookEventCreate(...args) },
+    stripeWebhookEvent: {
+      create: (...args: unknown[]) => stripeWebhookEventCreate(...args),
+      delete: (...args: unknown[]) => stripeWebhookEventDelete(...args),
+    },
+    marketingLedgerEntry: { updateMany: (...args: unknown[]) => ledgerUpdateMany(...args) },
     $transaction: async (callback: (client: unknown) => Promise<unknown>) => callback(tx()),
   },
 }));
@@ -57,6 +71,7 @@ function makeReq(body: string, signature: string | null = "sig_test") {
 beforeEach(() => {
   vi.clearAllMocks();
   stripeWebhookEventCreate.mockResolvedValue({});
+  stripeWebhookEventDelete.mockResolvedValue({});
 });
 
 describe("POST /api/stripe/webhook", () => {
@@ -100,12 +115,19 @@ describe("POST /api/stripe/webhook", () => {
       data: {
         object: {
           id: "cs_test_1",
+          payment_status: "paid",
+          amount_total: 99,
           payment_intent: "pi_1",
           metadata: { campaignId: "camp_1" },
         },
       },
     });
-    campaignPaymentFindUnique.mockResolvedValueOnce({ id: "pay_1", status: "PENDING", amountCents: 500 });
+    campaignPaymentFindUnique.mockResolvedValueOnce({
+      id: "pay_1",
+      status: "PENDING",
+      amountCents: 99,
+      stripeCheckoutSessionId: "cs_test_1",
+    });
     campaignFindUnique.mockResolvedValueOnce({
       id: "camp_1",
       merchantId: "m1",
@@ -129,9 +151,22 @@ describe("POST /api/stripe/webhook", () => {
     constructStripeWebhookEvent.mockReturnValue({
       id: "evt_3",
       type: "checkout.session.completed",
-      data: { object: { id: "cs_2", payment_intent: "pi_2", metadata: { campaignId: "camp_2" } } },
+      data: {
+        object: {
+          id: "cs_2",
+          payment_status: "paid",
+          amount_total: 199,
+          payment_intent: "pi_2",
+          metadata: { campaignId: "camp_2" },
+        },
+      },
     });
-    campaignPaymentFindUnique.mockResolvedValueOnce({ id: "pay_2", status: "PENDING", amountCents: 1500 });
+    campaignPaymentFindUnique.mockResolvedValueOnce({
+      id: "pay_2",
+      status: "PENDING",
+      amountCents: 199,
+      stripeCheckoutSessionId: "cs_2",
+    });
     campaignFindUnique.mockResolvedValueOnce({
       id: "camp_2",
       merchantId: "m1",
@@ -151,7 +186,7 @@ describe("POST /api/stripe/webhook", () => {
     constructStripeWebhookEvent.mockReturnValue({
       id: "evt_4",
       type: "checkout.session.completed",
-      data: { object: { id: "cs_3", metadata: { campaignId: "camp_3" } } },
+      data: { object: { id: "cs_3", payment_status: "paid", metadata: { campaignId: "camp_3" } } },
     });
     campaignPaymentFindUnique.mockResolvedValueOnce({ id: "pay_3", status: "PAID" });
 

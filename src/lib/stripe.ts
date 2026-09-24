@@ -21,11 +21,19 @@ export function getStripeClient(): Stripe {
   return client;
 }
 
+/** Une session abandonnée expire vite (30 min, minimum Stripe) : rien n'est activé ni crédité sans paiement. */
+function checkoutExpiry() {
+  return Math.floor(Date.now() / 1000) + 30 * 60;
+}
+
 export type CampaignCheckoutInput = {
   campaignId: string;
   merchantId: string;
   campaignType: string;
+  /** Montant total en centimes ; doit être un multiple de `quantity`. */
   amountCents: number;
+  /** Nombre d'unités (ex. jours de mise en avant). Défaut 1. */
+  quantity?: number;
   description: string;
   successUrl: string;
   cancelUrl: string;
@@ -38,16 +46,18 @@ export type CampaignCheckoutInput = {
  */
 export async function createCampaignCheckoutSession(input: CampaignCheckoutInput) {
   const stripe = getStripeClient();
+  const quantity = input.quantity ?? 1;
   return stripe.checkout.sessions.create({
     mode: "payment",
+    expires_at: checkoutExpiry(),
     line_items: [
       {
         price_data: {
           currency: "eur",
-          unit_amount: input.amountCents,
+          unit_amount: Math.round(input.amountCents / quantity),
           product_data: { name: input.description },
         },
-        quantity: 1,
+        quantity,
       },
     ],
     success_url: input.successUrl,
@@ -75,4 +85,40 @@ export function constructStripeWebhookEvent(payload: string | Buffer, signature:
 export async function refundCampaignPayment(paymentIntentId: string) {
   const stripe = getStripeClient();
   return stripe.refunds.create({ payment_intent: paymentIntentId });
+}
+
+export type MarketingTopupCheckoutInput = {
+  merchantId: string;
+  ledgerEntryId: string;
+  amountCents: number;
+  successUrl: string;
+  cancelUrl: string;
+};
+
+/** Recharge du solde marketing prépayé : paiement ponctuel, montant décidé côté serveur. */
+export async function createMarketingTopupCheckoutSession(input: MarketingTopupCheckoutInput) {
+  const stripe = getStripeClient();
+  const metadata = {
+    kind: "MARKETING_TOPUP",
+    merchantId: input.merchantId,
+    ledgerEntryId: input.ledgerEntryId,
+  };
+  return stripe.checkout.sessions.create({
+    mode: "payment",
+    expires_at: checkoutExpiry(),
+    line_items: [
+      {
+        price_data: {
+          currency: "eur",
+          unit_amount: input.amountCents,
+          product_data: { name: "Recharge du solde marketing Fidelo" },
+        },
+        quantity: 1,
+      },
+    ],
+    success_url: input.successUrl,
+    cancel_url: input.cancelUrl,
+    metadata,
+    payment_intent_data: { metadata },
+  });
 }

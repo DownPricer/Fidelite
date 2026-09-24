@@ -64,12 +64,11 @@ describe("quotas inclus (Partie 8)", () => {
 
   it("tarifs exacts en centimes (Partie 8)", () => {
     expect(CAMPAIGN_PRICE_CENTS).toEqual({
-      MEMBER_NOTIFICATION: 500,
-      MEMBER_EMAIL: 300,
-      NETWORK_NOTIFICATION: 1500,
-      NETWORK_EMAIL: 1200,
-      SPONSORED_AD_BASE_7_DAYS: 1900,
-      SPONSORED_AD_EXTRA_DAY: 300,
+      MEMBER_NOTIFICATION: 99,
+      MEMBER_EMAIL: 50,
+      NETWORK_NOTIFICATION: 199,
+      NETWORK_EMAIL: 120,
+      SPONSORED_AD_PER_DAY: 500,
     });
   });
 });

@@ -11,6 +11,11 @@ const writeAudit = vi.fn();
 
 vi.mock("@/lib/api-guard", () => ({ requireMutatingRequest, requireMerchantAdmin }));
 vi.mock("@/lib/audit", () => ({ writeAudit }));
+const refundCampaignDebit = vi.fn();
+vi.mock("@/lib/marketing-balance", () => ({
+  refundCampaignDebit: (...args: unknown[]) => refundCampaignDebit(...args),
+  getMarketingBalanceCents: vi.fn(async () => 0),
+}));
 vi.mock("@/lib/campaign-quota", () => ({
   calendarPeriodKeyEuropeParis: () => "2026-09",
   getQuotaUsage: vi.fn(async () => 0),
@@ -26,6 +31,8 @@ vi.mock("@/lib/prisma", () => ({
       update: (...args: unknown[]) => campaignUpdate(...args),
       create: (...args: unknown[]) => campaignCreate(...args),
     },
+    $transaction: async (callback: (client: unknown) => Promise<unknown>) =>
+      callback({ campaign: { update: (...args: unknown[]) => campaignUpdate(...args) } }),
   },
 }));
 
@@ -108,5 +115,7 @@ describe("GET/PATCH/DELETE /api/merchant/campaigns/[id] — isolation entre comm
     const response = await DELETE(req("DELETE"), { params: Promise.resolve({ id: "camp_1" }) });
     expect(response.status).toBe(200);
     expect(campaignUpdate).toHaveBeenCalledWith({ where: { id: "camp_1" }, data: { status: "CANCELLED" } });
+    // Avant diffusion : le débit du solde marketing éventuel est restitué (idempotent côté lib).
+    expect(refundCampaignDebit).toHaveBeenCalledWith(expect.anything(), "camp_1", expect.any(String));
   });
 });
