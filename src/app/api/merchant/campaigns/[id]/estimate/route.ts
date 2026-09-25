@@ -4,6 +4,7 @@ import { priceMemberOrNetworkCampaign } from "@/lib/campaign-pricing";
 import { calendarPeriodKeyEuropeParis, getQuotaUsage, includedQuotaFor, resolvePlanTier } from "@/lib/campaign-quota";
 import { jsonError, jsonOk } from "@/lib/http";
 import { getMarketingBalanceCents } from "@/lib/marketing-balance";
+import { getActiveStripeMode, isPaymentAllowedForMerchant } from "@/lib/stripe-mode";
 import { prisma } from "@/lib/prisma";
 
 /** Estimation réelle de l'audience et du prix avant validation (Partie 7.2 étape 2). */
@@ -41,11 +42,16 @@ export async function GET(req: Request, context: { params: Promise<{ id: string 
     includedRemaining: remaining,
   });
 
-  const balanceCents = await getMarketingBalanceCents(merchantId);
+  const mode = getActiveStripeMode();
+  const balanceCents = mode ? await getMarketingBalanceCents(merchantId, mode) : 0;
+  const paymentsAllowed = Boolean(mode) && isPaymentAllowedForMerchant(merchantId);
 
   return jsonOk({
+    stripeMode: mode,
+    testMode: mode === "TEST",
+    paymentsAllowed,
     balanceCents,
-    sufficientBalance: !pricing.requiresPayment || balanceCents >= pricing.priceCents,
+    sufficientBalance: !pricing.requiresPayment || (paymentsAllowed && balanceCents >= pricing.priceCents),
     audience,
     plan: tier,
     quota: { limit, used, remaining },

@@ -77,6 +77,7 @@ function serializeCampaign(
     estimatedRecipients: campaign.estimatedRecipients,
     priceCents: campaign.priceCents,
     requiresPayment: campaign.requiresPayment,
+    fundingMode: campaign.fundingMode,
     rejectionReason: campaign.rejectionReason,
     payment: campaign.payment ? { status: campaign.payment.status, amountCents: campaign.payment.amountCents } : null,
     adStatus: campaign.adRequest?.status ?? null,

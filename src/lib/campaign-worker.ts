@@ -41,6 +41,8 @@ function deliveryChannelsFor(campaign: Campaign): CampaignDeliveryChannel[] {
 
 /** Matérialise la liste des destinataires en lignes CampaignDelivery — idempotent (skipDuplicates). */
 export async function materializeDeliveries(campaign: Campaign, merchant: Pick<Merchant, "city" | "postalCode">) {
+  // Campagne financée en mode test : aucune livraison n'est jamais matérialisée pour de vrais clients.
+  if (campaign.fundingMode === "TEST") return 0;
   const channels = deliveryChannelsFor(campaign);
 
   const recipients: { userId: string; wantsPush: boolean }[] = [];
@@ -105,6 +107,8 @@ export async function sendOneDelivery(
   campaign: Campaign,
   merchant: Pick<Merchant, "id" | "name" | "logoUrl" | "addressLine1" | "city">,
 ): Promise<{ status: "SENT" | "FAILED" | "SKIPPED"; error?: string }> {
+  // Garde-fou en profondeur : jamais de notification, push ni e-mail réel pour une campagne test.
+  if (campaign.fundingMode === "TEST") return { status: "SKIPPED", error: "Campagne de test : aucun envoi réel." };
   try {
     return await sendOneDeliveryUnsafe(delivery, campaign, merchant);
   } catch (error) {
@@ -249,6 +253,13 @@ export async function finalizeCampaignIfComplete(campaignId: string) {
 export async function runWorkerTick(batchSize = env.campaignWorkerBatchSize) {
   const campaign = await claimNextScheduledCampaign();
   if (!campaign) return { claimed: false as const };
+
+  // Campagne payée en mode test : simulation. Elle est marquée envoyée sans créer de livraison,
+  // donc sans aucune notification, push ni e-mail vers de vrais clients.
+  if (campaign.fundingMode === "TEST") {
+    await prisma.campaign.update({ where: { id: campaign.id }, data: { status: "SENT", sentAt: new Date() } });
+    return { claimed: true as const, campaignId: campaign.id, processed: 0, finalStatus: "SENT" as const, simulated: true };
+  }
 
   const merchant = await prisma.merchant.findUnique({
     where: { id: campaign.merchantId },

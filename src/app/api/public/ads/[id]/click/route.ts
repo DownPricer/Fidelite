@@ -17,9 +17,9 @@ export async function GET(req: Request, context: { params: Promise<{ id: string 
   const now = new Date();
   const ad = await prisma.adRequest.findUnique({
     where: { id },
-    select: { id: true, status: true, startDate: true, endDate: true, ctaUrl: true },
+    select: { id: true, status: true, fundingMode: true, startDate: true, endDate: true, ctaUrl: true },
   });
-  if (!ad || ad.status !== "SCHEDULED" || now < ad.startDate || now > ad.endDate) {
+  if (!ad || ad.status !== "SCHEDULED" || ad.fundingMode === "TEST" || now < ad.startDate || now > ad.endDate) {
     return NextResponse.redirect(fallback);
   }
 

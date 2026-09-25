@@ -78,7 +78,7 @@ describe("webhook — recharge du solde marketing", () => {
     expect(response.status).toBe(200);
     expect(creditTopup).toHaveBeenCalledWith(
       expect.anything(),
-      { checkoutSessionId: "cs_topup", paymentIntentId: "pi_topup", amountPaidCents: 1000 },
+      { checkoutSessionId: "cs_topup", mode: "TEST", paymentIntentId: "pi_topup", amountPaidCents: 1000 },
     );
   });
 
@@ -111,7 +111,7 @@ describe("webhook — recharge du solde marketing", () => {
   it("session expirée (paiement annulé) : la recharge en attente est annulée, aucun crédit", async () => {
     await post({ id: "evt_6", type: "checkout.session.expired", data: { object: topupSession({ payment_status: "unpaid" }) } });
     expect(ledgerUpdateMany).toHaveBeenCalledWith({
-      where: { stripeCheckoutSessionId: "cs_topup", type: "TOPUP", status: "PENDING" },
+      where: { stripeCheckoutSessionId: "cs_topup", mode: "TEST", type: "TOPUP", status: "PENDING" },
       data: { status: "CANCELLED" },
     });
     expect(creditTopup).not.toHaveBeenCalled();
@@ -124,7 +124,7 @@ describe("webhook — recharge du solde marketing", () => {
       data: { object: { metadata: { kind: "MARKETING_TOPUP", ledgerEntryId: "led_1" } } },
     });
     expect(ledgerUpdateMany).toHaveBeenCalledWith({
-      where: { id: "led_1", type: "TOPUP", status: "PENDING" },
+      where: { id: "led_1", mode: "TEST", type: "TOPUP", status: "PENDING" },
       data: { status: "FAILED" },
     });
     expect(creditTopup).not.toHaveBeenCalled();
@@ -132,7 +132,7 @@ describe("webhook — recharge du solde marketing", () => {
 });
 
 describe("webhook — mise en avant payée (5 € × jours)", () => {
-  const pendingPayment = { id: "pay_ad", status: "PENDING", amountCents: 1500, stripeCheckoutSessionId: "cs_ad" };
+  const pendingPayment = { id: "pay_ad", status: "PENDING", mode: "TEST", amountCents: 1500, stripeCheckoutSessionId: "cs_ad" };
 
   it("paiement confirmé : l'annonce validée passe SCHEDULED, la campagne aussi", async () => {
     campaignPaymentFindUnique.mockResolvedValueOnce(pendingPayment);
@@ -142,8 +142,8 @@ describe("webhook — mise en avant payée (5 € × jours)", () => {
     await post({ id: "evt_10", type: "checkout.session.completed", data: { object: adSession() } });
 
     expect(campaignPaymentUpdate).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ status: "PAID" }) }));
-    expect(adRequestUpdate).toHaveBeenCalledWith({ where: { id: "ad_1" }, data: { status: "SCHEDULED" } });
-    expect(campaignUpdate).toHaveBeenCalledWith({ where: { id: "camp_ad" }, data: { status: "SCHEDULED" } });
+    expect(adRequestUpdate).toHaveBeenCalledWith({ where: { id: "ad_1" }, data: { status: "SCHEDULED", fundingMode: "TEST" } });
+    expect(campaignUpdate).toHaveBeenCalledWith({ where: { id: "camp_ad" }, data: { status: "SCHEDULED", fundingMode: "TEST" } });
   });
 
   it("montant Stripe différent de 5 € × jours enregistré : rien n'est activé", async () => {
@@ -191,5 +191,46 @@ describe("webhook — mise en avant payée (5 € × jours)", () => {
     });
     expect(campaignPaymentUpdate).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ status: "FAILED" }) }));
     expect(campaignUpdate).not.toHaveBeenCalled();
+  });
+
+  it("paiement de mise en avant en mode réel : l'annonce est marquée LIVE (publiable)", async () => {
+    campaignPaymentFindUnique.mockResolvedValueOnce({ ...pendingPayment, mode: "LIVE" });
+    campaignFindUnique.mockResolvedValueOnce({ id: "camp_ad", merchantId: "m1", channel: "SPONSORED_AD", audienceType: null });
+    adRequestFindUnique.mockResolvedValueOnce({ id: "ad_1", status: "APPROVED" });
+    await post({ id: "evt_live_ad", type: "checkout.session.completed", livemode: true, data: { object: adSession() } });
+    expect(adRequestUpdate).toHaveBeenCalledWith({ where: { id: "ad_1" }, data: { status: "SCHEDULED", fundingMode: "LIVE" } });
+  });
+
+  it("événement test retardé sur une mise en avant réelle : rien n'est activé", async () => {
+    campaignPaymentFindUnique.mockResolvedValueOnce({ ...pendingPayment, mode: "LIVE" });
+    await post({ id: "evt_late_ad", type: "checkout.session.completed", livemode: false, data: { object: adSession() } });
+    expect(campaignPaymentUpdate).not.toHaveBeenCalled();
+    expect(adRequestUpdate).not.toHaveBeenCalled();
+  });
+});
+
+describe("webhook — le mode de l'événement (livemode) décide, pas le mode actif", () => {
+  it("événement live : crédite dans le mode LIVE", async () => {
+    await post({ id: "evt_l1", type: "checkout.session.completed", livemode: true, data: { object: topupSession() } });
+    expect(creditTopup).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ mode: "LIVE" }));
+  });
+
+  it("événement test (même retardé après le passage en réel) : crédite dans le mode TEST uniquement", async () => {
+    await post({ id: "evt_t1", type: "checkout.session.completed", livemode: false, data: { object: topupSession() } });
+    expect(creditTopup).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ mode: "TEST" }));
+    expect(creditTopup).not.toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ mode: "LIVE" }));
+  });
+
+  it("expiration d'une recharge live : n'annule que les recharges LIVE", async () => {
+    await post({ id: "evt_l2", type: "checkout.session.expired", livemode: true, data: { object: topupSession({ payment_status: "unpaid" }) } });
+    expect(ledgerUpdateMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ mode: "LIVE" }) }));
+  });
+
+  it("rejeu d'un même événement (test ou live) : un seul crédit", async () => {
+    await post({ id: "evt_r1", type: "checkout.session.completed", livemode: false, data: { object: topupSession() } });
+    stripeWebhookEventCreate.mockRejectedValueOnce(new Error("unique"));
+    const replay = await post({ id: "evt_r1", type: "checkout.session.completed", livemode: false, data: { object: topupSession() } });
+    expect(replay.status).toBe(200);
+    expect(creditTopup).toHaveBeenCalledTimes(1);
   });
 });

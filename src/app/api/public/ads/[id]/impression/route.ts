@@ -11,11 +11,11 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
   const now = new Date();
   const ad = await prisma.adRequest.findUnique({
     where: { id },
-    select: { id: true, status: true, startDate: true, endDate: true },
+    select: { id: true, status: true, fundingMode: true, startDate: true, endDate: true },
   });
   // Pas de statut LIVE distinct : une publicité est "en ligne" quand elle est programmée
   // et que la date du jour est dans sa fenêtre (voir /api/public/ads/route.ts pour l'affichage).
-  if (!ad || ad.status !== "SCHEDULED" || now < ad.startDate || now > ad.endDate) {
+  if (!ad || ad.status !== "SCHEDULED" || ad.fundingMode === "TEST" || now < ad.startDate || now > ad.endDate) {
     return jsonError("Publicité introuvable.", 404);
   }
 

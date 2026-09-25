@@ -67,7 +67,7 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
 
   if (campaign.payment?.status === "PAID" && campaign.payment.stripePaymentIntentId) {
     try {
-      await refundCampaignPayment(campaign.payment.stripePaymentIntentId);
+      await refundCampaignPayment(campaign.payment.stripePaymentIntentId, campaign.payment.mode);
     } catch (error) {
       console.error("[campaign-moderation] échec du remboursement Stripe", error);
     }

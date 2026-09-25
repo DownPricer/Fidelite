@@ -13,6 +13,7 @@ import {
 import { prisma } from "@/lib/prisma";
 import { LIMITS, rateLimit } from "@/lib/rate-limit";
 import { StripeNotConfiguredError, createMarketingTopupCheckoutSession } from "@/lib/stripe";
+import { getActiveStripeMode, isPaymentAllowedForMerchant, isStripeConfigured } from "@/lib/stripe-mode";
 
 /** Solde marketing prépayé + historique des recharges, débits et restitutions du commerce. */
 export async function GET(req: Request) {
@@ -20,10 +21,16 @@ export async function GET(req: Request) {
   if (staff.error || !staff.user || !staff.membership) return staff.error ?? jsonError("Accès refusé.", 403);
 
   const merchantId = staff.membership.merchantId;
+  // Seuls le solde et l'historique du mode ACTIF sont visibles : le solde test disparaît en mode réel
+  // (sans être transféré) et inversement.
+  const mode = getActiveStripeMode();
+  if (!mode) {
+    return jsonOk({ stripeMode: null, testMode: false, paymentsAvailable: false, balanceCents: 0, history: [] });
+  }
   const [balanceCents, entries] = await Promise.all([
-    getMarketingBalanceCents(merchantId),
+    getMarketingBalanceCents(merchantId, mode),
     prisma.marketingLedgerEntry.findMany({
-      where: { merchantId },
+      where: { merchantId, mode },
       orderBy: { createdAt: "desc" },
       take: 50,
       include: { campaign: { select: { title: true, status: true } } },
@@ -31,6 +38,9 @@ export async function GET(req: Request) {
   ]);
 
   return jsonOk({
+    stripeMode: mode,
+    testMode: mode === "TEST",
+    paymentsAvailable: isStripeConfigured() && isPaymentAllowedForMerchant(merchantId),
     balanceCents,
     presetsCents: TOPUP_PRESETS_CENTS,
     minTopupCents: MIN_TOPUP_CENTS,
@@ -81,9 +91,22 @@ export async function POST(req: Request) {
   const amountCents = parsed.data.amountCents;
   const merchantId = staff.membership.merchantId;
 
+  const mode = getActiveStripeMode();
+  if (!mode || !isStripeConfigured()) {
+    return jsonError("Les recharges ne sont pas disponibles : Stripe n'est pas configuré sur cet environnement.", 503, {
+      code: "STRIPE_NOT_CONFIGURED",
+    });
+  }
+  if (!isPaymentAllowedForMerchant(merchantId)) {
+    return jsonError("Les paiements de test sont réservés au commerce de test configuré.", 403, {
+      code: "TEST_MODE_RESTRICTED",
+    });
+  }
+
   const entry = await prisma.marketingLedgerEntry.create({
     data: {
       merchantId,
+      mode,
       type: "TOPUP",
       status: "PENDING",
       amountCents,
@@ -108,7 +131,7 @@ export async function POST(req: Request) {
       actorId: staff.user.id,
       merchantId,
       action: "MARKETING_TOPUP_CHECKOUT_CREATED",
-      metadata: { ledgerEntryId: entry.id, amountCents, stripeCheckoutSessionId: session.id },
+      metadata: { ledgerEntryId: entry.id, mode, amountCents, stripeCheckoutSessionId: session.id },
       ip: clientIp(req),
       userAgent: userAgent(req),
     });

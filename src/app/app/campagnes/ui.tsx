@@ -30,6 +30,7 @@ type CampaignSummary = {
   payment?: { status: string; amountCents: number } | null;
   adStatus?: AdStatus | null;
   failedDeliveries?: number;
+  fundingMode?: "TEST" | "LIVE" | null;
   createdAt: string;
 };
 
@@ -538,7 +539,7 @@ export function CampagnesPanel({ demo = false }: { demo?: boolean }) {
                     </span>
                   ) : null}
                 </div>
-                <span className="campaign-activity-meta">{recipientsLabel}</span>
+                <span className="campaign-activity-meta">{recipientsLabel}{c.fundingMode === "TEST" ? " · test (simulation)" : ""}</span>
                 <span className={`campaign-status-pill campaign-status-pill-${tone}`}>
                   <span className="campaign-status-pill-dot" />
                   {ad ? AD_STATUS_LABELS[ad.status] : c.statusLabel}
@@ -616,6 +617,8 @@ type LiveEstimate = {
   requiresPayment: boolean;
   quota: { limit: number; used: number; remaining: number };
   balanceCents: number;
+  testMode: boolean;
+  paymentsAllowed: boolean;
 };
 
 function CampaignWizard({
@@ -680,6 +683,8 @@ function CampaignWizard({
             requiresPayment: !(aud === "MERCHANT_MEMBERS" && quota && quota.remaining > 0),
             quota: quota ?? { limit: 0, used: 0, remaining: 0 },
             balanceCents: 1000,
+            testMode: false,
+            paymentsAllowed: true,
           },
         }));
         return;
@@ -715,6 +720,8 @@ function CampaignWizard({
           pricing: { priceCents: number; requiresPayment: boolean };
           quota: { limit: number; used: number; remaining: number };
           balanceCents: number;
+          testMode: boolean;
+          paymentsAllowed: boolean;
         };
         if (seq !== requestSeq.current) return;
         setEstimateByCombo((prev) => ({
@@ -725,6 +732,8 @@ function CampaignWizard({
             requiresPayment: data.pricing.requiresPayment,
             quota: data.quota,
             balanceCents: data.balanceCents,
+            testMode: data.testMode,
+            paymentsAllowed: data.paymentsAllowed,
           },
         }));
       } catch {
@@ -829,7 +838,10 @@ function CampaignWizard({
     : estimating
       ? "…"
       : "—";
-  const insufficientBalance = Boolean(estimate?.requiresPayment && estimate.balanceCents < estimate.priceCents);
+  const paymentsBlocked = Boolean(estimate?.requiresPayment && !estimate.paymentsAllowed);
+  const insufficientBalance = Boolean(
+    estimate?.requiresPayment && (paymentsBlocked || estimate.balanceCents < estimate.priceCents),
+  );
   const summaryRecipients = estimate ? `~${estimate.estimatedRecipients}` : estimating ? "…" : "—";
   const summaryCredit =
     audience === "MERCHANT_MEMBERS" && estimate && !estimate.requiresPayment ? "1 crédit sera utilisé" : null;
@@ -1099,7 +1111,19 @@ function CampaignWizard({
               cette confirmation.
             </p>
 
-            {insufficientBalance && estimate ? (
+            {estimate?.testMode ? (
+              <p className="text-sm font-semibold text-[var(--muted-strong)]">
+                Paiements de test : cet envoi est simulé, aucun client réel ne sera contacté.
+              </p>
+            ) : null}
+
+            {paymentsBlocked ? (
+              <p className="text-sm font-semibold text-[var(--danger)]">
+                Les paiements de test sont réservés au commerce de test. Vos quotas gratuits restent utilisables.
+              </p>
+            ) : null}
+
+            {insufficientBalance && estimate && !paymentsBlocked ? (
               <div className="announce-content-card space-y-2">
                 <p className="text-sm font-semibold text-[var(--danger)]">
                   Solde insuffisant : il manque {formatCents(estimate.priceCents - estimate.balanceCents)} pour cet envoi.
@@ -1455,6 +1479,8 @@ type BalanceData = {
   minTopupCents: number;
   maxTopupCents: number;
   history: LedgerEntry[];
+  testMode?: boolean;
+  paymentsAvailable?: boolean;
 };
 
 const DEMO_BALANCE: BalanceData = {
@@ -1463,6 +1489,8 @@ const DEMO_BALANCE: BalanceData = {
   minTopupCents: 500,
   maxTopupCents: 50000,
   history: [],
+  testMode: false,
+  paymentsAvailable: true,
 };
 
 /** Démarre une recharge Stripe Checkout. Le montant est revalidé côté serveur. */
@@ -1539,6 +1567,12 @@ function MarketingBalanceCard({ demo }: { demo: boolean }) {
 
   return (
     <section className="glass-panel space-y-4 p-5 sm:p-6" aria-label="Solde marketing">
+      {data.testMode ? (
+        <p className="rounded-lg border border-[var(--line)] px-3 py-2 text-sm font-bold text-[var(--violet-bright)]">
+          Paiements de test — aucun vrai paiement n&apos;est encaissé et les campagnes payées sont simulées (aucun
+          envoi réel). Ce solde de test est distinct du solde réel.
+        </p>
+      ) : null}
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--violet-bright)]">Solde marketing</p>
@@ -1550,7 +1584,10 @@ function MarketingBalanceCard({ demo }: { demo: boolean }) {
             {formatCents(CAMPAIGN_PRICE_CENTS.NETWORK_EMAIL)} — prix fixes, quel que soit le nombre de destinataires.
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        {data.paymentsAvailable === false ? (
+          <p className="max-w-xs text-xs text-[var(--muted)]">Recharge indisponible pour ce commerce en mode actuel.</p>
+        ) : null}
+        <div className={`flex flex-wrap items-center gap-2 ${data.paymentsAvailable === false ? "hidden" : ""}`}>
           {data.presetsCents.map((cents) => (
             <Button key={cents} type="button" variant="secondary" disabled={busy} onClick={() => void topup(cents)}>
               +{formatCents(cents)}
@@ -1560,7 +1597,7 @@ function MarketingBalanceCard({ demo }: { demo: boolean }) {
       </div>
 
       <form
-        className="flex flex-wrap items-center gap-2"
+        className={`flex flex-wrap items-center gap-2 ${data.paymentsAvailable === false ? "hidden" : ""}`}
         onSubmit={(event) => {
           event.preventDefault();
           if (customValid) void topup(customCents);

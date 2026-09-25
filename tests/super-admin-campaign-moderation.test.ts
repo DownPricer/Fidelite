@@ -67,7 +67,7 @@ describe("POST /api/super-admin/campaigns/[id]/moderate", () => {
       quotaKind: null,
       quotaPeriodKey: null,
       quotaConsumedAt: null,
-      payment: { id: "pay_1", status: "PAID", stripePaymentIntentId: "pi_1" },
+      payment: { id: "pay_1", status: "PAID", mode: "TEST", stripePaymentIntentId: "pi_1" },
     });
     refundCampaignPayment.mockResolvedValueOnce({});
 
@@ -83,7 +83,7 @@ describe("POST /api/super-admin/campaigns/[id]/moderate", () => {
     expect(campaignPaymentUpdate).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ status: "REFUNDED" }) }),
     );
-    expect(refundCampaignPayment).toHaveBeenCalledWith("pi_1");
+    expect(refundCampaignPayment).toHaveBeenCalledWith("pi_1", "TEST");
   });
 
   it("refuse : restitue le quota consommé si aucun paiement Stripe n'existait", async () => {

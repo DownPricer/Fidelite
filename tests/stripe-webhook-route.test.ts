@@ -125,6 +125,7 @@ describe("POST /api/stripe/webhook", () => {
     campaignPaymentFindUnique.mockResolvedValueOnce({
       id: "pay_1",
       status: "PENDING",
+      mode: "TEST",
       amountCents: 99,
       stripeCheckoutSessionId: "cs_test_1",
     });
@@ -143,7 +144,7 @@ describe("POST /api/stripe/webhook", () => {
       expect.objectContaining({ data: expect.objectContaining({ status: "PAID" }) }),
     );
     expect(campaignUpdate).toHaveBeenCalledWith(
-      expect.objectContaining({ data: { status: "SCHEDULED" } }),
+      expect.objectContaining({ data: { status: "SCHEDULED", fundingMode: "TEST" } }),
     );
   });
 
@@ -164,6 +165,7 @@ describe("POST /api/stripe/webhook", () => {
     campaignPaymentFindUnique.mockResolvedValueOnce({
       id: "pay_2",
       status: "PENDING",
+      mode: "TEST",
       amountCents: 199,
       stripeCheckoutSessionId: "cs_2",
     });
@@ -178,7 +180,7 @@ describe("POST /api/stripe/webhook", () => {
     await POST(makeReq("{}"));
 
     expect(campaignUpdate).toHaveBeenCalledWith(
-      expect.objectContaining({ data: { status: "PENDING_REVIEW" } }),
+      expect.objectContaining({ data: { status: "PENDING_REVIEW", fundingMode: "TEST" } }),
     );
   });
 
@@ -188,7 +190,7 @@ describe("POST /api/stripe/webhook", () => {
       type: "checkout.session.completed",
       data: { object: { id: "cs_3", payment_status: "paid", metadata: { campaignId: "camp_3" } } },
     });
-    campaignPaymentFindUnique.mockResolvedValueOnce({ id: "pay_3", status: "PAID" });
+    campaignPaymentFindUnique.mockResolvedValueOnce({ id: "pay_3", status: "PAID", mode: "TEST" });
 
     const { POST } = await import("../src/app/api/stripe/webhook/route");
     await POST(makeReq("{}"));
@@ -208,7 +210,7 @@ describe("POST /api/stripe/webhook", () => {
         },
       },
     });
-    campaignPaymentFindUnique.mockResolvedValueOnce({ id: "pay_4", status: "PENDING" });
+    campaignPaymentFindUnique.mockResolvedValueOnce({ id: "pay_4", status: "PENDING", mode: "TEST" });
 
     const { POST } = await import("../src/app/api/stripe/webhook/route");
     await POST(makeReq("{}"));
@@ -227,7 +229,7 @@ describe("POST /api/stripe/webhook", () => {
       type: "charge.refunded",
       data: { object: { payment_intent: "pi_9" } },
     });
-    campaignPaymentFindFirst.mockResolvedValueOnce({ id: "pay_5", campaignId: "camp_5", status: "PAID" });
+    campaignPaymentFindFirst.mockResolvedValueOnce({ id: "pay_5", campaignId: "camp_5", status: "PAID", mode: "TEST" });
     campaignFindUnique.mockResolvedValueOnce({
       id: "camp_5",
       merchantId: "m1",

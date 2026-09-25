@@ -3,8 +3,15 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const sessionsCreate = vi.fn();
 
 vi.mock("@/lib/env", () => ({
-  env: { stripeSecretKey: "sk_test_placeholder", stripeWebhookSecret: "whsec_placeholder", appUrl: "http://localhost:3000" },
-  isStripeConfigured: () => true,
+  env: {
+    stripeMode: "test",
+    stripeTestSecretKey: "sk_test_placeholder",
+    stripeTestWebhookSecret: "whsec_test_placeholder",
+    stripeLiveSecretKey: "sk_live_placeholder",
+    stripeLiveWebhookSecret: "whsec_live_placeholder",
+    stripeTestMerchantIds: "",
+    appUrl: "http://localhost:3000",
+  },
 }));
 vi.mock("stripe", () => ({
   default: class {

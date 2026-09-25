@@ -8,6 +8,7 @@ import { clientIp, jsonError, jsonOk, userAgent } from "@/lib/http";
 import { prisma } from "@/lib/prisma";
 import { debitForCampaign, getMarketingBalanceCents } from "@/lib/marketing-balance";
 import { LIMITS, rateLimit } from "@/lib/rate-limit";
+import { getActiveStripeMode, isPaymentAllowedForMerchant } from "@/lib/stripe-mode";
 
 /**
  * Confirme l'envoi d'une campagne (Partie 7.4 → 9) : tarif et quota recalculés
@@ -114,7 +115,20 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
   // Payant : débit atomique du solde marketing prépayé, dans la même transaction que le
   // passage en statut confirmé. Solde insuffisant = aucune écriture, aucun envoi.
   class InsufficientBalance extends Error {}
-  const balanceBefore = await getMarketingBalanceCents(merchantId);
+  const mode = getActiveStripeMode();
+  if (!mode) {
+    return jsonError("Les paiements ne sont pas disponibles : mode Stripe invalide.", 503, {
+      code: "STRIPE_NOT_CONFIGURED",
+    });
+  }
+  // Mode test : seul le commerce de test configuré peut obtenir une campagne payée (fictivement).
+  if (!isPaymentAllowedForMerchant(merchantId)) {
+    return jsonError("Les paiements de test sont réservés au commerce de test configuré.", 403, {
+      code: "TEST_MODE_RESTRICTED",
+    });
+  }
+  // Seul le solde du mode actif est utilisé : un solde test ne finance jamais une campagne réelle.
+  const balanceBefore = await getMarketingBalanceCents(merchantId, mode);
   try {
     const outcome = await prisma.$transaction(async (tx) => {
       // Réclamation atomique : seule la requête qui fait passer DRAFT → confirmée poursuit,
@@ -126,12 +140,15 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
           estimatedRecipients: audience.estimatedRecipients,
           priceCents: pricing.priceCents,
           requiresPayment: true,
+          // TEST = simulation : le worker ne diffuse jamais ce type de campagne à de vrais clients.
+          fundingMode: mode,
         },
       });
       if (claimed.count === 0) return { claimed: false as const };
 
       const debit = await debitForCampaign(tx, {
         merchantId,
+        mode,
         campaignId: campaign.id,
         amountCents: pricing.priceCents,
         description: `Envoi — ${campaign.title.slice(0, 80)}`,
@@ -148,7 +165,7 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
       actorId: staff.user.id,
       merchantId,
       action: "CAMPAIGN_CONFIRMED_BALANCE",
-      metadata: { campaignId: campaign.id, amountCents: pricing.priceCents, balanceAfterCents: outcome.balanceAfterCents },
+      metadata: { campaignId: campaign.id, mode, amountCents: pricing.priceCents, balanceAfterCents: outcome.balanceAfterCents },
       ip: clientIp(req),
       userAgent: userAgent(req),
     });

@@ -63,8 +63,13 @@ export const env = {
   qaCustomerUserId: read("QA_CUSTOMER_USER_ID"),
   qaMagicLoginOrigin: read("QA_MAGIC_LOGIN_ORIGIN", "https://fideto.fr"),
   // Campagnes commerçantes — voir src/lib/stripe.ts, src/lib/push.ts, src/lib/campaign-worker.ts
-  stripeSecretKey: read("STRIPE_SECRET_KEY"),
-  stripeWebhookSecret: read("STRIPE_WEBHOOK_SECRET"),
+  // Stripe : STRIPE_MODE=test|live ; clés et secrets webhook séparés par mode (jamais exposés au navigateur).
+  stripeMode: read("STRIPE_MODE", "test"),
+  stripeTestSecretKey: read("STRIPE_TEST_SECRET_KEY"),
+  stripeTestWebhookSecret: read("STRIPE_TEST_WEBHOOK_SECRET"),
+  stripeLiveSecretKey: read("STRIPE_LIVE_SECRET_KEY"),
+  stripeLiveWebhookSecret: read("STRIPE_LIVE_WEBHOOK_SECRET"),
+  stripeTestMerchantIds: read("STRIPE_TEST_MERCHANT_IDS"),
   vapidPublicKey: read("NEXT_PUBLIC_VAPID_PUBLIC_KEY"),
   vapidPrivateKey: read("VAPID_PRIVATE_KEY"),
   vapidSubject: read("VAPID_SUBJECT", "mailto:contact@fideto.fr"),
@@ -108,9 +113,6 @@ export function isGoogleAuthConfigured() {
   return Boolean(env.googleClientId && env.googleClientSecret);
 }
 
-export function isStripeConfigured() {
-  return Boolean(env.stripeSecretKey && env.stripeWebhookSecret);
-}
 
 export function isWebPushConfigured() {
   return Boolean(env.vapidPublicKey && env.vapidPrivateKey);

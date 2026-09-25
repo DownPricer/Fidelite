@@ -1,5 +1,11 @@
 import Stripe from "stripe";
-import { env, isStripeConfigured } from "./env";
+import {
+  getActiveStripeMode,
+  isStripeConfigured,
+  stripeSecretKeyFor,
+  stripeWebhookSecretFor,
+  type StripeModeValue,
+} from "./stripe-mode";
 
 export class StripeNotConfiguredError extends Error {
   constructor() {
@@ -8,17 +14,27 @@ export class StripeNotConfiguredError extends Error {
   }
 }
 
-let client: Stripe | null = null;
+const clients = new Map<StripeModeValue, Stripe>();
 
-/** Réutilise un client unique. Lève StripeNotConfiguredError si les clés manquent (jamais un crash au démarrage). */
-export function getStripeClient(): Stripe {
-  if (!isStripeConfigured()) {
-    throw new StripeNotConfiguredError();
-  }
+function clientForMode(mode: StripeModeValue): Stripe {
+  const key = stripeSecretKeyFor(mode);
+  if (!key) throw new StripeNotConfiguredError();
+  let client = clients.get(mode);
   if (!client) {
-    client = new Stripe(env.stripeSecretKey, { apiVersion: "2026-08-26.dahlia" });
+    client = new Stripe(key, { apiVersion: "2026-08-26.dahlia" });
+    clients.set(mode, client);
   }
   return client;
+}
+
+/**
+ * Client du mode ACTIF uniquement : la création de paiements n'utilise jamais la clé de l'autre mode.
+ * Lève StripeNotConfiguredError si le mode est invalide ou si la clé/le secret manquent (jamais un crash au démarrage).
+ */
+export function getStripeClient(): Stripe {
+  const mode = getActiveStripeMode();
+  if (!mode || !isStripeConfigured()) throw new StripeNotConfiguredError();
+  return clientForMode(mode);
 }
 
 /** Une session abandonnée expire vite (30 min, minimum Stripe) : rien n'est activé ni crédité sans paiement. */
@@ -77,13 +93,34 @@ export async function createCampaignCheckoutSession(input: CampaignCheckoutInput
   });
 }
 
+/**
+ * Vérifie la signature avec le secret de CHAQUE mode configuré (le webhook est unique). L'événement
+ * doit ensuite être cohérent avec le secret qui l'a validé : `livemode` doit correspondre au mode du
+ * secret, sinon il est rejeté. Le mode réel de l'événement est `event.livemode`, quel que soit le
+ * mode actif du déploiement (un événement test retardé après le passage en réel reste un événement test).
+ */
 export function constructStripeWebhookEvent(payload: string | Buffer, signature: string): Stripe.Event {
-  const stripe = getStripeClient();
-  return stripe.webhooks.constructEvent(payload, signature, env.stripeWebhookSecret);
+  const modes = (["TEST", "LIVE"] as const).filter((mode) => stripeWebhookSecretFor(mode));
+  if (modes.length === 0) throw new StripeNotConfiguredError();
+
+  let lastError: unknown = new Error("Signature invalide.");
+  for (const mode of modes) {
+    try {
+      const event = Stripe.webhooks.constructEvent(payload, signature, stripeWebhookSecretFor(mode));
+      if (event.livemode !== (mode === "LIVE")) {
+        throw new Error("Mode de l'événement incohérent avec le secret de signature.");
+      }
+      return event;
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  throw lastError;
 }
 
-export async function refundCampaignPayment(paymentIntentId: string) {
-  const stripe = getStripeClient();
+/** Rembourse avec la clé du mode du paiement d'origine (pas forcément le mode actif). */
+export async function refundCampaignPayment(paymentIntentId: string, mode: StripeModeValue) {
+  const stripe = clientForMode(mode);
   return stripe.refunds.create({ payment_intent: paymentIntentId });
 }
 

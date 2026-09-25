@@ -17,6 +17,12 @@ const rateLimit = vi.fn(() => ({ ok: true as const, remaining: 1 }));
 
 vi.mock("@/lib/api-guard", () => ({ requireMutatingRequest, requireMerchantAdmin }));
 vi.mock("@/lib/audit", () => ({ writeAudit }));
+const stripeMode = { active: "TEST" as "TEST" | "LIVE", allowed: true, configured: true };
+vi.mock("@/lib/stripe-mode", () => ({
+  getActiveStripeMode: () => stripeMode.active,
+  isPaymentAllowedForMerchant: () => stripeMode.allowed,
+  isStripeConfigured: () => stripeMode.configured,
+}));
 vi.mock("@/lib/marketing-balance", () => ({
   debitForCampaign: (...args: unknown[]) => debitForCampaign(...args),
   getMarketingBalanceCents: (...args: unknown[]) => getMarketingBalanceCents(...args),
@@ -78,6 +84,9 @@ const baseCampaign = {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  stripeMode.active = "TEST";
+  stripeMode.allowed = true;
+  stripeMode.configured = true;
   requireMutatingRequest.mockResolvedValue({ error: null });
   requireMerchantAdmin.mockResolvedValue({
     error: null,
@@ -158,12 +167,13 @@ describe("POST /api/merchant/campaigns/[id]/confirm — solde marketing", () => 
     expect(debitForCampaign).toHaveBeenCalledTimes(1);
     expect(debitForCampaign).toHaveBeenCalledWith(
       expect.anything(),
-      expect.objectContaining({ merchantId: "merchant_A", campaignId: "camp_1", amountCents: 199 }),
+      expect.objectContaining({ merchantId: "merchant_A", mode: "TEST", campaignId: "camp_1", amountCents: 199 }),
     );
+    expect(getMarketingBalanceCents).toHaveBeenCalledWith("merchant_A", "TEST");
     expect(campaignUpdateMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: "camp_1", status: "DRAFT" },
-        data: expect.objectContaining({ status: "PENDING_REVIEW", priceCents: 199 }),
+        data: expect.objectContaining({ status: "PENDING_REVIEW", priceCents: 199, fundingMode: "TEST" }),
       }),
     );
   });
@@ -246,5 +256,48 @@ describe("POST /api/merchant/campaigns/[id]/confirm — solde marketing", () => 
     expect(campaignUpdateMany).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ estimatedRecipients: 40 }) }),
     );
+  });
+
+  it("mode réel : le solde et le débit sont ceux du mode LIVE, la campagne est marquée LIVE", async () => {
+    stripeMode.active = "LIVE";
+    campaignFindFirst.mockResolvedValueOnce({ ...baseCampaign, audienceType: "NETWORK_LOCAL", quotaKind: "NETWORK_NOTIFICATION" });
+    estimateNetworkLocalAudience.mockResolvedValueOnce({ estimatedRecipients: 40 });
+
+    const { POST } = await import("../src/app/api/merchant/campaigns/[id]/confirm/route");
+    const response = await POST(req(), { params: Promise.resolve({ id: "camp_1" }) });
+
+    expect(response.status).toBe(200);
+    expect(getMarketingBalanceCents).toHaveBeenCalledWith("merchant_A", "LIVE");
+    expect(debitForCampaign).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ mode: "LIVE", amountCents: 199 }));
+    expect(campaignUpdateMany).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ fundingMode: "LIVE" }) }),
+    );
+  });
+
+  it("mode test : un commerce non autorisé ne peut pas obtenir de campagne payée (403, aucun débit)", async () => {
+    stripeMode.allowed = false;
+    campaignFindFirst.mockResolvedValueOnce({ ...baseCampaign, audienceType: "NETWORK_LOCAL", quotaKind: "NETWORK_NOTIFICATION" });
+    estimateNetworkLocalAudience.mockResolvedValueOnce({ estimatedRecipients: 40 });
+
+    const { POST } = await import("../src/app/api/merchant/campaigns/[id]/confirm/route");
+    const response = await POST(req(), { params: Promise.resolve({ id: "camp_1" }) });
+    const payload = (await response.json()) as { code: string };
+
+    expect(response.status).toBe(403);
+    expect(payload.code).toBe("TEST_MODE_RESTRICTED");
+    expect(debitForCampaign).not.toHaveBeenCalled();
+    expect(campaignUpdateMany).not.toHaveBeenCalled();
+  });
+
+  it("mode test : le quota gratuit reste utilisable par tous les commerces (comportement existant)", async () => {
+    stripeMode.allowed = false;
+    campaignFindFirst.mockResolvedValueOnce(baseCampaign);
+    const { POST } = await import("../src/app/api/merchant/campaigns/[id]/confirm/route");
+    const response = await POST(req(), { params: Promise.resolve({ id: "camp_1" }) });
+    expect(response.status).toBe(200);
+    expect(campaignUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ status: "SCHEDULED", priceCents: 0 }) }),
+    );
+    expect(campaignUpdate.mock.calls[0][0].data.fundingMode).toBeUndefined();
   });
 });

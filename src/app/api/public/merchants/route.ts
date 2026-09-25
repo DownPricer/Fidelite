@@ -63,7 +63,13 @@ export async function GET(req: Request) {
   const liveAds = q
     ? []
     : await prisma.adRequest.findMany({
-        where: { status: "SCHEDULED", startDate: { lte: now }, endDate: { gte: now } },
+        where: {
+          status: "SCHEDULED",
+          startDate: { lte: now },
+          endDate: { gte: now },
+          // Une mise en avant payée en mode test n'est jamais publiée.
+          OR: [{ fundingMode: null }, { fundingMode: "LIVE" }],
+        },
         include: { merchant: { select: { slug: true, name: true, logoUrl: true } } },
         orderBy: { createdAt: "desc" },
         take: 5,

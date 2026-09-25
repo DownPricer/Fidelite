@@ -7,6 +7,7 @@ import { env } from "@/lib/env";
 import { clientIp, jsonError, jsonOk, userAgent } from "@/lib/http";
 import { prisma } from "@/lib/prisma";
 import { StripeNotConfiguredError, createCampaignCheckoutSession } from "@/lib/stripe";
+import { getActiveStripeMode, isPaymentAllowedForMerchant, isStripeConfigured } from "@/lib/stripe-mode";
 
 /**
  * Validation commerçante du visuel final (Partie 12 étape 6) : déclenche le paiement/la
@@ -54,6 +55,18 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
     return jsonOk({ ok: true, requiresPayment: false });
   }
 
+  const mode = getActiveStripeMode();
+  if (!mode || !isStripeConfigured()) {
+    return jsonError("Les achats de publicité ne sont pas disponibles : Stripe n'est pas configuré.", 503, {
+      code: "STRIPE_NOT_CONFIGURED",
+    });
+  }
+  if (!isPaymentAllowedForMerchant(merchantId)) {
+    return jsonError("Les paiements de test sont réservés au commerce de test configuré.", 403, {
+      code: "TEST_MODE_RESTRICTED",
+    });
+  }
+
   let checkoutUrl: string | null;
   let checkoutSessionId: string;
   try {
@@ -87,11 +100,13 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
         campaignId: adRequest.campaign!.id,
         merchantId,
         amountCents: pricing.priceCents,
+        mode,
         status: "PENDING",
         stripeCheckoutSessionId: checkoutSessionId,
       },
       update: {
         amountCents: pricing.priceCents,
+        mode,
         status: "PENDING",
         failureReason: null,
         stripeCheckoutSessionId: checkoutSessionId,

@@ -15,6 +15,12 @@ const executeRaw = vi.fn();
 class FakeStripeNotConfiguredError extends Error {}
 
 vi.mock("@/lib/api-guard", () => ({ requireMutatingRequest, requireMerchantAdmin }));
+const stripeMode = { active: "TEST" as "TEST" | "LIVE", allowed: true, configured: true };
+vi.mock("@/lib/stripe-mode", () => ({
+  getActiveStripeMode: () => stripeMode.active,
+  isPaymentAllowedForMerchant: () => stripeMode.allowed,
+  isStripeConfigured: () => stripeMode.configured,
+}));
 vi.mock("@/lib/audit", () => ({ writeAudit: vi.fn() }));
 vi.mock("@/lib/stripe", () => ({
   createCampaignCheckoutSession: (...args: unknown[]) => createCampaignCheckoutSession(...args),
@@ -66,6 +72,9 @@ function req() {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  stripeMode.active = "TEST";
+  stripeMode.allowed = true;
+  stripeMode.configured = true;
   requireMutatingRequest.mockResolvedValue({ error: null });
   requireMerchantAdmin.mockResolvedValue({ error: null, user: { id: "u1" }, membership: { merchantId: "merchant_A" } });
   resolvePlanTier.mockResolvedValue("normal");
@@ -91,7 +100,7 @@ describe("POST /api/merchant/ads/[id]/confirm — 5 € par jour", () => {
     );
     // En attente : la mise en avant n'est PAS programmée avant le webhook signé.
     expect(paymentUpsert).toHaveBeenCalledWith(
-      expect.objectContaining({ create: expect.objectContaining({ status: "PENDING", amountCents: expected }) }),
+      expect.objectContaining({ create: expect.objectContaining({ status: "PENDING", amountCents: expected, mode: "TEST" }) }),
     );
     expect(campaignUpdate).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ status: "PAYMENT_REQUIRED" }) }));
     expect(adRequestUpdate).not.toHaveBeenCalled();
@@ -124,6 +133,26 @@ describe("POST /api/merchant/ads/[id]/confirm — 5 € par jour", () => {
     const { POST } = await import("../src/app/api/merchant/ads/[id]/confirm/route");
     const response = await POST(req(), { params: Promise.resolve({ id: "ad_1" }) });
     expect(response.status).toBe(503);
+    expect(paymentUpsert).not.toHaveBeenCalled();
+  });
+
+  it("mode réel : le paiement est enregistré en LIVE", async () => {
+    stripeMode.active = "LIVE";
+    adRequestFindFirst.mockResolvedValueOnce(adRequest(2));
+    const { POST } = await import("../src/app/api/merchant/ads/[id]/confirm/route");
+    await POST(req(), { params: Promise.resolve({ id: "ad_1" }) });
+    expect(paymentUpsert).toHaveBeenCalledWith(
+      expect.objectContaining({ create: expect.objectContaining({ mode: "LIVE" }), update: expect.objectContaining({ mode: "LIVE" }) }),
+    );
+  });
+
+  it("mode test : un commerce non autorisé ne peut pas payer une mise en avant (403)", async () => {
+    stripeMode.allowed = false;
+    adRequestFindFirst.mockResolvedValueOnce(adRequest(2));
+    const { POST } = await import("../src/app/api/merchant/ads/[id]/confirm/route");
+    const response = await POST(req(), { params: Promise.resolve({ id: "ad_1" }) });
+    expect(response.status).toBe(403);
+    expect(createCampaignCheckoutSession).not.toHaveBeenCalled();
     expect(paymentUpsert).not.toHaveBeenCalled();
   });
 });

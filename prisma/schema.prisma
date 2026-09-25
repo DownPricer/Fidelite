@@ -351,7 +351,7 @@ model Merchant {
 
   program             LoyaltyProgram?
   memberships         MerchantMembership[]
-  marketingBalance    MarketingBalance?
+  marketingBalances   MarketingBalance[]
   marketingLedger     MarketingLedgerEntry[]
   customerMemberships CustomerMembership[]
   transactions        LoyaltyTransaction[]
@@ -930,6 +930,8 @@ model Campaign {
   quotaConsumedAt     DateTime?
   priceCents          Int?
   requiresPayment     Boolean               @default(false)
+  /// Mode Stripe du financement payant. TEST = simulation : jamais diffusée à de vrais clients. Null = quota gratuit (réel).
+  fundingMode         StripeMode?
   rejectionReason     String?
   createdBy           String
   createdAt           DateTime              @default(now())
@@ -959,12 +961,19 @@ model CampaignQuotaUsage {
   @@index([merchantId])
 }
 
+/// Mode Stripe d'un paiement, d'un solde ou d'une campagne : les données TEST et LIVE ne se mélangent jamais.
+enum StripeMode {
+  TEST
+  LIVE
+}
+
 model CampaignPayment {
   id                      String                @id @default(cuid())
   campaignId              String                @unique
   merchantId              String
   amountCents             Int
   currency                String                @default("eur")
+  mode                    StripeMode
   status                  CampaignPaymentStatus @default(PENDING)
   stripeCheckoutSessionId String?               @unique
   stripePaymentIntentId   String?               @unique
@@ -995,11 +1004,15 @@ enum MarketingLedgerStatus {
 
 /// Solde marketing prépayé par commerce (centimes entiers, jamais négatif — CHECK en base).
 model MarketingBalance {
-  merchantId   String   @id
-  balanceCents Int      @default(0)
-  updatedAt    DateTime @updatedAt
+  merchantId   String
+  /// Un solde par mode Stripe : le solde TEST ne finance jamais une campagne réelle.
+  mode         StripeMode
+  balanceCents Int        @default(0)
+  updatedAt    DateTime   @updatedAt
 
   merchant Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+
+  @@id([merchantId, mode])
 }
 
 /// Historique des recharges (TOPUP), débits d'envoi (DEBIT) et restitutions avant diffusion (REFUND).
@@ -1008,6 +1021,7 @@ model MarketingBalance {
 model MarketingLedgerEntry {
   id                      String                @id @default(cuid())
   merchantId              String
+  mode                    StripeMode
   type                    MarketingLedgerType
   status                  MarketingLedgerStatus @default(PAID)
   /// Toujours positif ; le signe est porté par `type`.
@@ -1023,7 +1037,7 @@ model MarketingLedgerEntry {
   merchant Merchant  @relation(fields: [merchantId], references: [id], onDelete: Cascade)
   campaign Campaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
 
-  @@index([merchantId, createdAt])
+  @@index([merchantId, mode, createdAt])
 }
 
 /// Idempotence des webhooks Stripe : un id d'événement Stripe n'est jamais traité deux fois.
@@ -1126,6 +1140,8 @@ model AdRequest {
   startDate         DateTime
   endDate           DateTime
   finalImageUrl     String?
+  /// TEST = payée en mode test : jamais publiée. Null = quota gratuit ou paiement réel.
+  fundingMode       StripeMode?
   rejectionReason   String?
   reviewedBy        String?
   reviewedAt        DateTime?

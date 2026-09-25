@@ -2,6 +2,7 @@ import type Stripe from "stripe";
 import { statusAfterFundingConfirmed } from "@/lib/campaign-lifecycle";
 import { refundIncludedQuota } from "@/lib/campaign-quota";
 import { creditTopup } from "@/lib/marketing-balance";
+import type { StripeModeValue } from "@/lib/stripe-mode";
 import { writeAudit } from "@/lib/audit";
 import { jsonError, jsonOk } from "@/lib/http";
 import { prisma } from "@/lib/prisma";
@@ -48,16 +49,23 @@ export async function POST(req: Request) {
   return jsonOk({ ok: true });
 }
 
+/**
+ * Un événement est toujours traité dans SON mode (`livemode`, déjà vérifié contre le secret de
+ * signature), jamais dans le mode actif du déploiement : un événement test retardé après le passage
+ * en réel n'affecte que les données TEST, et inversement. Les données de l'autre mode ne sont
+ * jamais modifiées (chaque handler compare le mode enregistré au mode de l'événement).
+ */
 async function handleStripeEvent(event: Stripe.Event) {
+  const mode: StripeModeValue = event.livemode ? "LIVE" : "TEST";
   switch (event.type) {
     case "checkout.session.completed":
-      return handleCheckoutSessionCompleted(event.data.object as Stripe.Checkout.Session);
+      return handleCheckoutSessionCompleted(event.data.object as Stripe.Checkout.Session, mode);
     case "checkout.session.expired":
-      return handleCheckoutSessionExpired(event.data.object as Stripe.Checkout.Session);
+      return handleCheckoutSessionExpired(event.data.object as Stripe.Checkout.Session, mode);
     case "payment_intent.payment_failed":
-      return handlePaymentIntentFailed(event.data.object as Stripe.PaymentIntent);
+      return handlePaymentIntentFailed(event.data.object as Stripe.PaymentIntent, mode);
     case "charge.refunded":
-      return handleChargeRefunded(event.data.object as Stripe.Charge);
+      return handleChargeRefunded(event.data.object as Stripe.Charge, mode);
     default:
       return; // Événement non pertinent pour les campagnes : accusé de réception sans action.
   }
@@ -67,7 +75,7 @@ function paymentIntentIdOf(session: Stripe.Checkout.Session) {
   return typeof session.payment_intent === "string" ? session.payment_intent : (session.payment_intent?.id ?? null);
 }
 
-async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) {
+async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session, mode: StripeModeValue) {
   // Rien n'est crédité ni activé tant que Stripe ne confirme pas un paiement encaissé.
   if (session.payment_status !== "paid") return;
 
@@ -75,6 +83,7 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
     await prisma.$transaction(async (tx) => {
       const result = await creditTopup(tx, {
         checkoutSessionId: session.id,
+        mode,
         paymentIntentId: paymentIntentIdOf(session),
         amountPaidCents: session.amount_total ?? null,
       });
@@ -98,7 +107,7 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
 
   await prisma.$transaction(async (tx) => {
     const payment = await tx.campaignPayment.findUnique({ where: { campaignId } });
-    if (!payment || payment.status === "PAID") return;
+    if (!payment || payment.status === "PAID" || payment.mode !== mode) return;
     // Session obsolète (paiement relancé avec une nouvelle session) ou montant inattendu : on n'active rien.
     if (payment.stripeCheckoutSessionId !== session.id) return;
     if (session.amount_total !== payment.amountCents) {
@@ -124,13 +133,14 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
       const adRequest = await tx.adRequest.findUnique({ where: { campaignId } });
       if (adRequest?.status === "APPROVED") {
         nextStatus = "SCHEDULED";
-        await tx.adRequest.update({ where: { id: adRequest.id }, data: { status: "SCHEDULED" } });
+        await tx.adRequest.update({ where: { id: adRequest.id }, data: { status: "SCHEDULED", fundingMode: mode } });
       }
     }
 
     await tx.campaign.update({
       where: { id: campaignId },
-      data: { status: nextStatus },
+      // fundingMode = mode du paiement : une campagne/publicité payée en TEST n'est jamais diffusée ni publiée.
+      data: { status: nextStatus, fundingMode: mode },
     });
 
     await writeAudit({
@@ -142,10 +152,10 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
   });
 }
 
-async function handleCheckoutSessionExpired(session: Stripe.Checkout.Session) {
+async function handleCheckoutSessionExpired(session: Stripe.Checkout.Session, mode: StripeModeValue) {
   if (session.metadata?.kind === "MARKETING_TOPUP") {
     await prisma.marketingLedgerEntry.updateMany({
-      where: { stripeCheckoutSessionId: session.id, type: "TOPUP", status: "PENDING" },
+      where: { stripeCheckoutSessionId: session.id, mode, type: "TOPUP", status: "PENDING" },
       data: { status: "CANCELLED" },
     });
     return;
@@ -156,7 +166,7 @@ async function handleCheckoutSessionExpired(session: Stripe.Checkout.Session) {
 
   await prisma.$transaction(async (tx) => {
     const payment = await tx.campaignPayment.findUnique({ where: { campaignId } });
-    if (!payment || payment.status !== "PENDING" || payment.stripeCheckoutSessionId !== session.id) return;
+    if (!payment || payment.status !== "PENDING" || payment.mode !== mode || payment.stripeCheckoutSessionId !== session.id) return;
 
     await tx.campaignPayment.update({ where: { id: payment.id }, data: { status: "CANCELLED" } });
     // Une mise en avant reste « à payer » (relançable) ; rien n'est activé.
@@ -166,12 +176,12 @@ async function handleCheckoutSessionExpired(session: Stripe.Checkout.Session) {
   });
 }
 
-async function handlePaymentIntentFailed(paymentIntent: Stripe.PaymentIntent) {
+async function handlePaymentIntentFailed(paymentIntent: Stripe.PaymentIntent, mode: StripeModeValue) {
   if (paymentIntent.metadata?.kind === "MARKETING_TOPUP") {
     const ledgerEntryId = paymentIntent.metadata.ledgerEntryId;
     if (!ledgerEntryId) return;
     await prisma.marketingLedgerEntry.updateMany({
-      where: { id: ledgerEntryId, type: "TOPUP", status: "PENDING" },
+      where: { id: ledgerEntryId, mode, type: "TOPUP", status: "PENDING" },
       data: { status: "FAILED" },
     });
     return;
@@ -182,7 +192,7 @@ async function handlePaymentIntentFailed(paymentIntent: Stripe.PaymentIntent) {
 
   await prisma.$transaction(async (tx) => {
     const payment = await tx.campaignPayment.findUnique({ where: { campaignId } });
-    if (!payment || payment.status === "PAID") return;
+    if (!payment || payment.status === "PAID" || payment.mode !== mode) return;
 
     await tx.campaignPayment.update({
       where: { id: payment.id },
@@ -197,13 +207,13 @@ async function handlePaymentIntentFailed(paymentIntent: Stripe.PaymentIntent) {
   });
 }
 
-async function handleChargeRefunded(charge: Stripe.Charge) {
+async function handleChargeRefunded(charge: Stripe.Charge, mode: StripeModeValue) {
   const paymentIntentId = typeof charge.payment_intent === "string" ? charge.payment_intent : charge.payment_intent?.id;
   if (!paymentIntentId) return;
 
   await prisma.$transaction(async (tx) => {
     const payment = await tx.campaignPayment.findFirst({ where: { stripePaymentIntentId: paymentIntentId } });
-    if (!payment || payment.status === "REFUNDED") return;
+    if (!payment || payment.status === "REFUNDED" || payment.mode !== mode) return;
 
     await tx.campaignPayment.update({
       where: { id: payment.id },
