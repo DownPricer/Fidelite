@@ -53,7 +53,7 @@ const CHANNEL_LABELS: Record<Channel, string> = {
 
 const AUDIENCE_LABELS: Record<Audience, string> = {
   MERCHANT_MEMBERS: "Mes membres",
-  NETWORK_LOCAL: "Clients Fidelo de mon secteur",
+  NETWORK_LOCAL: "Clients Fideto de mon secteur",
 };
 
 /** Libellé d'audience réseau selon le canal : un e-mail réseau vise les prospects (sans la carte). */
@@ -70,7 +70,7 @@ const QUOTA_LABELS: Record<string, string> = {
 
 const AD_STATUS_LABELS: Record<AdStatus, string> = {
   DRAFT: "Brouillon",
-  PENDING_REVIEW: "En préparation par Fidelo",
+  PENDING_REVIEW: "En préparation par Fideto",
   APPROVED: "Visuel prêt — à valider",
   REJECTED: "Refusée",
   SCHEDULED: "Programmée",
@@ -371,7 +371,7 @@ export function CampagnesPanel({ demo = false }: { demo?: boolean }) {
   }
 
   const adsByCampaignId = new Map(ads.filter((a) => a.campaignId).map((a) => [a.campaignId as string, a]));
-  const planLabel = dashboard.plan === "insight" ? "Fidelo Insight" : "Fidelo";
+  const planLabel = dashboard.plan === "insight" ? "Fideto Insight" : "Fideto";
 
   const notifQuota = dashboard.quotas.find((q) => q.kind === "MEMBER_NOTIFICATION");
   const emailQuota = dashboard.quotas.find((q) => q.kind === "MEMBER_EMAIL");
@@ -454,7 +454,7 @@ export function CampagnesPanel({ demo = false }: { demo?: boolean }) {
             <div>
               <h2 className="text-base font-black text-[var(--ink)]">Mettre mon commerce en avant</h2>
               <p className="mt-1 text-sm text-[var(--muted-strong)]">
-                Un bandeau discret « Sponsorisé » dans l&apos;application client, préparé par Fidelo puis validé par vous.
+                Un bandeau discret « Sponsorisé » dans l&apos;application client, préparé par Fideto puis validé par vous.
               </p>
             </div>
           </div>
@@ -469,7 +469,7 @@ export function CampagnesPanel({ demo = false }: { demo?: boolean }) {
             <div className="campaign-channel-row">
               <span className="campaign-channel-name">
                 <IconMapPin />
-                Clients Fidelo de votre secteur
+                Clients Fideto de votre secteur
               </span>
               <span className="campaign-channel-meta">
                 <strong>
@@ -508,7 +508,7 @@ export function CampagnesPanel({ demo = false }: { demo?: boolean }) {
               c.channel === "SPONSORED_AD" ? "Mise en avant" : CHANNEL_LABELS[c.channel as Channel];
             const audienceLabel =
               c.channel === "SPONSORED_AD"
-                ? "Clients Fidelo de votre secteur"
+                ? "Clients Fideto de votre secteur"
                 : c.audienceType
                   ? audienceDisplay(c.audienceType, c.channel as Channel)
                   : "—";
@@ -875,7 +875,7 @@ function CampaignWizard({
                   </span>
                   <span className="announce-choice-copy">
                     <strong>Notification dans l&apos;application</strong>
-                    <span>Visible dans Fidelo et envoyée sur le téléphone si les notifications sont autorisées.</span>
+                    <span>Visible dans Fideto et envoyée sur le téléphone si les notifications sont autorisées.</span>
                   </span>
                   <span className="announce-choice-check">
                     <IconCheck />
@@ -892,7 +892,7 @@ function CampaignWizard({
                   </span>
                   <span className="announce-choice-copy">
                     <strong>E-mail</strong>
-                    <span>Un message Fidelo personnalisé, envoyé uniquement aux clients ayant donné leur accord.</span>
+                    <span>Un message Fideto personnalisé, envoyé uniquement aux clients ayant donné leur accord.</span>
                   </span>
                   <span className="announce-choice-check">
                     <IconCheck />
@@ -918,7 +918,7 @@ function CampaignWizard({
                   </span>
                   <span className="announce-audience-copy">
                     <strong>Mes membres</strong>
-                    <span>Clients qui possèdent déjà votre carte Fidelo.</span>
+                    <span>Clients qui possèdent déjà votre carte Fideto.</span>
                   </span>
                   <span className="announce-audience-meta">
                     <strong>
@@ -947,7 +947,7 @@ function CampaignWizard({
                     <IconMapPin />
                   </span>
                   <span className="announce-audience-copy">
-                    <strong>{channel === "EMAIL" ? "Prospects de mon secteur" : "Clients Fidelo de mon secteur"}</strong>
+                    <strong>{channel === "EMAIL" ? "Prospects de mon secteur" : "Clients Fideto de mon secteur"}</strong>
                     <span>
                       {channel === "EMAIL"
                         ? "Clients locaux éligibles qui ne possèdent pas votre carte."
@@ -1270,7 +1270,7 @@ function SponsorWizard({
         <div className="glass-panel space-y-3 p-6 text-center">
           <p className="text-sm font-bold text-[var(--ink)]">Demande envoyée</p>
           <p className="text-sm text-[var(--muted-strong)]">
-            Fidelo prépare votre visuel. Vous recevrez un aperçu à valider avant tout paiement — suivez son statut
+            Fideto prépare votre visuel. Vous recevrez un aperçu à valider avant tout paiement — suivez son statut
             dans l&apos;historique des campagnes.
           </p>
           <Button className="w-full" onClick={onDone}>
@@ -1289,7 +1289,7 @@ function SponsorWizard({
 
       <div className="glass-panel space-y-4 p-5">
         <div className="rounded-xl border border-[var(--border)] bg-[var(--panel-bg)] p-3 text-xs text-[var(--muted-strong)]">
-          Comment ça marche : vous envoyez votre demande → Fidelo prépare le visuel → vous recevez un aperçu → vous
+          Comment ça marche : vous envoyez votre demande → Fideto prépare le visuel → vous recevez un aperçu → vous
           validez → vous payez → la campagne est programmée automatiquement → vous suivez affichages et clics.
         </div>
 
@@ -1366,7 +1366,7 @@ function SponsorWizard({
           />
         </label>
         <label className="block text-xs text-[var(--muted)]">
-          Image (facultatif — Fidelo peut l&apos;ajuster)
+          Image (facultatif — Fideto peut l&apos;ajuster)
           <input
             type="file"
             accept="image/*"
@@ -1406,7 +1406,7 @@ function SponsorWizard({
           </div>
           <div className="campaign-wizard-summary-row">
             <span className="text-xs text-[var(--muted)]">Audience</span>
-            <span className="text-sm font-bold text-[var(--ink)]">Clients Fidelo de votre secteur</span>
+            <span className="text-sm font-bold text-[var(--ink)]">Clients Fideto de votre secteur</span>
           </div>
           <div className="campaign-wizard-summary-row">
             <span className="text-xs text-[var(--muted)]">Emplacement</span>

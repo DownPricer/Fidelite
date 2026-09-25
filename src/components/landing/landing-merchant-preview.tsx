@@ -19,7 +19,7 @@ export function LandingMerchantPreview() {
           <span className="h-2 w-2 rounded-full bg-[var(--fh-border)]" />
           <span className="h-2 w-2 rounded-full bg-[var(--fh-border)]" />
         </div>
-        <span className="text-xs font-bold text-[var(--fh-muted)]">Tableau de bord Fidelo — exemple</span>
+        <span className="text-xs font-bold text-[var(--fh-muted)]">Tableau de bord Fideto — exemple</span>
       </div>
 
       <div className="grid grid-cols-3 gap-3">

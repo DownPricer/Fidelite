@@ -64,7 +64,7 @@ export function SuperAdminShell({
       <aside className="fixed inset-y-0 left-0 z-20 hidden w-64 flex-col border-r border-[var(--stroke)] bg-[var(--sidebar)] lg:flex">
         <div className="flex h-16 items-center border-b border-[var(--stroke)] px-6">
           <span className="text-lg font-bold tracking-tighter text-[var(--ink)]">
-            Fidelo <span className="text-[10px] font-black uppercase tracking-widest text-[var(--violet-bright)]">Super</span>
+            Fideto <span className="text-[10px] font-black uppercase tracking-widest text-[var(--violet-bright)]">Super</span>
           </span>
         </div>
         <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-6">

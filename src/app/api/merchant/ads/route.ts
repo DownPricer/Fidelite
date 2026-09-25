@@ -4,7 +4,7 @@ import { clientIp, jsonError, jsonOk, readJson, userAgent } from "@/lib/http";
 import { prisma } from "@/lib/prisma";
 import { adRequestCreateSchema, zodErrorMessage } from "@/lib/validation";
 
-/** Partie 12 étapes 1-2 : le commerçant envoie sa demande de bandeau, qui part en attente Fidelo. */
+/** Partie 12 étapes 1-2 : le commerçant envoie sa demande de bandeau, qui part en attente Fideto. */
 export async function GET(req: Request) {
   const staff = await requireMerchantAdmin(req);
   if (staff.error || !staff.user || !staff.membership) return staff.error ?? jsonError("Accès refusé.", 403);

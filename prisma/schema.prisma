@@ -192,7 +192,7 @@ model User {
   isActive           Boolean      @default(true)
   mustChangePassword Boolean      @default(false)
   privacyConsentAt   DateTime?
-  /// Solde global de points Fidelo (tous commerces confondus).
+  /// Solde global de points Fideto (tous commerces confondus).
   fifeLifePoints     Int          @default(0)
   /// Numéro client court affiché sur la carte et saisissable en caisse.
   clientNumber       String?      @unique
@@ -241,7 +241,7 @@ model CustomerPreferences {
   notifyNewCard             Boolean   @default(true)
   /// Offres in-app des commerces dont le client possède la carte (Partie 6).
   notifyMerchantOffers      Boolean   @default(false)
-  /// Bons plans locaux Fidelo (réseau) in-app (Partie 6).
+  /// Bons plans locaux Fideto (réseau) in-app (Partie 6).
   notifyFifeLifeNews        Boolean   @default(false)
   notifySecurity            Boolean   @default(true)
   /// Réglages globaux existants (service/sécurité). Les cases de prospection ci-dessous
@@ -253,12 +253,12 @@ model CustomerPreferences {
   adsMerchantPush           Boolean   @default(false)
   /// E-mails des commerces dont le client possède la carte.
   adsMerchantEmail          Boolean   @default(false)
-  /// Push des bons plans locaux Fidelo (réseau).
+  /// Push des bons plans locaux Fideto (réseau).
   adsNetworkPush            Boolean   @default(false)
-  /// E-mails des bons plans locaux Fidelo (réseau).
+  /// E-mails des bons plans locaux Fideto (réseau).
   adsNetworkEmail           Boolean   @default(false)
   /// Zone marketing facultative (ville/code postal déclaratifs — jamais de géolocalisation
-  /// précise en arrière-plan), utilisée uniquement pour les bons plans locaux Fidelo.
+  /// précise en arrière-plan), utilisée uniquement pour les bons plans locaux Fideto.
   marketingZoneCity         String?
   marketingZonePostalCode   String?
   /// Version de la politique de consentement au moment de la dernière modification (audit : voir ConsentEvent).
@@ -672,7 +672,7 @@ model MerchantSubscription {
   cancelledAt        DateTime?
   autoRenew          Boolean               @default(true)
   notes              String?
-  /// Option Fidelo Insight (+10€/mois), activée manuellement par un super-admin.
+  /// Option Fideto Insight (+10€/mois), activée manuellement par un super-admin.
   insightEnabled     Boolean               @default(false)
   insightEnabledAt   DateTime?
   insightRequestedAt DateTime?
@@ -728,7 +728,7 @@ model AccountDeletionRequest {
   user      User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
-/// Ledger des points Fidelo globaux.
+/// Ledger des points Fideto globaux.
 model FifeLifePointsLedger {
   id        String   @id @default(cuid())
   userId    String
@@ -762,7 +762,7 @@ model WalletEvent {
   @@index([userId, acknowledgedAt])
 }
 
-/// QR global et universel Fidelo, un par utilisateur.
+/// QR global et universel Fideto, un par utilisateur.
 model FifeLifeQrToken {
   id            String    @id @default(cuid())
   userId        String    @unique

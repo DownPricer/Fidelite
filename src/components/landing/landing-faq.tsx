@@ -10,9 +10,9 @@ type FaqItem = {
 
 const FAQ_ITEMS: FaqItem[] = [
   {
-    question: "Fidelo est-il une carte de fidélité unique ?",
+    question: "Fideto est-il une carte de fidélité unique ?",
     answer:
-      "Oui. Votre espace Fidelo rassemble les cartes des commerces participants, tandis que chaque commerce conserve son propre programme et ses propres avantages.",
+      "Oui. Votre espace Fideto rassemble les cartes des commerces participants, tandis que chaque commerce conserve son propre programme et ses propres avantages.",
   },
   {
     question: "Comment fonctionne le QR code ?",
@@ -24,7 +24,7 @@ const FAQ_ITEMS: FaqItem[] = [
     answer: "Oui, lorsque le commerce active cette possibilité. Votre carte reste accessible facilement depuis votre téléphone.",
   },
   {
-    question: "Fidelo convient-il aux petits commerces ?",
+    question: "Fideto convient-il aux petits commerces ?",
     answer:
       "Oui. L'interface est pensée pour lancer rapidement un programme simple, puis l'adapter au rythme du commerce.",
   },
@@ -34,7 +34,7 @@ const FAQ_ITEMS: FaqItem[] = [
   },
   {
     question: "Comment contacter l'assistance ?",
-    answer: "Écrivez-nous à support@fidelo.app, notre équipe vous répond rapidement.",
+    answer: "Écrivez-nous à support@fideto.fr, notre équipe vous répond rapidement.",
   },
 ];
 

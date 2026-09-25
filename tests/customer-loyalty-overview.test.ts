@@ -243,7 +243,7 @@ describe("customer loyalty overview", () => {
     expect([...ids]).toEqual(["a", "b", "c", "d"]);
   });
 
-  it("carte active wallet — Fidelo, commerçant et pas de mélange", () => {
+  it("carte active wallet — Fideto, commerçant et pas de mélange", () => {
     const cardRewards: CardNextRewardEntry[] = [
       {
         cardKey: "global",
@@ -351,11 +351,11 @@ describe("customer loyalty overview", () => {
     ).toMatchObject({ rewardName: "Nuit offerte", unit: "passages" });
   });
 
-  it("Fidelo max tier → aucune récompense globale inventée", () => {
+  it("Fideto max tier → aucune récompense globale inventée", () => {
     expect(buildFifeLifeNextReward(600)).toBeNull();
   });
 
-  it("Google Wallet actif — Fidelo vers global, commerce vers slug commerce", () => {
+  it("Google Wallet actif — Fideto vers global, commerce vers slug commerce", () => {
     expect(
       googleWalletEndpointForActiveCard({
         cardType: "global",

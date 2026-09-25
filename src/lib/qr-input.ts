@@ -4,9 +4,14 @@ const JWT_PATTERN = /^eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/;
 
 const ALLOWED_QR_HOSTS = new Set(
   [
-    env.customerHost,
-    env.appHost,
-    env.employeeHost,
+    ...[
+      env.customerHost,
+      env.appHost,
+      env.employeeHost,
+      env.legacyCustomerHost,
+      env.legacyAppHost,
+      env.legacyEmployeeHost,
+    ].flatMap((value) => value.split(",").map((item) => item.trim())),
     "localhost",
     "127.0.0.1",
     new URL(env.customerOrigin).hostname,
@@ -32,7 +37,7 @@ function extractJwtFromText(text: string) {
 export function extractFifeLifeQrToken(raw: string) {
   const trimmed = raw.trim();
   if (!trimmed) {
-    throw new QrInputError("Collez un lien ou un code QR Fidelo.");
+    throw new QrInputError("Collez un lien ou un code QR Fideto.");
   }
 
   if (JWT_PATTERN.test(trimmed)) {
@@ -45,7 +50,7 @@ export function extractFifeLifeQrToken(raw: string) {
   } catch {
     const embedded = extractJwtFromText(trimmed);
     if (embedded) return embedded;
-    throw new QrInputError("Ce lien n'est pas un QR Fidelo valide.");
+    throw new QrInputError("Ce lien n'est pas un QR Fideto valide.");
   }
 
   if (!["http:", "https:"].includes(parsed.protocol)) {
@@ -54,7 +59,7 @@ export function extractFifeLifeQrToken(raw: string) {
 
   const host = parsed.hostname.toLowerCase();
   if (!ALLOWED_QR_HOSTS.has(host)) {
-    throw new QrInputError("Domaine non autorisé pour un QR Fidelo.");
+    throw new QrInputError("Domaine non autorisé pour un QR Fideto.");
   }
 
   const fromQuery =
@@ -80,5 +85,5 @@ export function extractFifeLifeQrToken(raw: string) {
     return embedded;
   }
 
-  throw new QrInputError("Impossible d'extraire un QR Fidelo depuis ce lien.");
+  throw new QrInputError("Impossible d'extraire un QR Fideto depuis ce lien.");
 }

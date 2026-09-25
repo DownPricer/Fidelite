@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { env } from "./lib/env";
-import { isAdminHost, isAppHost, isEmployeeHost } from "./lib/hosts";
+import { isAdminHost, isAppHost, isEmployeeHost, legacyRedirectOrigin } from "./lib/hosts";
 import { hasSuperAdminEntryCookie, SUPER_ADMIN_ENTRY_COOKIE, superAdminEntryCookieOptions } from "./lib/super-admin-entry";
 
 function superAdminPublicPrefix() {
@@ -17,6 +17,14 @@ function nextWithPathname(req: NextRequest) {
 export function middleware(req: NextRequest) {
   const host = req.headers.get("host") ?? "";
   const { pathname } = req.nextUrl;
+
+  // Transition de domaine : les pages de l'ancien domaine redirigent vers le nouveau en
+  // conservant chemin et paramètres. Les routes techniques (/api : webhooks, callbacks OAuth,
+  // scan caisse, etc.) ne sont JAMAIS redirigées ici : elles restent servies par l'ancien hôte.
+  if (env.legacyRedirectEnabled && !pathname.startsWith("/api") && !pathname.startsWith("/_next") && pathname !== "/sw.js") {
+    const target = legacyRedirectOrigin(host);
+    if (target) return NextResponse.redirect(`${target}${pathname}${req.nextUrl.search}`, 308);
+  }
 
   if (
     pathname.startsWith("/api") ||

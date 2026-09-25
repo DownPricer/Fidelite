@@ -123,7 +123,7 @@ export function MerchantPublic({
                 </div>
               )}
               <h1 className="text-4xl font-black tracking-tighter text-[var(--ink)] lg:text-6xl">{merchant.name}</h1>
-              <p className="mt-4 text-xl font-medium text-[var(--muted-strong)]">Rejoignez ce commerce avec Fidelo.</p>
+              <p className="mt-4 text-xl font-medium text-[var(--muted-strong)]">Rejoignez ce commerce avec Fideto.</p>
             </header>
 
             <div className="w-full space-y-6">

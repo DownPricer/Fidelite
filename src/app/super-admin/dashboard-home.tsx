@@ -47,9 +47,9 @@ const ACTIVITY_LABELS: Record<string, string> = {
   MERCHANT_RESTORE: "Commerce restauré",
   MERCHANT_DELETE_REQUESTED: "Archivage demandé",
   MERCHANT_SETTINGS_UPDATE: "Réglages commerce modifiés",
-  INSIGHT_ENABLED: "Fidelo Insight activé",
-  INSIGHT_DISABLED: "Fidelo Insight désactivé",
-  INSIGHT_ACTIVATION_REQUESTED: "Demande Fidelo Insight",
+  INSIGHT_ENABLED: "Fideto Insight activé",
+  INSIGHT_DISABLED: "Fideto Insight désactivé",
+  INSIGHT_ACTIVATION_REQUESTED: "Demande Fideto Insight",
   LOYALTY_PROGRAM_PUBLISH: "Programme publié",
   CARD_TEMPLATE_PUBLISH: "Carte publiée",
   SUPER_ADMIN_LOGIN: "Connexion super-admin",
@@ -58,7 +58,7 @@ const ACTIVITY_LABELS: Record<string, string> = {
 const QUICK_LINKS = [
   ["Créer un commerce", "/super-admin/commerces/nouveau", "Nouvel onboarding"],
   ["Commerces", "/super-admin/commerces", "Gérer le réseau"],
-  ["Abonnements", "/super-admin/abonnements", "Plans et Fidelo Insight"],
+  ["Abonnements", "/super-admin/abonnements", "Plans et Fideto Insight"],
   ["Sécurité et audit", "/super-admin/audit", "Journal complet"],
 ] as const;
 
@@ -95,7 +95,7 @@ export function DashboardHome({ firstName }: { firstName: string }) {
         {
           key: "insight",
           count: overview.alerts.insightPending,
-          label: "demande(s) Fidelo Insight",
+          label: "demande(s) Fideto Insight",
           hint: "En attente d'activation manuelle",
           href: "/super-admin/abonnements",
           tone: "warn" as const,
@@ -125,7 +125,7 @@ export function DashboardHome({ firstName }: { firstName: string }) {
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <h1 className="text-2xl font-black tracking-tight text-[var(--panel-text)]">Vue d&apos;ensemble</h1>
-            <p className="text-sm text-[var(--muted-text)]">La santé du réseau Fidelo, sans bruit inutile.</p>
+            <p className="text-sm text-[var(--muted-text)]">La santé du réseau Fideto, sans bruit inutile.</p>
           </div>
           <Link href="/super-admin/commerces/nouveau" className="glass-cta px-4 py-2.5 text-sm">
             + Créer un commerce
@@ -140,7 +140,7 @@ export function DashboardHome({ firstName }: { firstName: string }) {
             value={overview?.merchants.total ?? "—"}
             sub={`${overview?.merchants.active ?? 0} actifs · ${overview?.merchants.trial ?? 0} essai · ${overview?.merchants.draft ?? 0} brouillon`}
           />
-          <StatCard label="Clients Fidelo" value={overview?.customers.total ?? "—"} sub={`${overview?.customers.active30d ?? 0} actifs / 30 j`} />
+          <StatCard label="Clients Fideto" value={overview?.customers.total ?? "—"} sub={`${overview?.customers.active30d ?? 0} actifs / 30 j`} />
           <StatCard
             label="Insight activé"
             value={overview?.insight.enabled ?? "—"}

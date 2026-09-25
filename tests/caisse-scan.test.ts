@@ -82,7 +82,7 @@ const membership = {
   },
 };
 
-describe("processCaisseScan — QR global Fidelo", () => {
+describe("processCaisseScan — QR global Fideto", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     entitlementFindMany.mockResolvedValue([]);

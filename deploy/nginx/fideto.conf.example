@@ -1,0 +1,135 @@
+# Fideto — vhosts du NOUVEAU domaine fideto.fr (Nginx central Docker downpricer-nginx)
+#
+# À ajouter EN PLUS de fifelite.conf, qui continue de servir les anciens domaines
+# sitereadyshd.fr pendant la transition. Ne pas modifier ni supprimer fifelite.conf.
+#   Copier ce fichier vers : /opt/downpricer/nginx/conf.d/fideto.conf
+#
+# Hôtes servis (tous vers fifelite-web:3000 ; l'application route selon l'en-tête Host) :
+#   fideto.fr          → espace client + pages publiques
+#   www.fideto.fr      → redirection 301 vers https://fideto.fr (chemin et paramètres conservés)
+#   app.fideto.fr      → espace commerçant
+#   employe.fideto.fr  → application employé (scan)
+#   admin.fideto.fr    → super-admin
+#
+# Déploiement en trois temps (le bloc 443 échoue tant que le certificat n'existe pas) :
+#   1. DNS créés et propagés, bloc HTTP (ci-dessous) actif seul → nginx -t && nginx -s reload
+#   2. Certificat (une seule commande, tous les noms) :
+#        docker run --rm \
+#          -v /opt/downpricer/nginx/ssl:/etc/letsencrypt \
+#          -v /opt/downpricer/nginx/www:/var/www/certbot \
+#          certbot/certbot certonly --webroot -w /var/www/certbot \
+#          -d fideto.fr -d www.fideto.fr -d app.fideto.fr -d admin.fideto.fr -d employe.fideto.fr
+#      (reprendre la convention de montage déjà utilisée par les autres vhosts du VPS)
+#   3. Remplacer le bloc HTTP par le bloc « TLS » ci-dessous décommenté,
+#      puis  nginx -t && nginx -s reload.
+
+upstream fideto_web {
+    server fifelite-web:3000;
+    keepalive 8;
+}
+
+# --- Étape 1 : HTTP (validation Let's Encrypt + service provisoire) ---
+server {
+    listen 80;
+    server_name fideto.fr www.fideto.fr app.fideto.fr admin.fideto.fr employe.fideto.fr;
+
+    location /.well-known/acme-challenge/ { root /var/www/certbot; }
+
+    location / {
+        proxy_pass http://fideto_web;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Connection "";
+        proxy_read_timeout 120s;
+    }
+}
+
+# --- Étape 3 : TLS (décommenter après émission du certificat) ---
+# Le certificat unique est stocké sous /etc/letsencrypt/live/fideto.fr/.
+#
+# server {
+#     listen 80;
+#     server_name fideto.fr www.fideto.fr app.fideto.fr admin.fideto.fr employe.fideto.fr;
+#     location /.well-known/acme-challenge/ { root /var/www/certbot; }
+#     location / { return 301 https://$host$request_uri; }
+# }
+#
+# server {
+#     listen 443 ssl http2;
+#     server_name www.fideto.fr;
+#     ssl_certificate     /etc/letsencrypt/live/fideto.fr/fullchain.pem;
+#     ssl_certificate_key /etc/letsencrypt/live/fideto.fr/privkey.pem;
+#     return 301 https://fideto.fr$request_uri;
+# }
+#
+# server {
+#     listen 443 ssl http2;
+#     server_name fideto.fr;
+#     ssl_certificate     /etc/letsencrypt/live/fideto.fr/fullchain.pem;
+#     ssl_certificate_key /etc/letsencrypt/live/fideto.fr/privkey.pem;
+#    location / {
+#        proxy_pass http://fideto_web;
+#        proxy_http_version 1.1;
+#        proxy_set_header Host $host;
+#        proxy_set_header X-Real-IP $remote_addr;
+#        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+#        proxy_set_header X-Forwarded-Proto $scheme;
+#        proxy_set_header Connection "";
+#        proxy_read_timeout 120s;
+#    }
+# }
+#
+# server {
+#     listen 443 ssl http2;
+#     server_name app.fideto.fr;
+#     ssl_certificate     /etc/letsencrypt/live/fideto.fr/fullchain.pem;
+#     ssl_certificate_key /etc/letsencrypt/live/fideto.fr/privkey.pem;
+#    location / {
+#        proxy_pass http://fideto_web;
+#        proxy_http_version 1.1;
+#        proxy_set_header Host $host;
+#        proxy_set_header X-Real-IP $remote_addr;
+#        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+#        proxy_set_header X-Forwarded-Proto $scheme;
+#        proxy_set_header Connection "";
+#        proxy_read_timeout 120s;
+#    }
+# }
+#
+# server {
+#     listen 443 ssl http2;
+#     server_name admin.fideto.fr;
+#     ssl_certificate     /etc/letsencrypt/live/fideto.fr/fullchain.pem;
+#     ssl_certificate_key /etc/letsencrypt/live/fideto.fr/privkey.pem;
+#    location / {
+#        proxy_pass http://fideto_web;
+#        proxy_http_version 1.1;
+#        proxy_set_header Host $host;
+#        proxy_set_header X-Real-IP $remote_addr;
+#        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+#        proxy_set_header X-Forwarded-Proto $scheme;
+#        proxy_set_header Connection "";
+#        proxy_read_timeout 120s;
+#    }
+# }
+#
+# server {
+#     listen 443 ssl http2;
+#     server_name employe.fideto.fr;
+#     ssl_certificate     /etc/letsencrypt/live/fideto.fr/fullchain.pem;
+#     ssl_certificate_key /etc/letsencrypt/live/fideto.fr/privkey.pem;
+#    location / {
+#        proxy_pass http://fideto_web;
+#        proxy_http_version 1.1;
+#        proxy_set_header Host $host;
+#        proxy_set_header X-Real-IP $remote_addr;
+#        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+#        proxy_set_header X-Forwarded-Proto $scheme;
+#        proxy_set_header Connection "";
+#        proxy_read_timeout 120s;
+#    }
+# }
+#

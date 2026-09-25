@@ -12,7 +12,7 @@ export type EmployeeInvitationEmailInput = {
 };
 
 function mailFrom() {
-  return env.mailFrom || `Fidelo <noreply@${new URL(env.employeeAppUrl).hostname}>`;
+  return env.mailFrom || `Fideto <noreply@${new URL(env.employeeAppUrl).hostname}>`;
 }
 
 export function isEmailConfigured() {
@@ -102,10 +102,10 @@ function buildInvitationContent(input: EmployeeInvitationEmailInput) {
     <tr><td align="center">
       <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:520px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:16px;padding:32px;">
         <tr><td>
-          <p style="margin:0 0 8px;font-size:12px;letter-spacing:0.12em;text-transform:uppercase;color:#94a3b8;">Fidelo Employé</p>
+          <p style="margin:0 0 8px;font-size:12px;letter-spacing:0.12em;text-transform:uppercase;color:#94a3b8;">Fideto Employé</p>
           <h1 style="margin:0 0 16px;font-size:24px;color:#f8fafc;">Bonjour ${escapeHtml(input.firstName)},</h1>
           <p style="margin:0 0 16px;font-size:15px;line-height:1.5;color:#cbd5e1;">
-            <strong style="color:#f8fafc;">${escapeHtml(input.merchantName)}</strong> vous invite à rejoindre son équipe sur l'application employé Fidelo.
+            <strong style="color:#f8fafc;">${escapeHtml(input.merchantName)}</strong> vous invite à rejoindre son équipe sur l'application employé Fideto.
           </p>
           ${intro}
           <p style="margin:0 0 24px;font-size:15px;line-height:1.5;color:#cbd5e1;">
@@ -132,7 +132,7 @@ function buildInvitationContent(input: EmployeeInvitationEmailInput) {
   const text = [
     `Bonjour ${input.firstName},`,
     "",
-    `${input.merchantName} vous invite à rejoindre son équipe sur Fidelo Employé.`,
+    `${input.merchantName} vous invite à rejoindre son équipe sur Fideto Employé.`,
     input.message?.trim() ? `\n${input.message.trim()}\n` : "",
     "Activez votre compte :",
     input.invitationUrl,
@@ -214,7 +214,7 @@ function buildCampaignEmailContent(input: CampaignEmailInput) {
       <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:520px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:16px;padding:32px;">
         <tr><td>
           <p style="margin:0 0 16px;font-size:12px;letter-spacing:0.12em;text-transform:uppercase;color:#94a3b8;">
-            ${logo} <span style="vertical-align:middle;margin-left:8px;">Fidelo · ${escapeHtml(input.merchantName)}</span>
+            ${logo} <span style="vertical-align:middle;margin-left:8px;">Fideto · ${escapeHtml(input.merchantName)}</span>
           </p>
         </td></tr>
         ${image}
@@ -237,7 +237,7 @@ function buildCampaignEmailContent(input: CampaignEmailInput) {
 </html>`;
 
   const text = [
-    `Fidelo · ${input.merchantName}`,
+    `Fideto · ${input.merchantName}`,
     "",
     input.title,
     "",

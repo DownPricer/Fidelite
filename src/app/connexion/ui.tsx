@@ -63,7 +63,7 @@ export function CustomerLoginForm({
           <BrandMark className="mb-6 sm:mb-8" />
           <h1 className="text-2xl font-black tracking-tight sm:text-3xl">Espace client</h1>
           <p className="mt-2 max-w-sm text-sm font-medium leading-relaxed text-[var(--muted-strong)] sm:text-base">
-            Retrouvez vos cartes, vos points et votre QR Fidelo.
+            Retrouvez vos cartes, vos points et votre QR Fideto.
           </p>
         </div>
 

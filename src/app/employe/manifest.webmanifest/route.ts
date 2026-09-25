@@ -2,9 +2,9 @@ import { NextResponse } from "next/server";
 
 export function GET() {
   return NextResponse.json({
-    name: "Fidelo Employé",
+    name: "Fideto Employé",
     short_name: "Employé",
-    description: "Scannez les cartes Fidelo en caisse.",
+    description: "Scannez les cartes Fideto en caisse.",
     start_url: "/employe/scan",
     scope: "/employe/",
     display: "standalone",

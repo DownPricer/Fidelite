@@ -169,7 +169,7 @@ async function sendOneDeliveryUnsafe(
     actionUrl: campaign.actionUrl,
     reasonLabel:
       campaign.audienceType === "NETWORK_LOCAL"
-        ? "Vous recevez cet e-mail car vous avez accepté les bons plans locaux Fidelo."
+        ? "Vous recevez cet e-mail car vous avez accepté les bons plans locaux Fideto."
         : `Vous recevez cet e-mail car vous avez la carte de ${merchant.name}.`,
     unsubscribeUrl: unsubscribeUrl(env.appUrl, token),
     preferencesUrl: `${env.appUrl}/compte/parametres`,

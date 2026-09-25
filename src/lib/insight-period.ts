@@ -1,4 +1,4 @@
-// Date-range helpers for Fidelo Insight. Everything is anchored to Europe/Paris, with
+// Date-range helpers for Fideto Insight. Everything is anchored to Europe/Paris, with
 // weeks starting on Monday, as required by the merchant statistics spec. No date library
 // is added — the codebase already hand-rolls this kind of thing (see money.ts).
 

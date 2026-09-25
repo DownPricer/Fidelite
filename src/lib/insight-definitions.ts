@@ -1,4 +1,4 @@
-// Définitions formelles des métriques Fidelo Insight (spec §7). Utilisées comme infobulles
+// Définitions formelles des métriques Fideto Insight (spec §7). Utilisées comme infobulles
 // dans l'UI et comme référence unique pour que insight-stats.ts calcule exactement ce que
 // ces libellés promettent.
 

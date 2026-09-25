@@ -93,8 +93,8 @@ export function networkAudienceWhere(
 }
 
 /**
- * Audience "Clients Fidelo de mon secteur" (Partie 7 étape 2 / Partie 6) : uniquement des
- * clients ayant explicitement accepté les bons plans Fidelo réseau ET déclaré une zone
+ * Audience "Clients Fideto de mon secteur" (Partie 7 étape 2 / Partie 6) : uniquement des
+ * clients ayant explicitement accepté les bons plans Fideto réseau ET déclaré une zone
  * marketing (ville ou code postal) correspondant à celle du commerce. Jamais de
  * géolocalisation précise, jamais de coordonnées inventées.
  */

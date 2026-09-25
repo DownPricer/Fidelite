@@ -9,7 +9,7 @@ export default function TermsPage() {
         <h1 className="mt-8 text-3xl font-semibold text-[var(--ink)]">Conditions d’utilisation</h1>
         <Card className="mt-6 space-y-4 text-sm leading-6">
           <p>
-            Les conditions d’utilisation complètes de Fidelo sont en cours de finalisation.
+            Les conditions d’utilisation complètes de Fideto sont en cours de finalisation.
             Cette page sera publiée avant toute validation juridique définitive.
           </p>
         </Card>

@@ -234,7 +234,7 @@ export function SettingsPage({
       <section className="glass-panel profile-panel mt-4 p-4">
         <div className="relative z-[1]">
           <h3 className="section-title mb-3">Apparence</h3>
-          <p className="mb-3 text-xs text-[var(--muted)]">Choisissez l&apos;apparence de Fidelo.</p>
+          <p className="mb-3 text-xs text-[var(--muted)]">Choisissez l&apos;apparence de Fideto.</p>
           <AppearanceRow />
         </div>
       </section>
@@ -248,7 +248,7 @@ export function SettingsPage({
             <ToggleRow label="Avantage bientôt expiré" checked={preferences.notifyBenefitExpiring} onChange={(v) => void patchPreferences({ notifyBenefitExpiring: v })} />
             <ToggleRow label="Nouvelle carte ajoutée" checked={preferences.notifyNewCard} onChange={(v) => void patchPreferences({ notifyNewCard: v })} />
             <ToggleRow label="Offres des commerçants" checked={preferences.notifyMerchantOffers} onChange={(v) => void patchPreferences({ notifyMerchantOffers: v })} />
-            <ToggleRow label="Actualités Fidelo" checked={preferences.notifyFifeLifeNews} onChange={(v) => void patchPreferences({ notifyFifeLifeNews: v })} />
+            <ToggleRow label="Actualités Fideto" checked={preferences.notifyFifeLifeNews} onChange={(v) => void patchPreferences({ notifyFifeLifeNews: v })} />
             <ToggleRow label="Notifications de sécurité" checked={preferences.notifySecurity} disabled onChange={() => undefined} />
           </div>
           <p className="mt-4 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--muted)]">Canaux</p>
@@ -288,7 +288,7 @@ export function SettingsPage({
             />
           </div>
           <p className="mt-4 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--muted)]">
-            Bons plans locaux Fidelo (autres commerces de mon secteur)
+            Bons plans locaux Fideto (autres commerces de mon secteur)
           </p>
           <div className="mt-2 space-y-2">
             <ToggleRow
@@ -376,7 +376,7 @@ export function SettingsPage({
         <div className="relative z-[1]">
           <h3 className="section-title mb-3">Aide</h3>
           <div className="space-y-2 text-sm">
-            <a href="mailto:support@fidelo.app" className="profile-inline-link block">
+            <a href="mailto:support@fideto.fr" className="profile-inline-link block">
               Contacter le support
             </a>
             <Link href="/confidentialite" className="profile-inline-link block">

@@ -37,7 +37,7 @@ export function MerchantRoulette({
     return (
       <div className="flex h-full items-center justify-center rounded-[22px] border border-[var(--stroke)] bg-[var(--surface)] px-6 text-center">
         <p className="text-sm text-[var(--muted-strong)]">
-          Aucune carte commerçant pour le moment. Présentez votre QR Fidelo en caisse.
+          Aucune carte commerçant pour le moment. Présentez votre QR Fideto en caisse.
         </p>
       </div>
     );

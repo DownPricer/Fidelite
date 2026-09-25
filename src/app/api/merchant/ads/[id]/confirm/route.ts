@@ -27,7 +27,7 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
     return jsonError("Le visuel final n'est pas encore prêt à être validé.", 409, { code: "NOT_APPROVED" });
   }
   if (!adRequest.finalImageUrl) {
-    return jsonError("Aucun visuel final fourni par Fidelo pour le moment.", 409, { code: "NO_FINAL_VISUAL" });
+    return jsonError("Aucun visuel final fourni par Fideto pour le moment.", 409, { code: "NO_FINAL_VISUAL" });
   }
 
   const days = Math.max(1, Math.round((adRequest.endDate.getTime() - adRequest.startDate.getTime()) / 86_400_000));
@@ -63,9 +63,9 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
       campaignType: "SPONSORED_AD",
       amountCents: pricing.priceCents,
       quantity: days,
-      description: `Mise en avant Fidelo — ${days} jour${days > 1 ? "s" : ""} (5 € / jour)`,
-      successUrl: `${env.appUrl}/app/campagnes/${adRequest.campaign.id}?paid=1`,
-      cancelUrl: `${env.appUrl}/app/campagnes/${adRequest.campaign.id}?cancelled=1`,
+      description: `Mise en avant Fideto — ${days} jour${days > 1 ? "s" : ""} (5 € / jour)`,
+      successUrl: `${env.appOrigin}/app/campagnes/${adRequest.campaign.id}?paid=1`,
+      cancelUrl: `${env.appOrigin}/app/campagnes/${adRequest.campaign.id}?cancelled=1`,
     });
     checkoutUrl = session.url;
     checkoutSessionId = session.id;

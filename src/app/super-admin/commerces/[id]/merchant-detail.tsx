@@ -442,7 +442,7 @@ export function MerchantDetailPage({ firstName, merchantId }: { firstName: strin
                 <p><strong>Mode actif :</strong> {merchant.program?.mode ?? "—"}</p>
                 <p><strong>Profil actif :</strong> {walletClass?.activeProfile ?? merchant.program?.mode ?? "GENERAL"}</p>
                 <p>
-                  <strong>Gabarit Fidelo :</strong>{" "}
+                  <strong>Gabarit Fideto :</strong>{" "}
                   {(walletConfig.templateId as string | null) ?? "—"}
                   {walletConfig.templateVersion ? ` · v${walletConfig.templateVersion}` : ""}
                   {walletConfig.templateUsedFallback ? " · fallback général" : ""}

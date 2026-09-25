@@ -13,7 +13,7 @@ export default async function CampagnesPage() {
         <MerchantPageHeader
           eyebrow="Outils · Communication"
           title="Campagnes"
-          subtitle="Envoyez une annonce à vos clients ou mettez votre commerce en avant dans Fidelo."
+          subtitle="Envoyez une annonce à vos clients ou mettez votre commerce en avant dans Fideto."
           backHref="/app/outils"
         />
         <CampagnesPanel demo />
@@ -30,7 +30,7 @@ export default async function CampagnesPage() {
       <MerchantPageHeader
         eyebrow="Outils · Communication"
         title="Campagnes"
-        subtitle="Envoyez une annonce à vos clients ou mettez votre commerce en avant dans Fidelo."
+        subtitle="Envoyez une annonce à vos clients ou mettez votre commerce en avant dans Fideto."
         backHref="/app/outils"
       />
       <CampagnesPanel />

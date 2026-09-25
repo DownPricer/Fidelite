@@ -24,9 +24,9 @@ self.addEventListener("push", (event) => {
   try {
     payload = event.data.json();
   } catch {
-    payload = { title: "Fidelo", body: event.data.text() };
+    payload = { title: "Fideto", body: event.data.text() };
   }
-  const title = payload.title || "Fidelo";
+  const title = payload.title || "Fideto";
   const options = {
     body: payload.body || "",
     icon: "/icon.svg",

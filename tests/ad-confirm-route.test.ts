@@ -110,7 +110,7 @@ describe("POST /api/merchant/ads/[id]/confirm — 5 € par jour", () => {
     expect(executeRaw.mock.calls[0]).toContain(3);
   });
 
-  it("annonce non validée par Fidelo : refus, aucun paiement", async () => {
+  it("annonce non validée par Fideto : refus, aucun paiement", async () => {
     adRequestFindFirst.mockResolvedValueOnce(adRequest(3, { status: "PENDING_REVIEW" }));
     const { POST } = await import("../src/app/api/merchant/ads/[id]/confirm/route");
     const response = await POST(req(), { params: Promise.resolve({ id: "ad_1" }) });

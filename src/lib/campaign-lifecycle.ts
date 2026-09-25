@@ -1,7 +1,7 @@
 import type { CampaignAudienceType, CampaignChannel, CampaignStatus } from "@prisma/client";
 
 /**
- * Une campagne réseau (audience locale Fidelo) ou une publicité sponsorisée passe toujours
+ * Une campagne réseau (audience locale Fideto) ou une publicité sponsorisée passe toujours
  * par la modération super-admin (Partie 13) — jamais une campagne vers ses propres membres.
  */
 export function requiresModeration(channel: CampaignChannel, audienceType: CampaignAudienceType | null): boolean {

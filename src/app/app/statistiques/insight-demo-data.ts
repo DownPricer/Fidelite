@@ -1,5 +1,5 @@
 // Données statiques pour le mode démo de /app/statistiques — jamais de requête Prisma.
-// Le commerce démo est toujours affiché avec Fidelo Insight débloqué, pour présenter la
+// Le commerce démo est toujours affiché avec Fideto Insight débloqué, pour présenter la
 // fonctionnalité complète.
 
 function series(base: number, spread: number, days = 7) {

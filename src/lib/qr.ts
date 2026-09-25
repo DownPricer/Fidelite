@@ -52,7 +52,7 @@ export async function verifyQrToken(token: string): Promise<QrPayload> {
 /**
  * Contrôle métier d’un QR fixe.
  *
- * Dans le nouveau modèle Fidelo, le QR n’encode plus le commerce :
+ * Dans le nouveau modèle Fideto, le QR n’encode plus le commerce :
  * - il identifie uniquement un client de manière opaque côté serveur
  * - le commerce est toujours déterminé à partir de la session employé en caisse
  *

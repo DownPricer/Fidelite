@@ -22,9 +22,10 @@ import {
 } from "@/components/landing/icons";
 
 export const metadata: Metadata = {
-  title: "Fidelo — Toutes vos cartes de fidélité au même endroit",
+  alternates: { canonical: "/" },
+  title: "Fideto — Toutes vos cartes de fidélité au même endroit",
   description:
-    "Fidelo réunit les cartes, les points et les avantages des clients, tout en donnant aux commerçants les outils pour créer et gérer leur programme de fidélité.",
+    "Fideto réunit les cartes, les points et les avantages des clients, tout en donnant aux commerçants les outils pour créer et gérer leur programme de fidélité.",
 };
 
 const GUARANTEES = ["Sans carte plastique", "Toujours à jour", "Disponible sur mobile"] as const;
@@ -39,7 +40,7 @@ const PROOF_ITEMS = [
 const CLIENT_STEPS = [
   {
     number: "01",
-    title: "Créez votre compte Fidelo",
+    title: "Créez votre compte Fideto",
     text: "Créez gratuitement votre compte et retrouvez un QR personnel unique, utilisable dans tous les commerces partenaires.",
   },
   {
@@ -88,8 +89,8 @@ const BENTO_ITEMS = [
   },
   {
     Icon: NetworkIcon,
-    title: "Rejoignez le réseau Fidelo",
-    text: "Intégrez une communauté de commerçants, développez votre visibilité auprès des clients Fidelo et renforcez l'image moderne de votre établissement.",
+    title: "Rejoignez le réseau Fideto",
+    text: "Intégrez une communauté de commerçants, développez votre visibilité auprès des clients Fideto et renforcez l'image moderne de votre établissement.",
     span: "normal",
   },
 ] as const;
@@ -122,7 +123,7 @@ export default async function HomePage() {
             </h1>
 
             <p className="max-w-[560px] text-lg leading-[1.68] text-[var(--fh-muted)]">
-              Fidelo réunit vos cartes, vos points et vos avantages dans un seul espace. Pour les commerçants,
+              Fideto réunit vos cartes, vos points et vos avantages dans un seul espace. Pour les commerçants,
               c&apos;est un programme de fidélité moderne, simple à lancer et agréable à utiliser.
             </p>
 
@@ -186,7 +187,7 @@ export default async function HomePage() {
               Vos récompenses vous suivent partout.
             </h2>
             <p className="mt-3.5 leading-[1.7] text-[var(--fh-muted)]">
-              Plus besoin de chercher une carte papier ou de retenir plusieurs identifiants. Fidelo rassemble
+              Plus besoin de chercher une carte papier ou de retenir plusieurs identifiants. Fideto rassemble
               l&apos;essentiel dans une expérience unique.
             </p>
           </div>
@@ -257,11 +258,11 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {/* Pourquoi Fidelo */}
+        {/* Pourquoi Fideto */}
         <section id="avantages" className="mx-auto w-full max-w-[1180px] scroll-mt-20 px-5 py-[90px]">
           <div className="max-w-[690px]">
             <p className="text-[13px] font-extrabold uppercase tracking-[0.08em] text-[var(--fh-purple)]">
-              Pourquoi Fidelo
+              Pourquoi Fideto
             </p>
             <h2 className="mt-3 text-[32px] font-extrabold leading-[1.06] tracking-[-0.03em] text-[var(--fh-text)] sm:text-[42px]">
               Tout ce qu&apos;il faut. Rien de compliqué.
@@ -306,7 +307,7 @@ export default async function HomePage() {
                 Vos données restent les vôtres.
               </h2>
               <p className="mt-2.5 max-w-[680px] leading-[1.65] text-[var(--fh-muted)]">
-                Fidelo utilise uniquement les données nécessaires au fonctionnement du service et vous permet de
+                Fideto utilise uniquement les données nécessaires au fonctionnement du service et vous permet de
                 garder le contrôle sur vos informations et vos préférences.
               </p>
             </div>
@@ -346,7 +347,7 @@ export default async function HomePage() {
               Prêt à créer une fidélité qui compte vraiment ?
             </h2>
             <p className="mx-auto mt-4 max-w-[650px] leading-[1.65] text-white/78">
-              Rejoignez Fidelo et proposez à vos clients une expérience simple, moderne et toujours accessible.
+              Rejoignez Fideto et proposez à vos clients une expérience simple, moderne et toujours accessible.
             </p>
             <div className="mt-7 flex flex-wrap justify-center gap-3">
               <Link
@@ -356,7 +357,7 @@ export default async function HomePage() {
                 Créer mon programme
               </Link>
               <a
-                href="mailto:support@fidelo.app"
+                href="mailto:support@fideto.fr"
                 className="inline-flex min-h-[44px] items-center justify-center rounded-[14px] border border-white/26 bg-white/10 px-[18px] text-sm font-bold text-white transition hover:bg-white/15"
               >
                 Nous contacter

@@ -90,7 +90,7 @@ export function AppNav({ admin, canViewStatistics }: { admin: boolean; canViewSt
         <div className="flex h-16 items-center border-b border-[light-dark(rgba(122,69,242,0.14),rgba(255,255,255,0.1))] px-6">
           <Link href={admin ? "/app" : "/app/caisse"} className="flex items-center gap-3 font-bold tracking-tighter text-[var(--ink)]">
             <span className="merchant-brand-mark">FL</span>
-            <span className="text-lg">Fidelo</span>
+            <span className="text-lg">Fideto</span>
           </Link>
         </div>
         <nav className="flex-1 space-y-1 px-3 py-4">

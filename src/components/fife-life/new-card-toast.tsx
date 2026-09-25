@@ -123,7 +123,7 @@ export function NewCardToast({
                   Nouvelle carte débloquée
                 </p>
                 <p className="mt-2 text-xs text-white/80 drop-shadow">
-                  La carte rejoint votre portefeuille Fidelo.
+                  La carte rejoint votre portefeuille Fideto.
                 </p>
               </div>
             </div>

@@ -2,7 +2,7 @@ import { CoffeeIcon, QrCodeIcon, WalletCardsIcon, WifiIcon } from "@/components/
 
 export function LandingHeroVisual() {
   return (
-    <div className="relative grid min-h-[420px] place-items-center lg:min-h-[510px]" aria-label="Aperçu du portefeuille Fidelo">
+    <div className="relative grid min-h-[420px] place-items-center lg:min-h-[510px]" aria-label="Aperçu du portefeuille Fideto">
       <div
         className="absolute h-[300px] w-[300px] rounded-full lg:h-[440px] lg:w-[440px]"
         style={{
@@ -29,7 +29,7 @@ export function LandingHeroVisual() {
         >
           <div className="flex items-center justify-between text-xs font-extrabold">
             <span>9:41</span>
-            <span>Fidelo</span>
+            <span>Fideto</span>
             <WifiIcon className="h-[15px] w-[15px]" />
           </div>
 

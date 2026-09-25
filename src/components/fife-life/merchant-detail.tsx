@@ -234,7 +234,7 @@ export function MerchantCardDetail({
 
     const shareUrl = `${window.location.origin}/c/${slug}`;
     const shareData = {
-      title: `Carte ${card.name} - Fidelo`,
+      title: `Carte ${card.name} - Fideto`,
       text: `Découvrez le programme de fidélité ${card.name}`,
       url: shareUrl,
     };

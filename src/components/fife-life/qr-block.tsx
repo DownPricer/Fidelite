@@ -66,7 +66,7 @@ export function QrBlock({
 
             // eslint-disable-next-line @next/next/no-img-element
 
-            <img src={image} alt="QR Fidelo universel" className="h-full w-full" />
+            <img src={image} alt="QR Fideto universel" className="h-full w-full" />
 
           ) : (
 
@@ -82,7 +82,7 @@ export function QrBlock({
 
       </div>
 
-      <p className="mt-3 text-center text-sm font-semibold text-[var(--ink-soft)]">QR universel Fidelo</p>
+      <p className="mt-3 text-center text-sm font-semibold text-[var(--ink-soft)]">QR universel Fideto</p>
 
       {error ? <p className="mt-1 text-xs font-bold text-[var(--danger)]">{error}</p> : null}
 

@@ -44,7 +44,7 @@ export function SubscriptionsPage({ firstName }: { firstName: string }) {
                 <th className="px-4 py-3">Montant</th>
                 <th className="px-4 py-3">MRR</th>
                 <th className="px-4 py-3">Statut</th>
-                <th className="px-4 py-3">Fidelo Insight</th>
+                <th className="px-4 py-3">Fideto Insight</th>
               </tr>
             </thead>
             <tbody>

@@ -15,7 +15,7 @@ const schema = z.object({
 /**
  * Décision super-admin sur une campagne réseau (Partie 13). Un refus rembourse
  * automatiquement le paiement Stripe s'il existait, ou restitue le quota consommé —
- * jamais l'un sans l'autre (Partie 8 : "remboursés si Fidelo refuse une campagne réseau").
+ * jamais l'un sans l'autre (Partie 8 : "remboursés si Fideto refuse une campagne réseau").
  */
 export async function POST(req: Request, context: { params: Promise<{ id: string }> }) {
   const csrf = await requireMutatingRequest(req);
@@ -50,7 +50,7 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
   await prisma.$transaction(async (tx) => {
     await tx.campaign.update({
       where: { id },
-      data: { status: "REJECTED", rejectionReason: parsed.data.rejectionReason ?? "Refusée par Fidelo." },
+      data: { status: "REJECTED", rejectionReason: parsed.data.rejectionReason ?? "Refusée par Fideto." },
     });
     if (campaign.quotaKind && campaign.quotaPeriodKey && campaign.quotaConsumedAt) {
       await refundIncludedQuota(tx, {
@@ -59,7 +59,7 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
         periodKey: campaign.quotaPeriodKey,
       });
     }
-    await refundCampaignDebit(tx, id, "Restitution — campagne refusée par Fidelo");
+    await refundCampaignDebit(tx, id, "Restitution — campagne refusée par Fideto");
     if (campaign.payment?.status === "PAID") {
       await tx.campaignPayment.update({ where: { id: campaign.payment.id }, data: { status: "REFUNDED", refundedAt: new Date() } });
     }

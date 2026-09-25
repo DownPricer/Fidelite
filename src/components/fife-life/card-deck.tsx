@@ -217,12 +217,12 @@ export function CardDeck({
       id: tier ? `fife-life-tier-${tier}` : "fife-life-global",
       merchantId: "fife-life",
       slug: "fife-life",
-      name: "Fidelo",
+      name: "Fideto",
       logoUrl: null,
       primaryColor: "#8557ff",
       points,
       visitsRequired: 100,
-      rewardLabel: "Avantage Fidelo",
+      rewardLabel: "Avantage Fideto",
       demoTier: tier,
     };
   }

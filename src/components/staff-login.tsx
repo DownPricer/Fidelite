@@ -128,7 +128,7 @@ export function StaffLogin({
         ) : null}
 
         <p className="mt-8 text-center text-xs font-bold uppercase tracking-[0.2em] text-[var(--muted)] sm:mt-10">
-          Fidelo
+          Fideto
         </p>
       </div>
     </main>

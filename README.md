@@ -1,14 +1,14 @@
-# Fidelo
+# Fideto
 
 Plateforme de fidélité pour commerces. Une seule PWA responsive, installable depuis le navigateur.
 
 Domaines de production :
 
-- `fidelite.sitereadyshd.fr` : espace client, inscription et carte
-- `app-fidelite.sitereadyshd.fr` : espace commerçant et mode caisse
-- `admin-fidelite.sitereadyshd.fr` : super-admin Fidelo
+- `fideto.fr` : espace client, inscription et carte
+- `app.fideto.fr` : espace commerçant et mode caisse
+- `admin.fideto.fr` : super-admin Fideto
 
-Ne pas utiliser `app.sitereadyshd.fr` ni `admin.sitereadyshd.fr` (déjà pris par d’autres projets).
+Anciens domaines `*-fidelite.sitereadyshd.fr` : alias conservés pendant la transition (`LEGACY_*_HOST`, redirection via `LEGACY_REDIRECT_ENABLED`). Voir `deploy/nginx/fideto.conf.example`.
 
 ## Prérequis (développement)
 
@@ -47,7 +47,7 @@ Commerce de démo : **Café Demo**, slug `cafe-demo`, règle `10 passages = 1 bo
 
 ## Déploiement VPS sans Docker local
 
-Le reverse proxy Nginx Docker `downpricer-nginx` et son réseau `downpricer_downpricer-network` existent déjà. Fidelo ajoute uniquement ses propres conteneurs, volumes et son réseau interne. Ne pas modifier, redémarrer, supprimer, renommer ni reconstruire les autres stacks.
+Le reverse proxy Nginx Docker `downpricer-nginx` et son réseau `downpricer_downpricer-network` existent déjà. Fideto ajoute uniquement ses propres conteneurs, volumes et son réseau interne. Ne pas modifier, redémarrer, supprimer, renommer ni reconstruire les autres stacks.
 
 Chemins et noms :
 
@@ -122,9 +122,9 @@ cd /opt/fifelite/app/site/deploy
 docker compose logs --tail=100
 docker exec downpricer-nginx nginx -t
 docker exec downpricer-nginx nginx -s reload
-curl -I https://fidelite.sitereadyshd.fr
-curl -I https://app-fidelite.sitereadyshd.fr
-curl -I https://admin-fidelite.sitereadyshd.fr
+curl -I https://fideto.fr
+curl -I https://app.fideto.fr
+curl -I https://admin.fideto.fr
 ```
 
 Contrôler que `fifelite-web` et `fifelite-postgres` sont `Up`, et qu’aucun autre projet n’a été recréé.
@@ -153,19 +153,19 @@ Chez votre registrar, créez des enregistrements A vers `51.210.179.212` :
 
 | Hôte | Type | Valeur |
 | --- | --- | --- |
-| `fidelite.sitereadyshd.fr` | A | `51.210.179.212` |
-| `app-fidelite.sitereadyshd.fr` | A | `51.210.179.212` |
-| `admin-fidelite.sitereadyshd.fr` | A | `51.210.179.212` |
+| `fideto.fr` | A | `51.210.179.212` |
+| `app.fideto.fr` | A | `51.210.179.212` |
+| `admin.fideto.fr` | A | `51.210.179.212` |
 
 Dans `.env` de production :
 
-- `CUSTOMER_ORIGIN=https://fidelite.sitereadyshd.fr`
-- `APP_ORIGIN=https://app-fidelite.sitereadyshd.fr`
-- `ADMIN_ORIGIN=https://admin-fidelite.sitereadyshd.fr`
+- `CUSTOMER_ORIGIN=https://fideto.fr`
+- `APP_ORIGIN=https://app.fideto.fr`
+- `ADMIN_ORIGIN=https://admin.fideto.fr`
 - `CUSTOMER_HOST`, `APP_HOST`, `ADMIN_HOST` alignés
-- `APP_URL=https://fidelite.sitereadyshd.fr`
+- `APP_URL=https://fideto.fr`
 
-Le middleware réécrit les chemins selon l’hôte : `app-fidelite.sitereadyshd.fr/caisse` devient l’espace caisse.
+Le middleware réécrit les chemins selon l’hôte : `app.fideto.fr/caisse` devient l’espace caisse.
 
 ## Configuration Google Wallet
 
@@ -179,7 +179,7 @@ GOOGLE_WALLET_ISSUER_ID=3388000000023198536
 GOOGLE_WALLET_GLOBAL_CLASS_ID=3388000000023198536.fifelife_global
 GOOGLE_WALLET_SERVICE_ACCOUNT_EMAIL=fife-life-google-wallet@fide-life-wallet.iam.gserviceaccount.com
 GOOGLE_WALLET_SERVICE_ACCOUNT_FILE=/run/secrets/google-wallet-service-account.json
-GOOGLE_WALLET_ORIGIN=https://fidelite.sitereadyshd.fr
+GOOGLE_WALLET_ORIGIN=https://fideto.fr
 ```
 
 Le JSON du compte de service est monté côté VPS en lecture seule et peut être vérifié avec :
@@ -191,7 +191,7 @@ npx tsx scripts/google-wallet-doctor.ts
 ## Checklist de déploiement
 
 - [ ] `.env` renseigné : `POSTGRES_PASSWORD` = mot de passe dans `DATABASE_URL`, `QR_SECRET` ≥ 32 caractères aléatoires
-- [ ] DNS des trois sous-domaines Fidelo uniquement
+- [ ] DNS des trois sous-domaines Fideto uniquement
 - [ ] `docker compose up -d --build` depuis `/opt/fifelite/app/site/deploy`
 - [ ] Seed une seule fois si besoin
 - [ ] `fifelite.conf` ajouté dans le Nginx central, `nginx -t` puis reload

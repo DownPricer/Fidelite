@@ -6,7 +6,7 @@ const COLUMNS = [
     title: "Découvrir",
     links: [
       { label: "Comment ça marche", href: "#fonctionnement" },
-      { label: "Pourquoi Fidelo", href: "#avantages" },
+      { label: "Pourquoi Fideto", href: "#avantages" },
       { label: "FAQ", href: "#faq" },
     ],
   },
@@ -21,7 +21,7 @@ const COLUMNS = [
   {
     title: "Informations",
     links: [
-      { label: "Contact", href: "mailto:support@fidelo.app" },
+      { label: "Contact", href: "mailto:support@fideto.fr" },
       { label: "Confidentialité", href: "/confidentialite" },
       { label: "Conditions", href: "/conditions" },
       { label: "Se connecter", href: "/connexion" },
@@ -66,7 +66,7 @@ export function LandingFooter() {
         </div>
 
         <div className="mt-10 flex flex-wrap justify-between gap-5 border-t border-[var(--fh-border)] pt-5 text-xs text-[var(--fh-muted)]">
-          <span>© {new Date().getFullYear()} Fidelo. Tous droits réservés.</span>
+          <span>© {new Date().getFullYear()} Fideto. Tous droits réservés.</span>
           <span>Une fidélité plus simple, pour tout le monde.</span>
         </div>
       </div>

@@ -102,8 +102,8 @@ const activeProgram = {
   rewards: [],
 };
 
-describe("points Fidelo globaux", () => {
-  it("un simple passage ne donne aucun point Fidelo", async () => {
+describe("points Fideto globaux", () => {
+  it("un simple passage ne donne aucun point Fideto", async () => {
     vi.clearAllMocks();
     merchantFindUnique.mockResolvedValue({
       id: "merchant_1",
@@ -144,7 +144,7 @@ describe("points Fidelo globaux", () => {
     ).toBe(false);
   });
 
-  it("une récompense validée crédite des points Fidelo configurés", async () => {
+  it("une récompense validée crédite des points Fideto configurés", async () => {
     vi.clearAllMocks();
     merchantFindUnique.mockResolvedValue({
       id: "merchant_1",

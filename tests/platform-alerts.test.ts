@@ -50,7 +50,7 @@ describe("Alertes et activité récente plateforme (PostgreSQL)", () => {
     await prisma.$disconnect();
   });
 
-  it("compte au moins une demande Fidelo Insight en attente après une nouvelle demande", async (ctx) => {
+  it("compte au moins une demande Fideto Insight en attente après une nouvelle demande", async (ctx) => {
     if (!dbReady) ctx.skip();
     const before = await getPlatformAlerts();
     const merchant2 = await prisma.merchant.create({ data: { name: `Alertes Test 2 ${suffix}`, slug: `alertes-test-2-${suffix}` } });

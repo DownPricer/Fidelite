@@ -33,7 +33,7 @@ export default function SuperAdminLoginPage() {
     <div className="grid min-h-dvh place-items-center bg-[var(--void)] px-4">
       <Card className="w-full max-w-md p-6 sm:p-8">
         <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--violet-bright)]">Accès restreint</p>
-        <h1 className="mt-2 text-2xl font-black tracking-tight text-[var(--ink)]">Super-administration Fidelo</h1>
+        <h1 className="mt-2 text-2xl font-black tracking-tight text-[var(--ink)]">Super-administration Fideto</h1>
         <p className="mt-2 text-sm text-[var(--muted-text)]">
           Connexion réservée aux comptes autorisés. Toutes les tentatives sont journalisées.
         </p>

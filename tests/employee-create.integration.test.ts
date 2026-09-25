@@ -77,7 +77,7 @@ describe("création employé directe (PostgreSQL)", () => {
     ).rejects.toMatchObject({ message: expect.stringMatching(/déjà/i), status: 409 });
   });
 
-  it("refuse un compte Fidelo existant", async (ctx) => {
+  it("refuse un compte Fideto existant", async (ctx) => {
     if (!dbReady) ctx.skip();
     const admin = await prisma.user.findFirst({
       where: { merchantMemberships: { some: { role: "MERCHANT_ADMIN" } } },

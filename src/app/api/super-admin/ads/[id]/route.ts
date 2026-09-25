@@ -29,12 +29,12 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
     await prisma.$transaction(async (tx) => {
       await tx.adRequest.update({
         where: { id },
-        data: { status: "REJECTED", rejectionReason: parsed.data.rejectionReason ?? "Refusée par Fidelo." },
+        data: { status: "REJECTED", rejectionReason: parsed.data.rejectionReason ?? "Refusée par Fideto." },
       });
       if (adRequest.campaignId) {
         await tx.campaign.update({
           where: { id: adRequest.campaignId },
-          data: { status: "REJECTED", rejectionReason: parsed.data.rejectionReason ?? "Refusée par Fidelo." },
+          data: { status: "REJECTED", rejectionReason: parsed.data.rejectionReason ?? "Refusée par Fideto." },
         });
       }
     });

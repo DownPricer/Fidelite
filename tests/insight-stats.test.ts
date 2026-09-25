@@ -1,5 +1,5 @@
 /**
- * Tests d'intégration Fidelo Insight (nécessite PostgreSQL, comme employee-create.integration.test.ts).
+ * Tests d'intégration Fideto Insight (nécessite PostgreSQL, comme employee-create.integration.test.ts).
  */
 import { randomUUID } from "crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -7,7 +7,7 @@ import { prisma } from "../src/lib/prisma";
 import { getFreeMerchantStats, getHomeStats, getInsightPremium, hasAnyRecordedRevenue } from "../src/lib/insight-stats";
 import { resolvePeriod } from "../src/lib/insight-period";
 
-describe("Fidelo Insight — agrégations (PostgreSQL)", () => {
+describe("Fideto Insight — agrégations (PostgreSQL)", () => {
   let dbReady = false;
   const suffix = randomUUID().slice(0, 8);
   let merchantAId = "";

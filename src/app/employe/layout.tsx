@@ -1,13 +1,13 @@
 import type { Metadata, Viewport } from "next";
 
 export const metadata: Metadata = {
-  title: "Fidelo Employé",
-  description: "Application de scan Fidelo pour les employés.",
-  applicationName: "Fidelo Employé",
+  title: "Fideto Employé",
+  description: "Application de scan Fideto pour les employés.",
+  applicationName: "Fideto Employé",
   manifest: "/employe/manifest.webmanifest",
   appleWebApp: {
     capable: true,
-    title: "Fidelo Employé",
+    title: "Fideto Employé",
     statusBarStyle: "black",
   },
 };

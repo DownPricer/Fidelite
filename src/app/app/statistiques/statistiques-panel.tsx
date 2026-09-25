@@ -213,10 +213,10 @@ export function StatistiquesPanel({
         )}
       </section>
 
-      {/* Fidelo Insight */}
+      {/* Fideto Insight */}
       <section>
         <div className="mb-3 flex items-center justify-between gap-2">
-          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--violet-bright)]">Fidelo Insight</p>
+          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--violet-bright)]">Fideto Insight</p>
           {loading && <span className="text-xs text-[var(--muted)]">Chargement…</span>}
         </div>
 
@@ -296,7 +296,7 @@ function LockedInsightTeaser({
             <path d="M8 11V7a4 4 0 018 0v4" strokeLinecap="round" />
           </svg>
         </span>
-        <h3 className="text-lg font-black text-[var(--ink)]">Passez à Fidelo Insight</h3>
+        <h3 className="text-lg font-black text-[var(--ink)]">Passez à Fideto Insight</h3>
         <p className="max-w-md text-sm text-[var(--muted-strong)]">
           Comprenez les habitudes de vos clients, mesurez leur fidélité et identifiez les meilleures actions pour les
           faire revenir.
@@ -312,10 +312,10 @@ function LockedInsightTeaser({
         </ul>
         {canManageInsight ? (
           <button type="button" onClick={onRequest} disabled={requestState !== "idle"} className="glass-cta mt-1 px-5 py-2.5 text-sm disabled:opacity-60">
-            {requestState === "sent" ? "Demande envoyée ✓" : requestState === "sending" ? "Envoi…" : "Débloquer Fidelo Insight"}
+            {requestState === "sent" ? "Demande envoyée ✓" : requestState === "sending" ? "Envoi…" : "Débloquer Fideto Insight"}
           </button>
         ) : (
-          <p className="text-xs text-[var(--muted)]">Seul le propriétaire du commerce peut activer Fidelo Insight.</p>
+          <p className="text-xs text-[var(--muted)]">Seul le propriétaire du commerce peut activer Fideto Insight.</p>
         )}
       </div>
     </div>

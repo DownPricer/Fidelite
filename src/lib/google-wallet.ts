@@ -24,7 +24,7 @@ import { getLoyaltyCardBackground, getLoyaltyCardTierLabel } from "./loyalty-car
 const WALLET_SCOPE = "https://www.googleapis.com/auth/wallet_object.issuer";
 const WALLET_API = "https://walletobjects.googleapis.com/walletobjects/v1";
 const SAVE_URL_BASE = "https://pay.google.com/gp/v/save";
-const GLOBAL_PROGRAM_NAME = "Fidelo";
+const GLOBAL_PROGRAM_NAME = "Fideto";
 const GLOBAL_LOGO_PATH = "/google-wallet/fife-life-logo.png";
 
 type ServiceAccountJson = {
@@ -376,7 +376,7 @@ function classTemplateInfo() {
 }
 
 export function globalClassPatchBody(input: { classId: string }) {
-  const logo = imageData(googleWalletLogoUrl(), "Logo Fidelo");
+  const logo = imageData(googleWalletLogoUrl(), "Logo Fideto");
   return {
     id: input.classId,
     issuerName: GLOBAL_PROGRAM_NAME,
@@ -392,8 +392,8 @@ export function globalClassPatchBody(input: { classId: string }) {
     localizedAccountIdLabel: localized("N° client"),
     rewardsTierLabel: "Statut",
     localizedRewardsTierLabel: localized("Statut"),
-    rewardsTier: "Fidelo",
-    localizedRewardsTier: localized("Fidelo"),
+    rewardsTier: "Fideto",
+    localizedRewardsTier: localized("Fideto"),
     countryCode: "FR",
     reviewStatus: "UNDER_REVIEW",
     multipleDevicesAndHoldersAllowedStatus: "MULTIPLE_HOLDERS",
@@ -591,10 +591,10 @@ export async function globalObjectBody(input: {
       alternateText: clientNumber,
     },
     loyaltyPoints: {
-      label: "Points Fidelo",
+      label: "Points Fideto",
       balance: { int: input.user.fifeLifePoints },
     },
-    heroImage: imageData(tierHero, `Niveau ${getLoyaltyCardTierLabel(tier.name)} Fidelo`),
+    heroImage: imageData(tierHero, `Niveau ${getLoyaltyCardTierLabel(tier.name)} Fideto`),
     textModulesData: [
       textModule("tier", "Niveau", `Niveau ${getLoyaltyCardTierLabel(tier.name)}`),
       textModule("cards", "Cartes actives", `${input.activeCardCount}`),

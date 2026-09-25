@@ -23,7 +23,7 @@ export type MerchantCardData = {
   cardTemplateId?: string | null;
   cardTemplateVersion?: number | null;
   cardTemplateUsedFallback?: boolean;
-  /** Niveau Fidelo pour l’image statique en mode démo. */
+  /** Niveau Fideto pour l’image statique en mode démo. */
   demoTier?: WalletTier;
   /** Coordonnées réelles du commerce, si renseignées côté super-admin. */
   addressLine1?: string | null;

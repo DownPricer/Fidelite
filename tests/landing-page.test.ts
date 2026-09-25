@@ -34,7 +34,7 @@ describe("landing page structure and balance", () => {
   });
 
   it("does not reintroduce the removed journey-choice section", () => {
-    expect(page).not.toContain("Que souhaitez-vous faire avec Fidelo");
+    expect(page).not.toContain("Que souhaitez-vous faire avec Fideto");
   });
 
   it("resolves auth-aware destinations server-side instead of hardcoding routes", () => {
@@ -70,7 +70,7 @@ describe("landing page structure and balance", () => {
   it("exposes the FAQ as an accessible accordion", () => {
     expect(faq).toContain("aria-expanded");
     expect(faq).toContain("aria-controls");
-    expect(faq).toContain("Fidelo est-il une carte de fidélité unique ?");
+    expect(faq).toContain("Fideto est-il une carte de fidélité unique ?");
     expect(faq).toContain("Comment fonctionne le QR code ?");
     expect(faq).toContain("Puis-je ajouter ma carte à Google Wallet ?");
   });
@@ -107,9 +107,9 @@ describe("landing page structure and balance", () => {
   });
 
   it("exports SEO metadata with the agreed title and description", () => {
-    expect(page).toContain("Fidelo — Toutes vos cartes de fidélité au même endroit");
+    expect(page).toContain("Fideto — Toutes vos cartes de fidélité au même endroit");
     expect(page).toContain(
-      "Fidelo réunit les cartes, les points et les avantages des clients, tout en donnant aux commerçants les outils pour créer et gérer leur programme de fidélité.",
+      "Fideto réunit les cartes, les points et les avantages des clients, tout en donnant aux commerçants les outils pour créer et gérer leur programme de fidélité.",
     );
   });
 
@@ -119,7 +119,7 @@ describe("landing page structure and balance", () => {
   });
 
   it("describes the real client onboarding flow: account first, own QR presented at checkout", () => {
-    expect(page).toContain("Créez votre compte Fidelo");
+    expect(page).toContain("Créez votre compte Fideto");
     expect(page).toContain(
       "Créez gratuitement votre compte et retrouvez un QR personnel unique, utilisable dans tous les commerces partenaires.",
     );
@@ -134,14 +134,14 @@ describe("landing page structure and balance", () => {
 
   it("never claims the client should scan the merchant's QR or a join link to add a card", () => {
     expect(page).not.toContain("Rejoignez un commerce");
-    expect(page).not.toContain("Scannez son QR code ou ouvrez son lien Fidelo");
+    expect(page).not.toContain("Scannez son QR code ou ouvrez son lien Fideto");
     expect(connexionUi).not.toMatch(/scannez le qr en magasin/i);
   });
 
   it("adds the merchant network card harmoniously into the existing bento grid", () => {
-    expect(page).toContain("Rejoignez le réseau Fidelo");
+    expect(page).toContain("Rejoignez le réseau Fideto");
     expect(page).toContain(
-      "Intégrez une communauté de commerçants, développez votre visibilité auprès des clients Fidelo et renforcez l'image moderne de votre établissement.",
+      "Intégrez une communauté de commerçants, développez votre visibilité auprès des clients Fideto et renforcez l'image moderne de votre établissement.",
     );
     // Still exactly one large "main" bento tile — the new card is a normal-sized tile, not a separate giant block.
     const mainSpans = page.match(/span: "main"/g) ?? [];

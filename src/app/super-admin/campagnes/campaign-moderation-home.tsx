@@ -244,7 +244,7 @@ export function CampaignModerationHome({ firstName }: { firstName: string }) {
                 {approveAdId === ad.id ? (
                   <div className="mt-3 space-y-2 border-t border-[var(--border)] pt-3">
                     <label className="block text-xs text-[var(--muted-text)]">
-                      URL du visuel final (hébergé par Fidelo)
+                      URL du visuel final (hébergé par Fideto)
                       <input
                         className="profile-select mt-1 w-full"
                         value={finalImageUrl}

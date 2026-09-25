@@ -96,8 +96,8 @@ export async function POST(req: Request) {
       merchantId,
       ledgerEntryId: entry.id,
       amountCents,
-      successUrl: `${env.appUrl}/app/campagnes?topup=success`,
-      cancelUrl: `${env.appUrl}/app/campagnes?topup=cancelled`,
+      successUrl: `${env.appOrigin}/app/campagnes?topup=success`,
+      cancelUrl: `${env.appOrigin}/app/campagnes?topup=cancelled`,
     });
     await prisma.marketingLedgerEntry.update({
       where: { id: entry.id },

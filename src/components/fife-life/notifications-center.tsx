@@ -49,7 +49,7 @@ const DEMO_NOTIFICATIONS: NotificationItem[] = [
     merchantId: null,
     campaignId: null,
     kind: "SERVICE",
-    title: "Bienvenue sur Fidelo",
+    title: "Bienvenue sur Fideto",
     body: "Votre carte de fidélité numérique est prête.",
     imageUrl: null,
     actionLabel: null,
@@ -62,7 +62,7 @@ const DEMO_NOTIFICATIONS: NotificationItem[] = [
 
 function kindLabel(kind: NotificationKind) {
   if (kind === "MERCHANT_OFFER") return "Offre commerçant";
-  if (kind === "NETWORK_DEAL") return "Bon plan Fidelo";
+  if (kind === "NETWORK_DEAL") return "Bon plan Fideto";
   return "Information";
 }
 

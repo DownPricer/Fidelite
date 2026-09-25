@@ -5,7 +5,7 @@ import { ThemeToggle } from "@/components/landing/theme-toggle";
 const NAV_LINKS = [
   { href: "#fonctionnement", label: "Comment ça marche" },
   { href: "#commercants", label: "Commerçants" },
-  { href: "#avantages", label: "Pourquoi Fidelo" },
+  { href: "#avantages", label: "Pourquoi Fideto" },
   { href: "#faq", label: "FAQ" },
 ] as const;
 
@@ -13,7 +13,7 @@ export function LandingHeader({ clientHref, proHref }: { clientHref: string; pro
   return (
     <header className="sticky top-0 z-50 border-b border-[var(--fh-border)] bg-[var(--fh-bg)]/90 backdrop-blur-xl">
       <div className="mx-auto flex h-[76px] w-full max-w-[1180px] items-center justify-between gap-6 px-5">
-        <Link href="/" aria-label="Fidelo — accueil">
+        <Link href="/" aria-label="Fideto — accueil">
           <BrandMark className="scale-90" />
         </Link>
 

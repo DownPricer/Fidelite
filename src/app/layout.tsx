@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Manrope } from "next/font/google";
 import { PwaRegister } from "@/components/pwa-register";
 import { ThemeProvider } from "@/components/theme-provider";
+import { env } from "@/lib/env";
 import "./globals.css";
 
 const manrope = Manrope({
@@ -13,13 +14,21 @@ const manrope = Manrope({
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Fidelo",
-  description: "Fidelo — portefeuille universel de fidélité.",
-  applicationName: "Fidelo",
+  metadataBase: new URL(env.customerOrigin),
+  title: "Fideto",
+  description: "Fideto — portefeuille universel de fidélité.",
+  applicationName: "Fideto",
+  openGraph: {
+    siteName: "Fideto",
+    title: "Fideto",
+    description: "Fideto — portefeuille universel de fidélité.",
+    type: "website",
+    locale: "fr_FR",
+  },
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
-    title: "Fidelo",
+    title: "Fideto",
     statusBarStyle: "black",
   },
 };

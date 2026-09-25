@@ -4471,7 +4471,7 @@ body:has(.wallet-shell) {
     order: 7;
   }
 
-  /* Identité Fidelo */
+  /* Identité Fideto */
   .fife-universal-layout {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);

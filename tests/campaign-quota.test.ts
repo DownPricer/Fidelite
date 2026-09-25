@@ -41,11 +41,11 @@ beforeEach(() => {
 });
 
 describe("quotas inclus (Partie 8)", () => {
-  it("Fidelo normal : 1 notification + 1 e-mail, rien d'autre inclus", () => {
+  it("Fideto normal : 1 notification + 1 e-mail, rien d'autre inclus", () => {
     expect(INCLUDED_QUOTAS.normal).toEqual({ MEMBER_NOTIFICATION: 1, MEMBER_EMAIL: 1 });
   });
 
-  it("Fidelo Insight : 3 notifications + 3 e-mails (pas dix) + 3 jours sponsorisés", () => {
+  it("Fideto Insight : 3 notifications + 3 e-mails (pas dix) + 3 jours sponsorisés", () => {
     expect(INCLUDED_QUOTAS.insight).toEqual({
       MEMBER_NOTIFICATION: 3,
       MEMBER_EMAIL: 3,

@@ -4,18 +4,26 @@ function read(name: string, fallback = "") {
 
 export const env = {
   nodeEnv: read("NODE_ENV", "development"),
-  appName: read("APP_NAME", "Fidelo"),
+  appName: read("APP_NAME", "Fideto"),
   appUrl: read("APP_URL", "http://localhost:3000"),
-  customerOrigin: read("CUSTOMER_ORIGIN", "https://fidelite.sitereadyshd.fr"),
-  appOrigin: read("APP_ORIGIN", "https://app-fidelite.sitereadyshd.fr"),
-  adminOrigin: read("ADMIN_ORIGIN", "https://admin-fidelite.sitereadyshd.fr"),
-  employeeOrigin: read("EMPLOYEE_ORIGIN", "https://employe-fidelite.sitereadyshd.fr"),
-  employeeAppUrl: read("EMPLOYEE_APP_URL") || read("EMPLOYEE_ORIGIN", "https://employe-fidelite.sitereadyshd.fr"),
+  customerOrigin: read("CUSTOMER_ORIGIN", "https://fideto.fr"),
+  appOrigin: read("APP_ORIGIN", "https://app.fideto.fr"),
+  adminOrigin: read("ADMIN_ORIGIN", "https://admin.fideto.fr"),
+  employeeOrigin: read("EMPLOYEE_ORIGIN", "https://employe.fideto.fr"),
+  employeeAppUrl: read("EMPLOYEE_APP_URL") || read("EMPLOYEE_ORIGIN", "https://employe.fideto.fr"),
   extraOrigins: read("EXTRA_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000"),
-  customerHost: read("CUSTOMER_HOST", "fidelite.sitereadyshd.fr"),
-  appHost: read("APP_HOST", "app-fidelite.sitereadyshd.fr"),
-  adminHost: read("ADMIN_HOST", "admin-fidelite.sitereadyshd.fr"),
-  employeeHost: read("EMPLOYEE_HOST", "employe-fidelite.sitereadyshd.fr"),
+  customerHost: read("CUSTOMER_HOST", "fideto.fr"),
+  appHost: read("APP_HOST", "app.fideto.fr"),
+  adminHost: read("ADMIN_HOST", "admin.fideto.fr"),
+  employeeHost: read("EMPLOYEE_HOST", "employe.fideto.fr"),
+  // Anciens domaines (sitereadyshd.fr) : toujours acceptés comme alias le temps de la transition.
+  // Une valeur vide désactive l'alias. Les redirections vers les nouveaux domaines sont
+  // activées séparément avec LEGACY_REDIRECT_ENABLED=true (voir src/middleware.ts).
+  legacyCustomerHost: read("LEGACY_CUSTOMER_HOST", "fidelite.sitereadyshd.fr"),
+  legacyAppHost: read("LEGACY_APP_HOST", "app-fidelite.sitereadyshd.fr"),
+  legacyAdminHost: read("LEGACY_ADMIN_HOST", "admin-fidelite.sitereadyshd.fr"),
+  legacyEmployeeHost: read("LEGACY_EMPLOYEE_HOST", "employe-fidelite.sitereadyshd.fr"),
+  legacyRedirectEnabled: read("LEGACY_REDIRECT_ENABLED", "false") === "true",
   qrSecret: read("QR_SECRET", "dev-only-change-me-qr-secret-32chars"),
   qrTtlSeconds: Number(read("QR_TTL_SECONDS", "60")),
   sessionDays: Number(read("SESSION_DAYS", "30")),
@@ -36,7 +44,7 @@ export const env = {
   smtpSecure: read("SMTP_SECURE", "false") === "true",
   smtpUser: read("SMTP_USER"),
   smtpPass: read("SMTP_PASS"),
-  // Nombre de points Fidelo attribués lorsqu'une récompense commerçant est validée.
+  // Nombre de points Fideto attribués lorsqu'une récompense commerçant est validée.
   fifeLifePointsPerReward: Number(read("FIFE_LIFE_POINTS_PER_REWARD", "12")),
   googleWalletEnabled: read("GOOGLE_WALLET_ENABLED", "false") === "true",
   googleWalletIssuerId: read("GOOGLE_WALLET_ISSUER_ID"),
@@ -45,7 +53,7 @@ export const env = {
     read("GOOGLE_WALLET_SERVICE_ACCOUNT_EMAIL") || read("GOOGLE_SERVICE_ACCOUNT_EMAIL"),
   googleWalletServiceAccountFile: read("GOOGLE_WALLET_SERVICE_ACCOUNT_FILE"),
   googleCloudProjectId: read("GOOGLE_CLOUD_PROJECT_ID"),
-  googleWalletOrigin: read("GOOGLE_WALLET_ORIGIN") || read("CUSTOMER_ORIGIN", "https://fidelite.sitereadyshd.fr"),
+  googleWalletOrigin: read("GOOGLE_WALLET_ORIGIN") || read("CUSTOMER_ORIGIN", "https://fideto.fr"),
   googleWalletOrigins: read("GOOGLE_WALLET_ORIGINS"),
   googleClientId: read("GOOGLE_CLIENT_ID"),
   googleClientSecret: read("GOOGLE_CLIENT_SECRET"),
@@ -53,13 +61,13 @@ export const env = {
   qaMerchantUserId: read("QA_MERCHANT_USER_ID"),
   qaEmployeeId: read("QA_EMPLOYEE_ID"),
   qaCustomerUserId: read("QA_CUSTOMER_USER_ID"),
-  qaMagicLoginOrigin: read("QA_MAGIC_LOGIN_ORIGIN", "https://fidelite.sitereadyshd.fr"),
+  qaMagicLoginOrigin: read("QA_MAGIC_LOGIN_ORIGIN", "https://fideto.fr"),
   // Campagnes commerçantes — voir src/lib/stripe.ts, src/lib/push.ts, src/lib/campaign-worker.ts
   stripeSecretKey: read("STRIPE_SECRET_KEY"),
   stripeWebhookSecret: read("STRIPE_WEBHOOK_SECRET"),
   vapidPublicKey: read("NEXT_PUBLIC_VAPID_PUBLIC_KEY"),
   vapidPrivateKey: read("VAPID_PRIVATE_KEY"),
-  vapidSubject: read("VAPID_SUBJECT", "mailto:contact@fidelo.app"),
+  vapidSubject: read("VAPID_SUBJECT", "mailto:contact@fideto.fr"),
   unsubscribeSecret: read("UNSUBSCRIBE_SECRET", "dev-only-change-me-unsubscribe-secret"),
   campaignWorkerBatchSize: Number(read("CAMPAIGN_WORKER_BATCH_SIZE", "50")),
   campaignWorkerIntervalMs: Number(read("CAMPAIGN_WORKER_INTERVAL_MS", "15000")),
@@ -76,6 +84,10 @@ export function getAllowedOrigins() {
     env.adminOrigin,
     env.employeeOrigin,
     env.appUrl,
+    ...[env.legacyCustomerHost, env.legacyAppHost, env.legacyAdminHost, env.legacyEmployeeHost]
+      .map((host) => host.trim())
+      .filter(Boolean)
+      .map((host) => `https://${host}`),
     ...env.extraOrigins.split(","),
   ]
     .map((value) => value.trim().replace(/\/$/, ""))

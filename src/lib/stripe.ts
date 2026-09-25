@@ -111,7 +111,7 @@ export async function createMarketingTopupCheckoutSession(input: MarketingTopupC
         price_data: {
           currency: "eur",
           unit_amount: input.amountCents,
-          product_data: { name: "Recharge du solde marketing Fidelo" },
+          product_data: { name: "Recharge du solde marketing Fideto" },
         },
         quantity: 1,
       },

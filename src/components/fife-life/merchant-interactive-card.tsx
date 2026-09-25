@@ -104,7 +104,7 @@ export function MerchantInteractiveCard({
             </div>
           )}
           <div className="merchant-interactive-card__brand">
-            <p className="merchant-interactive-card__eyebrow">Fidelo</p>
+            <p className="merchant-interactive-card__eyebrow">Fideto</p>
             <h2 className="merchant-interactive-card__name">{card.name}</h2>
           </div>
         </header>

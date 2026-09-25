@@ -1,4 +1,4 @@
-// Fidelo Insight — agrégations serveur pour les statistiques commerçant (gratuites et
+// Fideto Insight — agrégations serveur pour les statistiques commerçant (gratuites et
 // premium). Tout est calculé côté serveur, scopé à un merchantId résolu depuis la session
 // (jamais depuis une entrée client), et rien n'est jamais dérivé de montants inventés :
 // les sections financières ne s'affichent que si `hasAnyRecordedRevenue` est vrai.
@@ -190,7 +190,7 @@ export type HomeStats = {
 
 /**
  * KPIs de l'accueil commerçant, avec évolution réelle vs la période précédente. Toujours
- * gratuit (pas de dépendance à Fidelo Insight) — ce sont les indicateurs de base, pas
+ * gratuit (pas de dépendance à Fideto Insight) — ce sont les indicateurs de base, pas
  * l'analytique premium.
  */
 export async function getHomeStats(merchantId: string): Promise<HomeStats> {
@@ -258,7 +258,7 @@ export async function getHomeStats(merchantId: string): Promise<HomeStats> {
 }
 
 // ---------------------------------------------------------------------------------
-// Fidelo Insight — teaser verrouillé (constantes fixes, aucun accès DB)
+// Fideto Insight — teaser verrouillé (constantes fixes, aucun accès DB)
 // ---------------------------------------------------------------------------------
 
 /**
@@ -281,7 +281,7 @@ export function getLockedInsightPlaceholder() {
 }
 
 // ---------------------------------------------------------------------------------
-// Fidelo Insight — tableau de bord premium
+// Fideto Insight — tableau de bord premium
 // ---------------------------------------------------------------------------------
 
 export type InsightOverview = {
