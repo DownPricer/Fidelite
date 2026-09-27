@@ -106,7 +106,8 @@ describe("POST /api/merchant/ads/[id]/confirm — 5 € par jour", () => {
     expect(adRequestUpdate).not.toHaveBeenCalled();
   });
 
-  it("couverte par le quota Insight : aucun paiement Stripe, jours consommés d'un bloc", async () => {
+  it("couverte par le quota Insight (commerce réel) : aucun paiement Stripe, jours consommés d'un bloc, publiée normalement", async () => {
+    stripeMode.allowed = false; // ce commerce n'est PAS le commerce de test : diffusion réelle normale
     resolvePlanTier.mockResolvedValue("insight");
     adRequestFindFirst.mockResolvedValueOnce(adRequest(3));
     executeRaw.mockResolvedValueOnce(1);
@@ -114,9 +115,24 @@ describe("POST /api/merchant/ads/[id]/confirm — 5 € par jour", () => {
     const response = await POST(req(), { params: Promise.resolve({ id: "ad_1" }) });
     expect(response.status).toBe(200);
     expect(createCampaignCheckoutSession).not.toHaveBeenCalled();
-    expect(adRequestUpdate).toHaveBeenCalledWith({ where: { id: "ad_1" }, data: { status: "SCHEDULED" } });
+    expect(adRequestUpdate).toHaveBeenCalledWith({ where: { id: "ad_1" }, data: { status: "SCHEDULED", fundingMode: undefined } });
     // le montant de consommation (3 jours) est passé au UPDATE conditionnel
     expect(executeRaw.mock.calls[0]).toContain(3);
+  });
+
+  it("couverte par le quota Insight du commerce de test : jamais publiée réellement (fundingMode: TEST)", async () => {
+    // stripeMode.allowed reste true (défaut) : ce commerce EST le commerce de test.
+    resolvePlanTier.mockResolvedValue("insight");
+    adRequestFindFirst.mockResolvedValueOnce(adRequest(3));
+    executeRaw.mockResolvedValueOnce(1);
+    const { POST } = await import("../src/app/api/merchant/ads/[id]/confirm/route");
+    const response = await POST(req(), { params: Promise.resolve({ id: "ad_1" }) });
+    expect(response.status).toBe(200);
+    expect(createCampaignCheckoutSession).not.toHaveBeenCalled();
+    expect(adRequestUpdate).toHaveBeenCalledWith({ where: { id: "ad_1" }, data: { status: "SCHEDULED", fundingMode: "TEST" } });
+    expect(campaignUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ fundingMode: "TEST" }) }),
+    );
   });
 
   it("annonce non validée par Fideto : refus, aucun paiement", async () => {

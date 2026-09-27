@@ -39,14 +39,26 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
   const pricing = priceSponsoredAd({ days, includedDaysRemaining: Math.max(0, limit - used) });
 
   if (!pricing.requiresPayment) {
+    // Le commerce de test ne doit jamais publier de mise en avant réelle, même via un quota
+    // gratuit : voir la même règle sur /api/merchant/campaigns/[id]/confirm.
+    const simulateFreeSend = getActiveStripeMode() === "TEST" && isPaymentAllowedForMerchant(merchantId);
     const consumed = await prisma.$transaction(async (tx) => {
       const ok = await consumeQuotaForCampaign(tx, { merchantId, kind: "SPONSORED_DAY", periodKey, limit, amount: days });
       if (!ok) return false;
       await tx.campaign.update({
         where: { id: adRequest.campaign!.id },
-        data: { status: "SCHEDULED", quotaPeriodKey: periodKey, quotaConsumedAt: new Date(), priceCents: 0 },
+        data: {
+          status: "SCHEDULED",
+          quotaPeriodKey: periodKey,
+          quotaConsumedAt: new Date(),
+          priceCents: 0,
+          fundingMode: simulateFreeSend ? "TEST" : undefined,
+        },
       });
-      await tx.adRequest.update({ where: { id: adRequest.id }, data: { status: "SCHEDULED" } });
+      await tx.adRequest.update({
+        where: { id: adRequest.id },
+        data: { status: "SCHEDULED", fundingMode: simulateFreeSend ? "TEST" : undefined },
+      });
       return true;
     });
     if (!consumed) {

@@ -70,6 +70,11 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
   });
 
   if (!pricing.requiresPayment) {
+    // Le commerce de test (STRIPE_TEST_MERCHANT_IDS) ne doit jamais envoyer de notification ni
+    // d'e-mail réel, même via un quota gratuit : la simulation s'applique à TOUS ses envois en
+    // mode test, pas seulement à ceux qu'il paie. Les autres commerces gardent le comportement
+    // normal (quota gratuit = diffusion réelle), y compris quand le mode actif est test.
+    const simulateFreeSend = getActiveStripeMode() === "TEST" && isPaymentAllowedForMerchant(merchantId);
     const outcome = await prisma.$transaction(async (tx) => {
       const consumed = await consumeQuotaForCampaign(tx, {
         merchantId,
@@ -88,6 +93,7 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
           quotaConsumedAt: new Date(),
           priceCents: 0,
           requiresPayment: false,
+          fundingMode: simulateFreeSend ? "TEST" : undefined,
         },
       });
       return { consumed: true as const, campaign: updated };

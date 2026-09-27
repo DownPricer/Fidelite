@@ -207,6 +207,16 @@ async function handlePaymentIntentFailed(paymentIntent: Stripe.PaymentIntent, mo
   });
 }
 
+/**
+ * ⚠️ LACUNE CONNUE (ne pas activer le mode réel avant correction ou procédure de régularisation) :
+ * cet événement ne traite que le remboursement d'un CampaignPayment (achat direct de campagne
+ * réseau ou de mise en avant). Une recharge du solde marketing (MarketingLedgerEntry TOPUP) n'a
+ * pas de CampaignPayment associé — si un commerçant est remboursé depuis le Dashboard Stripe pour
+ * une RECHARGE, aucun débit n'a lieu ici : le crédit marketing reste acquis sur le solde alors que
+ * l'argent a été rendu. Tant que ce cas n'est pas traité (ou qu'une procédure manuelle de
+ * régularisation n'est pas définie), un remboursement de recharge doit être suivi d'un ajustement
+ * manuel du solde marketing correspondant.
+ */
 async function handleChargeRefunded(charge: Stripe.Charge, mode: StripeModeValue) {
   const paymentIntentId = typeof charge.payment_intent === "string" ? charge.payment_intent : charge.payment_intent?.id;
   if (!paymentIntentId) return;

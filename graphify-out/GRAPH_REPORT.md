@@ -1,7 +1,7 @@
-# Graph Report - Cartefidelité  (2026-09-25)
+# Graph Report - Cartefidelité  (2026-09-27)
 
 ## Corpus Check
-- 603 files · ~4,737,994 words
+- 603 files · ~4,738,479 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 19 file(s) not represented in the graph (top: (none) 6, .example 4, .css 3)
 
@@ -11,7 +11,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `f8a90770`
+- Built from commit: `74666cf9`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 

@@ -300,4 +300,26 @@ describe("POST /api/merchant/campaigns/[id]/confirm — solde marketing", () => 
     );
     expect(campaignUpdate.mock.calls[0][0].data.fundingMode).toBeUndefined();
   });
+
+  it("mode test : le commerce de test autorisé ne diffuse jamais réellement, même via le quota gratuit", async () => {
+    // stripeMode.allowed reste true (valeur par défaut de beforeEach) : ce commerce EST le commerce
+    // de test. Sa campagne « gratuite » doit être marquée fundingMode: TEST pour que le worker la
+    // simule au lieu d'envoyer une vraie notification/e-mail (voir campaign-worker.ts).
+    campaignFindFirst.mockResolvedValueOnce(baseCampaign);
+    const { POST } = await import("../src/app/api/merchant/campaigns/[id]/confirm/route");
+    const response = await POST(req(), { params: Promise.resolve({ id: "camp_1" }) });
+    expect(response.status).toBe(200);
+    expect(campaignUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ status: "SCHEDULED", priceCents: 0, fundingMode: "TEST" }) }),
+    );
+  });
+
+  it("mode réel : le quota gratuit ne marque jamais fundingMode (diffusion réelle normale)", async () => {
+    stripeMode.active = "LIVE";
+    campaignFindFirst.mockResolvedValueOnce(baseCampaign);
+    const { POST } = await import("../src/app/api/merchant/campaigns/[id]/confirm/route");
+    const response = await POST(req(), { params: Promise.resolve({ id: "camp_1" }) });
+    expect(response.status).toBe(200);
+    expect(campaignUpdate.mock.calls[0][0].data.fundingMode).toBeUndefined();
+  });
 });
