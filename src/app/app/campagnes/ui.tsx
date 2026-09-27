@@ -1,7 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+  type ReactElement,
+} from "react";
 import { Button } from "@/components/ui";
 import { CAMPAIGN_PRICE_CENTS } from "@/lib/campaign-prices";
 import {
@@ -1314,148 +1321,286 @@ function bandForHour(hour: number): keyof typeof HOUR_BAND_CLASS {
  * par jour choisi. « Copier vers » permet de dupliquer les heures d'un jour sur d'autres jours
  * déjà ajoutés, qui restent ensuite ajustables individuellement.
  */
+/** Créneau [début, fin) en heure locale Paris — fin 24 = jusqu'à minuit (reste dans le même jour). */
+type Slot = [number, number];
+
+function hoursToSlots(hours: number[]): Slot[] {
+  const sorted = [...hours].sort((a, b) => a - b);
+  const slots: Slot[] = [];
+  for (const h of sorted) {
+    const last = slots[slots.length - 1];
+    if (last && last[1] === h) last[1] = h + 1;
+    else slots.push([h, h + 1]);
+  }
+  return slots;
+}
+
+function slotsToHours(slots: Slot[]): number[] {
+  const set = new Set<number>();
+  for (const [start, end] of slots) {
+    for (let h = start; h < end; h++) if (h >= 0 && h < 24) set.add(h);
+  }
+  return [...set].sort((a, b) => a - b);
+}
+
+function slotAmountCents(slot: Slot) {
+  let sum = 0;
+  for (let h = slot[0]; h < slot[1]; h++) sum += rateForParisHour(h);
+  return sum;
+}
+
+function slotLabel(slot: Slot) {
+  return `${formatHourRange(slot[0]).split("–")[0]}–${slot[1] === 24 ? "00h" : formatHourRange(slot[1]).split("–")[0]}`;
+}
+
+function scheduleDayError(hours: number[], slots: Slot[]): string {
+  if (hours.length === 0) return "Choisissez au moins 3 h pour ce jour.";
+  const ordered = [...slots].sort((a, b) => a[0] - b[0]);
+  for (let i = 0; i < ordered.length; i++) {
+    if (ordered[i][0] >= ordered[i][1]) return "La fin doit être après le début.";
+    if (i > 0 && ordered[i][0] < ordered[i - 1][1]) return "Ces créneaux se chevauchent.";
+  }
+  if (hours.length < MIN_HOURS_PER_DAY) return `Il manque ${MIN_HOURS_PER_DAY - hours.length} h pour atteindre le minimum.`;
+  return "";
+}
+
+function hourSelectOptions(value: number, isEnd: boolean) {
+  const options: ReactElement[] = [];
+  for (let h = 0; h <= 24; h++) {
+    if ((!isEnd && h === 24) || (isEnd && h === 0)) continue;
+    options.push(
+      <option key={h} value={h}>
+        {h === 24 ? "00 h (fin de journée)" : formatHourRange(h).split("–")[0]}
+      </option>,
+    );
+  }
+  return options;
+}
+
+type ScheduleDayState = { date: string; slots: Slot[] };
+
+/**
+ * Sélection des jours et heures d'exposition (Partie 15/16) : une journée ouverte à la fois,
+ * créneaux modifiables (début/fin), ajout/retrait de jour ou de créneau, copie des horaires sur
+ * les autres jours. Émet toujours des heures individuelles (0-23) au parent — c'est ce que
+ * valide et facture le serveur (voir sponsored-hours-pricing.ts) ; les créneaux ne sont qu'une
+ * représentation d'édition côté client.
+ */
 function HourlySchedulePicker({
-  value,
+  initial,
   onChange,
 }: {
-  value: SponsoredDaySelection[];
+  initial: SponsoredDaySelection[];
   onChange: (value: SponsoredDaySelection[]) => void;
 }) {
+  const [days, setDays] = useState<ScheduleDayState[]>(() =>
+    initial.length > 0 ? initial.map((d) => ({ date: d.date, slots: hoursToSlots(d.hours) })) : [],
+  );
+  const [active, setActive] = useState<string | null>(days[0]?.date ?? null);
   const [newDate, setNewDate] = useState(todayDateInputValue);
-  const [copySourceDate, setCopySourceDate] = useState<string | null>(null);
-  const [copyTargets, setCopyTargets] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    onChange(days.map((d) => ({ date: d.date, hours: slotsToHours(d.slots) })));
+    // onChange volontairement omis des dépendances : seul un changement de `days` doit émettre.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [days]);
 
   function addDay() {
-    if (!newDate || value.some((d) => d.date === newDate)) return;
-    onChange([...value, { date: newDate, hours: [] }].sort((a, b) => a.date.localeCompare(b.date)));
+    if (!newDate || days.some((d) => d.date === newDate)) return;
+    const next = [...days, { date: newDate, slots: [[8, 11] as Slot] }].sort((a, b) => a.date.localeCompare(b.date));
+    setDays(next);
+    setActive(newDate);
     setNewDate(addDaysToDateInput(newDate, 1));
   }
 
   function removeDay(date: string) {
-    onChange(value.filter((d) => d.date !== date));
-    if (copySourceDate === date) setCopySourceDate(null);
+    const next = days.filter((d) => d.date !== date);
+    setDays(next);
+    if (active === date) setActive(next[0]?.date ?? null);
   }
 
-  function toggleHour(date: string, hour: number) {
-    onChange(
-      value.map((d) =>
-        d.date === date
-          ? { ...d, hours: d.hours.includes(hour) ? d.hours.filter((h) => h !== hour) : [...d.hours, hour].sort((a, b) => a - b) }
-          : d,
-      ),
-    );
+  function updateSlots(date: string, slots: Slot[]) {
+    setDays(days.map((d) => (d.date === date ? { ...d, slots } : d)));
   }
 
-  function applyCopy() {
-    if (!copySourceDate) return;
-    const source = value.find((d) => d.date === copySourceDate);
+  function copyToOthers(date: string) {
+    const source = days.find((d) => d.date === date);
     if (!source) return;
-    onChange(value.map((d) => (copyTargets.has(d.date) ? { ...d, hours: [...source.hours] } : d)));
-    setCopyTargets(new Set());
-    setCopySourceDate(null);
+    setDays(days.map((d) => (d.date === date ? d : { ...d, slots: source.slots.map((s) => [...s] as Slot) })));
   }
 
   return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap items-end gap-2">
-        <label className="block text-xs text-[var(--muted)]">
-          Ajouter un jour
+    <div>
+      <div className="sponsor-rates" aria-label="Tarifs par heure">
+        <div className="sponsor-rate">
+          <span>
+            <i style={{ background: "var(--blue, #6366f1)" }} />
+            00 h – 08 h
+          </span>
+          <strong>
+            {formatCents(SPONSORED_HOUR_RATE_CENTS.NIGHT)} <small style={{ fontWeight: 500 }}>/ h</small>
+          </strong>
+        </div>
+        <div className="sponsor-rate">
+          <span>
+            <i style={{ background: "#f2bd8c" }} />
+            08 h – 19 h
+          </span>
+          <strong>
+            {formatCents(SPONSORED_HOUR_RATE_CENTS.DAY)} <small style={{ fontWeight: 500 }}>/ h</small>
+          </strong>
+        </div>
+        <div className="sponsor-rate">
+          <span>
+            <i style={{ background: "#ee97c9" }} />
+            19 h – 22 h
+          </span>
+          <strong>
+            {formatCents(SPONSORED_HOUR_RATE_CENTS.EVENING)} <small style={{ fontWeight: 500 }}>/ h</small>
+          </strong>
+        </div>
+        <div className="sponsor-rate">
+          <span>
+            <i style={{ background: "var(--violet-bright)" }} />
+            22 h – 00 h · Happy Hour
+          </span>
+          <strong>
+            {formatCents(SPONSORED_HOUR_RATE_CENTS.HAPPY_HOUR)} <small style={{ fontWeight: 500 }}>/ h</small>
+          </strong>
+        </div>
+      </div>
+
+      <div className="sponsor-date-bar">
+        <div>
+          <p className="text-xs font-bold text-[var(--ink)]">Vos journées</p>
+          <p className="text-[11px] text-[var(--muted)]">Modifiez uniquement le jour qui vous intéresse.</p>
+        </div>
+        <div className="sponsor-date-add">
           <input
             type="date"
-            className="profile-select mt-1"
+            aria-label="Jour à ajouter"
             value={newDate}
             min={todayDateInputValue()}
             onChange={(e) => setNewDate(e.target.value)}
           />
-        </label>
-        <Button type="button" variant="secondary" onClick={addDay}>
-          Ajouter
-        </Button>
+          <Button type="button" variant="secondary" onClick={addDay}>
+            + Ajouter un jour
+          </Button>
+        </div>
       </div>
 
-      {value.length === 0 ? (
+      {days.length === 0 ? (
         <p className="text-xs text-[var(--muted)]">Ajoutez au moins un jour, puis choisissez ses heures d&apos;exposition.</p>
-      ) : null}
-
-      {value.map((day) => (
-        <div key={day.date} className="space-y-2 rounded-xl border border-[var(--border)] bg-[var(--panel-bg)] p-3">
-          <div className="flex items-center justify-between">
-            <p className="text-sm font-bold text-[var(--ink)]">
-              {formatDate(new Date(`${day.date}T00:00:00`).toISOString())}
-              <span className={`ml-2 text-xs font-normal ${day.hours.length < MIN_HOURS_PER_DAY ? "text-[var(--danger)]" : "text-[var(--muted)]"}`}>
-                {day.hours.length} h sélectionnée{day.hours.length > 1 ? "s" : ""} (min. {MIN_HOURS_PER_DAY})
-              </span>
-            </p>
-            <div className="flex gap-2">
-              {day.hours.length > 0 && value.length > 1 ? (
-                <button
-                  type="button"
-                  className="text-xs font-semibold text-[var(--violet-bright)]"
-                  onClick={() => {
-                    setCopySourceDate(day.date);
-                    setCopyTargets(new Set());
-                  }}
-                >
-                  Copier vers…
-                </button>
-              ) : null}
-              <button type="button" className="text-xs font-semibold text-[var(--danger)]" onClick={() => removeDay(day.date)}>
-                Retirer
-              </button>
-            </div>
-          </div>
-          <div className="grid grid-cols-6 gap-1 sm:grid-cols-8">
-            {Array.from({ length: 24 }, (_, hour) => hour).map((hour) => (
-              <button
-                key={hour}
-                type="button"
-                onClick={() => toggleHour(day.date, hour)}
-                title={`${formatHourRange(hour)} — ${formatCents(rateForParisHour(hour))}/h`}
-                className={`sponsor-hour-cell ${HOUR_BAND_CLASS[bandForHour(hour)]} ${day.hours.includes(hour) ? "sponsor-hour-cell-active" : ""}`}
-              >
-                {hour}
-              </button>
-            ))}
-          </div>
-          {copySourceDate === day.date ? (
-            <div className="space-y-2 rounded-lg border border-dashed border-[var(--border)] p-2">
-              <p className="text-xs text-[var(--muted)]">Copier ces heures vers :</p>
-              <div className="flex flex-wrap gap-2">
-                {value
-                  .filter((d) => d.date !== day.date)
-                  .map((d) => (
-                    <label key={d.date} className="flex items-center gap-1 text-xs text-[var(--muted-strong)]">
-                      <input
-                        type="checkbox"
-                        checked={copyTargets.has(d.date)}
-                        onChange={(e) => {
-                          const next = new Set(copyTargets);
-                          if (e.target.checked) next.add(d.date);
-                          else next.delete(d.date);
-                          setCopyTargets(next);
-                        }}
-                      />
-                      {formatDate(new Date(`${d.date}T00:00:00`).toISOString())}
-                    </label>
-                  ))}
+      ) : (
+        <div className="sponsor-days">
+          {days.map((day) => {
+            const hours = slotsToHours(day.slots);
+            const err = scheduleDayError(hours, day.slots);
+            const opened = active === day.date;
+            const amount = day.slots.reduce((sum, s) => sum + slotAmountCents(s), 0);
+            return (
+              <div key={day.date} className={`sponsor-day ${opened ? "is-open" : ""}`}>
+                <div className="sponsor-day-top">
+                  <div className="sponsor-date-main">
+                    {formatDate(new Date(`${day.date}T00:00:00`).toISOString())}
+                    <span>
+                      {hours.length} h sélectionnée{hours.length > 1 ? "s" : ""}
+                    </span>
+                  </div>
+                  <div className="sponsor-day-summary">
+                    {day.slots.length > 0 ? (
+                      day.slots.map((s, i) => (
+                        <span key={i} className="sponsor-slot-tag">
+                          {slotLabel(s)}
+                        </span>
+                      ))
+                    ) : (
+                      <span className="sponsor-slot-tag is-empty">Aucun créneau</span>
+                    )}
+                  </div>
+                  <div className="sponsor-day-price">
+                    {formatCents(amount)}
+                    <span>{!err ? "Prêt" : "À compléter"}</span>
+                  </div>
+                  <div className="sponsor-day-action">
+                    <button type="button" className="sponsor-tiny" onClick={() => setActive(opened ? null : day.date)}>
+                      {opened ? "Réduire" : "Modifier"}
+                    </button>
+                    <button
+                      type="button"
+                      className="sponsor-tiny is-danger"
+                      title="Retirer ce jour"
+                      aria-label={`Retirer le ${day.date}`}
+                      onClick={() => removeDay(day.date)}
+                    >
+                      ×
+                    </button>
+                  </div>
+                </div>
+                {opened ? (
+                  <div className="sponsor-day-details">
+                    <div className="sponsor-slots">
+                      {day.slots.map((slot, i) => (
+                        <div key={i} className="sponsor-slot-row">
+                          <select
+                            aria-label={`Début du créneau ${i + 1}`}
+                            value={slot[0]}
+                            onChange={(e) => {
+                              const next = day.slots.map((s, j) => (j === i ? ([Number(e.target.value), s[1]] as Slot) : s));
+                              updateSlots(day.date, next);
+                            }}
+                          >
+                            {hourSelectOptions(slot[0], false)}
+                          </select>
+                          <span className="sponsor-dash">→</span>
+                          <select
+                            aria-label={`Fin du créneau ${i + 1}`}
+                            value={slot[1]}
+                            onChange={(e) => {
+                              const next = day.slots.map((s, j) => (j === i ? ([s[0], Number(e.target.value)] as Slot) : s));
+                              updateSlots(day.date, next);
+                            }}
+                          >
+                            {hourSelectOptions(slot[1], true)}
+                          </select>
+                          <span className="sponsor-slot-amount">{formatCents(slotAmountCents(slot))}</span>
+                          <button
+                            type="button"
+                            className="sponsor-tiny"
+                            title="Retirer ce créneau"
+                            aria-label={`Retirer le créneau ${i + 1}`}
+                            onClick={() => updateSlots(day.date, day.slots.filter((_, j) => j !== i))}
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="sponsor-slot-controls">
+                      <button
+                        type="button"
+                        className="btn-secondary sponsor-tiny"
+                        onClick={() => updateSlots(day.date, [...day.slots, [8, 11]])}
+                      >
+                        + Ajouter un créneau
+                      </button>
+                      {days.length > 1 ? (
+                        <button type="button" className="btn-secondary sponsor-tiny" onClick={() => copyToOthers(day.date)}>
+                          Copier sur les autres jours
+                        </button>
+                      ) : null}
+                    </div>
+                    {err ? <p className="sponsor-error mt-2 text-xs text-[var(--danger)]">{err}</p> : null}
+                    <p className="sponsor-hint mt-1">
+                      Chaque créneau reste dans le jour choisi ; un horaire 22 h–00 h compte pour ce jour.
+                    </p>
+                  </div>
+                ) : null}
               </div>
-              <div className="flex gap-2">
-                <Button type="button" variant="secondary" onClick={applyCopy} disabled={copyTargets.size === 0}>
-                  Appliquer
-                </Button>
-                <Button type="button" variant="secondary" onClick={() => setCopySourceDate(null)}>
-                  Annuler
-                </Button>
-              </div>
-            </div>
-          ) : null}
+            );
+          })}
         </div>
-      ))}
-      <p className="text-[11px] text-[var(--muted)]">
-        Tarifs (heure locale Paris) : 00h–08h {formatCents(SPONSORED_HOUR_RATE_CENTS.NIGHT)}/h · 08h–19h{" "}
-        {formatCents(SPONSORED_HOUR_RATE_CENTS.DAY)}/h · 19h–22h {formatCents(SPONSORED_HOUR_RATE_CENTS.EVENING)}/h ·
-        22h–00h {formatCents(SPONSORED_HOUR_RATE_CENTS.HAPPY_HOUR)}/h (Happy Hour).
-      </p>
+      )}
     </div>
   );
 }
@@ -1733,40 +1878,42 @@ function VisualPicker({
   }
 
   return (
-    <div className="space-y-3">
-      <p className="text-xs font-bold uppercase tracking-wide text-[var(--muted)]">Visuel du bandeau</p>
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+    <div>
+      <div className="sponsor-visual-grid" role="group" aria-label="Mode de création du visuel">
         <button
           type="button"
           onClick={() => switchMode("SELF")}
-          className={`sponsor-duration-card text-left ${value.mode === "SELF" ? "sponsor-duration-card-active" : ""}`}
+          className={`sponsor-visual-option ${value.mode === "SELF" ? "is-active" : ""}`}
         >
-          <span className="block text-sm font-bold text-[var(--ink)]">Je crée mon visuel</span>
-          <span className="block text-xs text-[var(--muted)]">
-            Ajoutez une image et recadrez-la vous-même au format du bandeau.
-          </span>
+          <b>Je crée mon visuel</b>
+          <span>J&apos;ajoute un bandeau et je contrôle son cadrage.</span>
         </button>
         <button
           type="button"
           onClick={() => switchMode("FIDETO")}
-          className={`sponsor-duration-card text-left ${value.mode === "FIDETO" ? "sponsor-duration-card-active" : ""}`}
+          className={`sponsor-visual-option ${value.mode === "FIDETO" ? "is-active" : ""}`}
         >
-          <span className="block text-sm font-bold text-[var(--ink)]">Fideto crée mon visuel</span>
-          <span className="block text-xs text-[var(--muted)]">
-            Envoyez 1 à 5 images (sans contrainte de format) — Fideto prépare le bandeau pour vous.
-          </span>
+          <b>Fideto crée mon visuel</b>
+          <span>J&apos;envoie jusqu&apos;à 5 images, Fideto prépare le bandeau.</span>
         </button>
       </div>
 
       {value.mode === "SELF" ? (
-        <div className="space-y-2">
+        <div>
+          <div className="sponsor-notice">
+            Ajoutez votre bandeau, vérifiez l&apos;aperçu et ajustez son cadrage avant de continuer.
+          </div>
           {!pendingFile && !value.selfUrl ? (
-            <label className="block text-xs text-[var(--muted)]">
-              Image (PNG, JPEG ou WebP, 5 Mo max — recadrée ensuite au format carré du bandeau)
+            <label className="sponsor-dropzone">
+              <span className="sponsor-drop-icon" aria-hidden>
+                ▧
+              </span>
+              <b>Importer mon bandeau</b>
+              <small>PNG, JPG ou WebP · 5 Mo max · aperçu au format de diffusion (carré)</small>
               <input
                 type="file"
                 accept="image/png,image/jpeg,image/webp"
-                className="profile-select mt-1 w-full"
+                className="sr-only"
                 onChange={(e) => void onSelfFileSelected(e.target.files?.[0] ?? null)}
               />
             </label>
@@ -1779,11 +1926,11 @@ function VisualPicker({
               onError={onError}
             />
           ) : null}
-          {selfBusy ? <p className="text-xs text-[var(--muted)]">Envoi de l&apos;image…</p> : null}
+          {selfBusy ? <p className="mt-2 text-xs text-[var(--muted)]">Envoi de l&apos;image…</p> : null}
           {value.selfUrl ? (
-            <div className="flex items-center gap-3">
+            <div className="mt-3 flex items-center gap-3">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={value.selfUrl} alt="Visuel recadré" className="h-20 w-20 rounded-lg object-cover" />
+              <img src={value.selfUrl} alt="Visuel recadré, tel qu'il sera publié" className="h-16 w-16 rounded-lg object-cover" />
               <div className="flex gap-2">
                 <Button type="button" variant="secondary" onClick={() => document.getElementById("self-visual-replace")?.click()}>
                   Remplacer
@@ -1803,31 +1950,33 @@ function VisualPicker({
           ) : null}
         </div>
       ) : (
-        <div className="space-y-2">
-          <label className="block text-xs text-[var(--muted)]">
-            Images (1 à {MAX_FIDETO_IMAGES}, PNG/JPEG/WebP, 5 Mo max chacune — aucune dimension imposée)
+        <div>
+          <div className="sponsor-notice">
+            Après votre demande, vous recevrez un aperçu à approuver. Aucun bandeau n&apos;est publié sans votre validation.
+          </div>
+          <label className="sponsor-dropzone">
+            <span className="sponsor-drop-icon" aria-hidden>
+              ＋
+            </span>
+            <b>Ajouter vos images</b>
+            <small>Jusqu&apos;à {MAX_FIDETO_IMAGES} images · PNG, JPG ou WebP · 5 Mo maximum par image</small>
             <input
               type="file"
               accept="image/png,image/jpeg,image/webp"
               multiple
               disabled={value.fidetoUrls.length >= MAX_FIDETO_IMAGES}
-              className="profile-select mt-1 w-full"
+              className="sr-only"
               onChange={(e) => void onFidetoFilesSelected(e.target.files)}
             />
           </label>
-          {fidetoBusy ? <p className="text-xs text-[var(--muted)]">Envoi des images…</p> : null}
+          {fidetoBusy ? <p className="mt-2 text-xs text-[var(--muted)]">Envoi des images…</p> : null}
           {value.fidetoUrls.length > 0 ? (
-            <div className="flex flex-wrap gap-2">
+            <div className="sponsor-files" aria-live="polite">
               {value.fidetoUrls.map((url) => (
-                <div key={url} className="relative">
+                <div key={url} className="sponsor-file">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={url} alt="" className="h-20 w-20 rounded-lg object-cover" />
-                  <button
-                    type="button"
-                    aria-label="Retirer cette image"
-                    onClick={() => void removeFidetoImage(url)}
-                    className="absolute -right-1 -top-1 grid h-5 w-5 place-items-center rounded-full bg-black/70 text-white"
-                  >
+                  <img src={url} alt="" />
+                  <button type="button" aria-label="Retirer cette image" onClick={() => void removeFidetoImage(url)}>
                     ×
                   </button>
                 </div>
@@ -1851,6 +2000,7 @@ function SponsorWizard({
   onClose: () => void;
   onDone: () => void;
 }) {
+  const [wizardStep, setWizardStep] = useState<"schedule" | "visual" | "validation">("schedule");
   const [schedule, setSchedule] = useState<SponsoredDaySelection[]>([]);
   const [objective, setObjective] = useState("");
   const [text, setText] = useState("");
@@ -1862,23 +2012,46 @@ function SponsorWizard({
 
   const includedDaysRemaining = quotas.find((q) => q.kind === "SPONSORED_DAY")?.remaining ?? 0;
   const pricing = estimateSponsorPricing(schedule, includedDaysRemaining);
+  const scheduleCheck = validateSponsoredSchedule(schedule);
+  const visualComplete =
+    (visual.mode === "SELF" && Boolean(visual.selfUrl)) || (visual.mode === "FIDETO" && visual.fidetoUrls.length > 0);
+
+  function goToVisual() {
+    if (!scheduleCheck.ok) {
+      setError(scheduleCheck.error);
+      return;
+    }
+    setError(null);
+    setWizardStep("visual");
+  }
+
+  function goToValidation() {
+    if (!text.trim()) {
+      setError("Ajoutez le texte du bandeau avant de continuer.");
+      return;
+    }
+    if (!visualComplete) {
+      setError(
+        visual.mode === "SELF" ? "Ajoutez et recadrez votre visuel avant de continuer." : "Envoyez au moins une image avant de continuer.",
+      );
+      return;
+    }
+    setError(null);
+    setWizardStep("validation");
+  }
 
   async function submit() {
     if (demo) {
       setDone(true);
       return;
     }
-    if (visual.mode === "SELF" && !visual.selfUrl) {
-      setError("Ajoutez et recadrez votre visuel avant d'envoyer.");
-      return;
-    }
-    if (visual.mode === "FIDETO" && visual.fidetoUrls.length === 0) {
-      setError("Envoyez au moins une image pour que Fideto prépare votre visuel.");
-      return;
-    }
-    const scheduleCheck = validateSponsoredSchedule(schedule);
     if (!scheduleCheck.ok) {
       setError(scheduleCheck.error);
+      setWizardStep("schedule");
+      return;
+    }
+    if (!text.trim() || !visualComplete) {
+      setError("Complétez les étapes précédentes avant d'envoyer.");
       return;
     }
     setBusy(true);
@@ -1929,98 +2102,212 @@ function SponsorWizard({
     );
   }
 
+  const previewThumb = visual.mode === "SELF" ? visual.selfUrl : (visual.fidetoUrls[0] ?? null);
+
   return (
     <div className="space-y-4">
       <button type="button" onClick={onClose} className="text-xs font-semibold text-[var(--muted)]">
         ← Retour aux campagnes
       </button>
 
-      <div className="glass-panel space-y-4 p-5">
-        <div className="rounded-xl border border-[var(--border)] bg-[var(--panel-bg)] p-3 text-xs text-[var(--muted-strong)]">
-          Comment ça marche : vous envoyez votre demande → Fideto prépare le visuel → vous recevez un aperçu → vous
-          validez → vous payez → la campagne est programmée automatiquement → vous suivez affichages et clics.
-        </div>
+      <div className="sponsor-stepper" aria-label="Étapes de création">
+        <button
+          type="button"
+          className={`sponsor-step ${wizardStep === "schedule" ? "is-active" : "is-done"}`}
+          onClick={() => setWizardStep("schedule")}
+        >
+          <span className="sponsor-step-num">1</span> Horaires
+        </button>
+        <span className="sponsor-step-arrow">›</span>
+        <button
+          type="button"
+          className={`sponsor-step ${wizardStep === "visual" ? "is-active" : scheduleCheck.ok ? "is-done" : ""}`}
+          onClick={goToVisual}
+        >
+          <span className="sponsor-step-num">2</span> Visuel
+        </button>
+        <span className="sponsor-step-arrow">›</span>
+        <span className={`sponsor-step ${wizardStep === "validation" ? "is-active" : ""}`}>
+          <span className="sponsor-step-num">3</span> Validation
+        </span>
+      </div>
 
-        <div>
-          <p className="mb-2 text-xs font-bold uppercase tracking-wide text-[var(--muted)]">Jours et heures d&apos;exposition</p>
-          <HourlySchedulePicker value={schedule} onChange={setSchedule} />
-        </div>
-
-        <label className="block text-xs text-[var(--muted)]">
-          Titre ou objectif (facultatif)
-          <input
-            className="profile-select mt-1 w-full"
-            value={objective}
-            onChange={(e) => setObjective(e.target.value)}
-            maxLength={200}
-            placeholder="Ex. Faire découvrir notre nouvelle carte"
-          />
-        </label>
-        <label className="block text-xs text-[var(--muted)]">
-          Texte du bandeau
-          <textarea
-            className="profile-select mt-1 w-full"
-            rows={3}
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            maxLength={1000}
-          />
-        </label>
-        <VisualPicker value={visual} onChange={setVisual} onError={setError} />
-        <label className="block text-xs text-[var(--muted)]">
-          Lien ou commerce à ouvrir (facultatif)
-          <input
-            className="profile-select mt-1 w-full"
-            value={ctaUrl}
-            onChange={(e) => setCtaUrl(e.target.value)}
-            placeholder="https://…"
-          />
-        </label>
-
-        <div className="campaign-wizard-summary space-y-1 rounded-xl border border-[var(--border)] bg-[var(--panel-bg)] p-4">
-          <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--muted)]">Récapitulatif</p>
-          {pricing.byDay.length === 0 ? (
-            <p className="text-xs text-[var(--muted)]">Ajoutez au moins un jour pour voir le détail du calcul.</p>
+      <div className="sponsor-workspace">
+        <div className="min-w-0">
+          {wizardStep === "schedule" ? (
+            <section className="card main-card p-5" aria-labelledby="schedule-title">
+              <div>
+                <h2 id="schedule-title" className="text-lg font-bold text-[var(--ink)]">
+                  Quand voulez-vous être visible ?
+                </h2>
+                <p className="text-sm text-[var(--muted-strong)]">
+                  Choisissez au moins {MIN_HOURS_PER_DAY} heures pour chaque jour. Vous pouvez combiner plusieurs créneaux.
+                </p>
+              </div>
+              <HourlySchedulePicker initial={schedule} onChange={setSchedule} />
+              {error ? <p className="mt-2 text-sm text-[var(--danger)]">{error}</p> : null}
+              <div className="sponsor-bottom-actions">
+                <span className="text-xs text-[var(--muted)]">Vous pourrez relire le total à l&apos;étape suivante.</span>
+                <Button type="button" onClick={goToVisual} disabled={!scheduleCheck.ok}>
+                  Continuer vers le visuel →
+                </Button>
+              </div>
+            </section>
+          ) : wizardStep === "visual" ? (
+            <section className="card main-card p-5" aria-labelledby="visual-title">
+              <div>
+                <h2 id="visual-title" className="text-lg font-bold text-[var(--ink)]">
+                  Votre visuel de campagne
+                </h2>
+                <p className="text-sm text-[var(--muted-strong)]">
+                  Choisissez comment préparer le bandeau qui représentera votre commerce.
+                </p>
+              </div>
+              <VisualPicker value={visual} onChange={setVisual} onError={setError} />
+              <label className="mt-4 block text-xs text-[var(--muted)]">
+                Texte du bandeau
+                <textarea
+                  className="profile-select mt-1 w-full"
+                  rows={3}
+                  value={text}
+                  onChange={(e) => setText(e.target.value)}
+                  maxLength={1000}
+                />
+              </label>
+              <label className="mt-3 block text-xs text-[var(--muted)]">
+                Titre ou objectif (facultatif)
+                <input
+                  className="profile-select mt-1 w-full"
+                  value={objective}
+                  onChange={(e) => setObjective(e.target.value)}
+                  maxLength={200}
+                  placeholder="Ex. Faire découvrir notre nouvelle carte"
+                />
+              </label>
+              <label className="mt-3 block text-xs text-[var(--muted)]">
+                Lien à ouvrir (facultatif)
+                <input
+                  className="profile-select mt-1 w-full"
+                  value={ctaUrl}
+                  onChange={(e) => setCtaUrl(e.target.value)}
+                  placeholder="https://…"
+                />
+              </label>
+              {error ? <p className="mt-2 text-sm text-[var(--danger)]">{error}</p> : null}
+              <div className="sponsor-bottom-actions">
+                <button type="button" className="sponsor-tiny" onClick={() => setWizardStep("schedule")}>
+                  ← Modifier les horaires
+                </button>
+                <Button type="button" onClick={goToValidation} disabled={!text.trim() || !visualComplete}>
+                  Voir le récapitulatif →
+                </Button>
+              </div>
+            </section>
           ) : (
-            <div className="space-y-1">
+            <section className="card main-card p-5" aria-labelledby="validation-title">
+              <div>
+                <h2 id="validation-title" className="text-lg font-bold text-[var(--ink)]">
+                  Vérifiez avant d&apos;envoyer
+                </h2>
+                <p className="text-sm text-[var(--muted-strong)]">
+                  Votre demande part en préparation chez Fideto. Le paiement n&apos;intervient qu&apos;après validation du visuel final.
+                </p>
+              </div>
+              <div className="sponsor-notice">
+                Comment ça marche : vous envoyez votre demande → Fideto prépare le visuel → vous recevez un aperçu → vous validez →
+                vous payez → la campagne est programmée automatiquement.
+              </div>
+              <div className="campaign-wizard-summary space-y-1 rounded-xl border border-[var(--border)] bg-[var(--panel-bg)] p-4">
+                <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--muted)]">Détail par jour</p>
+                <div className="space-y-1">
+                  {pricing.byDay.map((d) => (
+                    <div key={d.date} className="campaign-wizard-summary-row">
+                      <span className="text-xs text-[var(--muted)]">
+                        {formatDate(new Date(`${d.date}T00:00:00`).toISOString())} — {d.hours.length} h
+                      </span>
+                      <span className="text-sm font-bold text-[var(--ink)]">{formatCents(d.priceCents)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              {error ? <p className="mt-2 text-sm text-[var(--danger)]">{error}</p> : null}
+              <div className="sponsor-bottom-actions">
+                <button type="button" className="sponsor-tiny" onClick={() => setWizardStep("visual")}>
+                  ← Modifier le visuel
+                </button>
+                <Button type="button" onClick={() => void submit()} disabled={busy || !scheduleCheck.ok || !text.trim() || !visualComplete}>
+                  {busy ? "…" : "Envoyer ma demande"}
+                </Button>
+              </div>
+            </section>
+          )}
+        </div>
+
+        <aside className="card sponsor-summary" aria-label="Récapitulatif">
+          <h2 className="text-base font-bold text-[var(--ink)]">Votre mise en avant</h2>
+          <p className="text-xs text-[var(--muted-strong)]">Le détail de votre sélection, à tout moment.</p>
+          <div className="sponsor-ad-preview">
+            {previewThumb ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={previewThumb} alt="" className="sponsor-ad-preview-thumb" />
+            ) : (
+              <span className="sponsor-ad-preview-empty" aria-hidden>
+                ✦
+              </span>
+            )}
+            <span className="sponsor-ad-preview-text">{text.trim() || "Votre commerce en lumière"}</span>
+          </div>
+          <p className="sponsor-summary-title">Réservation</p>
+          <div className="sponsor-metric">
+            <span>Jours choisis</span>
+            <b>
+              {pricing.totalDays} jour{pricing.totalDays > 1 ? "s" : ""}
+            </b>
+          </div>
+          <div className="sponsor-metric">
+            <span>Heures d&apos;exposition</span>
+            <b>
+              {pricing.totalHours} heure{pricing.totalHours > 1 ? "s" : ""}
+            </b>
+          </div>
+          <div className="sponsor-divider" />
+          <p className="sponsor-summary-title">Détail du prix</p>
+          {pricing.byDay.length === 0 ? (
+            <p className="text-xs text-[var(--muted)]">Ajoutez au moins un jour.</p>
+          ) : (
+            <div className="sponsor-cost-days">
               {pricing.byDay.map((d) => (
-                <div key={d.date} className="campaign-wizard-summary-row">
-                  <span className="text-xs text-[var(--muted)]">
-                    {formatDate(new Date(`${d.date}T00:00:00`).toISOString())} — {d.hours.length} h
+                <div key={d.date}>
+                  <span>
+                    {formatDate(new Date(`${d.date}T00:00:00`).toISOString())} · {d.hours.length} h
                   </span>
-                  <span className="text-sm font-bold text-[var(--ink)]">{formatCents(d.priceCents)}</span>
+                  <b>{formatCents(d.priceCents)}</b>
                 </div>
               ))}
             </div>
           )}
-          <div className="campaign-wizard-summary-row">
-            <span className="text-xs text-[var(--muted)]">Audience</span>
-            <span className="text-sm font-bold text-[var(--ink)]">Clients Fideto de votre secteur</span>
+          <div className="sponsor-divider" />
+          <div className="sponsor-total-row">
+            <span>{pricing.requiresPayment ? "Total estimé" : "Couvert par votre quota"}</span>
+            <strong>{pricing.requiresPayment ? formatCents(pricing.priceCents) : "0 €"}</strong>
           </div>
-          <div className="campaign-wizard-summary-row">
-            <span className="text-xs text-[var(--muted)]">Emplacement</span>
-            <span className="text-sm font-bold text-[var(--ink)]">Bandeau Découvrir</span>
-          </div>
-          <div className="campaign-wizard-summary-row">
-            <span className="text-xs text-[var(--muted)]">Total heures</span>
-            <span className="text-sm font-bold text-[var(--ink)]">{pricing.totalHours} h sur {pricing.totalDays} jour{pricing.totalDays > 1 ? "s" : ""}</span>
-          </div>
-          <div className="campaign-wizard-summary-row">
-            <span className="text-xs text-[var(--muted)]">Crédits utilisés</span>
-            <span className="text-sm font-bold text-[var(--ink)]">{pricing.daysFromQuota} jour{pricing.daysFromQuota > 1 ? "s" : ""} inclus</span>
-          </div>
-          <div className="campaign-wizard-summary-row">
-            <span className="text-xs text-[var(--muted)]">Montant total à payer</span>
-            <span className="text-sm font-bold text-[var(--ink)]">
-              {pricing.requiresPayment ? formatCents(pricing.priceCents) : "0 € — couvert par votre quota"}
+          <p className="sponsor-summary-note">Le montant exact est confirmé avant tout paiement.</p>
+          {pricing.daysFromQuota > 0 ? (
+            <p className="sponsor-summary-note">
+              {pricing.daysFromQuota} jour{pricing.daysFromQuota > 1 ? "s" : ""} pris sur votre quota inclus.
+            </p>
+          ) : null}
+          <div className="sponsor-steps-note">
+            <span aria-hidden>✦</span>
+            <span>
+              {wizardStep === "schedule"
+                ? "Étape suivante : ajoutez votre visuel ou confiez sa création à Fideto."
+                : wizardStep === "visual"
+                  ? "Votre visuel sera relu avant sa publication. Vous gardez la main sur le résultat."
+                  : "Vérifiez le récapitulatif, puis envoyez votre demande."}
             </span>
           </div>
-        </div>
-
-        {error ? <p className="text-sm text-[var(--danger)]">{error}</p> : null}
-        <Button className="w-full" variant="secondary" onClick={() => void submit()} disabled={busy || !text.trim()}>
-          {busy ? "…" : "Envoyer ma demande"}
-        </Button>
+        </aside>
       </div>
     </div>
   );
