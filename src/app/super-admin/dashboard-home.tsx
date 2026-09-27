@@ -37,7 +37,18 @@ type Overview = {
   };
   alerts: { insightPending: number; pastDue: number; trialEndingSoon: number };
   recentActivity: { id: string; action: string; actorName: string | null; merchantName: string | null; createdAt: string }[];
+  sponsoredAds: {
+    purchasedHours: { test: number; live: number };
+    deliveredHours: number;
+    amountsCentsByMode: { TEST: number; LIVE: number };
+    requestsByStatus: { status: string; count: number }[];
+    moderation: { approved: number; rejected: number };
+  };
 };
+
+function formatEuros(cents: number) {
+  return (cents / 100).toLocaleString("fr-FR", { style: "currency", currency: "EUR" });
+}
 
 const ACTIVITY_LABELS: Record<string, string> = {
   MERCHANT_CREATE: "Commerce créé",
@@ -154,6 +165,29 @@ export function DashboardHome({ firstName }: { firstName: string }) {
           <StatCard label="Points distribués" value={overview?.activity.pointsDistributed ?? "—"} sub={`${overview?.activity.pointsUsed ?? 0} utilisés`} />
           <StatCard label="Récompenses" value={overview?.activity.rewardsUsed ?? "—"} sub={`${overview?.activity.rewardsUnlocked ?? 0} débloquées`} />
           <StatCard label="Abonnements actifs" value={overview?.billing.activeSubscriptions ?? "—"} sub={`${overview?.billing.trialSubscriptions ?? 0} en essai`} />
+        </section>
+
+        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <StatCard
+            label="Heures de mise en avant achetées"
+            value={overview ? overview.sponsoredAds.purchasedHours.live + overview.sponsoredAds.purchasedHours.test : "—"}
+            sub={overview ? `dont ${overview.sponsoredAds.purchasedHours.test} h en mode test` : ""}
+          />
+          <StatCard
+            label="Heures réellement diffusées"
+            value={overview?.sponsoredAds.deliveredHours ?? "—"}
+            sub="Bandeau effectivement affiché (intervalles écoulés)"
+          />
+          <StatCard
+            label="Mises en avant — encaissé réel"
+            value={overview ? formatEuros(overview.sponsoredAds.amountsCentsByMode.LIVE) : "—"}
+            sub={overview ? `${formatEuros(overview.sponsoredAds.amountsCentsByMode.TEST)} en mode test (simulation)` : ""}
+          />
+          <StatCard
+            label="Visuels modérés"
+            value={overview ? overview.sponsoredAds.moderation.approved + overview.sponsoredAds.moderation.rejected : "—"}
+            sub={overview ? `${overview.sponsoredAds.moderation.approved} approuvés · ${overview.sponsoredAds.moderation.rejected} refusés` : ""}
+          />
         </section>
 
         <section className="grid gap-4 lg:grid-cols-2">

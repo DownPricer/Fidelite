@@ -2,6 +2,7 @@ import type { CardTemplateConfig } from "@/lib/card-template-schema";
 import { jsonOk } from "@/lib/http";
 import { normalizeResolvedPublishedTemplate, resolvePublishedMerchantCardTemplate } from "@/lib/merchant-card-template-service";
 import { prisma } from "@/lib/prisma";
+import { isWithinUtcIntervals, type UtcInterval } from "@/lib/sponsored-hours-pricing";
 
 /** Annuaire public — aucune donnée client, gabarit publié uniquement. */
 export async function GET(req: Request) {
@@ -60,7 +61,7 @@ export async function GET(req: Request) {
   );
 
   const now = new Date();
-  const liveAds = q
+  const candidateAds = q
     ? []
     : await prisma.adRequest.findMany({
         where: {
@@ -72,8 +73,15 @@ export async function GET(req: Request) {
         },
         include: { merchant: { select: { slug: true, name: true, logoUrl: true } } },
         orderBy: { createdAt: "desc" },
-        take: 5,
+        take: 20,
       });
+  // startDate/endDate ne sont que les bornes globales : pour les demandes tarifées à l'heure
+  // (hourlyIntervals renseigné), seuls les créneaux réellement choisis doivent diffuser — sinon
+  // les heures non payées entre deux créneaux seraient diffusées gratuitement. Les anciennes
+  // demandes (hourlyIntervals = null) gardent la diffusion continue historique.
+  const liveAds = candidateAds
+    .filter((ad) => (Array.isArray(ad.hourlyIntervals) ? isWithinUtcIntervals(now, ad.hourlyIntervals as UtcInterval[]) : true))
+    .slice(0, 5);
 
   return jsonOk({
     merchants: merchantsWithTemplates,

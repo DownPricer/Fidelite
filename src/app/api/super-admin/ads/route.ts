@@ -13,7 +13,11 @@ export async function GET(req: Request) {
   const ads = await prisma.adRequest.findMany({
     where: { status: status as never },
     orderBy: { createdAt: "asc" },
-    include: { merchant: { select: { id: true, name: true, slug: true } }, campaign: { include: { payment: true } } },
+    include: {
+      merchant: { select: { id: true, name: true, slug: true } },
+      campaign: { include: { payment: true } },
+      images: { orderBy: { position: "asc" } },
+    },
   });
 
   return jsonOk({ ads });

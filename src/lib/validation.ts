@@ -26,6 +26,19 @@ export const slugSchema = z
   .min(2)
   .max(60);
 
+/**
+ * URL d'un média de campagne/publicité : soit une URL absolue, soit un chemin relatif renvoyé
+ * par notre propre stockage (`saveCampaignMedia`, ex. `/api/media/campaigns/<merchant>/<file>`).
+ * `.url()` seul rejette à tort ce chemin relatif — c'était la cause du message d'erreur
+ * incompréhensible après l'ajout d'une image de campagne.
+ */
+export const mediaPathOrUrlSchema = z
+  .string()
+  .max(500)
+  .refine((value) => /^https?:\/\//i.test(value) || value.startsWith("/api/media/"), {
+    message: "Image invalide.",
+  });
+
 export const colorSchema = z
   .string()
   .trim()
@@ -139,7 +152,7 @@ export const campaignCreateSchema = z.object({
 export const campaignContentSchema = z.object({
   title: z.string().trim().min(3, "Titre trop court.").max(120),
   body: z.string().trim().min(3, "Message trop court.").max(2000),
-  imageUrl: z.string().url().max(500).nullable().optional(),
+  imageUrl: mediaPathOrUrlSchema.nullable().optional(),
   actionLabel: z.string().trim().max(40).nullable().optional(),
   actionUrl: z.string().url().max(500).nullable().optional(),
   scheduledAt: z.string().datetime().nullable().optional(),
@@ -149,20 +162,43 @@ export const campaignMediaUploadSchema = z.object({
   dataUrl: z.string().min(1),
 });
 
-export const adRequestCreateSchema = z.object({
-  requestedText: z.string().trim().min(3).max(1000),
-  requestedImageUrl: z.string().url().max(500).nullable().optional(),
-  objective: z.string().trim().max(200).nullable().optional(),
-  ctaLabel: z.string().trim().max(40).nullable().optional(),
-  ctaUrl: z.string().url().max(500).nullable().optional(),
-  startDate: z.string().datetime(),
-  endDate: z.string().datetime(),
+const sponsoredDaySelectionSchema = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date invalide."),
+  hours: z.array(z.number().int().min(0).max(23)).min(1).max(24),
 });
+
+/**
+ * Deux parcours de visuel (Partie 14) : SELF = le commerçant a déjà recadré son image au bon
+ * format (une seule image, prête à diffuser) ; FIDETO = 1 à 5 images libres envoyées pour que
+ * Fideto prépare le visuel final (jamais diffusées telles quelles, voir adModerationSchema).
+ * `hourlySchedule` remplace l'ancien couple startDate/endDate en jours pleins — voir
+ * sponsored-hours-pricing.ts (validation fine et prix recalculés côté serveur à la confirmation).
+ */
+export const adRequestCreateSchema = z
+  .object({
+    requestedText: z.string().trim().min(3).max(1000),
+    visualMode: z.enum(["SELF", "FIDETO"]).default("FIDETO"),
+    requestedImageUrl: mediaPathOrUrlSchema.nullable().optional(),
+    requestedImageUrls: z.array(mediaPathOrUrlSchema).max(5).optional(),
+    objective: z.string().trim().max(200).nullable().optional(),
+    ctaLabel: z.string().trim().max(40).nullable().optional(),
+    ctaUrl: z.string().url().max(500).nullable().optional(),
+    hourlySchedule: z.array(sponsoredDaySelectionSchema).min(1).max(60),
+  })
+  .refine(
+    (data) => data.visualMode !== "SELF" || Boolean(data.requestedImageUrl),
+    { message: "Ajoutez votre visuel recadré avant d'envoyer.", path: ["requestedImageUrl"] },
+  )
+  .refine(
+    (data) =>
+      data.visualMode !== "FIDETO" || ((data.requestedImageUrls?.length ?? 0) >= 1 && (data.requestedImageUrls?.length ?? 0) <= 5),
+    { message: "Envoyez entre 1 et 5 images pour que Fideto prépare votre visuel.", path: ["requestedImageUrls"] },
+  );
 
 export const adModerationSchema = z.object({
   action: z.enum(["approve", "reject"]),
   rejectionReason: z.string().trim().max(500).nullable().optional(),
-  finalImageUrl: z.string().url().max(500).nullable().optional(),
+  finalImageUrl: mediaPathOrUrlSchema.nullable().optional(),
   startDate: z.string().datetime().nullable().optional(),
   endDate: z.string().datetime().nullable().optional(),
 });

@@ -2832,6 +2832,38 @@ body:has(.wallet-shell) {
   color: #fff;
 }
 
+.sponsor-hour-cell {
+  border-radius: 0.5rem;
+  border: 1px solid light-dark(rgba(122, 69, 242, 0.18), rgba(190, 164, 255, 0.18));
+  padding: 0.3rem 0;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ink);
+  opacity: 0.55;
+}
+
+.sponsor-hour-cell-active {
+  opacity: 1;
+  border-color: var(--violet);
+  box-shadow: inset 0 0 0 2px var(--violet);
+}
+
+.sponsor-hour-night {
+  background: light-dark(rgba(99, 102, 241, 0.12), rgba(99, 102, 241, 0.22));
+}
+
+.sponsor-hour-day {
+  background: light-dark(rgba(250, 204, 21, 0.18), rgba(250, 204, 21, 0.22));
+}
+
+.sponsor-hour-evening {
+  background: light-dark(rgba(249, 115, 22, 0.18), rgba(249, 115, 22, 0.24));
+}
+
+.sponsor-hour-happy {
+  background: light-dark(rgba(236, 72, 153, 0.16), rgba(236, 72, 153, 0.22));
+}
+
 /* Campagnes — badge de forfait */
 .campaign-plan-badge {
   display: inline-flex;

@@ -80,6 +80,19 @@ export function startOfParisDay(date: Date): Date {
   return parisMidnight(p.year, p.month, p.day);
 }
 
+/**
+ * Instant UTC dont l'heure locale Europe/Paris est Y-M-D `hour`:00:00 — même méthode que
+ * `parisMidnight` (une correction suffit, l'offset ne change qu'au changement d'heure lui-même).
+ * Au printemps, l'heure 2 locale n'existe pas certains jours : l'instant obtenu coïncide alors
+ * avec 3h (ICU avance l'heure inexistante) — géré explicitement par les appelants concernés
+ * (voir sponsored-hours-pricing.ts) plutôt que silencieusement ici.
+ */
+export function parisHourInstant(year: number, month: number, day: number, hour: number): Date {
+  const utcGuess = new Date(Date.UTC(year, month - 1, day, hour, 0, 0));
+  const offset = parisOffsetMs(utcGuess);
+  return new Date(utcGuess.getTime() - offset);
+}
+
 /** Start of the Monday containing `date`, in Europe/Paris. */
 export function startOfParisWeek(date: Date): Date {
   const day = startOfParisDay(date);

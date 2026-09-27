@@ -280,6 +280,14 @@ export async function deleteCardBackground(relativePath: string) {
   await unlink(filepath).catch(() => undefined);
 }
 
+/** Supprime un fichier d'image de campagne/publicité renvoyé par saveCampaignMedia (retrait avant validation). */
+export async function deleteCampaignMedia(merchantId: string, relativePath: string) {
+  const match = /^\/api\/media\/campaigns\/([^/]+)\/([^/?]+)$/.exec(relativePath);
+  if (!match || match[1] !== merchantId) return;
+  const filepath = join(getUploadsRoot(), "campaigns", match[1], match[2]);
+  await unlink(filepath).catch(() => undefined);
+}
+
 export function resolveMediaFilePath(category: string, ...parts: string[]) {
   const root = getUploadsRoot();
   const filepath = join(root, category, ...parts);

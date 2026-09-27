@@ -21,6 +21,7 @@ type NetworkCampaign = {
 type AdRequest = {
   id: string;
   requestedText: string;
+  visualMode: "SELF" | "FIDETO" | null;
   requestedImageUrl: string | null;
   finalImageUrl: string | null;
   objective: string | null;
@@ -30,6 +31,7 @@ type AdRequest = {
   endDate: string;
   merchant: { id: string; name: string; slug: string };
   campaign: { id: string; priceCents: number | null } | null;
+  images: { id: string; url: string }[];
 };
 
 function formatCents(cents: number | null) {
@@ -214,9 +216,21 @@ export function CampaignModerationHome({ firstName }: { firstName: string }) {
                         Bouton : {ad.ctaLabel} → {ad.ctaUrl}
                       </p>
                     ) : null}
-                    {ad.requestedImageUrl ? (
+                    <p className="mt-1 text-xs font-bold text-[var(--muted-text)]">
+                      {ad.visualMode === "SELF"
+                        ? "Visuel prêt à diffuser (déjà recadré par le commerçant)"
+                        : "Fideto doit préparer le visuel à partir des images envoyées"}
+                    </p>
+                    {ad.visualMode === "SELF" && ad.requestedImageUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={ad.requestedImageUrl} alt="" className="mt-2 h-20 w-auto rounded-lg object-cover" />
+                    ) : ad.images.length > 0 ? (
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {ad.images.map((img) => (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img key={img.id} src={img.url} alt="" className="h-20 w-20 rounded-lg object-cover" />
+                        ))}
+                      </div>
                     ) : null}
                   </div>
                   <div className="flex shrink-0 flex-col gap-2">
@@ -224,10 +238,10 @@ export function CampaignModerationHome({ firstName }: { firstName: string }) {
                       disabled={busyId === ad.id}
                       onClick={() => {
                         setApproveAdId(ad.id);
-                        setFinalImageUrl(ad.finalImageUrl ?? "");
+                        setFinalImageUrl(ad.finalImageUrl ?? (ad.visualMode === "SELF" ? ad.requestedImageUrl ?? "" : ""));
                       }}
                     >
-                      Ajouter le visuel et approuver
+                      {ad.visualMode === "SELF" ? "Approuver" : "Ajouter le visuel et approuver"}
                     </Button>
                     <Button
                       variant="secondary"

@@ -29,6 +29,21 @@ export function legacyRedirectOrigin(hostHeader: string): string | null {
   return null;
 }
 
+/**
+ * Origine à utiliser pour les retours Stripe Checkout du solde marketing : dérivée du `Host`
+ * de la requête entrante quand il correspond à un hôte commerçant connu (nouveau ou legacy),
+ * sinon repli sur APP_ORIGIN. Évite qu'une valeur APP_ORIGIN périmée renvoie le commerçant sur
+ * une origine différente de celle qui a posé son cookie de session (perte de session au retour).
+ */
+export function resolveAppOriginFromRequestHost(hostHeader: string): string {
+  const name = hostnameOf(hostHeader);
+  if (name && (isAppHost(hostHeader) || isLocalHost(hostHeader))) {
+    const scheme = isLocalHost(hostHeader) ? "http" : "https";
+    return `${scheme}://${hostHeader}`;
+  }
+  return env.appOrigin;
+}
+
 export function isLocalHost(host: string) {
   const name = hostnameOf(host);
   return name === "localhost" || name === "127.0.0.1";

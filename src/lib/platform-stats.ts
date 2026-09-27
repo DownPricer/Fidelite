@@ -309,3 +309,67 @@ export async function getPlatformBreakdowns() {
     })),
   };
 }
+
+/**
+ * Statistiques des mises en avant sponsorisées (Partie 15) : heures achetées vs réellement
+ * diffusées, montants séparés test/réel, états des demandes de visuel et actions de modération —
+ * tout dérivé des données déjà persistées (AdRequest, CampaignPayment, AuditLog), sans compteur
+ * fictif ni double suivi. Les anciennes demandes (hourlySchedule/hourlyIntervals null, tarif
+ * 5 €/jour) ne contribuent qu'aux montants et aux états, pas au détail en heures.
+ */
+export async function getSponsoredAdsStats() {
+  const now = new Date();
+
+  const [confirmedAds, statusCounts, moderationActions, paymentsByMode] = await Promise.all([
+    prisma.adRequest.findMany({
+      where: { status: { in: ["SCHEDULED", "LIVE", "ENDED"] } },
+      select: { status: true, fundingMode: true, hourlyIntervals: true },
+    }),
+    prisma.adRequest.groupBy({ by: ["status"], _count: { _all: true } }),
+    prisma.auditLog.groupBy({
+      by: ["action"],
+      where: { action: { in: ["AD_APPROVED", "AD_REJECTED"] } },
+      _count: { _all: true },
+    }),
+    prisma.campaignPayment.groupBy({
+      by: ["mode", "status"],
+      where: { campaign: { channel: "SPONSORED_AD" } },
+      _sum: { amountCents: true },
+      _count: { _all: true },
+    }),
+  ]);
+
+  let purchasedHoursTest = 0;
+  let purchasedHoursLive = 0;
+  let deliveredHours = 0;
+  for (const ad of confirmedAds) {
+    const intervals = Array.isArray(ad.hourlyIntervals) ? (ad.hourlyIntervals as { start: string; end: string }[]) : [];
+    const hours = intervals.reduce((sum, i) => sum + (new Date(i.end).getTime() - new Date(i.start).getTime()) / 3_600_000, 0);
+    if (ad.fundingMode === "TEST") purchasedHoursTest += hours;
+    else purchasedHoursLive += hours;
+    if (ad.status === "LIVE" || ad.status === "ENDED") {
+      for (const interval of intervals) {
+        const end = new Date(interval.end).getTime();
+        const start = new Date(interval.start).getTime();
+        if (end <= now.getTime()) deliveredHours += (end - start) / 3_600_000;
+        else if (start < now.getTime()) deliveredHours += (now.getTime() - start) / 3_600_000;
+      }
+    }
+  }
+
+  const amountsByMode = { TEST: 0, LIVE: 0 };
+  for (const row of paymentsByMode) {
+    if (row.status === "PAID") amountsByMode[row.mode] += row._sum.amountCents ?? 0;
+  }
+
+  return {
+    purchasedHours: { test: Math.round(purchasedHoursTest), live: Math.round(purchasedHoursLive) },
+    deliveredHours: Math.round(deliveredHours),
+    amountsCentsByMode: amountsByMode,
+    requestsByStatus: statusCounts.map((row) => ({ status: row.status, count: row._count._all })),
+    moderation: {
+      approved: moderationActions.find((r) => r.action === "AD_APPROVED")?._count._all ?? 0,
+      rejected: moderationActions.find((r) => r.action === "AD_REJECTED")?._count._all ?? 0,
+    },
+  };
+}

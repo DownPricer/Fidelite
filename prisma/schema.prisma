@@ -901,6 +901,15 @@ enum AdEventType {
   CLICK
 }
 
+/// Parcours de création du visuel (Partie 14). SELF = le commerçant a recadré une image au
+/// format exact du bandeau. FIDETO = le commerçant envoie 1 à 5 images libres, Fideto prépare
+/// le visuel final (finalImageUrl). Null = ancienne demande créée avant cette distinction
+/// (toujours traitée comme FIDETO, comportement historique inchangé).
+enum AdVisualMode {
+  SELF
+  FIDETO
+}
+
 enum EmailSuppressionReason {
   UNSUBSCRIBED
   BOUNCED
@@ -1133,12 +1142,22 @@ model AdRequest {
   campaignId        String?         @unique
   status            AdRequestStatus @default(DRAFT)
   requestedText     String
+  /// Parcours choisi par le commerçant — null pour les demandes créées avant cette fonctionnalité (traitées comme FIDETO).
+  visualMode        AdVisualMode?
   requestedImageUrl String?
   objective         String?
   ctaLabel          String?
   ctaUrl            String?
+  /// Bornes globales (première heure choisie → fin de la dernière) — dérivées de hourlySchedule pour les nouvelles
+  /// demandes, conservées telles quelles (tarif 5 €/jour) pour les anciennes (hourlySchedule = null).
   startDate         DateTime
   endDate           DateTime
+  /// Planning choisi par le commerçant : [{ date: "YYYY-MM-DD" (Europe/Paris), hours: number[] (0-23) }].
+  /// Null = ancienne demande tarifée au jour (5 €/jour, jamais recalculée — voir sponsored-hours-pricing.ts).
+  hourlySchedule    Json?
+  /// Intervalles UTC fusionnés dérivés de hourlySchedule, utilisés pour la diffusion réelle (créneaux non
+  /// contigus) — voir /api/public/merchants. Null pour les anciennes demandes (diffusion continue startDate→endDate).
+  hourlyIntervals   Json?
   finalImageUrl     String?
   /// TEST = payée en mode test : jamais publiée. Null = quota gratuit ou paiement réel.
   fundingMode       StripeMode?
@@ -1148,12 +1167,28 @@ model AdRequest {
   createdAt         DateTime        @default(now())
   updatedAt         DateTime        @updatedAt
 
-  merchant Merchant  @relation(fields: [merchantId], references: [id], onDelete: Cascade)
-  campaign Campaign? @relation(fields: [campaignId], references: [id])
+  merchant Merchant       @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  campaign Campaign?      @relation(fields: [campaignId], references: [id])
   events   AdEvent[]
+  images   AdRequestImage[]
 
   @@index([merchantId, status])
   @@index([status, startDate, endDate])
+}
+
+/// Images envoyées par le commerçant pour le parcours « Fideto crée mon visuel » (1 à 5, aucune
+/// contrainte de dimension) — jamais diffusées telles quelles : le super-admin en prépare le
+/// visuel final (AdRequest.finalImageUrl) à partir de celles-ci.
+model AdRequestImage {
+  id          String   @id @default(cuid())
+  adRequestId String
+  url         String
+  position    Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  adRequest AdRequest @relation(fields: [adRequestId], references: [id], onDelete: Cascade)
+
+  @@index([adRequestId, position])
 }
 
 model AdEvent {

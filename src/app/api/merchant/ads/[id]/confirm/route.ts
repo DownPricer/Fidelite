@@ -1,13 +1,85 @@
 import { requireMerchantAdmin, requireMutatingRequest } from "@/lib/api-guard";
-import { consumeQuotaForCampaign } from "@/lib/campaign-pricing";
+import { consumeQuotaForCampaign, priceSponsoredAd } from "@/lib/campaign-pricing";
 import { calendarPeriodKeyEuropeParis, getQuotaUsage, includedQuotaFor, resolvePlanTier } from "@/lib/campaign-quota";
-import { priceSponsoredAd } from "@/lib/campaign-pricing";
 import { writeAudit } from "@/lib/audit";
-import { env } from "@/lib/env";
+import { resolveAppOriginFromRequestHost } from "@/lib/hosts";
 import { clientIp, jsonError, jsonOk, userAgent } from "@/lib/http";
 import { prisma } from "@/lib/prisma";
+import { priceSponsoredHours, type SponsoredDaySelection } from "@/lib/sponsored-hours-pricing";
 import { StripeNotConfiguredError, createCampaignCheckoutSession } from "@/lib/stripe";
 import { getActiveStripeMode, isPaymentAllowedForMerchant, isStripeConfigured } from "@/lib/stripe-mode";
+
+/**
+ * Prix qui sera réellement facturé pour cette demande : tarification à l'heure pour toute
+ * demande créée avec hourlySchedule, sinon (anciennes demandes) l'ancien tarif 5 €/jour —
+ * jamais recalculé avec les nouveaux tarifs (voir sponsored-hours-pricing.ts).
+ */
+async function computeAdPricing(adRequest: {
+  startDate: Date;
+  endDate: Date;
+  hourlySchedule: unknown;
+  merchantId: string;
+}) {
+  const tier = await resolvePlanTier(adRequest.merchantId);
+  const periodKey = calendarPeriodKeyEuropeParis(new Date());
+  const limit = includedQuotaFor(tier, "SPONSORED_DAY");
+  const used = limit > 0 ? await getQuotaUsage({ merchantId: adRequest.merchantId, kind: "SPONSORED_DAY", periodKey }) : 0;
+  const includedDaysRemaining = Math.max(0, limit - used);
+
+  if (Array.isArray(adRequest.hourlySchedule)) {
+    const schedule = adRequest.hourlySchedule as SponsoredDaySelection[];
+    const hourly = priceSponsoredHours(schedule);
+    const days = hourly.totalDays;
+    const requiresPayment = includedDaysRemaining < days;
+    return {
+      periodKey,
+      limit,
+      days,
+      requiresPayment,
+      priceCents: requiresPayment ? hourly.totalCents : 0,
+      breakdown: hourly,
+      description: `Mise en avant Fideto — ${hourly.totalDays} jour${hourly.totalDays > 1 ? "s" : ""}, ${hourly.totalHours} h au total`,
+      // Prix par jour non uniforme (tarif par heure) : un seul article Stripe pour le total, jamais divisé par jour.
+      checkoutQuantity: 1,
+    };
+  }
+
+  // Ancienne demande (avant la tarification horaire) : tarif historique 5 €/jour, inchangé —
+  // même construction Stripe qu'avant (quantité = jours, prix unitaire 5 €) pour ne rien changer
+  // à ce qui est déjà en production.
+  const days = Math.max(1, Math.round((adRequest.endDate.getTime() - adRequest.startDate.getTime()) / 86_400_000));
+  const legacy = priceSponsoredAd({ days, includedDaysRemaining });
+  return {
+    periodKey,
+    limit,
+    days,
+    requiresPayment: legacy.requiresPayment,
+    priceCents: legacy.priceCents,
+    breakdown: null,
+    description: `Mise en avant Fideto — ${days} jour${days > 1 ? "s" : ""} (5 € / jour)`,
+    checkoutQuantity: days,
+  };
+}
+
+/** Aperçu du prix avant paiement (Partie 15) : le commerçant doit voir le détail avant de valider. */
+export async function GET(req: Request, context: { params: Promise<{ id: string }> }) {
+  const staff = await requireMerchantAdmin(req);
+  if (staff.error || !staff.user || !staff.membership) return staff.error ?? jsonError("Accès refusé.", 403);
+
+  const { id } = await context.params;
+  const merchantId = staff.membership.merchantId;
+  const adRequest = await prisma.adRequest.findFirst({ where: { id, merchantId } });
+  if (!adRequest) return jsonError("Demande introuvable.", 404);
+
+  const pricing = await computeAdPricing({ ...adRequest, merchantId });
+  return jsonOk({
+    days: pricing.days,
+    requiresPayment: pricing.requiresPayment,
+    priceCents: pricing.priceCents,
+    breakdown: pricing.breakdown,
+    description: pricing.description,
+  });
+}
 
 /**
  * Validation commerçante du visuel final (Partie 12 étape 6) : déclenche le paiement/la
@@ -31,12 +103,7 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
     return jsonError("Aucun visuel final fourni par Fideto pour le moment.", 409, { code: "NO_FINAL_VISUAL" });
   }
 
-  const days = Math.max(1, Math.round((adRequest.endDate.getTime() - adRequest.startDate.getTime()) / 86_400_000));
-  const tier = await resolvePlanTier(merchantId);
-  const periodKey = calendarPeriodKeyEuropeParis(new Date());
-  const limit = includedQuotaFor(tier, "SPONSORED_DAY");
-  const used = limit > 0 ? await getQuotaUsage({ merchantId, kind: "SPONSORED_DAY", periodKey }) : 0;
-  const pricing = priceSponsoredAd({ days, includedDaysRemaining: Math.max(0, limit - used) });
+  const { days, periodKey, limit, ...pricing } = await computeAdPricing({ ...adRequest, merchantId });
 
   if (!pricing.requiresPayment) {
     // Le commerce de test ne doit jamais publier de mise en avant réelle, même via un quota
@@ -79,6 +146,7 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
     });
   }
 
+  const appOrigin = resolveAppOriginFromRequestHost(req.headers.get("host") ?? "");
   let checkoutUrl: string | null;
   let checkoutSessionId: string;
   try {
@@ -87,10 +155,10 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
       merchantId,
       campaignType: "SPONSORED_AD",
       amountCents: pricing.priceCents,
-      quantity: days,
-      description: `Mise en avant Fideto — ${days} jour${days > 1 ? "s" : ""} (5 € / jour)`,
-      successUrl: `${env.appOrigin}/app/campagnes/${adRequest.campaign.id}?paid=1`,
-      cancelUrl: `${env.appOrigin}/app/campagnes/${adRequest.campaign.id}?cancelled=1`,
+      quantity: pricing.checkoutQuantity,
+      description: pricing.description,
+      successUrl: `${appOrigin}/app/campagnes/${adRequest.campaign.id}?paid=1`,
+      cancelUrl: `${appOrigin}/app/campagnes/${adRequest.campaign.id}?cancelled=1`,
     });
     checkoutUrl = session.url;
     checkoutSessionId = session.id;

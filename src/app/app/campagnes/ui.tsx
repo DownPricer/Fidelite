@@ -1,8 +1,17 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { Button } from "@/components/ui";
 import { CAMPAIGN_PRICE_CENTS } from "@/lib/campaign-prices";
+import {
+  MIN_HOURS_PER_DAY,
+  SPONSORED_HOUR_RATE_CENTS,
+  priceSponsoredHours,
+  rateForParisHour,
+  validateSponsoredSchedule,
+  type SponsoredDaySelection,
+} from "@/lib/sponsored-hours-pricing";
 
 type Channel = "IN_APP_PUSH" | "EMAIL";
 type Audience = "MERCHANT_MEMBERS" | "NETWORK_LOCAL";
@@ -80,11 +89,11 @@ const AD_STATUS_LABELS: Record<AdStatus, string> = {
   CANCELLED: "Annulée",
 };
 
-function formatCents(cents: number) {
+export function formatCents(cents: number) {
   return (cents / 100).toLocaleString("fr-FR", { style: "currency", currency: "EUR" });
 }
 
-function formatDate(iso: string) {
+export function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" });
 }
 
@@ -260,6 +269,14 @@ export function CampagnesPanel({ demo = false }: { demo?: boolean }) {
   const [error, setError] = useState<string | null>(null);
   const [creating, setCreating] = useState<"announcement" | "sponsor" | null>(null);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [sponsorPreview, setSponsorPreview] = useState<{
+    adRequestId: string;
+    loading: boolean;
+    days: number;
+    requiresPayment: boolean;
+    priceCents: number;
+    breakdown: { date: string; hours: number[]; priceCents: number }[] | null;
+  } | null>(null);
 
   const load = useCallback(async () => {
     if (demo) return;
@@ -300,6 +317,38 @@ export function CampagnesPanel({ demo = false }: { demo?: boolean }) {
     void load();
   }
 
+  async function openSponsorPreview(adRequestId: string) {
+    if (demo) return;
+    setError(null);
+    setSponsorPreview({ adRequestId, loading: true, days: 0, requiresPayment: false, priceCents: 0, breakdown: null });
+    try {
+      const response = await fetch(`/api/merchant/ads/${adRequestId}/confirm`);
+      const data = (await response.json()) as {
+        days?: number;
+        requiresPayment?: boolean;
+        priceCents?: number;
+        breakdown?: { byDay: { date: string; hours: number[]; priceCents: number }[] } | null;
+        error?: string;
+      };
+      if (!response.ok) {
+        setError(data.error ?? "Impossible de calculer le prix.");
+        setSponsorPreview(null);
+        return;
+      }
+      setSponsorPreview({
+        adRequestId,
+        loading: false,
+        days: data.days ?? 0,
+        requiresPayment: Boolean(data.requiresPayment),
+        priceCents: data.priceCents ?? 0,
+        breakdown: data.breakdown?.byDay ?? null,
+      });
+    } catch {
+      setError("Impossible de calculer le prix. Réessayez.");
+      setSponsorPreview(null);
+    }
+  }
+
   async function confirmSponsor(adRequestId: string) {
     if (demo) return;
     setError(null);
@@ -314,6 +363,7 @@ export function CampagnesPanel({ demo = false }: { demo?: boolean }) {
         window.location.href = data.checkoutUrl;
         return;
       }
+      setSponsorPreview(null);
       void load();
     } catch {
       setError("Impossible de valider la mise en avant. Réessayez.");
@@ -403,7 +453,7 @@ export function CampagnesPanel({ demo = false }: { demo?: boolean }) {
         ))}
       </section>
 
-      <MarketingBalanceCard demo={demo} />
+      <MarketingBalanceSummary demo={demo} />
 
       <section className="campaign-type-grid" aria-label="Créer une campagne">
         <article className="campaign-type-card">
@@ -564,7 +614,7 @@ export function CampagnesPanel({ demo = false }: { demo?: boolean }) {
                           type="button"
                           onClick={() => {
                             setOpenMenuId(null);
-                            void confirmSponsor(ad!.id);
+                            void openSponsorPreview(ad!.id);
                           }}
                         >
                           Valider le visuel
@@ -601,6 +651,46 @@ export function CampagnesPanel({ demo = false }: { demo?: boolean }) {
           })
         )}
       </section>
+
+      {sponsorPreview ? (
+        <div className="glass-panel space-y-3 p-5" aria-label="Confirmation du paiement de la mise en avant">
+          <p className="text-sm font-bold text-[var(--ink)]">Confirmer et payer la mise en avant</p>
+          {sponsorPreview.loading ? (
+            <p className="text-sm text-[var(--muted-strong)]">Calcul du prix…</p>
+          ) : (
+            <>
+              {sponsorPreview.breakdown ? (
+                <div className="space-y-1">
+                  {sponsorPreview.breakdown.map((d) => (
+                    <div key={d.date} className="campaign-wizard-summary-row">
+                      <span className="text-xs text-[var(--muted)]">
+                        {formatDate(new Date(`${d.date}T00:00:00`).toISOString())} — {d.hours.length} h
+                      </span>
+                      <span className="text-sm font-bold text-[var(--ink)]">{formatCents(d.priceCents)}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-[var(--muted)]">{sponsorPreview.days} jour{sponsorPreview.days > 1 ? "s" : ""} (tarif historique 5 €/jour).</p>
+              )}
+              <div className="campaign-wizard-summary-row border-t border-[var(--border)] pt-2">
+                <span className="text-xs font-bold text-[var(--muted)]">Montant à débiter</span>
+                <span className="text-sm font-black text-[var(--ink)]">
+                  {sponsorPreview.requiresPayment ? formatCents(sponsorPreview.priceCents) : "0 € — couvert par votre quota"}
+                </span>
+              </div>
+              <div className="flex gap-2">
+                <Button type="button" onClick={() => void confirmSponsor(sponsorPreview.adRequestId)}>
+                  {sponsorPreview.requiresPayment ? `Confirmer et payer ${formatCents(sponsorPreview.priceCents)}` : "Confirmer"}
+                </Button>
+                <Button type="button" variant="secondary" onClick={() => setSponsorPreview(null)}>
+                  Annuler
+                </Button>
+              </div>
+            </>
+          )}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -1176,14 +1266,8 @@ function CampaignWizard({
   );
 }
 
-const SPONSOR_DURATIONS = [3, 7, 14, 21, 30];
-
 function todayDateInputValue() {
   return new Date().toISOString().slice(0, 10);
-}
-
-function nowTimeInputValue() {
-  return new Date().toTimeString().slice(0, 5);
 }
 
 function addDaysToDateInput(dateInput: string, days: number) {
@@ -1192,11 +1276,568 @@ function addDaysToDateInput(dateInput: string, days: number) {
   return d.toISOString().slice(0, 10);
 }
 
-/** Reflète priceSponsoredAd (src/lib/campaign-pricing.ts) pour l'affichage : le serveur
- * recalcule toujours le prix réel à la confirmation, ceci n'est qu'une estimation. */
-function estimateSponsorPrice(days: number, includedDaysRemaining: number) {
-  if (includedDaysRemaining >= days) return { priceCents: 0, requiresPayment: false, daysFromQuota: days };
-  return { priceCents: days * CAMPAIGN_PRICE_CENTS.SPONSORED_AD_PER_DAY, requiresPayment: true, daysFromQuota: 0 };
+/** Reflète priceSponsoredHours (src/lib/sponsored-hours-pricing.ts) : le serveur recalcule
+ * toujours le prix réel à la confirmation, ceci n'est qu'une estimation d'affichage. Même règle
+ * « tout ou rien » que l'ancien tarif journalier : couverte entièrement par le quota si assez de
+ * jours restants, sinon toute la réservation est payante (jamais de consommation partielle). */
+function estimateSponsorPricing(days: SponsoredDaySelection[], includedDaysRemaining: number) {
+  const hourly = priceSponsoredHours(days);
+  const coveredByQuota = includedDaysRemaining >= hourly.totalDays && hourly.totalDays > 0;
+  return {
+    ...hourly,
+    requiresPayment: !coveredByQuota,
+    priceCents: coveredByQuota ? 0 : hourly.totalCents,
+    daysFromQuota: coveredByQuota ? hourly.totalDays : 0,
+  };
+}
+
+function formatHourRange(hour: number) {
+  return `${String(hour).padStart(2, "0")}h–${String((hour + 1) % 24).padStart(2, "0")}h`;
+}
+
+const HOUR_BAND_CLASS: Record<string, string> = {
+  NIGHT: "sponsor-hour-night",
+  DAY: "sponsor-hour-day",
+  EVENING: "sponsor-hour-evening",
+  HAPPY_HOUR: "sponsor-hour-happy",
+};
+
+function bandForHour(hour: number): keyof typeof HOUR_BAND_CLASS {
+  if (hour < 8) return "NIGHT";
+  if (hour < 19) return "DAY";
+  if (hour < 22) return "EVENING";
+  return "HAPPY_HOUR";
+}
+
+/**
+ * Sélection des jours et heures d'exposition (Partie 15) : au moins 1 jour, au moins 3 heures
+ * par jour choisi. « Copier vers » permet de dupliquer les heures d'un jour sur d'autres jours
+ * déjà ajoutés, qui restent ensuite ajustables individuellement.
+ */
+function HourlySchedulePicker({
+  value,
+  onChange,
+}: {
+  value: SponsoredDaySelection[];
+  onChange: (value: SponsoredDaySelection[]) => void;
+}) {
+  const [newDate, setNewDate] = useState(todayDateInputValue);
+  const [copySourceDate, setCopySourceDate] = useState<string | null>(null);
+  const [copyTargets, setCopyTargets] = useState<Set<string>>(new Set());
+
+  function addDay() {
+    if (!newDate || value.some((d) => d.date === newDate)) return;
+    onChange([...value, { date: newDate, hours: [] }].sort((a, b) => a.date.localeCompare(b.date)));
+    setNewDate(addDaysToDateInput(newDate, 1));
+  }
+
+  function removeDay(date: string) {
+    onChange(value.filter((d) => d.date !== date));
+    if (copySourceDate === date) setCopySourceDate(null);
+  }
+
+  function toggleHour(date: string, hour: number) {
+    onChange(
+      value.map((d) =>
+        d.date === date
+          ? { ...d, hours: d.hours.includes(hour) ? d.hours.filter((h) => h !== hour) : [...d.hours, hour].sort((a, b) => a - b) }
+          : d,
+      ),
+    );
+  }
+
+  function applyCopy() {
+    if (!copySourceDate) return;
+    const source = value.find((d) => d.date === copySourceDate);
+    if (!source) return;
+    onChange(value.map((d) => (copyTargets.has(d.date) ? { ...d, hours: [...source.hours] } : d)));
+    setCopyTargets(new Set());
+    setCopySourceDate(null);
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-end gap-2">
+        <label className="block text-xs text-[var(--muted)]">
+          Ajouter un jour
+          <input
+            type="date"
+            className="profile-select mt-1"
+            value={newDate}
+            min={todayDateInputValue()}
+            onChange={(e) => setNewDate(e.target.value)}
+          />
+        </label>
+        <Button type="button" variant="secondary" onClick={addDay}>
+          Ajouter
+        </Button>
+      </div>
+
+      {value.length === 0 ? (
+        <p className="text-xs text-[var(--muted)]">Ajoutez au moins un jour, puis choisissez ses heures d&apos;exposition.</p>
+      ) : null}
+
+      {value.map((day) => (
+        <div key={day.date} className="space-y-2 rounded-xl border border-[var(--border)] bg-[var(--panel-bg)] p-3">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-bold text-[var(--ink)]">
+              {formatDate(new Date(`${day.date}T00:00:00`).toISOString())}
+              <span className={`ml-2 text-xs font-normal ${day.hours.length < MIN_HOURS_PER_DAY ? "text-[var(--danger)]" : "text-[var(--muted)]"}`}>
+                {day.hours.length} h sélectionnée{day.hours.length > 1 ? "s" : ""} (min. {MIN_HOURS_PER_DAY})
+              </span>
+            </p>
+            <div className="flex gap-2">
+              {day.hours.length > 0 && value.length > 1 ? (
+                <button
+                  type="button"
+                  className="text-xs font-semibold text-[var(--violet-bright)]"
+                  onClick={() => {
+                    setCopySourceDate(day.date);
+                    setCopyTargets(new Set());
+                  }}
+                >
+                  Copier vers…
+                </button>
+              ) : null}
+              <button type="button" className="text-xs font-semibold text-[var(--danger)]" onClick={() => removeDay(day.date)}>
+                Retirer
+              </button>
+            </div>
+          </div>
+          <div className="grid grid-cols-6 gap-1 sm:grid-cols-8">
+            {Array.from({ length: 24 }, (_, hour) => hour).map((hour) => (
+              <button
+                key={hour}
+                type="button"
+                onClick={() => toggleHour(day.date, hour)}
+                title={`${formatHourRange(hour)} — ${formatCents(rateForParisHour(hour))}/h`}
+                className={`sponsor-hour-cell ${HOUR_BAND_CLASS[bandForHour(hour)]} ${day.hours.includes(hour) ? "sponsor-hour-cell-active" : ""}`}
+              >
+                {hour}
+              </button>
+            ))}
+          </div>
+          {copySourceDate === day.date ? (
+            <div className="space-y-2 rounded-lg border border-dashed border-[var(--border)] p-2">
+              <p className="text-xs text-[var(--muted)]">Copier ces heures vers :</p>
+              <div className="flex flex-wrap gap-2">
+                {value
+                  .filter((d) => d.date !== day.date)
+                  .map((d) => (
+                    <label key={d.date} className="flex items-center gap-1 text-xs text-[var(--muted-strong)]">
+                      <input
+                        type="checkbox"
+                        checked={copyTargets.has(d.date)}
+                        onChange={(e) => {
+                          const next = new Set(copyTargets);
+                          if (e.target.checked) next.add(d.date);
+                          else next.delete(d.date);
+                          setCopyTargets(next);
+                        }}
+                      />
+                      {formatDate(new Date(`${d.date}T00:00:00`).toISOString())}
+                    </label>
+                  ))}
+              </div>
+              <div className="flex gap-2">
+                <Button type="button" variant="secondary" onClick={applyCopy} disabled={copyTargets.size === 0}>
+                  Appliquer
+                </Button>
+                <Button type="button" variant="secondary" onClick={() => setCopySourceDate(null)}>
+                  Annuler
+                </Button>
+              </div>
+            </div>
+          ) : null}
+        </div>
+      ))}
+      <p className="text-[11px] text-[var(--muted)]">
+        Tarifs (heure locale Paris) : 00h–08h {formatCents(SPONSORED_HOUR_RATE_CENTS.NIGHT)}/h · 08h–19h{" "}
+        {formatCents(SPONSORED_HOUR_RATE_CENTS.DAY)}/h · 19h–22h {formatCents(SPONSORED_HOUR_RATE_CENTS.EVENING)}/h ·
+        22h–00h {formatCents(SPONSORED_HOUR_RATE_CENTS.HAPPY_HOUR)}/h (Happy Hour).
+      </p>
+    </div>
+  );
+}
+
+/* ---------------------------------------------------------------------- */
+/* Visuel de la mise en avant — deux parcours (Partie 14)                  */
+/* ---------------------------------------------------------------------- */
+
+/** Taille du bandeau exporté par le recadrage (carré, cohérent avec le rendu SponsoredBanner). */
+const SELF_VISUAL_OUTPUT_PX = 800;
+const MAX_FIDETO_IMAGES = 5;
+
+export type VisualPickerValue =
+  | { mode: "SELF"; selfUrl: string | null; fidetoUrls: [] }
+  | { mode: "FIDETO"; selfUrl: null; fidetoUrls: string[] };
+
+async function uploadCampaignMedia(dataUrl: string): Promise<string> {
+  const res = await fetch("/api/merchant/campaigns/media", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ dataUrl }),
+  });
+  const data = (await res.json().catch(() => null)) as { url?: string; error?: string } | null;
+  if (!res.ok || !data?.url) throw new Error(data?.error || "Image invalide.");
+  return data.url;
+}
+
+async function deleteCampaignMediaUrl(url: string) {
+  try {
+    await fetch("/api/merchant/campaigns/media", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url }),
+    });
+  } catch {
+    // Le fichier restera orphelin côté stockage — sans conséquence, jamais référencé nulle part.
+  }
+}
+
+function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(new Error("Lecture du fichier impossible."));
+    reader.readAsDataURL(file);
+  });
+}
+
+function loadImageElement(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error("Image illisible."));
+    img.src = src;
+  });
+}
+
+/**
+ * Recadrage carré simple : l'image source est affichée dans un cadre carré, déplaçable à la
+ * souris/au doigt et zoomable via un curseur ; « Valider le recadrage » exporte exactement le
+ * cadre visible en 800×800 — le format réellement accepté par le bandeau sponsorisé.
+ */
+function SelfVisualCropper({
+  file,
+  onCancel,
+  onConfirm,
+  onError,
+}: {
+  file: File;
+  onCancel: () => void;
+  onConfirm: (dataUrl: string) => void;
+  onError: (message: string) => void;
+}) {
+  const [imgEl, setImgEl] = useState<HTMLImageElement | null>(null);
+  const [zoom, setZoom] = useState(1);
+  const [offset, setOffset] = useState({ x: 0, y: 0 });
+  const dragRef = useRef<{ startX: number; startY: number; origin: { x: number; y: number } } | null>(null);
+  const frameRef = useRef<HTMLDivElement | null>(null);
+  const FRAME_PX = 260;
+
+  useEffect(() => {
+    let cancelled = false;
+    readFileAsDataUrl(file)
+      .then((dataUrl) => loadImageElement(dataUrl))
+      .then((img) => {
+        if (!cancelled) setImgEl(img);
+      })
+      .catch(() => onError("Image illisible. Utilisez un fichier PNG, JPEG ou WebP."));
+    return () => {
+      cancelled = true;
+    };
+  }, [file, onError]);
+
+  if (!imgEl) {
+    return <p className="text-xs text-[var(--muted)]">Chargement de l&apos;image…</p>;
+  }
+
+  const baseScale = Math.max(FRAME_PX / imgEl.width, FRAME_PX / imgEl.height);
+  const displayScale = baseScale * zoom;
+  const displayWidth = imgEl.width * displayScale;
+  const displayHeight = imgEl.height * displayScale;
+  const maxOffsetX = Math.max(0, (displayWidth - FRAME_PX) / 2);
+  const maxOffsetY = Math.max(0, (displayHeight - FRAME_PX) / 2);
+  const clampedOffset = {
+    x: Math.min(maxOffsetX, Math.max(-maxOffsetX, offset.x)),
+    y: Math.min(maxOffsetY, Math.max(-maxOffsetY, offset.y)),
+  };
+
+  function onPointerDown(e: ReactPointerEvent) {
+    (e.target as Element).setPointerCapture(e.pointerId);
+    dragRef.current = { startX: e.clientX, startY: e.clientY, origin: clampedOffset };
+  }
+  function onPointerMove(e: ReactPointerEvent) {
+    if (!dragRef.current) return;
+    const dx = e.clientX - dragRef.current.startX;
+    const dy = e.clientY - dragRef.current.startY;
+    setOffset({ x: dragRef.current.origin.x + dx, y: dragRef.current.origin.y + dy });
+  }
+  function onPointerUp() {
+    dragRef.current = null;
+  }
+
+  function confirmCrop() {
+    if (!imgEl) return;
+    const canvas = document.createElement("canvas");
+    canvas.width = SELF_VISUAL_OUTPUT_PX;
+    canvas.height = SELF_VISUAL_OUTPUT_PX;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) {
+      onError("Recadrage impossible sur cet appareil.");
+      return;
+    }
+    const exportScale = SELF_VISUAL_OUTPUT_PX / FRAME_PX;
+    const drawWidth = displayWidth * exportScale;
+    const drawHeight = displayHeight * exportScale;
+    const drawX = SELF_VISUAL_OUTPUT_PX / 2 - drawWidth / 2 + clampedOffset.x * exportScale;
+    const drawY = SELF_VISUAL_OUTPUT_PX / 2 - drawHeight / 2 + clampedOffset.y * exportScale;
+    ctx.drawImage(imgEl, drawX, drawY, drawWidth, drawHeight);
+    onConfirm(canvas.toDataURL("image/jpeg", 0.9));
+  }
+
+  return (
+    <div className="space-y-3 rounded-xl border border-[var(--border)] bg-[var(--panel-bg)] p-3">
+      <div
+        ref={frameRef}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerLeave={onPointerUp}
+        className="relative mx-auto overflow-hidden rounded-lg border border-[var(--border)]"
+        style={{ width: FRAME_PX, height: FRAME_PX, touchAction: "none", cursor: "grab" }}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={imgEl.src}
+          alt=""
+          draggable={false}
+          className="pointer-events-none absolute select-none"
+          style={{
+            width: displayWidth,
+            height: displayHeight,
+            left: FRAME_PX / 2 - displayWidth / 2 + clampedOffset.x,
+            top: FRAME_PX / 2 - displayHeight / 2 + clampedOffset.y,
+          }}
+        />
+      </div>
+      <label className="block text-xs text-[var(--muted)]">
+        Zoom
+        <input
+          type="range"
+          min={1}
+          max={3}
+          step={0.05}
+          value={zoom}
+          onChange={(e) => setZoom(Number(e.target.value))}
+          className="mt-1 w-full"
+        />
+      </label>
+      <p className="text-[11px] text-[var(--muted)]">Déplacez l&apos;image pour cadrer le bandeau (format carré).</p>
+      <div className="flex gap-2">
+        <Button type="button" onClick={confirmCrop}>
+          Valider le recadrage
+        </Button>
+        <Button type="button" variant="secondary" onClick={onCancel}>
+          Annuler
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function VisualPicker({
+  value,
+  onChange,
+  onError,
+}: {
+  value: VisualPickerValue;
+  onChange: (value: VisualPickerValue) => void;
+  onError: (message: string) => void;
+}) {
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [selfBusy, setSelfBusy] = useState(false);
+  const [fidetoBusy, setFidetoBusy] = useState(false);
+
+  function switchMode(mode: "SELF" | "FIDETO") {
+    if (mode === value.mode) return;
+    // On change de parcours : on retire les fichiers déjà envoyés sous l'autre parcours.
+    if (value.mode === "SELF" && value.selfUrl) void deleteCampaignMediaUrl(value.selfUrl);
+    if (value.mode === "FIDETO") value.fidetoUrls.forEach((url) => void deleteCampaignMediaUrl(url));
+    setPendingFile(null);
+    onChange(mode === "SELF" ? { mode: "SELF", selfUrl: null, fidetoUrls: [] } : { mode: "FIDETO", selfUrl: null, fidetoUrls: [] });
+  }
+
+  async function onSelfFileSelected(file: File | null) {
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      onError("Image trop lourde (5 Mo maximum).");
+      return;
+    }
+    if (value.mode === "SELF" && value.selfUrl) await deleteCampaignMediaUrl(value.selfUrl);
+    onChange({ mode: "SELF", selfUrl: null, fidetoUrls: [] });
+    setPendingFile(file);
+  }
+
+  async function onCropConfirm(dataUrl: string) {
+    setSelfBusy(true);
+    try {
+      const url = await uploadCampaignMedia(dataUrl);
+      onChange({ mode: "SELF", selfUrl: url, fidetoUrls: [] });
+      setPendingFile(null);
+    } catch (err) {
+      onError(err instanceof Error ? err.message : "Envoi de l'image impossible.");
+    } finally {
+      setSelfBusy(false);
+    }
+  }
+
+  async function removeSelfImage() {
+    if (value.mode === "SELF" && value.selfUrl) await deleteCampaignMediaUrl(value.selfUrl);
+    onChange({ mode: "SELF", selfUrl: null, fidetoUrls: [] });
+    setPendingFile(null);
+  }
+
+  async function onFidetoFilesSelected(files: FileList | null) {
+    if (!files || files.length === 0 || value.mode !== "FIDETO") return;
+    const remaining = MAX_FIDETO_IMAGES - value.fidetoUrls.length;
+    if (remaining <= 0) {
+      onError(`Maximum ${MAX_FIDETO_IMAGES} images.`);
+      return;
+    }
+    const selected = Array.from(files).slice(0, remaining);
+    setFidetoBusy(true);
+    try {
+      const newUrls: string[] = [];
+      for (const file of selected) {
+        if (file.size > 5 * 1024 * 1024) {
+          onError(`« ${file.name} » dépasse 5 Mo — ignorée.`);
+          continue;
+        }
+        const dataUrl = await readFileAsDataUrl(file);
+        newUrls.push(await uploadCampaignMedia(dataUrl));
+      }
+      onChange({ mode: "FIDETO", selfUrl: null, fidetoUrls: [...value.fidetoUrls, ...newUrls] });
+    } catch (err) {
+      onError(err instanceof Error ? err.message : "Envoi d'une image impossible.");
+    } finally {
+      setFidetoBusy(false);
+    }
+  }
+
+  async function removeFidetoImage(url: string) {
+    if (value.mode !== "FIDETO") return;
+    await deleteCampaignMediaUrl(url);
+    onChange({ mode: "FIDETO", selfUrl: null, fidetoUrls: value.fidetoUrls.filter((u) => u !== url) });
+  }
+
+  return (
+    <div className="space-y-3">
+      <p className="text-xs font-bold uppercase tracking-wide text-[var(--muted)]">Visuel du bandeau</p>
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        <button
+          type="button"
+          onClick={() => switchMode("SELF")}
+          className={`sponsor-duration-card text-left ${value.mode === "SELF" ? "sponsor-duration-card-active" : ""}`}
+        >
+          <span className="block text-sm font-bold text-[var(--ink)]">Je crée mon visuel</span>
+          <span className="block text-xs text-[var(--muted)]">
+            Ajoutez une image et recadrez-la vous-même au format du bandeau.
+          </span>
+        </button>
+        <button
+          type="button"
+          onClick={() => switchMode("FIDETO")}
+          className={`sponsor-duration-card text-left ${value.mode === "FIDETO" ? "sponsor-duration-card-active" : ""}`}
+        >
+          <span className="block text-sm font-bold text-[var(--ink)]">Fideto crée mon visuel</span>
+          <span className="block text-xs text-[var(--muted)]">
+            Envoyez 1 à 5 images (sans contrainte de format) — Fideto prépare le bandeau pour vous.
+          </span>
+        </button>
+      </div>
+
+      {value.mode === "SELF" ? (
+        <div className="space-y-2">
+          {!pendingFile && !value.selfUrl ? (
+            <label className="block text-xs text-[var(--muted)]">
+              Image (PNG, JPEG ou WebP, 5 Mo max — recadrée ensuite au format carré du bandeau)
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                className="profile-select mt-1 w-full"
+                onChange={(e) => void onSelfFileSelected(e.target.files?.[0] ?? null)}
+              />
+            </label>
+          ) : null}
+          {pendingFile ? (
+            <SelfVisualCropper
+              file={pendingFile}
+              onCancel={() => setPendingFile(null)}
+              onConfirm={onCropConfirm}
+              onError={onError}
+            />
+          ) : null}
+          {selfBusy ? <p className="text-xs text-[var(--muted)]">Envoi de l&apos;image…</p> : null}
+          {value.selfUrl ? (
+            <div className="flex items-center gap-3">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={value.selfUrl} alt="Visuel recadré" className="h-20 w-20 rounded-lg object-cover" />
+              <div className="flex gap-2">
+                <Button type="button" variant="secondary" onClick={() => document.getElementById("self-visual-replace")?.click()}>
+                  Remplacer
+                </Button>
+                <input
+                  id="self-visual-replace"
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  className="hidden"
+                  onChange={(e) => void onSelfFileSelected(e.target.files?.[0] ?? null)}
+                />
+                <Button type="button" variant="secondary" onClick={() => void removeSelfImage()}>
+                  Supprimer
+                </Button>
+              </div>
+            </div>
+          ) : null}
+        </div>
+      ) : (
+        <div className="space-y-2">
+          <label className="block text-xs text-[var(--muted)]">
+            Images (1 à {MAX_FIDETO_IMAGES}, PNG/JPEG/WebP, 5 Mo max chacune — aucune dimension imposée)
+            <input
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              multiple
+              disabled={value.fidetoUrls.length >= MAX_FIDETO_IMAGES}
+              className="profile-select mt-1 w-full"
+              onChange={(e) => void onFidetoFilesSelected(e.target.files)}
+            />
+          </label>
+          {fidetoBusy ? <p className="text-xs text-[var(--muted)]">Envoi des images…</p> : null}
+          {value.fidetoUrls.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {value.fidetoUrls.map((url) => (
+                <div key={url} className="relative">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={url} alt="" className="h-20 w-20 rounded-lg object-cover" />
+                  <button
+                    type="button"
+                    aria-label="Retirer cette image"
+                    onClick={() => void removeFidetoImage(url)}
+                    className="absolute -right-1 -top-1 grid h-5 w-5 place-items-center rounded-full bg-black/70 text-white"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      )}
+    </div>
+  );
 }
 
 function SponsorWizard({
@@ -1210,76 +1851,59 @@ function SponsorWizard({
   onClose: () => void;
   onDone: () => void;
 }) {
-  const [days, setDays] = useState(7);
-  const [startDate, setStartDate] = useState(todayDateInputValue);
-  const [startTime, setStartTime] = useState(nowTimeInputValue);
-  const [endTime, setEndTime] = useState(nowTimeInputValue);
+  const [schedule, setSchedule] = useState<SponsoredDaySelection[]>([]);
   const [objective, setObjective] = useState("");
   const [text, setText] = useState("");
   const [ctaUrl, setCtaUrl] = useState("");
-  const [imageDataUrl, setImageDataUrl] = useState<string | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [visual, setVisual] = useState<VisualPickerValue>({ mode: "FIDETO", selfUrl: null, fidetoUrls: [] });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
 
-  const endDate = addDaysToDateInput(startDate, days);
   const includedDaysRemaining = quotas.find((q) => q.kind === "SPONSORED_DAY")?.remaining ?? 0;
-  const pricing = estimateSponsorPrice(days, includedDaysRemaining);
-
-  function onFileChange(file: File | null) {
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result as string;
-      setImageDataUrl(result);
-      setImagePreview(result);
-    };
-    reader.readAsDataURL(file);
-  }
+  const pricing = estimateSponsorPricing(schedule, includedDaysRemaining);
 
   async function submit() {
     if (demo) {
       setDone(true);
       return;
     }
+    if (visual.mode === "SELF" && !visual.selfUrl) {
+      setError("Ajoutez et recadrez votre visuel avant d'envoyer.");
+      return;
+    }
+    if (visual.mode === "FIDETO" && visual.fidetoUrls.length === 0) {
+      setError("Envoyez au moins une image pour que Fideto prépare votre visuel.");
+      return;
+    }
+    const scheduleCheck = validateSponsoredSchedule(schedule);
+    if (!scheduleCheck.ok) {
+      setError(scheduleCheck.error);
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
-      let requestedImageUrl: string | null = null;
-      if (imageDataUrl) {
-        const mediaRes = await fetch("/api/merchant/campaigns/media", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ dataUrl: imageDataUrl }),
-        });
-        if (!mediaRes.ok) throw new Error("image");
-        const mediaData = (await mediaRes.json()) as { url: string };
-        requestedImageUrl = mediaData.url;
-      }
-      const start = new Date(`${startDate}T${startTime}:00`);
-      const end = new Date(`${endDate}T${endTime}:00`);
-      if (end <= start) {
-        setError("La date/heure de fin doit être après le début.");
-        setBusy(false);
-        return;
-      }
       const response = await fetch("/api/merchant/ads", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           requestedText: text,
-          requestedImageUrl,
+          visualMode: visual.mode,
+          requestedImageUrl: visual.mode === "SELF" ? visual.selfUrl : null,
+          requestedImageUrls: visual.mode === "FIDETO" ? visual.fidetoUrls : undefined,
           objective: objective.trim() || null,
           ctaUrl: ctaUrl.trim() || null,
-          startDate: start.toISOString(),
-          endDate: end.toISOString(),
+          hourlySchedule: schedule,
         }),
       });
-      if (!response.ok) throw new Error();
+      if (!response.ok) {
+        const body = (await response.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(body?.error || "Envoi impossible.");
+      }
       setDone(true);
-    } catch {
-      setError("Impossible d'envoyer la demande. Vérifiez les champs (l'image doit être valide) et réessayez.");
+    } catch (err) {
+      setError(err instanceof Error && err.message ? err.message : "Impossible d'envoyer la demande. Réessayez.");
     } finally {
       setBusy(false);
     }
@@ -1318,55 +1942,8 @@ function SponsorWizard({
         </div>
 
         <div>
-          <p className="mb-2 text-xs font-bold uppercase tracking-wide text-[var(--muted)]">Durée</p>
-          <div className="sponsor-duration-grid">
-            {SPONSOR_DURATIONS.map((d) => (
-              <button
-                key={d}
-                type="button"
-                onClick={() => setDays(d)}
-                className={`sponsor-duration-card ${days === d ? "sponsor-duration-card-active" : ""}`}
-              >
-                <span className="sponsor-duration-card-value">{d}</span>
-                <span className="sponsor-duration-card-label">jour{d > 1 ? "s" : ""}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-3">
-          <label className="block text-xs text-[var(--muted)]">
-            Date de début
-            <input
-              type="date"
-              className="profile-select mt-1 w-full"
-              value={startDate}
-              min={todayDateInputValue()}
-              onChange={(e) => setStartDate(e.target.value)}
-            />
-          </label>
-          <label className="block text-xs text-[var(--muted)]">
-            Heure de début
-            <input
-              type="time"
-              className="profile-select mt-1 w-full"
-              value={startTime}
-              onChange={(e) => setStartTime(e.target.value)}
-            />
-          </label>
-          <label className="block text-xs text-[var(--muted)]">
-            Date de fin
-            <input type="date" className="profile-select mt-1 w-full" value={endDate} disabled />
-          </label>
-          <label className="block text-xs text-[var(--muted)]">
-            Heure de fin
-            <input
-              type="time"
-              className="profile-select mt-1 w-full"
-              value={endTime}
-              onChange={(e) => setEndTime(e.target.value)}
-            />
-          </label>
+          <p className="mb-2 text-xs font-bold uppercase tracking-wide text-[var(--muted)]">Jours et heures d&apos;exposition</p>
+          <HourlySchedulePicker value={schedule} onChange={setSchedule} />
         </div>
 
         <label className="block text-xs text-[var(--muted)]">
@@ -1389,19 +1966,7 @@ function SponsorWizard({
             maxLength={1000}
           />
         </label>
-        <label className="block text-xs text-[var(--muted)]">
-          Image (facultatif — Fideto peut l&apos;ajuster)
-          <input
-            type="file"
-            accept="image/*"
-            className="profile-select mt-1 w-full"
-            onChange={(e) => onFileChange(e.target.files?.[0] ?? null)}
-          />
-        </label>
-        {imagePreview ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={imagePreview} alt="Aperçu" className="h-24 w-full rounded-lg object-cover" />
-        ) : null}
+        <VisualPicker value={visual} onChange={setVisual} onError={setError} />
         <label className="block text-xs text-[var(--muted)]">
           Lien ou commerce à ouvrir (facultatif)
           <input
@@ -1414,20 +1979,20 @@ function SponsorWizard({
 
         <div className="campaign-wizard-summary space-y-1 rounded-xl border border-[var(--border)] bg-[var(--panel-bg)] p-4">
           <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--muted)]">Récapitulatif</p>
-          <div className="campaign-wizard-summary-row">
-            <span className="text-xs text-[var(--muted)]">Dates</span>
-            <span className="text-sm font-bold text-[var(--ink)]">
-              {formatDate(new Date(`${startDate}T00:00:00`).toISOString())} → {formatDate(new Date(`${endDate}T00:00:00`).toISOString())}
-            </span>
-          </div>
-          <div className="campaign-wizard-summary-row">
-            <span className="text-xs text-[var(--muted)]">Horaires</span>
-            <span className="text-sm font-bold text-[var(--ink)]">{startTime} → {endTime}</span>
-          </div>
-          <div className="campaign-wizard-summary-row">
-            <span className="text-xs text-[var(--muted)]">Durée</span>
-            <span className="text-sm font-bold text-[var(--ink)]">{days} jour{days > 1 ? "s" : ""}</span>
-          </div>
+          {pricing.byDay.length === 0 ? (
+            <p className="text-xs text-[var(--muted)]">Ajoutez au moins un jour pour voir le détail du calcul.</p>
+          ) : (
+            <div className="space-y-1">
+              {pricing.byDay.map((d) => (
+                <div key={d.date} className="campaign-wizard-summary-row">
+                  <span className="text-xs text-[var(--muted)]">
+                    {formatDate(new Date(`${d.date}T00:00:00`).toISOString())} — {d.hours.length} h
+                  </span>
+                  <span className="text-sm font-bold text-[var(--ink)]">{formatCents(d.priceCents)}</span>
+                </div>
+              ))}
+            </div>
+          )}
           <div className="campaign-wizard-summary-row">
             <span className="text-xs text-[var(--muted)]">Audience</span>
             <span className="text-sm font-bold text-[var(--ink)]">Clients Fideto de votre secteur</span>
@@ -1437,11 +2002,15 @@ function SponsorWizard({
             <span className="text-sm font-bold text-[var(--ink)]">Bandeau Découvrir</span>
           </div>
           <div className="campaign-wizard-summary-row">
+            <span className="text-xs text-[var(--muted)]">Total heures</span>
+            <span className="text-sm font-bold text-[var(--ink)]">{pricing.totalHours} h sur {pricing.totalDays} jour{pricing.totalDays > 1 ? "s" : ""}</span>
+          </div>
+          <div className="campaign-wizard-summary-row">
             <span className="text-xs text-[var(--muted)]">Crédits utilisés</span>
             <span className="text-sm font-bold text-[var(--ink)]">{pricing.daysFromQuota} jour{pricing.daysFromQuota > 1 ? "s" : ""} inclus</span>
           </div>
           <div className="campaign-wizard-summary-row">
-            <span className="text-xs text-[var(--muted)]">Montant restant à payer</span>
+            <span className="text-xs text-[var(--muted)]">Montant total à payer</span>
             <span className="text-sm font-bold text-[var(--ink)]">
               {pricing.requiresPayment ? formatCents(pricing.priceCents) : "0 € — couvert par votre quota"}
             </span>
@@ -1461,7 +2030,7 @@ function SponsorWizard({
 /* Solde marketing prépayé                                                 */
 /* ---------------------------------------------------------------------- */
 
-type LedgerEntry = {
+export type LedgerEntry = {
   id: string;
   type: "TOPUP" | "DEBIT" | "REFUND";
   status: "PENDING" | "PAID" | "FAILED" | "CANCELLED";
@@ -1473,7 +2042,7 @@ type LedgerEntry = {
   campaignStatus: string | null;
 };
 
-type BalanceData = {
+export type BalanceData = {
   balanceCents: number;
   presetsCents: number[];
   minTopupCents: number;
@@ -1483,7 +2052,7 @@ type BalanceData = {
   paymentsAvailable?: boolean;
 };
 
-const DEMO_BALANCE: BalanceData = {
+export const DEMO_BALANCE: BalanceData = {
   balanceCents: 1000,
   presetsCents: [500, 1000, 2000],
   minTopupCents: 500,
@@ -1493,8 +2062,51 @@ const DEMO_BALANCE: BalanceData = {
   paymentsAvailable: true,
 };
 
+/** Résumé compact affiché dans la page Campagnes — le détail (recharge, historique) vit sur /app/campagnes/solde. */
+function MarketingBalanceSummary({ demo }: { demo: boolean }) {
+  const [data, setData] = useState<{ balanceCents: number; testMode?: boolean } | null>(
+    demo ? { balanceCents: DEMO_BALANCE.balanceCents, testMode: DEMO_BALANCE.testMode } : null,
+  );
+
+  useEffect(() => {
+    if (demo) return;
+    let active = true;
+    fetch("/api/merchant/marketing-balance")
+      .then((response) => (response.ok ? (response.json() as Promise<BalanceData>) : null))
+      .then((json) => {
+        if (active && json) setData({ balanceCents: json.balanceCents, testMode: json.testMode });
+      })
+      .catch(() => undefined);
+    return () => {
+      active = false;
+    };
+  }, [demo]);
+
+  return (
+    <section
+      className="glass-panel flex flex-wrap items-center justify-between gap-3 p-5 sm:p-6"
+      aria-label="Solde marketing"
+    >
+      <div>
+        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--violet-bright)]">Solde marketing</p>
+        <p className="mt-1 text-2xl font-black text-[var(--ink)]">{data ? formatCents(data.balanceCents) : "…"}</p>
+        {data?.testMode ? (
+          <p className="mt-1 text-xs font-bold text-[var(--violet-bright)]">
+            Mode test — aucun vrai paiement n&apos;est encaissé.
+          </p>
+        ) : null}
+      </div>
+      <Link href="/app/campagnes/solde">
+        <Button type="button" variant="secondary">
+          Recharger
+        </Button>
+      </Link>
+    </section>
+  );
+}
+
 /** Démarre une recharge Stripe Checkout. Le montant est revalidé côté serveur. */
-async function startTopup(amountCents: number, onError: (message: string) => void) {
+export async function startTopup(amountCents: number, onError: (message: string) => void) {
   try {
     const response = await fetch("/api/merchant/marketing-balance", {
       method: "POST",
@@ -1512,7 +2124,7 @@ async function startTopup(amountCents: number, onError: (message: string) => voi
   }
 }
 
-function ledgerLabel(entry: LedgerEntry) {
+export function ledgerLabel(entry: LedgerEntry) {
   if (entry.type === "TOPUP") {
     if (entry.status === "PAID") return "Recharge";
     if (entry.status === "PENDING") return "Recharge en attente de paiement";
@@ -1521,135 +2133,4 @@ function ledgerLabel(entry: LedgerEntry) {
   }
   if (entry.type === "REFUND") return entry.description;
   return entry.campaignTitle ? `Envoi — ${entry.campaignTitle}` : entry.description;
-}
-
-function MarketingBalanceCard({ demo }: { demo: boolean }) {
-  const [data, setData] = useState<BalanceData | null>(demo ? DEMO_BALANCE : null);
-  const [custom, setCustom] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-
-  const load = useCallback(async () => {
-    if (demo) return;
-    try {
-      const response = await fetch("/api/merchant/marketing-balance");
-      if (response.ok) setData((await response.json()) as BalanceData);
-    } catch {
-      // Le solde reste masqué ; les campagnes gratuites continuent de fonctionner.
-    }
-  }, [demo]);
-
-  useEffect(() => {
-    void load();
-    const topup = new URLSearchParams(window.location.search).get("topup");
-    if (topup === "success") {
-      setNotice("Paiement reçu. Votre solde sera crédité dès la confirmation de Stripe (quelques secondes).");
-      // Le crédit arrive par webhook : on relit le solde après un court délai.
-      const timer = window.setTimeout(() => void load(), 4000);
-      return () => window.clearTimeout(timer);
-    }
-    if (topup === "cancelled") setNotice("Recharge annulée : aucun montant n'a été débité ni crédité.");
-  }, [load]);
-
-  if (!data) return null;
-
-  const customCents = Math.round(Number(custom.replace(",", ".")) * 100);
-  const customValid = Number.isFinite(customCents) && customCents >= data.minTopupCents && customCents <= data.maxTopupCents;
-
-  async function topup(cents: number) {
-    if (demo) return;
-    setBusy(true);
-    setError(null);
-    await startTopup(cents, setError);
-    setBusy(false);
-  }
-
-  return (
-    <section className="glass-panel space-y-4 p-5 sm:p-6" aria-label="Solde marketing">
-      {data.testMode ? (
-        <p className="rounded-lg border border-[var(--line)] px-3 py-2 text-sm font-bold text-[var(--violet-bright)]">
-          Paiements de test — aucun vrai paiement n&apos;est encaissé et les campagnes payées sont simulées (aucun
-          envoi réel). Ce solde de test est distinct du solde réel.
-        </p>
-      ) : null}
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--violet-bright)]">Solde marketing</p>
-          <p className="mt-1 text-3xl font-black text-[var(--ink)]">{formatCents(data.balanceCents)}</p>
-          <p className="text-xs text-[var(--muted-strong)]">
-            Débité à chaque envoi payant : notification membres {formatCents(CAMPAIGN_PRICE_CENTS.MEMBER_NOTIFICATION)},
-            secteur {formatCents(CAMPAIGN_PRICE_CENTS.NETWORK_NOTIFICATION)}, e-mail membres{" "}
-            {formatCents(CAMPAIGN_PRICE_CENTS.MEMBER_EMAIL)}, e-mail prospects{" "}
-            {formatCents(CAMPAIGN_PRICE_CENTS.NETWORK_EMAIL)} — prix fixes, quel que soit le nombre de destinataires.
-          </p>
-        </div>
-        {data.paymentsAvailable === false ? (
-          <p className="max-w-xs text-xs text-[var(--muted)]">Recharge indisponible pour ce commerce en mode actuel.</p>
-        ) : null}
-        <div className={`flex flex-wrap items-center gap-2 ${data.paymentsAvailable === false ? "hidden" : ""}`}>
-          {data.presetsCents.map((cents) => (
-            <Button key={cents} type="button" variant="secondary" disabled={busy} onClick={() => void topup(cents)}>
-              +{formatCents(cents)}
-            </Button>
-          ))}
-        </div>
-      </div>
-
-      <form
-        className={`flex flex-wrap items-center gap-2 ${data.paymentsAvailable === false ? "hidden" : ""}`}
-        onSubmit={(event) => {
-          event.preventDefault();
-          if (customValid) void topup(customCents);
-        }}
-      >
-        <label className="text-xs text-[var(--muted)]" htmlFor="marketing-topup-custom">
-          Autre montant (min. {formatCents(data.minTopupCents)})
-        </label>
-        <input
-          id="marketing-topup-custom"
-          inputMode="decimal"
-          value={custom}
-          onChange={(event) => setCustom(event.target.value)}
-          placeholder="25"
-          className="w-24 rounded-lg border border-[var(--line)] bg-transparent px-2 py-1 text-sm"
-        />
-        <span className="text-sm text-[var(--muted)]">€</span>
-        <Button type="submit" disabled={busy || !customValid}>
-          Recharger
-        </Button>
-      </form>
-
-      {notice ? <p className="text-sm text-[var(--muted-strong)]">{notice}</p> : null}
-      {error ? <p className="text-sm text-[var(--danger)]">{error}</p> : null}
-
-      {data.history.length > 0 ? (
-        <div>
-          <p className="text-xs font-bold text-[var(--muted)]">Historique</p>
-          <ul className="mt-2 divide-y divide-[var(--line)]">
-            {data.history.map((entry) => {
-              const sign = entry.type === "DEBIT" ? "−" : entry.status === "PAID" ? "+" : "";
-              return (
-                <li key={entry.id} className="flex items-center justify-between gap-3 py-2 text-sm">
-                  <span>
-                    <span className="font-semibold text-[var(--ink)]">{ledgerLabel(entry)}</span>
-                    <span className="block text-xs text-[var(--muted)]">
-                      {formatDate(entry.createdAt)}
-                      {entry.type === "DEBIT" && entry.campaignStatus === "PARTIALLY_SENT" ? " · livraison partielle" : ""}
-                      {entry.type === "DEBIT" && entry.campaignStatus === "FAILED" ? " · envoi échoué" : ""}
-                      {entry.type === "DEBIT" && entry.campaignStatus === "SCHEDULED" ? " · programmé" : ""}
-                    </span>
-                  </span>
-                  <strong className="text-[var(--ink)]">
-                    {sign}
-                    {formatCents(entry.amountCents)}
-                  </strong>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      ) : null}
-    </section>
-  );
 }

@@ -1,8 +1,8 @@
 import { z } from "zod";
 import { requireMerchantAdmin, requireMutatingRequest } from "@/lib/api-guard";
 import { writeAudit } from "@/lib/audit";
-import { env } from "@/lib/env";
 import { clientIp, jsonError, jsonOk, readJson, userAgent } from "@/lib/http";
+import { resolveAppOriginFromRequestHost } from "@/lib/hosts";
 import {
   MAX_TOPUP_CENTS,
   MIN_TOPUP_CENTS,
@@ -103,6 +103,8 @@ export async function POST(req: Request) {
     });
   }
 
+  const appOrigin = resolveAppOriginFromRequestHost(req.headers.get("host") ?? "");
+
   const entry = await prisma.marketingLedgerEntry.create({
     data: {
       merchantId,
@@ -119,8 +121,8 @@ export async function POST(req: Request) {
       merchantId,
       ledgerEntryId: entry.id,
       amountCents,
-      successUrl: `${env.appOrigin}/app/campagnes?topup=success`,
-      cancelUrl: `${env.appOrigin}/app/campagnes?topup=cancelled`,
+      successUrl: `${appOrigin}/app/campagnes/solde?topup=success`,
+      cancelUrl: `${appOrigin}/app/campagnes/solde?topup=cancelled`,
     });
     await prisma.marketingLedgerEntry.update({
       where: { id: entry.id },

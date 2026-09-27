@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { env } from "./lib/env";
-import { isAdminHost, isAppHost, isEmployeeHost, legacyRedirectOrigin } from "./lib/hosts";
+import { isAdminHost, isAppHost, isCustomerHost, isEmployeeHost, legacyRedirectOrigin } from "./lib/hosts";
 import { hasSuperAdminEntryCookie, SUPER_ADMIN_ENTRY_COOKIE, superAdminEntryCookieOptions } from "./lib/super-admin-entry";
 
 function superAdminPublicPrefix() {
@@ -12,6 +12,37 @@ function nextWithPathname(req: NextRequest) {
   const requestHeaders = new Headers(req.headers);
   requestHeaders.set("x-pathname", req.nextUrl.pathname);
   return NextResponse.next({ request: { headers: requestHeaders } });
+}
+
+/**
+ * Un chemin d'un autre espace (client/commerçant/employé) demandé sur le mauvais hôte doit
+ * être redirigé vers l'origine correcte, jamais réécrit avec le préfixe de l'espace courant —
+ * sinon `/demo` ou `/employe/connexion` demandés sur app.fideto.fr deviennent `/app/demo` /
+ * `/app/employe/connexion`, qui n'existent pas (404, y compris sur les préfetch RSC `?_rsc=`).
+ */
+function crossSpaceRedirectOrigin(host: string, pathname: string): string | null {
+  const isDemo = pathname === "/demo" || pathname.startsWith("/demo/");
+  const isClientLogin = pathname === "/connexion" || pathname.startsWith("/connexion/");
+  const isEmployeeSpace = pathname === "/employe" || pathname.startsWith("/employe/");
+  const isAppSpace = pathname === "/app" || pathname.startsWith("/app/");
+  const isProLanding = pathname === "/pro" || pathname.startsWith("/pro/");
+
+  if (isAppHost(host)) {
+    if (isDemo || isClientLogin || isProLanding) return env.customerOrigin;
+    if (isEmployeeSpace) return env.employeeOrigin;
+    return null;
+  }
+  if (isEmployeeHost(host)) {
+    if (isDemo || isClientLogin || isProLanding) return env.customerOrigin;
+    if (isAppSpace) return env.appOrigin;
+    return null;
+  }
+  if (isCustomerHost(host)) {
+    if (isAppSpace) return env.appOrigin;
+    if (isEmployeeSpace) return env.employeeOrigin;
+    return null;
+  }
+  return null;
 }
 
 export function middleware(req: NextRequest) {
@@ -35,6 +66,11 @@ export function middleware(req: NextRequest) {
     pathname === "/favicon.ico"
   ) {
     return NextResponse.next();
+  }
+
+  const crossSpaceOrigin = crossSpaceRedirectOrigin(host, pathname);
+  if (crossSpaceOrigin) {
+    return NextResponse.redirect(`${crossSpaceOrigin.replace(/\/$/, "")}${pathname}${req.nextUrl.search}`, 307);
   }
 
   if (isEmployeeHost(host)) {
