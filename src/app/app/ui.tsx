@@ -112,6 +112,10 @@ export function MerchantHome({
         </div>
       </header>
 
+      <p className="section-kicker mb-3 text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--violet-bright)]">
+        En ce moment
+      </p>
+
       {kpis ? (
         <section className="grid grid-cols-2 gap-3 xl:grid-cols-4" aria-label="Indicateurs clés">
           {kpis.map((kpi) => (
@@ -133,39 +137,29 @@ export function MerchantHome({
       )}
 
       <div className="merchant-dashboard-grid mt-6">
-        <div className="merchant-dashboard-aside">
-          <section aria-label="Actions rapides">
-            <p className="mb-3 text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--violet-bright)]">
-              Actions rapides
-            </p>
-            <div className="merchant-dashboard-shortcuts">
-              {QUICK_ACTIONS.map(([label, href, hint]) => (
-                <Link key={href} href={href} className="metric-card block p-4 transition hover:-translate-y-0.5">
-                  <p className="font-bold text-[var(--ink)]">{label}</p>
-                  <p className="mt-0.5 text-xs text-[var(--muted)]">{hint}</p>
-                </Link>
-              ))}
-            </div>
-          </section>
-
-          <section className="glass-panel mt-4 p-4 md:p-5">
-            <p className="font-bold text-[var(--ink)]">Aperçu des statistiques</p>
-            {statsPreview ? (
-              <div className="mt-2">
-                <InsightLineChart data={statsPreview.passagesSeries} height={64} />
-              </div>
-            ) : (
-              <div className="mt-3 h-16 animate-pulse rounded-xl bg-white/5" />
-            )}
-            <Link href="/app/statistiques" className="glass-cta mt-3 inline-flex px-4 py-2 text-xs">
-              Voir les statistiques
-            </Link>
-          </section>
-        </div>
+        <section className="glass-panel dashboard-scan-card relative overflow-hidden p-6 md:p-7">
+          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--violet-bright)]">Action du jour</p>
+          <h2 className="mt-2 max-w-[24rem] text-2xl font-black leading-tight tracking-tight text-[var(--ink)] md:text-[28px]">
+            Chaque visite compte.
+          </h2>
+          <p className="mt-2 max-w-md text-sm text-[var(--muted-strong)]">
+            Scannez la carte d&apos;un client pour enregistrer son passage ou lui attribuer un avantage.
+          </p>
+          <Link href="/app/caisse" className="glass-cta mt-5 inline-flex items-center gap-2 px-5 py-3 text-sm">
+            <svg viewBox="0 0 24 24" width={18} height={18} fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden>
+              <path d="M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            Ouvrir la caisse
+          </Link>
+        </section>
 
         <section className="glass-panel p-5 md:p-6">
-          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--violet-bright)]">Activité récente</p>
-          <h2 className="mt-1 text-lg font-black text-[var(--ink)] md:text-xl">Derniers passages et récompenses</h2>
+          <div className="flex items-end justify-between gap-3">
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--violet-bright)]">Activité récente</p>
+              <h2 className="mt-1 text-lg font-black text-[var(--ink)] md:text-xl">Derniers passages et récompenses</h2>
+            </div>
+          </div>
           {recent.length === 0 ? (
             <p className="mt-4 text-sm text-[var(--muted)]">Aucune activité récente.</p>
           ) : (
@@ -187,6 +181,39 @@ export function MerchantHome({
           )}
         </section>
       </div>
+
+      <section className="mt-6" aria-labelledby="quick-actions-title">
+        <div className="mb-3 flex items-end justify-between gap-3">
+          <div>
+            <h2 id="quick-actions-title" className="text-lg font-black text-[var(--ink)] md:text-xl">
+              Accès rapides
+            </h2>
+            <p className="text-xs text-[var(--muted)]">Retrouvez les outils que vous utilisez au quotidien.</p>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {QUICK_ACTIONS.map(([label, href, hint]) => (
+            <Link key={href} href={href} className="metric-card block p-4 transition hover:-translate-y-0.5">
+              <p className="font-bold text-[var(--ink)]">{label}</p>
+              <p className="mt-0.5 text-xs text-[var(--muted)]">{hint}</p>
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      <section className="glass-panel mt-6 p-4 md:p-5">
+        <p className="font-bold text-[var(--ink)]">Aperçu des statistiques</p>
+        {statsPreview ? (
+          <div className="mt-2">
+            <InsightLineChart data={statsPreview.passagesSeries} height={64} />
+          </div>
+        ) : (
+          <div className="mt-3 h-16 animate-pulse rounded-xl bg-white/5" />
+        )}
+        <Link href="/app/statistiques" className="glass-cta mt-3 inline-flex px-4 py-2 text-xs">
+          Voir les statistiques
+        </Link>
+      </section>
     </MerchantPageShell>
   );
 }

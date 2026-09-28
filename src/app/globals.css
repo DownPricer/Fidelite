@@ -6535,6 +6535,27 @@ body:has(.wallet-shell) {
   border-bottom: none;
 }
 
+.section-kicker {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.section-kicker::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: light-dark(rgba(76, 46, 148, 0.14), rgba(255, 255, 255, 0.08));
+}
+
+.dashboard-scan-card {
+  border-color: light-dark(rgba(122, 69, 242, 0.28), rgba(190, 148, 255, 0.3));
+  background:
+    radial-gradient(circle at 92% 6%, light-dark(rgba(154, 91, 240, 0.16), rgba(154, 91, 240, 0.28)), transparent 42%),
+    linear-gradient(125deg, light-dark(rgba(122, 69, 242, 0.08), rgba(59, 40, 88, 0.55)), transparent 65%),
+    var(--surface);
+}
+
 /* Fallback taille icônes si le CSS utilitaire tarde à charger */
 .employee-brand-mark svg {
   width: 1.25rem;
