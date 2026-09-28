@@ -22,6 +22,7 @@ export function StaffLogin({
   otherSpaces,
   googleEnabled = false,
   googleReturnTo,
+  selectedPlan,
 }: {
   title: string;
   nextPath: string;
@@ -29,6 +30,7 @@ export function StaffLogin({
   otherSpaces?: Array<{ label: string; href: string }>;
   googleEnabled?: boolean;
   googleReturnTo?: string;
+  selectedPlan?: { id: string; label: string } | null;
 }) {
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -74,6 +76,25 @@ export function StaffLogin({
             Accédez à votre espace de gestion.
           </p>
         </div>
+
+        {selectedPlan ? (
+          <div className="mb-5 rounded-2xl border border-[rgba(190,164,255,0.32)] bg-[rgba(147,95,243,0.1)] p-4 text-sm">
+            <p className="font-bold text-[var(--ink)]">Offre sélectionnée : {selectedPlan.label}</p>
+            <p className="mt-1 text-xs text-[var(--muted-strong)]">
+              Pas encore de compte commerçant ? Écrivez-nous pour démarrer avec cette offre.
+            </p>
+            <a
+              href={`mailto:support@fideto.fr?subject=${encodeURIComponent(
+                `Nouvelle inscription Fideto — offre ${selectedPlan.label}`,
+              )}&body=${encodeURIComponent(
+                `Bonjour,\n\nJe souhaite créer mon compte commerçant Fideto avec l'offre "${selectedPlan.label}" (identifiant : ${selectedPlan.id}).\n\nMerci de me recontacter pour finaliser mon inscription.`,
+              )}`}
+              className="mt-3 inline-flex text-xs font-bold text-[var(--violet-bright)] hover:underline"
+            >
+              Créer mon compte commerçant →
+            </a>
+          </div>
+        ) : null}
 
         <Card className="glass-panel border-0 p-6 shadow-none sm:p-10">
           {googleEnabled ? (

@@ -5,9 +5,14 @@ import { ThemeToggle } from "@/components/landing/theme-toggle";
 const NAV_LINKS = [
   { href: "#fonctionnement", label: "Comment ça marche" },
   { href: "#commercants", label: "Commerçants" },
+  { href: "/tarifs", label: "Tarifs" },
   { href: "#avantages", label: "Pourquoi Fideto" },
   { href: "#faq", label: "FAQ" },
 ] as const;
+
+function isInternalRoute(href: string) {
+  return href.startsWith("/");
+}
 
 export function LandingHeader({ clientHref, proHref }: { clientHref: string; proHref: string }) {
   return (
@@ -18,11 +23,17 @@ export function LandingHeader({ clientHref, proHref }: { clientHref: string; pro
         </Link>
 
         <nav aria-label="Navigation principale" className="hidden items-center gap-6 text-sm font-semibold text-[var(--fh-muted)] lg:flex">
-          {NAV_LINKS.map((link) => (
-            <a key={link.href} href={link.href} className="transition hover:text-[var(--fh-text)]">
-              {link.label}
-            </a>
-          ))}
+          {NAV_LINKS.map((link) =>
+            isInternalRoute(link.href) ? (
+              <Link key={link.href} href={link.href} className="transition hover:text-[var(--fh-text)]">
+                {link.label}
+              </Link>
+            ) : (
+              <a key={link.href} href={link.href} className="transition hover:text-[var(--fh-text)]">
+                {link.label}
+              </a>
+            ),
+          )}
         </nav>
 
         <div className="flex items-center gap-2.5">

@@ -6,6 +6,7 @@ const COLUMNS = [
     title: "Découvrir",
     links: [
       { label: "Comment ça marche", href: "#fonctionnement" },
+      { label: "Tarifs", href: "/tarifs" },
       { label: "Pourquoi Fideto", href: "#avantages" },
       { label: "FAQ", href: "#faq" },
     ],
@@ -23,7 +24,9 @@ const COLUMNS = [
     links: [
       { label: "Contact", href: "mailto:support@fideto.fr" },
       { label: "Confidentialité", href: "/confidentialite" },
-      { label: "Conditions", href: "/conditions" },
+      { label: "Conditions des offres", href: "/conditions" },
+      { label: "CGV", href: "/cgv" },
+      { label: "Mentions légales", href: "/mentions-legales" },
       { label: "Se connecter", href: "/connexion" },
     ],
   },
