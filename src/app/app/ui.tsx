@@ -184,9 +184,7 @@ export function MerchantHome({
         <header className="mq-page-head">
           <div>
             <div className="mq-eyebrow">{merchantName.toUpperCase()} · VOTRE ESPACE</div>
-            <h1 className="mq-h1">
-              Bonjour, {firstName} <span aria-hidden="true">✳</span>
-            </h1>
+            <h1 className="mq-h1">Bonjour, {firstName}</h1>
             <p className="mq-intro">Votre programme de fidélité, en un coup d&apos;œil.</p>
           </div>
           <div className="mq-head-side">
