@@ -66,7 +66,15 @@ function isActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-export function AppNav({ admin, canViewStatistics }: { admin: boolean; canViewStatistics?: boolean }) {
+export function AppNav({
+  admin,
+  canViewStatistics,
+  identity,
+}: {
+  admin: boolean;
+  canViewStatistics?: boolean;
+  identity?: { firstName: string; merchantName: string } | null;
+}) {
   const pathname = usePathname();
   if (pathname === "/app/connexion") return null;
 
@@ -75,7 +83,7 @@ export function AppNav({ admin, canViewStatistics }: { admin: boolean; canViewSt
         { href: "/app", label: "Accueil", icon: icons.home },
         { href: "/app/caisse", label: "Caisse", icon: icons.scan, emphasize: true },
         { href: "/app/clients", label: "Clients", icon: icons.clients },
-        { href: "/app/outils", label: "Outils", icon: icons.tools },
+        { href: "/app/outils", label: "Outils", icon: icons.tools, group: "GESTION" },
       ]
     : canViewStatistics
       ? [
@@ -87,31 +95,39 @@ export function AppNav({ admin, canViewStatistics }: { admin: boolean; canViewSt
   return (
     <>
       <aside className="merchant-sidebar hidden md:flex">
-        <div className="flex h-16 items-center border-b border-[light-dark(rgba(122,69,242,0.14),rgba(255,255,255,0.1))] px-6">
+        <div className="merchant-brand">
           <Link href={admin ? "/app" : "/app/caisse"} className="flex items-center gap-3 font-bold tracking-tighter text-[var(--ink)]">
             <span className="merchant-brand-mark">FL</span>
             <span className="text-lg">Fideto</span>
           </Link>
         </div>
-        <nav className="flex-1 space-y-1 px-3 py-4">
+        <nav className="merchant-sidebar-nav">
           {links.map((link) => {
             const active = isActive(pathname, link.href);
             return (
-              <Link
-                key={link.href}
-                href={link.href}
-                className={cn(
-                  "merchant-sidebar-link",
-                  link.emphasize && "merchant-sidebar-link-caisse",
-                  active && "merchant-sidebar-link-active",
-                )}
-              >
-                {link.icon}
-                {link.label}
-              </Link>
+              <div key={link.href}>
+                {"group" in link && link.group ? <p className="merchant-sidebar-group">{link.group}</p> : null}
+                <Link
+                  href={link.href}
+                  className={cn(
+                    "merchant-sidebar-link",
+                    link.emphasize && "merchant-sidebar-link-caisse",
+                    active && "merchant-sidebar-link-active",
+                  )}
+                >
+                  {link.icon}
+                  {link.label}
+                </Link>
+              </div>
             );
           })}
         </nav>
+        {identity ? (
+          <div className="merchant-sidebar-foot">
+            <span className="merchant-sidebar-avatar">{identity.firstName.slice(0, 1).toUpperCase()}</span>
+            {identity.firstName} · {identity.merchantName}
+          </div>
+        ) : null}
       </aside>
 
       <nav className="merchant-bottom-nav md:hidden" aria-label="Navigation commerçant">

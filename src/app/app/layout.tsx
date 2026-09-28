@@ -5,6 +5,7 @@ import {
   shouldRedirectAppToEmployeeSpace,
 } from "@/lib/merchant-app-access";
 import { canViewStatistics } from "@/lib/rbac";
+import { DEMO_MERCHANT } from "@/lib/demo-visual";
 import DashboardLayoutClient from "./layout-client";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -21,9 +22,15 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const statsAccess =
     access.access === "MERCHANT_DEMO" ||
     (access.access === "MERCHANT" && canViewStatistics(access.membership));
+  const identity =
+    access.access === "MERCHANT_DEMO"
+      ? { firstName: DEMO_MERCHANT.firstName, merchantName: DEMO_MERCHANT.merchantName }
+      : access.access === "MERCHANT"
+        ? { firstName: access.user.firstName, merchantName: access.membership.merchant.name }
+        : null;
 
   return (
-    <DashboardLayoutClient admin={admin} canViewStatistics={statsAccess}>
+    <DashboardLayoutClient admin={admin} canViewStatistics={statsAccess} identity={identity}>
       {children}
     </DashboardLayoutClient>
   );

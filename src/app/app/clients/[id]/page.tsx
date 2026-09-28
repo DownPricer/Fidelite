@@ -2,7 +2,6 @@ import { redirect } from "next/navigation";
 import { CustomerDetailPanel } from "../ui";
 import { resolveMerchantDemo } from "@/lib/merchant-demo-server";
 import { canViewAllCustomers, firstActiveStaffMembership } from "@/lib/rbac";
-import { MerchantPageHeader, MerchantPageShell } from "@/components/merchant/merchant-ui";
 
 export default async function CustomerDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -10,10 +9,11 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
 
   if (demo) {
     return (
-      <MerchantPageShell narrow>
-        <MerchantPageHeader backHref="/app/clients" eyebrow="Client" title="Fiche client" />
-        <CustomerDetailPanel id={id} demo />
-      </MerchantPageShell>
+      <main className="mq-main">
+        <div className="mq-frame">
+          <CustomerDetailPanel id={id} demo />
+        </div>
+      </main>
     );
   }
 
@@ -22,9 +22,10 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
   if (!membership || !canViewAllCustomers(membership)) redirect("/app");
 
   return (
-    <MerchantPageShell narrow>
-      <MerchantPageHeader backHref="/app/clients" eyebrow="Client" title="Fiche client" />
-      <CustomerDetailPanel id={id} />
-    </MerchantPageShell>
+    <main className="mq-main">
+      <div className="mq-frame">
+        <CustomerDetailPanel id={id} />
+      </div>
+    </main>
   );
 }

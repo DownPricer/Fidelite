@@ -2,19 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Button } from "@/components/ui";
-import {
-  CompactListHeader,
-  CompactListRow,
-  CompactListShell,
-  EmptyState,
-  FilterChip,
-  InitialsAvatar,
-  ListToolbar,
-  StatusBadge,
-  TxTypeLabel,
-} from "@/components/merchant/merchant-ui";
-import { InsightLineChart } from "@/components/merchant/insight-charts";
+import { EmptyState } from "@/components/merchant/merchant-ui";
 
 type Customer = {
   id: string;
@@ -33,12 +21,29 @@ const DEMO: Customer[] = [
   { id: "c4", firstName: "Thomas", lastName: "Bernard", email: "thomas@demo.local", points: 2, lastActivity: new Date(Date.now() - 259200000).toISOString() },
 ];
 
+function initials(name: string) {
+  return name
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((p) => p[0]?.toUpperCase() ?? "")
+    .join("");
+}
+
 function formatActivity(iso: string) {
   const d = new Date(iso);
   const diff = Date.now() - d.getTime();
   if (diff < 86400000) return "Aujourd'hui";
   if (diff < 172800000) return "Hier";
   return d.toLocaleDateString("fr-FR", { day: "numeric", month: "short" });
+}
+
+function SearchIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+      <circle cx="10" cy="10" r="6" />
+      <path d="m15 15 6 6" />
+    </svg>
+  );
 }
 
 export function CustomersPanel({ demo = false }: { demo?: boolean }) {
@@ -99,59 +104,72 @@ export function CustomersPanel({ demo = false }: { demo?: boolean }) {
 
   return (
     <div>
-      <ListToolbar
-        search={search}
-        onSearchChange={setSearch}
-        searchPlaceholder="Nom, e-mail ou téléphone"
-        sort={
-          <select
-            value={sort}
-            onChange={(e) => setSort(e.target.value)}
-            className="merchant-filter-chip bg-transparent"
-            aria-label="Tri"
-          >
-            <option value="recent">Plus récents</option>
-            <option value="active">Plus actifs</option>
-            <option value="points">Plus de points</option>
-            <option value="alpha">Alphabétique</option>
-          </select>
-        }
-      />
+      <div className="mq-tools">
+        <label className="mq-search">
+          <SearchIcon />
+          <input
+            type="search"
+            placeholder="Nom, e-mail ou téléphone"
+            aria-label="Rechercher un client"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </label>
+        <select value={sort} onChange={(e) => setSort(e.target.value)} className="mq-sort" aria-label="Trier les clients">
+          <option value="recent">Plus récents</option>
+          <option value="active">Plus actifs</option>
+          <option value="points">Plus de passages</option>
+          <option value="alpha">Nom A à Z</option>
+        </select>
+      </div>
 
-      {error ? <p className="mb-4 text-sm text-[var(--danger)]">{error}</p> : null}
+      {error ? (
+        <p className="mb-4 text-sm" style={{ color: "#f18ba0" }}>
+          {error}
+        </p>
+      ) : null}
 
-      {loading && list.length === 0 ? (
-        <CompactListShell>
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="compact-list-row animate-pulse">
-              <div className="h-10 w-10 rounded-full bg-white/10" />
-              <div className="h-4 flex-1 rounded bg-white/10" />
-            </div>
-          ))}
-        </CompactListShell>
-      ) : list.length === 0 ? (
-        <EmptyState title="Aucun client" hint="Les clients apparaîtront après leur premier scan." />
-      ) : (
-        <CompactListShell>
-          <CompactListHeader columns={["Client", "Fidélité", "Dernière activité"]} />
-          {list.map((c) => (
-            <CompactListRow
-              key={c.id}
-              href={`/app/clients/${c.id}`}
-              avatar={<InitialsAvatar name={`${c.firstName} ${c.lastName ?? ""}`} />}
-              title={`${c.firstName}${c.lastName ? ` ${c.lastName}` : ""}`}
-              subtitle={`${c.points} passages`}
-              meta={formatActivity(c.lastActivity)}
-            />
-          ))}
-        </CompactListShell>
-      )}
+      <div className="mq-card mq-list-card">
+        <div className="mq-list-head" aria-hidden="true">
+          <span>Client</span>
+          <span>Fidélité</span>
+          <span>Dernière activité</span>
+          <span />
+        </div>
+        <div>
+          {loading && list.length === 0 ? (
+            [1, 2, 3, 4].map((i) => <div key={i} className="mq-list-item animate-pulse" />)
+          ) : list.length === 0 ? (
+            <div className="mq-empty-list">Aucun client trouvé.</div>
+          ) : (
+            list.map((c) => (
+              <Link key={c.id} href={`/app/clients/${c.id}`} className="mq-list-item" style={{ display: "grid" }}>
+                <span className="mq-person">
+                  <span className="mq-avatar">{initials(`${c.firstName} ${c.lastName ?? ""}`)}</span>
+                  <span>
+                    <strong>
+                      {c.firstName}
+                      {c.lastName ? ` ${c.lastName}` : ""}
+                    </strong>
+                    <small>{c.email}</small>
+                  </span>
+                </span>
+                <span className="mq-list-muted">
+                  {c.points} {c.points === 1 ? "passage" : "passages"}
+                </span>
+                <span className="mq-list-muted">{formatActivity(c.lastActivity)}</span>
+                <span className="mq-chevron">›</span>
+              </Link>
+            ))
+          )}
+        </div>
+      </div>
 
       {!demo && hasMore ? (
         <div className="mt-4 text-center">
-          <Button variant="secondary" className="h-10 px-6 text-xs" onClick={() => setPage((p) => p + 1)}>
+          <button type="button" className="mq-btn" onClick={() => setPage((p) => p + 1)}>
             Charger plus
-          </Button>
+          </button>
         </div>
       ) : null}
     </div>
@@ -203,6 +221,31 @@ function formatMonthLabel(key: string) {
   return new Date(y, (m ?? 1) - 1, 1).toLocaleDateString("fr-FR", { month: "short" }).replace(".", "");
 }
 
+function InsightVisitsChart({ series }: { series: { date: string; value: number }[] }) {
+  const max = Math.max(1, ...series.map((p) => p.value));
+  const hasData = series.some((p) => p.value > 0);
+  if (!hasData) {
+    return <p className="mt-3 text-xs" style={{ color: "#c2afd2" }}>Aucun passage daté sur cette période.</p>;
+  }
+  return (
+    <>
+      <div className="mq-chart-plot" style={{ gridTemplateColumns: `repeat(${series.length}, 1fr)` }} role="img" aria-label="Évolution mensuelle des visites">
+        {series.map((point) => (
+          <div key={point.date} className="mq-bar-wrap">
+            <span className="mq-bar-number">{point.value}</span>
+            <div className="mq-bar" style={{ height: point.value ? `${(point.value / max) * 108 + 12}px` : "4px" }} />
+          </div>
+        ))}
+      </div>
+      <div className="mq-bar-axis" aria-hidden="true">
+        {series.map((point) => (
+          <span key={point.date}>{formatMonthLabel(point.date)}</span>
+        ))}
+      </div>
+    </>
+  );
+}
+
 export function CustomerDetailPanel({ id, demo = false }: { id: string; demo?: boolean }) {
   const demoCustomer = DEMO.find((c) => c.id === id);
   const [customer, setCustomer] = useState<CustomerDetail | null>(
@@ -248,11 +291,11 @@ export function CustomerDetailPanel({ id, demo = false }: { id: string; demo?: b
 
   if (!customer && loading) {
     return (
-      <div className="space-y-4">
-        <div className="glass-panel h-28 animate-pulse" />
-        <div className="grid grid-cols-3 gap-3">
+      <div>
+        <div className="mq-card mq-profile animate-pulse" />
+        <div className="mq-stats mt-4">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="metric-card h-24 animate-pulse" />
+            <div key={i} className="mq-card mq-stat animate-pulse" />
           ))}
         </div>
       </div>
@@ -274,176 +317,186 @@ export function CustomerDetailPanel({ id, demo = false }: { id: string; demo?: b
   });
 
   return (
-    <div className="space-y-4">
-      <section className="glass-panel flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between md:p-6" aria-label="Identité du client">
-        <div className="flex min-w-0 items-center gap-4">
-          <InitialsAvatar name={fullName} size="md" />
-          <div className="min-w-0">
-            <h2 className="truncate text-xl font-black text-[var(--ink)] md:text-2xl">{fullName}</h2>
-            <p className="truncate text-sm text-[var(--muted)]">{customer.email}</p>
-          </div>
+    <div>
+      <Link href="/app/clients" className="mq-back">
+        <span aria-hidden="true">‹</span> Retour aux clients
+      </Link>
+
+      <header className="mb-5">
+        <div className="mq-eyebrow">CLIENT · FICHE INDIVIDUELLE</div>
+        <h1 className="mq-h1">Fiche client</h1>
+        <p className="mq-intro">
+          Fidélité, visites et activité de {customer.firstName} dans votre commerce.
+        </p>
+      </header>
+
+      <section className="mq-card mq-profile" aria-label="Identité du client">
+        <div className="mq-avatar" aria-hidden="true">
+          {initials(fullName)}
         </div>
-        <div className="flex shrink-0 flex-col items-start gap-1.5 sm:items-end">
-          <StatusBadge tone="ok">Membre du programme</StatusBadge>
-          {customer.merchantName ? <p className="text-xs text-[var(--muted)]">{customer.merchantName}</p> : null}
+        <div className="mq-profile-main">
+          <h2>{fullName}</h2>
+          <div className="mq-profile-mail">{customer.email}</div>
+        </div>
+        <div className="mq-profile-side">
+          <span className="mq-status">Membre du programme</span>
+          {customer.merchantName ? <small>{customer.merchantName}</small> : null}
         </div>
       </section>
 
-      <section className="grid grid-cols-2 gap-3 md:grid-cols-3" aria-label="Résumé fidélité">
-        <div className="metric-card px-4 py-4">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted)]">Passages enregistrés</p>
-          <p className="mt-1 text-2xl font-black text-[var(--ink)] md:text-3xl">{stats?.visitsCount ?? customer.points}</p>
-          <p className="mt-1 text-xs text-[var(--muted)]">Dans ce commerce</p>
-        </div>
-        <div className="metric-card px-4 py-4">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted)]">Dernière activité</p>
-          <p className="mt-1 text-2xl font-black text-[var(--ink)] md:text-3xl">{lastActivityLabel}</p>
-          <p className="mt-1 text-xs text-[var(--muted)]">Selon l&apos;historique enregistré</p>
-        </div>
-        <div className="metric-card col-span-2 px-4 py-4 md:col-span-1">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted)]">Avantages utilisés</p>
-          <p className="mt-1 text-2xl font-black text-[var(--ink)] md:text-3xl">{stats?.rewardsUsedCount ?? "—"}</p>
-          <p className="mt-1 text-xs text-[var(--muted)]">Historique complet</p>
-        </div>
-      </section>
-
-      <div className="grid gap-4 lg:grid-cols-[1.3fr_0.7fr] lg:items-start">
-        <section className="glass-panel p-5 md:p-6">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--violet-bright)]">Fidélité</p>
-              <h3 className="mt-1 text-lg font-black text-[var(--ink)]">Historique des passages</h3>
-            </div>
-            <a href="#insight" className="text-xs font-bold text-[var(--violet-bright)] hover:text-[var(--ink)]">
-              Voir Insight →
-            </a>
-          </div>
-          {txs.length === 0 ? (
-            <p className="mt-4 text-sm text-[var(--muted)]">Aucun événement daté pour l&apos;instant.</p>
-          ) : (
-            <div className="mt-4 divide-y divide-[var(--stroke)]">
-              {txs.map((tx) => (
-                <div key={tx.id} className="flex items-center justify-between gap-3 py-3">
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-[var(--ink)]">
-                      {tx.rewardName ?? (tx.type === "REDEEM_REWARD" ? "Récompense" : "Passage")}
-                    </p>
-                    <p className="text-xs text-[var(--muted)]">{new Date(tx.createdAt).toLocaleString("fr-FR")}</p>
-                  </div>
-                  <TxTypeLabel type={tx.type} delta={tx.pointsDelta} />
-                </div>
-              ))}
-            </div>
-          )}
+      <div className="mq-stats" aria-label="Résumé fidélité">
+        <section className="mq-card mq-stat">
+          <div className="mq-stat-label">Passages enregistrés</div>
+          <div className="mq-stat-value">{stats?.visitsCount ?? customer.points}</div>
+          <div className="mq-stat-foot">Dans ce commerce</div>
         </section>
-
-        <section className="glass-panel p-5 md:p-6">
-          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--violet-bright)]">Vue d&apos;ensemble</p>
-          <h3 className="mt-1 text-lg font-black text-[var(--ink)]">Ce que vous savez déjà</h3>
-          <dl className="mt-3 divide-y divide-[var(--stroke)] text-sm">
-            <div className="flex items-center justify-between py-2.5">
-              <dt className="text-[var(--muted)]">Client depuis</dt>
-              <dd className="font-bold text-[var(--ink)]">{memberSinceLabel}</dd>
-            </div>
-            <div className="flex items-center justify-between py-2.5">
-              <dt className="text-[var(--muted)]">Passages enregistrés</dt>
-              <dd className="font-bold text-[var(--ink)]">{stats?.visitsCount ?? "—"}</dd>
-            </div>
-            <div className="flex items-center justify-between py-2.5">
-              <dt className="text-[var(--muted)]">Dernière activité</dt>
-              <dd className="font-bold text-[var(--ink)]">{lastActivityLabel}</dd>
-            </div>
-            <div className="flex items-center justify-between py-2.5">
-              <dt className="text-[var(--muted)]">Panier moyen</dt>
-              <dd className="font-bold text-[var(--ink)]">{insight?.avgBasketLabel ?? "Montants requis"}</dd>
-            </div>
-          </dl>
-          {!insight?.avgBasketLabel ? (
-            <p className="mt-2 text-xs text-[var(--muted)]">
-              Le panier moyen nécessite des achats dont le montant a été enregistré.
-            </p>
-          ) : null}
+        <section className="mq-card mq-stat">
+          <div className="mq-stat-label">Dernière activité</div>
+          <div className="mq-stat-value mq-stat-value-date">{lastActivityLabel}</div>
+          <div className="mq-stat-foot">Selon l&apos;historique enregistré</div>
+        </section>
+        <section className="mq-card mq-stat">
+          <div className="mq-stat-label">Avantages utilisés</div>
+          <div className="mq-stat-value">{stats?.rewardsUsedCount ?? "—"}</div>
+          <div className="mq-stat-foot">Historique complet</div>
         </section>
       </div>
 
-      <section id="insight" className="glass-panel p-5 md:p-6" aria-labelledby="insight-title">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--violet-bright)]">Fideto Insight</p>
-            <h3 id="insight-title" className="mt-1 text-lg font-black text-[var(--ink)] md:text-xl">
-              Comprendre la relation avec {customer.firstName}
-            </h3>
-            <p className="mt-1 text-sm text-[var(--muted)]">Fréquence des visites et dépenses suivies, quand les données existent.</p>
+      <div className="mq-two-col">
+        <section className="mq-card mq-panel">
+          <div className="mq-panel-top">
+            <div>
+              <div className="mq-eyebrow" style={{ color: "#aa94c0" }}>FIDÉLITÉ</div>
+              <h2>Historique des passages</h2>
+              <p className="mq-note">Les événements datés apparaissent ici lorsqu&apos;ils sont disponibles.</p>
+            </div>
+            <a href="#insight" className="mq-link">
+              Voir Insight →
+            </a>
           </div>
+          <div className="mq-timeline">
+            {txs.length === 0 ? (
+              <div className="mq-empty-state">Aucun événement daté pour l&apos;instant.</div>
+            ) : (
+              txs.map((tx) => (
+                <div key={tx.id} className="mq-event">
+                  <div className="mq-event-dot" aria-hidden="true">
+                    {tx.type === "REDEEM_REWARD" ? "★" : "✓"}
+                  </div>
+                  <div className="mq-event-body">
+                    <strong>{tx.rewardName ?? (tx.type === "REDEEM_REWARD" ? "Récompense utilisée" : "Passage")}</strong>
+                    <small>{new Date(tx.createdAt).toLocaleString("fr-FR")}</small>
+                  </div>
+                  <span className="mq-event-badge">
+                    {tx.pointsDelta > 0 ? "+" : ""}
+                    {tx.pointsDelta} {Math.abs(tx.pointsDelta) === 1 ? "passage" : "pts"}
+                  </span>
+                </div>
+              ))
+            )}
+          </div>
+        </section>
+
+        <section className="mq-card mq-panel">
+          <div className="mq-eyebrow" style={{ color: "#aa94c0" }}>VUE D&apos;ENSEMBLE</div>
+          <h2>Ce que vous savez déjà</h2>
+          <div className="mq-quick-fact">
+            <span>Client du programme</span>
+            <strong>{fullName}</strong>
+          </div>
+          <div className="mq-quick-fact">
+            <span>Passages enregistrés</span>
+            <strong>{stats?.visitsCount ?? "—"}</strong>
+          </div>
+          <div className="mq-quick-fact">
+            <span>Dernière activité</span>
+            <strong>{lastActivityLabel}</strong>
+          </div>
+          <div className="mq-quick-fact">
+            <span>Panier moyen</span>
+            <strong>{insight?.avgBasketLabel ?? "Montants requis"}</strong>
+          </div>
+          <p className="mq-foot-note">
+            Le panier moyen nécessite des achats dont le montant a été enregistré. Client depuis le {memberSinceLabel}.
+          </p>
+        </section>
+      </div>
+
+      <section id="insight" className="mq-card mq-insight" aria-labelledby="insight-title">
+        <div className="mq-insight-head">
+          <div>
+            <div className="mq-insight-mark">FIDETO INSIGHT</div>
+            <h2 id="insight-title">Comprendre la relation avec {customer.firstName}</h2>
+            <p>Fréquence des visites et dépenses suivies, quand les données existent.</p>
+          </div>
+          {!insight?.enabled ? <span className="mq-insight-call">ABONNEMENT REQUIS</span> : null}
         </div>
 
         {!insight?.enabled ? (
-          <div className="mt-4 rounded-xl border border-[var(--stroke)] bg-[var(--surface-raised)] p-4">
-            <p className="text-sm font-bold text-[var(--ink)]">Fideto Insight n&apos;est pas activé pour ce commerce.</p>
-            <p className="mt-1 text-xs text-[var(--muted)]">Activez l&apos;abonnement pour voir la fréquence des visites et le panier moyen réels de ce client.</p>
-            <Link href="/app/statistiques" className="glass-cta mt-3 inline-flex px-4 py-2 text-xs">
-              Découvrir Fideto Insight
+          <div className="mq-insight-actions">
+            <Link href="/app/statistiques" className="mq-btn mq-btn-primary">
+              Découvrir Fideto Insight →
             </Link>
+            <span className="mq-sub">L&apos;accès dépend de l&apos;abonnement du commerce.</span>
           </div>
         ) : (
           <>
-            <div className="mt-4">
-              <Button variant="primary" className="h-10 px-4 text-xs" onClick={() => setInsightOpen((v) => !v)} aria-expanded={insightOpen}>
+            <div className="mq-insight-actions">
+              <button
+                type="button"
+                className="mq-btn mq-btn-primary"
+                onClick={() => setInsightOpen((v) => !v)}
+                aria-expanded={insightOpen}
+                aria-controls="insight-preview"
+              >
                 {insightOpen ? "Masquer l'aperçu Insight" : "Voir l'aperçu Insight →"}
-              </Button>
+              </button>
             </div>
             {insightOpen ? (
-              <div className="mt-5 space-y-4 border-t border-[var(--stroke)] pt-5">
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                  <div className="metric-card px-4 py-4">
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted)]">Panier moyen</p>
-                    <p className="mt-1 text-xl font-black text-[var(--ink)]">{insight.avgBasketLabel ?? "—"}</p>
-                    <p className="mt-1 text-[11px] text-[var(--muted)]">Montants d&apos;achats enregistrés nécessaires.</p>
+              <div className="mq-preview" id="insight-preview">
+                <div className="mq-preview-label">Fréquence des visites et dépenses réelles de {customer.firstName}</div>
+                <div className="mq-preview-note">Ces valeurs sont calculées à partir des passages et achats réellement enregistrés.</div>
+
+                <div className="mq-premium-metrics">
+                  <div className="mq-premium-metric">
+                    <strong>Panier moyen</strong>
+                    <span>{insight.avgBasketLabel ?? "—"}</span>
+                    <small>Montants d&apos;achats enregistrés nécessaires.</small>
                   </div>
-                  <div className="metric-card px-4 py-4">
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted)]">Dépenses suivies</p>
-                    <p className="mt-1 text-xl font-black text-[var(--ink)]">{insight.trackedSpendLabel ?? "—"}</p>
-                    <p className="mt-1 text-[11px] text-[var(--muted)]">Total des achats renseignés.</p>
+                  <div className="mq-premium-metric">
+                    <strong>Dépenses suivies</strong>
+                    <span>{insight.trackedSpendLabel ?? "—"}</span>
+                    <small>Total des achats renseignés pour ce commerce.</small>
                   </div>
-                  <div className="metric-card px-4 py-4">
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted)]">Fréquence des visites</p>
-                    <p className="mt-1 text-xl font-black text-[var(--ink)]">
-                      {insight.avgVisitFrequencyDays !== null ? `${Math.round(insight.avgVisitFrequencyDays)} j` : "—"}
-                    </p>
-                    <p className="mt-1 text-[11px] text-[var(--muted)]">Jours moyens entre deux passages.</p>
+                  <div className="mq-premium-metric">
+                    <strong>Fréquence des visites</strong>
+                    <span>{insight.avgVisitFrequencyDays !== null ? `${Math.round(insight.avgVisitFrequencyDays)} j` : "—"}</span>
+                    <small>Jours moyens entre deux passages.</small>
                   </div>
                 </div>
 
-                <div className="rounded-xl border border-[var(--stroke)] bg-[var(--surface-raised)] p-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <h4 className="text-sm font-bold text-[var(--ink)]">Évolution des visites</h4>
+                <div className="mq-chart-card">
+                  <div className="mq-chart-head">
+                    <h3>Évolution des visites</h3>
                     <select
                       value={insightPeriod}
                       onChange={(e) => setInsightPeriod(e.target.value as "6" | "12")}
-                      className="merchant-filter-chip bg-transparent"
                       aria-label="Période du graphique"
                     >
                       <option value="6">6 derniers mois</option>
                       <option value="12">12 derniers mois</option>
                     </select>
                   </div>
-                  <div className="mt-3">
-                    <InsightLineChart
-                      data={insight.series.map((p) => ({ date: formatMonthLabel(p.date), value: p.value }))}
-                      height={160}
-                      emptyLabel="Aucun passage daté sur cette période."
-                    />
-                  </div>
+                  <InsightVisitsChart series={insight.series} />
+                  <p className="mq-chart-legend">
+                    <b>Données réelles.</b> Calculé à partir des passages datés de {customer.firstName} dans ce commerce.
+                  </p>
                 </div>
               </div>
             ) : null}
           </>
         )}
       </section>
-
-      <Link href="/app/clients" className="text-sm font-bold text-[var(--violet-bright)]">
-        ← Retour à la liste
-      </Link>
     </div>
   );
 }

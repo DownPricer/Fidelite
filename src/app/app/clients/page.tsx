@@ -1,19 +1,31 @@
 import { redirect } from "next/navigation";
-import { DEMO_MERCHANT } from "@/lib/demo-visual";
 import { resolveMerchantDemo } from "@/lib/merchant-demo-server";
 import { canViewAllCustomers, firstActiveStaffMembership } from "@/lib/rbac";
 import { CustomersPanel } from "./ui";
-import { MerchantPageHeader, MerchantPageShell } from "@/components/merchant/merchant-ui";
+
+function ClientsHeader() {
+  return (
+    <header className="mq-page-head">
+      <div>
+        <div className="mq-eyebrow">GESTION · RELATION CLIENT</div>
+        <h1 className="mq-h1">Clients</h1>
+        <p className="mq-intro">Retrouvez les membres de votre programme et leur activité.</p>
+      </div>
+    </header>
+  );
+}
 
 export default async function ClientsPage() {
   const { user, demo } = await resolveMerchantDemo();
 
   if (demo) {
     return (
-      <MerchantPageShell>
-        <MerchantPageHeader eyebrow="Gestion" title="Clients" subtitle={DEMO_MERCHANT.merchantName} />
-        <CustomersPanel demo />
-      </MerchantPageShell>
+      <main className="mq-main">
+        <div className="mq-frame">
+          <ClientsHeader />
+          <CustomersPanel demo />
+        </div>
+      </main>
     );
   }
 
@@ -22,9 +34,11 @@ export default async function ClientsPage() {
   if (!membership || !canViewAllCustomers(membership)) redirect("/app");
 
   return (
-    <MerchantPageShell>
-      <MerchantPageHeader eyebrow="Gestion" title="Clients" />
-      <CustomersPanel />
-    </MerchantPageShell>
+    <main className="mq-main">
+      <div className="mq-frame">
+        <ClientsHeader />
+        <CustomersPanel />
+      </div>
+    </main>
   );
 }
