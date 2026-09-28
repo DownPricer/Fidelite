@@ -7102,7 +7102,7 @@ body:has(.wallet-shell) {
   display: grid;
   grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
   gap: 19px;
-  align-items: stretch;
+  align-items: start;
   margin-bottom: 29px;
 }
 
