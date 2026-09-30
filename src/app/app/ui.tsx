@@ -251,7 +251,7 @@ export function MerchantHome({
                 Aucune activité récente.
               </p>
             ) : (
-              recent.map((item) => (
+              recent.slice(0, 4).map((item) => (
                 <div key={item.id} className="mq-activity-item">
                   <div className="mq-initial" aria-hidden="true">
                     {item.firstName.slice(0, 1)}
@@ -264,7 +264,9 @@ export function MerchantHome({
                 </div>
               ))
             )}
-            <div className="mq-activity-foot">Les prochaines activités apparaîtront ici.</div>
+            {recent.length === 0 ? (
+              <div className="mq-activity-foot">Les prochaines activités apparaîtront ici.</div>
+            ) : null}
           </section>
         </div>
 
