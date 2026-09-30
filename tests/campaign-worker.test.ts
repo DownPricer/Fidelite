@@ -79,6 +79,13 @@ describe("claimNextScheduledCampaign", () => {
     queryRaw.mockResolvedValueOnce([]);
     expect(await claimNextScheduledCampaign()).toBeNull();
   });
+
+  it("exclut explicitement channel = SPONSORED_AD (pas de push/e-mail pour une mise en avant)", async () => {
+    queryRaw.mockResolvedValueOnce([]);
+    await claimNextScheduledCampaign();
+    const [strings] = queryRaw.mock.calls[0] as [TemplateStringsArray];
+    expect(strings.join("")).toContain("channel != 'SPONSORED_AD'");
+  });
 });
 
 describe("materializeDeliveries — isolation et consentement", () => {

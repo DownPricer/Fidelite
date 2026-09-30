@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { SuperAdminShell } from "@/components/super-admin/layout-shell";
 import { Button, Card } from "@/components/ui";
@@ -18,8 +19,22 @@ type NetworkCampaign = {
   createdAt: string;
 };
 
+type AdStatus =
+  | "DRAFT"
+  | "PENDING_REVIEW"
+  | "NEEDS_CHANGES"
+  | "APPROVED"
+  | "REJECTED"
+  | "SCHEDULED"
+  | "LIVE"
+  | "SUSPENDED"
+  | "ENDED"
+  | "STOPPED"
+  | "CANCELLED";
+
 type AdRequest = {
   id: string;
+  status: AdStatus;
   requestedText: string;
   visualMode: "SELF" | "FIDETO" | null;
   requestedImageUrl: string | null;
@@ -33,6 +48,34 @@ type AdRequest = {
   campaign: { id: string; priceCents: number | null } | null;
   images: { id: string; url: string }[];
 };
+
+const AD_STATUS_LABELS: Record<AdStatus, string> = {
+  DRAFT: "Brouillon",
+  PENDING_REVIEW: "En attente de validation",
+  NEEDS_CHANGES: "Correction demandée",
+  APPROVED: "Approuvée — en attente de paiement",
+  REJECTED: "Refusée",
+  SCHEDULED: "Programmée",
+  LIVE: "En cours de diffusion",
+  SUSPENDED: "Suspendue",
+  ENDED: "Terminée",
+  STOPPED: "Arrêtée",
+  CANCELLED: "Annulée",
+};
+
+const AD_STATUS_FILTER_OPTIONS: { value: string; label: string }[] = [
+  { value: "PENDING_REVIEW", label: "En attente de validation" },
+  { value: "NEEDS_CHANGES", label: "Correction demandée" },
+  { value: "APPROVED", label: "Approuvées — en attente de paiement" },
+  { value: "SCHEDULED", label: "Programmées" },
+  { value: "LIVE", label: "En cours de diffusion" },
+  { value: "SUSPENDED", label: "Suspendues" },
+  { value: "ENDED", label: "Terminées" },
+  { value: "STOPPED", label: "Arrêtées" },
+  { value: "REJECTED", label: "Refusées" },
+  { value: "DRAFT", label: "Brouillons" },
+  { value: "ALL", label: "Toutes" },
+];
 
 function formatCents(cents: number | null) {
   if (cents === null) return "—";
@@ -48,15 +91,14 @@ export function CampaignModerationHome({ firstName }: { firstName: string }) {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [rejectTarget, setRejectTarget] = useState<RejectTarget | null>(null);
   const [rejectReason, setRejectReason] = useState("");
-  const [approveAdId, setApproveAdId] = useState<string | null>(null);
-  const [finalImageUrl, setFinalImageUrl] = useState("");
+  const [adStatusFilter, setAdStatusFilter] = useState("PENDING_REVIEW");
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const [campaignsRes, adsRes] = await Promise.all([
         fetch("/api/super-admin/campaigns?status=PENDING_REVIEW"),
-        fetch("/api/super-admin/ads?status=PENDING_REVIEW"),
+        fetch(`/api/super-admin/ads?status=${adStatusFilter}`),
       ]);
       const campaignsData = campaignsRes.ok ? await campaignsRes.json() : { campaigns: [] };
       const adsData = adsRes.ok ? await adsRes.json() : { ads: [] };
@@ -65,7 +107,7 @@ export function CampaignModerationHome({ firstName }: { firstName: string }) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [adStatusFilter]);
 
   useEffect(() => {
     void load();
@@ -98,20 +140,6 @@ export function CampaignModerationHome({ firstName }: { firstName: string }) {
     setBusyId(null);
     setRejectTarget(null);
     setRejectReason("");
-    void load();
-  }
-
-  async function submitApproveAd() {
-    if (!approveAdId || !finalImageUrl.trim()) return;
-    setBusyId(approveAdId);
-    await fetch(`/api/super-admin/ads/${approveAdId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "approve", finalImageUrl: finalImageUrl.trim() }),
-    }).catch(() => {});
-    setBusyId(null);
-    setApproveAdId(null);
-    setFinalImageUrl("");
     void load();
   }
 
@@ -197,109 +225,66 @@ export function CampaignModerationHome({ firstName }: { firstName: string }) {
               ))}
             </div>
           )
-        ) : ads.length === 0 ? (
-          <Card className="p-6 text-center text-sm text-[var(--muted-text)]">Aucune demande de bandeau en attente.</Card>
         ) : (
-          <div className="space-y-3">
-            {ads.map((ad) => (
-              <Card key={ad.id} className="p-4">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="min-w-0">
-                    <p className="text-xs font-bold uppercase tracking-wide text-[var(--muted-text)]">
-                      {ad.merchant.name} · {new Date(ad.startDate).toLocaleDateString("fr-FR")} →{" "}
-                      {new Date(ad.endDate).toLocaleDateString("fr-FR")}
-                    </p>
-                    <p className="mt-1 text-sm font-bold text-[var(--ink)]">{ad.requestedText}</p>
-                    {ad.objective ? <p className="mt-1 text-xs text-[var(--muted-text)]">Objectif : {ad.objective}</p> : null}
-                    {ad.ctaLabel ? (
-                      <p className="mt-1 text-xs text-[var(--muted-text)]">
-                        Bouton : {ad.ctaLabel} → {ad.ctaUrl}
-                      </p>
-                    ) : null}
-                    <p className="mt-1 text-xs font-bold text-[var(--muted-text)]">
-                      {ad.visualMode === "SELF"
-                        ? "Visuel prêt à diffuser (déjà recadré par le commerçant)"
-                        : "Fideto doit préparer le visuel à partir des images envoyées"}
-                    </p>
-                    {ad.visualMode === "SELF" && ad.requestedImageUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={ad.requestedImageUrl} alt="" className="mt-2 h-20 w-auto rounded-lg object-cover" />
-                    ) : ad.images.length > 0 ? (
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        {ad.images.map((img) => (
+          <>
+            <div className="flex items-center gap-2">
+              <label className="text-xs font-bold text-[var(--muted-text)]">
+                Statut
+                <select
+                  className="profile-select ml-2"
+                  value={adStatusFilter}
+                  onChange={(e) => setAdStatusFilter(e.target.value)}
+                >
+                  {AD_STATUS_FILTER_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            {ads.length === 0 ? (
+              <Card className="p-6 text-center text-sm text-[var(--muted-text)]">Aucune demande dans ce statut.</Card>
+            ) : (
+              <div className="space-y-3">
+                {ads.map((ad) => (
+                  <Card key={ad.id} className="p-4">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold uppercase tracking-wide text-[var(--muted-text)]">
+                          {ad.merchant.name} · {new Date(ad.startDate).toLocaleDateString("fr-FR")} →{" "}
+                          {new Date(ad.endDate).toLocaleDateString("fr-FR")} · {AD_STATUS_LABELS[ad.status] ?? ad.status}
+                        </p>
+                        <p className="mt-1 text-sm font-bold text-[var(--ink)]">{ad.requestedText}</p>
+                        {ad.objective ? <p className="mt-1 text-xs text-[var(--muted-text)]">Objectif : {ad.objective}</p> : null}
+                        <p className="mt-1 text-xs font-bold text-[var(--muted-text)]">
+                          {ad.visualMode === "SELF"
+                            ? "Visuel prêt à diffuser (déjà recadré par le commerçant)"
+                            : "Fideto doit préparer le visuel à partir des images envoyées"}
+                        </p>
+                        {ad.visualMode === "SELF" && ad.requestedImageUrl ? (
                           // eslint-disable-next-line @next/next/no-img-element
-                          <img key={img.id} src={img.url} alt="" className="h-20 w-20 rounded-lg object-cover" />
-                        ))}
+                          <img src={ad.requestedImageUrl} alt="" className="mt-2 h-20 w-auto rounded-lg object-cover" />
+                        ) : ad.images.length > 0 ? (
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            {ad.images.map((img) => (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img key={img.id} src={img.url} alt="" className="h-20 w-20 rounded-lg object-cover" />
+                            ))}
+                          </div>
+                        ) : null}
                       </div>
-                    ) : null}
-                  </div>
-                  <div className="flex shrink-0 flex-col gap-2">
-                    <Button
-                      disabled={busyId === ad.id}
-                      onClick={() => {
-                        setApproveAdId(ad.id);
-                        setFinalImageUrl(ad.finalImageUrl ?? (ad.visualMode === "SELF" ? ad.requestedImageUrl ?? "" : ""));
-                      }}
-                    >
-                      {ad.visualMode === "SELF" ? "Approuver" : "Ajouter le visuel et approuver"}
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      disabled={busyId === ad.id}
-                      onClick={() => {
-                        setRejectTarget({ id: ad.id, kind: "ad" });
-                        setRejectReason("");
-                      }}
-                    >
-                      Refuser
-                    </Button>
-                  </div>
-                </div>
-                {approveAdId === ad.id ? (
-                  <div className="mt-3 space-y-2 border-t border-[var(--border)] pt-3">
-                    <label className="block text-xs text-[var(--muted-text)]">
-                      URL du visuel final (hébergé par Fideto)
-                      <input
-                        className="profile-select mt-1 w-full"
-                        value={finalImageUrl}
-                        onChange={(e) => setFinalImageUrl(e.target.value)}
-                        placeholder="https://…"
-                      />
-                    </label>
-                    <div className="flex gap-2">
-                      <Button disabled={busyId === ad.id || !finalImageUrl.trim()} onClick={() => void submitApproveAd()}>
-                        Confirmer l&apos;approbation
-                      </Button>
-                      <Button variant="secondary" onClick={() => setApproveAdId(null)}>
-                        Annuler
-                      </Button>
+                      <div className="flex shrink-0 flex-col gap-2">
+                        <Link href={`/super-admin/campagnes/ads/${ad.id}`}>
+                          <Button>Ouvrir la fiche</Button>
+                        </Link>
+                      </div>
                     </div>
-                  </div>
-                ) : null}
-                {rejectTarget?.id === ad.id ? (
-                  <div className="mt-3 space-y-2 border-t border-[var(--border)] pt-3">
-                    <label className="block text-xs text-[var(--muted-text)]">
-                      Motif du refus
-                      <textarea
-                        className="profile-select mt-1 w-full"
-                        rows={2}
-                        value={rejectReason}
-                        onChange={(e) => setRejectReason(e.target.value)}
-                      />
-                    </label>
-                    <div className="flex gap-2">
-                      <Button disabled={busyId === ad.id} onClick={() => void submitReject()}>
-                        Confirmer le refus
-                      </Button>
-                      <Button variant="secondary" onClick={() => setRejectTarget(null)}>
-                        Annuler
-                      </Button>
-                    </div>
-                  </div>
-                ) : null}
-              </Card>
-            ))}
-          </div>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </>
         )}
       </div>
     </SuperAdminShell>

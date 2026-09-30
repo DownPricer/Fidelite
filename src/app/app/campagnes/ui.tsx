@@ -22,7 +22,18 @@ import {
 
 type Channel = "IN_APP_PUSH" | "EMAIL";
 type Audience = "MERCHANT_MEMBERS" | "NETWORK_LOCAL";
-type AdStatus = "DRAFT" | "PENDING_REVIEW" | "APPROVED" | "REJECTED" | "SCHEDULED" | "LIVE" | "ENDED" | "CANCELLED";
+type AdStatus =
+  | "DRAFT"
+  | "PENDING_REVIEW"
+  | "NEEDS_CHANGES"
+  | "APPROVED"
+  | "REJECTED"
+  | "SCHEDULED"
+  | "LIVE"
+  | "SUSPENDED"
+  | "ENDED"
+  | "STOPPED"
+  | "CANCELLED";
 
 type Quota = { kind: string; limit: number; used: number; remaining: number };
 
@@ -88,11 +99,14 @@ const QUOTA_LABELS: Record<string, string> = {
 const AD_STATUS_LABELS: Record<AdStatus, string> = {
   DRAFT: "Brouillon",
   PENDING_REVIEW: "En préparation par Fideto",
+  NEEDS_CHANGES: "Correction demandée",
   APPROVED: "Visuel prêt — à valider",
   REJECTED: "Refusée",
   SCHEDULED: "Programmée",
   LIVE: "En cours de diffusion",
+  SUSPENDED: "Suspendue par Fideto",
   ENDED: "Terminée",
+  STOPPED: "Arrêtée par Fideto",
   CANCELLED: "Annulée",
 };
 

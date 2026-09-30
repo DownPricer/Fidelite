@@ -65,7 +65,9 @@ export async function GET(req: Request) {
     ? []
     : await prisma.adRequest.findMany({
         where: {
-          status: "SCHEDULED",
+          // Le worker peut avoir déjà basculé le statut affiché en LIVE (Partie 15bis) ; dans les
+          // deux cas, la diffusion réelle reste décidée uniquement par hourlyIntervals ci-dessous.
+          status: { in: ["SCHEDULED", "LIVE"] },
           startDate: { lte: now },
           endDate: { gte: now },
           // Une mise en avant payée en mode test n'est jamais publiée.

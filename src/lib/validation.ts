@@ -195,12 +195,45 @@ export const adRequestCreateSchema = z
     { message: "Envoyez entre 1 et 5 images pour que Fideto prépare votre visuel.", path: ["requestedImageUrls"] },
   );
 
+/**
+ * Modification d'une demande de bandeau par le commerçant (PATCH /api/merchant/ads/[id]) —
+ * tous les champs modifiables de adRequestCreateSchema, en partiel : seuls les champs fournis
+ * sont mis à jour. hourlySchedule, s'il est fourni, est revalidé et re-tarifé côté serveur
+ * exactement comme à la création (jamais de recalcul côté client).
+ */
+export const adRequestUpdateSchema = z
+  .object({
+    requestedText: z.string().trim().min(3).max(1000).optional(),
+    requestedImageUrl: mediaPathOrUrlSchema.nullable().optional(),
+    requestedImageUrls: z.array(mediaPathOrUrlSchema).max(5).optional(),
+    objective: z.string().trim().max(200).nullable().optional(),
+    ctaLabel: z.string().trim().max(40).nullable().optional(),
+    ctaUrl: z.string().url().max(500).nullable().optional(),
+    hourlySchedule: z.array(sponsoredDaySelectionSchema).min(1).max(60).optional(),
+  })
+  .refine((data) => Object.keys(data).length > 0, { message: "Aucune modification fournie." });
+
+/**
+ * Modération super-admin (Partie 12 étapes 3-5, étendue) :
+ *  - approve   : fournit finalImageUrl (+ dates optionnelles) → AdRequest.status = APPROVED.
+ *  - reject    : refus définitif, motif obligatoire recommandé → REJECTED.
+ *  - request_changes : correction demandée, motif obligatoire → NEEDS_CHANGES (le commerçant
+ *    peut alors modifier sa demande via PATCH /api/merchant/ads/[id]).
+ *  - suspend   : suspend une mise en avant SCHEDULED/LIVE → SUSPENDED (ne diffuse plus).
+ *  - resume    : relance une mise en avant SUSPENDED → SCHEDULED.
+ *  - stop      : arrêt définitif avant la fin naturelle des créneaux → STOPPED.
+ */
 export const adModerationSchema = z.object({
-  action: z.enum(["approve", "reject"]),
+  action: z.enum(["approve", "reject", "request_changes", "suspend", "resume", "stop"]),
   rejectionReason: z.string().trim().max(500).nullable().optional(),
   finalImageUrl: mediaPathOrUrlSchema.nullable().optional(),
   startDate: z.string().datetime().nullable().optional(),
   endDate: z.string().datetime().nullable().optional(),
+  // Correction facultative du texte/lien par Fideto au moment de l'approbation (l'éditeur de
+  // bandeau du super-admin peut ajuster une coquille sans renvoyer au commerçant).
+  requestedText: z.string().trim().min(3).max(1000).optional(),
+  ctaLabel: z.string().trim().max(40).nullable().optional(),
+  ctaUrl: z.string().url().max(500).nullable().optional(),
 });
 
 export const scanSchema = z.discriminatedUnion("inputType", [

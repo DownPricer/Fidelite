@@ -16,14 +16,21 @@ const STALE_SENDING_MINUTES = 15;
  * (Partie 15 : verrouillage atomique, aucune double livraison). Une campagne bloquée en
  * SENDING depuis un crash worker redevient réclamable après STALE_SENDING_MINUTES (reprise
  * après redémarrage).
+ *
+ * Exclut explicitement channel = 'SPONSORED_AD' : une mise en avant (bandeau) n'a pas de
+ * "livraison" push/e-mail — sa diffusion est le bandeau lui-même, décidée en temps réel par
+ * hourlyIntervals (voir /api/public/merchants et ad-lifecycle-worker.ts). Sans cette exclusion,
+ * ce worker matérialiserait par erreur des CampaignDelivery réseau (push/e-mail à tous les
+ * clients du secteur) pour chaque mise en avant programmée.
  */
 export async function claimNextScheduledCampaign(): Promise<Campaign | null> {
   const rows = await prisma.$queryRaw<Campaign[]>`
     UPDATE "Campaign" SET status = 'SENDING', "updatedAt" = now()
     WHERE id = (
       SELECT id FROM "Campaign"
-      WHERE (status = 'SCHEDULED' AND ("scheduledAt" IS NULL OR "scheduledAt" <= now()))
-         OR (status = 'SENDING' AND "updatedAt" < now() - interval '${STALE_SENDING_MINUTES} minutes')
+      WHERE channel != 'SPONSORED_AD'
+        AND ((status = 'SCHEDULED' AND ("scheduledAt" IS NULL OR "scheduledAt" <= now()))
+         OR (status = 'SENDING' AND "updatedAt" < now() - interval '${STALE_SENDING_MINUTES} minutes'))
       ORDER BY "createdAt" ASC
       FOR UPDATE SKIP LOCKED
       LIMIT 1

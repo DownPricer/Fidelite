@@ -888,11 +888,20 @@ enum InAppNotificationKind {
 enum AdRequestStatus {
   DRAFT
   PENDING_REVIEW
+  /// Le super-admin a demandé une correction (motif dans rejectionReason) : le commerçant peut
+  /// modifier sa demande (PATCH /api/merchant/ads/[id]), ce qui la repasse en PENDING_REVIEW.
+  NEEDS_CHANGES
   APPROVED
   REJECTED
   SCHEDULED
   LIVE
+  /// Suspendue par le super-admin (depuis SCHEDULED ou LIVE) : ne diffuse plus tant qu'elle
+  /// n'est pas relancée (retour à SCHEDULED) ou arrêtée définitivement (STOPPED).
+  SUSPENDED
   ENDED
+  /// Arrêtée définitivement par le super-admin avant la fin naturelle des créneaux achetés
+  /// (distinct de ENDED = tous les créneaux achetés sont passés normalement).
+  STOPPED
   CANCELLED
 }
 

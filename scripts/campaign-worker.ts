@@ -7,6 +7,7 @@
  */
 import { env } from "../src/lib/env";
 import { runWorkerTick } from "../src/lib/campaign-worker";
+import { runAdLifecycleTick } from "../src/lib/ad-lifecycle-worker";
 
 let shuttingDown = false;
 
@@ -27,6 +28,16 @@ async function loop() {
           processed: result.processed,
           finalStatus: result.finalStatus,
         });
+      }
+
+      // Statuts SCHEDULED/LIVE/ENDED des mises en avant (cosmétique — la diffusion réelle ne
+      // dépend jamais de ce tick, voir ad-lifecycle-worker.ts). Peu coûteux, exécuté à chaque tour.
+      const adResult = await runAdLifecycleTick();
+      if (adResult.toLive || adResult.toScheduled || adResult.toEnded) {
+        log("mises en avant synchronisées", adResult);
+      }
+
+      if (result.claimed) {
         // Une campagne vient d'être traitée : on enchaîne immédiatement au cas où
         // d'autres campagnes/lots restent en attente, sans attendre l'intervalle.
         continue;

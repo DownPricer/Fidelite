@@ -11,8 +11,8 @@ export async function GET(req: Request) {
   const status = url.searchParams.get("status") ?? "PENDING_REVIEW";
 
   const ads = await prisma.adRequest.findMany({
-    where: { status: status as never },
-    orderBy: { createdAt: "asc" },
+    where: status === "ALL" ? {} : { status: status as never },
+    orderBy: { createdAt: "desc" },
     include: {
       merchant: { select: { id: true, name: true, slug: true } },
       campaign: { include: { payment: true } },
