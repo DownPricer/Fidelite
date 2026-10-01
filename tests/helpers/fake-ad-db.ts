@@ -71,6 +71,9 @@ export function createFakeAdDb() {
     adCustomerView: [],
     user: [],
     customerPreferences: [],
+    marketingBalance: [],
+    marketingLedgerEntry: [],
+    campaignQuotaUsage: [],
   };
 
   function hydrate(table: string, row: Row | undefined, include?: Record<string, unknown>) {
@@ -80,7 +83,13 @@ export function createFakeAdDb() {
     if (table === "adRequest") {
       if (include.campaign) {
         const campaign = tables.campaign.find((c) => c.id === row.campaignId);
-        out.campaign = campaign ? { ...campaign, payment: tables.campaignPayment.find((p) => p.campaignId === campaign.id) ?? null } : null;
+        out.campaign = campaign
+          ? {
+              ...campaign,
+              payment: tables.campaignPayment.find((p) => p.campaignId === campaign.id) ?? null,
+              ledgerEntry: tables.marketingLedgerEntry.find((e) => e.campaignId === campaign.id) ?? null,
+            }
+          : null;
       }
       if (include.images) out.images = sortRows(tables.adRequestImage.filter((i) => i.adRequestId === row.id), { position: "asc" });
       if (include.versions) out.versions = sortRows(tables.adVisualVersion.filter((v) => v.adRequestId === row.id), { number: "desc" });
@@ -94,6 +103,9 @@ export function createFakeAdDb() {
     return {
       create: async ({ data }: { data: Record<string, unknown> }) => {
         // Contrainte unique (userId, adRequestId) de AdCustomerView : la seconde création concurrente échoue.
+        if (table === "marketingLedgerEntry" && data.campaignId && tables[table].some((r) => r.campaignId === data.campaignId)) {
+          throw Object.assign(new Error("Unique constraint failed"), { code: "P2002" });
+        }
         if (table === "adCustomerView" && tables[table].some((r) => r.userId === data.userId && r.adRequestId === data.adRequestId)) {
           throw new Error("Unique constraint failed");
         }
@@ -136,10 +148,10 @@ export function createFakeAdDb() {
       upsert: async ({ where, create, update }: { where: Record<string, unknown>; create: Record<string, unknown>; update: Record<string, unknown> }) => {
         const row = tables[table].find((r) => match(r, where));
         if (row) {
-          Object.assign(row, update);
+          Object.assign(row, update, { updatedAt: new Date() });
           return { ...row };
         }
-        const created = { id: nextId(prefix), ...create } as Row;
+        const created = { id: nextId(prefix), createdAt: new Date(), updatedAt: new Date(), ...create } as Row;
         tables[table].push(created);
         return { ...created };
       },
@@ -161,10 +173,40 @@ export function createFakeAdDb() {
     adEvent: model("adEvent", "ev"),
     adCustomerView: model("adCustomerView", "view"),
     user: model("user", "user"),
-    customerPreferences: model("customerPreferences", "pref"),
-    merchant: { findMany: async () => [] as unknown[] },
-    $transaction: async (callback: (client: unknown) => Promise<unknown>) => callback(prisma),
-    $executeRaw: async () => 1,
+    customerPreferences: {
+      ...model("customerPreferences", "pref"),
+      // count du diagnostic : consentement + zone (ville/code postal) du commerce simulé.
+      count: async () =>
+        tables.customerPreferences.filter(
+          (r) => r.notifyFifeLifeNews === true && (r.marketingZonePostalCode === merchantInfo.postalCode || String(r.marketingZoneCity ?? "").toLowerCase() === merchantInfo.city.toLowerCase()),
+        ).length,
+    },
+    marketingBalance: model("marketingBalance", "bal"),
+    campaignQuotaUsage: model("campaignQuotaUsage", "quota"),
+    marketingLedgerEntry: model("marketingLedgerEntry", "led"),
+    merchant: {
+      findMany: async () => [] as unknown[],
+      findUnique: async () => ({ id: "m1", city: merchantInfo.city, postalCode: merchantInfo.postalCode }),
+    },
+    $transaction: async (callback: (client: unknown) => Promise<unknown>) => {
+      // Transaction avec annulation : si le callback échoue, les tables reviennent à leur état d'avant.
+      const snapshot = Object.fromEntries(Object.entries(tables).map(([k, rows]) => [k, rows.map((r) => ({ ...r }))]));
+      try {
+        return await callback(prisma);
+      } catch (error) {
+        for (const [k, rows] of Object.entries(snapshot)) tables[k] = rows;
+        throw error;
+      }
+    },
+    // Seul le débit atomique du solde marketing est simulé (UPDATE conditionnel solde >= montant).
+    $executeRaw: async (strings: TemplateStringsArray, ...values: unknown[]) => {
+      if (!strings.join("").includes('UPDATE "MarketingBalance"')) return 1;
+      const [amount, merchantId, mode] = values as [number, string, string];
+      const row = tables.marketingBalance.find((r) => r.merchantId === merchantId && r.mode === mode);
+      if (!row || (row.balanceCents as number) < amount) return 0;
+      row.balanceCents = (row.balanceCents as number) - amount;
+      return 1;
+    },
   };
 
   return { prisma, tables };

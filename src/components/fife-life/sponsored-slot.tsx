@@ -13,6 +13,44 @@ const VARIANT_BY_PLACEMENT: Record<SponsoredPlacement, SponsoredVariant> = {
 
 /** Délai de visibilité continue avant de compter une impression (évite les passages éclairs). */
 const VISIBLE_MS = 1000;
+/**
+ * Publicités fermées avec la croix pendant cette utilisation de l'application : masquées partout
+ * (accueil, recherche, notifications) jusqu'à la fin de la session (sessionStorage = jusqu'à la
+ * fermeture de l'application/de l'onglet). Aucune trace serveur : à la prochaine ouverture, si le
+ * créneau est toujours actif et si la règle de fréquence le permet, la publicité peut réapparaître.
+ */
+const DISMISS_KEY = "fideto-sponsored-dismissed";
+let dismissedThisSession: Set<string> | null = null;
+
+export function getDismissedAds(): Set<string> {
+  if (!dismissedThisSession) {
+    dismissedThisSession = new Set();
+    try {
+      const raw = sessionStorage.getItem(DISMISS_KEY);
+      if (raw) for (const id of JSON.parse(raw) as string[]) dismissedThisSession.add(id);
+    } catch {
+      // stockage indisponible (navigation privée…) : la mémoire du module suffit pour cette session
+    }
+  }
+  return dismissedThisSession;
+}
+
+function rememberDismissed(id: string) {
+  const set = getDismissedAds();
+  set.add(id);
+  try {
+    sessionStorage.setItem(DISMISS_KEY, JSON.stringify([...set]));
+  } catch {
+    // ignore
+  }
+}
+
+/** Réinitialise l'état de session (tests uniquement). */
+export function resetSponsoredSessionState() {
+  dismissedThisSession = null;
+  reportedThisSession.clear();
+}
+
 /** Garde de session : un même bandeau n'est annoncé qu'une fois par chargement de l'application, quels que soient les rendus. */
 const reportedThisSession = new Set<string>();
 
@@ -29,9 +67,15 @@ export function SponsoredSlot({ placement, className }: { placement: SponsoredPl
 
   useEffect(() => {
     const controller = new AbortController();
-    fetch(`/api/customer/sponsored?placement=${placement}`, { signal: controller.signal, cache: "no-store" })
+    const exclude = [...getDismissedAds()].join(",");
+    fetch(`/api/customer/sponsored?placement=${placement}${exclude ? `&exclude=${encodeURIComponent(exclude)}` : ""}`, {
+      signal: controller.signal,
+      cache: "no-store",
+    })
       .then((r) => (r.ok ? r.json() : { ad: null }))
-      .then((data: { ad: (SponsoredAd & { placement: SponsoredPlacement }) | null }) => setAd(data.ad ?? null))
+      .then((data: { ad: (SponsoredAd & { placement: SponsoredPlacement }) | null }) =>
+        setAd(data.ad && !getDismissedAds().has(data.ad.id) ? data.ad : null),
+      )
       .catch(() => undefined);
     return () => controller.abort();
   }, [placement]);
@@ -73,7 +117,14 @@ export function SponsoredSlot({ placement, className }: { placement: SponsoredPl
   if (!ad) return null;
   return (
     <div ref={hostRef} className={className} data-testid={`sponsored-slot-${placement}`}>
-      <SponsoredBanner ad={ad} variant={VARIANT_BY_PLACEMENT[placement]} />
+      <SponsoredBanner
+        ad={ad}
+        variant={VARIANT_BY_PLACEMENT[placement]}
+        onDismiss={() => {
+          rememberDismissed(ad.id);
+          setAd(null);
+        }}
+      />
     </div>
   );
 }

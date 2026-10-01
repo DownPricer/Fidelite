@@ -57,6 +57,13 @@ type AdRequestDetail = {
 
 type AuditRow = { id: string; action: string; createdAt: string; actor: { firstName: string; lastName: string } | null };
 type Journey = { label: string; state: "done" | "current" | "todo" }[];
+type Delivery = {
+  mode: "TEST" | "LIVE";
+  simulated: boolean;
+  deliverable: boolean;
+  eligibleCustomers: number;
+  checks: { key: string; ok: boolean; label: string; detail: string }[];
+};
 type Stats = {
   byDay: { date: string }[];
   byPlacement?: { placement: string; impressions: number; clicks: number }[];
@@ -195,6 +202,7 @@ export function AdDetailPage({ id, firstName }: { id: string; firstName: string 
   const [journey, setJourney] = useState<Journey>([]);
   const [nextAction, setNextAction] = useState<NextActionInfo | null>(null);
   const [stats, setStats] = useState<Stats | null>(null);
+  const [delivery, setDelivery] = useState<Delivery | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState<{ msg: string; error: boolean } | null>(null);
@@ -229,6 +237,7 @@ export function AdDetailPage({ id, firstName }: { id: string; firstName: string 
         journey: Journey;
         nextAction: NextActionInfo;
         stats: Stats | null;
+        delivery: Delivery | null;
       };
       setAd(data.adRequest);
       setAudit(data.audit ?? []);
@@ -236,6 +245,7 @@ export function AdDetailPage({ id, firstName }: { id: string; firstName: string 
       setJourney(data.journey ?? []);
       setNextAction(data.nextAction ?? null);
       setStats(data.stats ?? null);
+      setDelivery(data.delivery ?? null);
     } catch (e) {
       notify(e instanceof Error ? e.message : "Chargement impossible.", true);
     } finally {
@@ -898,6 +908,33 @@ export function AdDetailPage({ id, firstName }: { id: string; firstName: string 
                 </div>
               ))}
               <p className={s.note}>Le visuel sera diffusé uniquement après les accords requis et selon les créneaux réservés.</p>
+            </section>
+
+            <section className={`${s.card} ${s.pad} ${s.details}`} data-testid="delivery">
+              <div className={s.eyebrow}>DIFFUSION AUX CLIENTS</div>
+              <h2>{delivery?.simulated ? "Campagne de test — simulée" : delivery?.deliverable ? "Diffusable maintenant" : "Pas diffusée pour le moment"}</h2>
+              {delivery?.simulated ? (
+                <div className={s.reasonBox} data-testid="simulated-banner">
+                  Cette campagne a été payée en <b>mode test</b> : elle reste simulée et n&apos;est <b>jamais affichée aux vrais clients</b>.
+                </div>
+              ) : null}
+              {delivery ? (
+                <>
+                  {delivery.checks.map((check) => (
+                    <div key={check.key} className={s.row}>
+                      <span>
+                        {check.ok ? "✓" : "✗"} {check.label}
+                      </span>
+                      <b style={{ fontWeight: 500, color: check.ok ? "#b6ddc6" : "#f0a8b8" }}>{check.detail}</b>
+                    </div>
+                  ))}
+                  <p className={s.note}>
+                    Un client ne voit la campagne que si, en plus, la règle de fréquence l&apos;autorise (1 bandeau max. toutes les 30 min, tirage occasionnel).
+                  </p>
+                </>
+              ) : (
+                <p className={s.note}>Diagnostic indisponible.</p>
+              )}
             </section>
 
             <section className={`${s.card} ${s.pad} ${s.details}`}>

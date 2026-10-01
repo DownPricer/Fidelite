@@ -38,13 +38,28 @@ type Detail = {
   requestedText: string;
   ctaLabel: string | null;
   finalImageUrl: string | null;
+  fundingMode: "TEST" | "LIVE" | null;
   rejectionReason: string | null;
   campaign: { id: string; title: string; payment: { status: string; amountCents: number } | null } | null;
   images: { id: string; url: string }[];
   versions: VisualVersion[];
 };
 type HistoryRow = { id: string; message: string; createdAt: string };
-type PaymentPreview = { requiresPayment: boolean; priceCents: number; days: number; description: string };
+type PaymentPreview = {
+  requiresPayment: boolean;
+  priceCents: number;
+  days: number;
+  description: string;
+  mode: "TEST" | "LIVE" | null;
+  simulated: boolean;
+  paymentsAvailable: boolean;
+  stripeAvailable: boolean;
+  balanceCents: number;
+  balanceSufficient: boolean;
+  slotsExpired: boolean;
+  checkoutInProgress: boolean;
+};
+type PayMethod = "BALANCE" | "STRIPE";
 
 const STATUS_LABELS: Record<AdStatus, string> = {
   DRAFT: "Brouillon",
@@ -83,7 +98,14 @@ export function MerchantCampaignFiche({ adId, paid, cancelled }: { adId: string;
   const [nextAction, setNextAction] = useState<NextActionInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(paid ? "Paiement reçu : votre campagne sera programmée dès confirmation." : cancelled ? "Paiement annulé : vous pouvez le relancer ci-dessous." : null);
+  // Le retour de Stripe Checkout n'active rien : seule la confirmation du webhook programme la campagne.
+  const [notice, setNotice] = useState<string | null>(
+    paid
+      ? "Retour du paiement : nous attendons la confirmation de Stripe. Votre campagne ne sera programmée qu'après cette confirmation (quelques instants)."
+      : cancelled
+        ? "Paiement annulé : rien n'a été débité. Vous pouvez choisir une autre option ci-dessous."
+        : null,
+  );
   const [busy, setBusy] = useState(false);
 
   // Réponse à une proposition
@@ -96,6 +118,7 @@ export function MerchantCampaignFiche({ adId, paid, cancelled }: { adId: string;
   const [brief, setBrief] = useState("");
   // Paiement
   const [pricing, setPricing] = useState<PaymentPreview | null>(null);
+  const [payMethod, setPayMethod] = useState<PayMethod>("STRIPE");
   const fileRef = useRef<HTMLInputElement | null>(null);
 
   const load = useCallback(async () => {
@@ -122,9 +145,25 @@ export function MerchantCampaignFiche({ adId, paid, cancelled }: { adId: string;
   }, [load]);
 
   useEffect(() => {
+    if (!paid) return;
+    let count = 0;
+    const timer = window.setInterval(() => {
+      count += 1;
+      void load();
+      if (count >= 8) window.clearInterval(timer);
+    }, 4000);
+    return () => window.clearInterval(timer);
+  }, [paid, load]);
+
+  useEffect(() => {
     if (ad?.status !== "APPROVED") return;
     api(`/api/merchant/visuels/${adId}/paiement`)
-      .then((d) => setPricing(d as unknown as PaymentPreview))
+      .then((d) => {
+        const preview = d as unknown as PaymentPreview;
+        setPricing(preview);
+        // Solde suffisant : on le propose en premier ; sinon paiement direct (ou recharge, action distincte).
+        setPayMethod(preview.balanceSufficient && preview.paymentsAvailable ? "BALANCE" : "STRIPE");
+      })
       .catch((e) => setError(e instanceof Error ? e.message : "Prix indisponible."));
   }, [ad?.status, adId]);
 
@@ -223,12 +262,12 @@ export function MerchantCampaignFiche({ adId, paid, cancelled }: { adId: string;
 
   const pay = () =>
     run(async () => {
-      const data = await post(`/api/merchant/visuels/${adId}/paiement`, {});
+      const data = await post(`/api/merchant/visuels/${adId}/paiement`, { method: payMethod });
       if (typeof data.checkoutUrl === "string") {
         window.location.href = data.checkoutUrl;
         return;
       }
-    }, "Votre campagne est programmée.");
+    }, payMethod === "BALANCE" ? "Payé avec votre solde marketing : votre campagne est programmée." : "Votre campagne est programmée.");
 
   if (loading) return <div className="metric-card h-24 animate-pulse" />;
   if (!ad) return <p className="text-sm text-[var(--danger)]">{error ?? "Campagne introuvable."}</p>;
@@ -253,6 +292,12 @@ export function MerchantCampaignFiche({ adId, paid, cancelled }: { adId: string;
       </div>
 
       {nextAction ? <NextActionBanner action={nextAction} /> : null}
+
+      {ad.fundingMode === "TEST" && ["SCHEDULED", "LIVE", "SUSPENDED", "ENDED"].includes(ad.status) ? (
+        <p className="rounded-xl border border-amber-400/50 bg-amber-400/10 p-3 text-sm text-[var(--ink)]" data-testid="test-campaign-notice">
+          <b>Campagne de test (simulation) :</b> elle a été payée en mode test et n&apos;est jamais affichée aux vrais clients. Pour une diffusion réelle, il faut une campagne payée en mode réel.
+        </p>
+      ) : null}
 
       {/* Proposition de Fideto : accepter ou demander une modification */}
       {awaitingMyAnswer && proposed ? (
@@ -357,19 +402,86 @@ export function MerchantCampaignFiche({ adId, paid, cancelled }: { adId: string;
       {ad.status === "APPROVED" ? (
         <section className="glass-panel space-y-3 p-4" aria-label="Paiement" data-testid="payment-panel">
           <p className="text-sm font-black text-[var(--ink)]">Votre visuel est validé — étape suivante : le paiement</p>
-          {pricing ? (
+          {!pricing ? (
+            <p className="text-sm text-[var(--muted)]">Calcul du prix…</p>
+          ) : pricing.slotsExpired ? (
+            <p className="rounded-xl border border-[var(--danger)] p-3 text-sm text-[var(--ink)]" data-testid="slots-expired">
+              Certains créneaux choisis sont déjà passés : cette mise en avant ne peut plus être payée. Créez une nouvelle mise en avant avec des créneaux à venir.
+            </p>
+          ) : (
             <>
               <p className="text-sm text-[var(--muted-strong)]">{pricing.description}</p>
-              <p className="text-sm font-black text-[var(--ink)]">
-                {pricing.requiresPayment ? euros(pricing.priceCents) : "0 € — couvert par votre quota"}
+              <p className="text-base font-black text-[var(--ink)]" data-testid="pay-amount">
+                {pricing.requiresPayment ? euros(pricing.priceCents) : "0 € — couvert par votre quota gratuit"}
               </p>
-              <Button disabled={busy} onClick={() => void pay()} data-testid="pay">
-                {pricing.requiresPayment ? `Confirmer et payer ${euros(pricing.priceCents)}` : "Confirmer"}
+              {pricing.simulated ? (
+                <p className="rounded-xl border border-amber-400/50 bg-amber-400/10 p-3 text-xs text-[var(--ink)]" data-testid="test-mode-notice">
+                  <b>Mode test :</b> le paiement est fictif et la campagne restera <b>simulée</b> — elle n&apos;apparaîtra pas chez les vrais clients.
+                </p>
+              ) : null}
+
+              {pricing.requiresPayment ? (
+                <fieldset className="space-y-2" aria-label="Moyen de paiement">
+                  <label className={`flex items-start gap-3 rounded-xl border p-3 text-sm ${payMethod === "BALANCE" ? "border-[var(--violet-bright)]" : "border-[var(--border)]"} ${!pricing.balanceSufficient || !pricing.paymentsAvailable ? "opacity-60" : ""}`}>
+                    <input
+                      type="radio"
+                      name="pay-method"
+                      value="BALANCE"
+                      checked={payMethod === "BALANCE"}
+                      disabled={!pricing.balanceSufficient || !pricing.paymentsAvailable || pricing.checkoutInProgress}
+                      onChange={() => setPayMethod("BALANCE")}
+                      data-testid="pay-balance"
+                    />
+                    <span>
+                      <b className="block text-[var(--ink)]">Utiliser mon solde marketing</b>
+                      <span className="text-xs text-[var(--muted)]">
+                        Solde disponible : {euros(pricing.balanceCents)}
+                        {pricing.balanceSufficient ? ` · il restera ${euros(pricing.balanceCents - pricing.priceCents)}` : ` · il manque ${euros(pricing.priceCents - pricing.balanceCents)}`}
+                      </span>
+                      {!pricing.balanceSufficient ? (
+                        <span className="mt-1 block text-xs">
+                          Solde insuffisant : <a className="font-bold text-[var(--violet-bright)] underline" href="/app/campagnes/solde" data-testid="topup-link">recharger mon solde</a> (action distincte) ou payer directement par carte.
+                        </span>
+                      ) : null}
+                    </span>
+                  </label>
+                  <label className={`flex items-start gap-3 rounded-xl border p-3 text-sm ${payMethod === "STRIPE" ? "border-[var(--violet-bright)]" : "border-[var(--border)]"} ${!pricing.stripeAvailable ? "opacity-60" : ""}`}>
+                    <input
+                      type="radio"
+                      name="pay-method"
+                      value="STRIPE"
+                      checked={payMethod === "STRIPE"}
+                      disabled={!pricing.stripeAvailable}
+                      onChange={() => setPayMethod("STRIPE")}
+                      data-testid="pay-stripe"
+                    />
+                    <span>
+                      <b className="block text-[var(--ink)]">Payer cette campagne directement par carte (Stripe)</b>
+                      <span className="text-xs text-[var(--muted)]">
+                        Paiement de {euros(pricing.priceCents)} pour cette campagne seulement — votre solde marketing n&apos;est pas utilisé.
+                        {!pricing.stripeAvailable ? " Indisponible pour le moment." : ""}
+                      </span>
+                    </span>
+                  </label>
+                </fieldset>
+              ) : null}
+
+              {pricing.checkoutInProgress ? (
+                <p className="text-xs text-[var(--muted)]">Un paiement par carte est déjà en cours pour cette campagne : terminez-le ou attendez son expiration.</p>
+              ) : null}
+              <Button
+                disabled={busy || (pricing.requiresPayment && ((payMethod === "BALANCE" && (!pricing.balanceSufficient || pricing.checkoutInProgress)) || (payMethod === "STRIPE" && !pricing.stripeAvailable)))}
+                onClick={() => void pay()}
+                data-testid="pay"
+              >
+                {!pricing.requiresPayment
+                  ? "Confirmer (gratuit)"
+                  : payMethod === "BALANCE"
+                    ? `Confirmer et débiter ${euros(pricing.priceCents)} de mon solde`
+                    : `Confirmer et payer ${euros(pricing.priceCents)} par carte`}
               </Button>
               <p className="text-xs text-[var(--muted)]">La diffusion n&apos;a lieu que pendant vos créneaux, une fois le paiement confirmé.</p>
             </>
-          ) : (
-            <p className="text-sm text-[var(--muted)]">Calcul du prix…</p>
           )}
         </section>
       ) : null}

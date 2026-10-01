@@ -6,6 +6,7 @@ const requireMerchantAdmin = vi.fn();
 const adRequestFindFirst = vi.fn();
 const campaignUpdate = vi.fn();
 const adRequestUpdate = vi.fn();
+const adRequestUpdateMany = vi.fn();
 const paymentUpsert = vi.fn();
 const createCampaignCheckoutSession = vi.fn();
 const getQuotaUsage = vi.fn();
@@ -38,11 +39,13 @@ vi.mock("@/lib/campaign-quota", async () => {
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     adRequest: { findFirst: (...args: unknown[]) => adRequestFindFirst(...args) },
+    marketingLedgerEntry: { findUnique: vi.fn().mockResolvedValue(null) },
+    marketingBalance: { findUnique: vi.fn().mockResolvedValue(null) },
     $transaction: async (callback: (client: unknown) => Promise<unknown>) =>
       callback({
         campaign: { update: campaignUpdate },
-        adRequest: { update: adRequestUpdate },
-        campaignPayment: { upsert: paymentUpsert },
+        adRequest: { update: adRequestUpdate, updateMany: adRequestUpdateMany },
+        campaignPayment: { upsert: paymentUpsert, updateMany: vi.fn() },
         campaignQuotaUsage: { upsert: vi.fn() },
         $executeRaw: executeRaw,
       }),
@@ -73,6 +76,7 @@ function req() {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  adRequestUpdateMany.mockResolvedValue({ count: 1 });
   stripeMode.active = "TEST";
   stripeMode.allowed = true;
   stripeMode.configured = true;
@@ -104,7 +108,7 @@ describe("POST /api/merchant/ads/[id]/confirm — 5 € par jour", () => {
       expect.objectContaining({ create: expect.objectContaining({ status: "PENDING", amountCents: expected, mode: "TEST" }) }),
     );
     expect(campaignUpdate).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ status: "PAYMENT_REQUIRED" }) }));
-    expect(adRequestUpdate).not.toHaveBeenCalled();
+    expect(adRequestUpdateMany).not.toHaveBeenCalled();
   });
 
   it("couverte par le quota Insight (commerce réel) : aucun paiement Stripe, jours consommés d'un bloc, publiée normalement", async () => {
@@ -116,7 +120,7 @@ describe("POST /api/merchant/ads/[id]/confirm — 5 € par jour", () => {
     const response = await POST(req(), { params: Promise.resolve({ id: "ad_1" }) });
     expect(response.status).toBe(200);
     expect(createCampaignCheckoutSession).not.toHaveBeenCalled();
-    expect(adRequestUpdate).toHaveBeenCalledWith({ where: { id: "ad_1" }, data: { status: "SCHEDULED", fundingMode: undefined } });
+    expect(adRequestUpdateMany).toHaveBeenCalledWith({ where: { id: "ad_1", status: "APPROVED" }, data: { status: "SCHEDULED", fundingMode: undefined } });
     // le montant de consommation (3 jours) est passé au UPDATE conditionnel
     expect(executeRaw.mock.calls[0]).toContain(3);
   });
@@ -130,7 +134,7 @@ describe("POST /api/merchant/ads/[id]/confirm — 5 € par jour", () => {
     const response = await POST(req(), { params: Promise.resolve({ id: "ad_1" }) });
     expect(response.status).toBe(200);
     expect(createCampaignCheckoutSession).not.toHaveBeenCalled();
-    expect(adRequestUpdate).toHaveBeenCalledWith({ where: { id: "ad_1" }, data: { status: "SCHEDULED", fundingMode: "TEST" } });
+    expect(adRequestUpdateMany).toHaveBeenCalledWith({ where: { id: "ad_1", status: "APPROVED" }, data: { status: "SCHEDULED", fundingMode: "TEST" } });
     expect(campaignUpdate).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ fundingMode: "TEST" }) }),
     );

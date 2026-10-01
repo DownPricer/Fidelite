@@ -14,7 +14,13 @@ export async function GET(req: Request) {
   const placement = parsePlacement(new URL(req.url).searchParams.get("placement"));
   if (!placement) return jsonError("Emplacement invalide.");
 
-  const card = await selectSponsoredForCustomer({ userId: auth.user.id, placement });
+  // Campagnes fermées avec la croix pendant cette utilisation : on en propose une autre, jamais un refus définitif.
+  const exclude = (new URL(req.url).searchParams.get("exclude") ?? "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter((value) => /^[\w-]{1,40}$/.test(value))
+    .slice(0, 20);
+  const card = await selectSponsoredForCustomer({ userId: auth.user.id, placement, exclude });
   return jsonOkPrivate({
     ad: card
       ? {

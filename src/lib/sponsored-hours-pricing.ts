@@ -1,4 +1,4 @@
-import { parisHourInstant } from "./insight-period";
+import { parisDateKey, parisHourInstant } from "./insight-period";
 
 /**
  * Tarification à l'heure de la mise en avant (bandeau sponsorisé), en Europe/Paris, en centimes
@@ -38,13 +38,65 @@ export type SponsoredDaySelection = { date: string; hours: number[] };
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
-export function validateSponsoredSchedule(days: SponsoredDaySelection[]): { ok: true } | { ok: false; error: string } {
+/** Début (instant UTC) de l'heure locale `hour` du jour `date` (YYYY-MM-DD) en Europe/Paris. */
+export function parisSlotStart(date: string, hour: number): Date {
+  const [y, m, d] = date.split("-").map(Number);
+  return parisHourInstant(y, m, d, hour);
+}
+
+/** Fin de cette même heure (heure suivante ; 23 h finit à minuit du jour suivant). */
+export function parisSlotEnd(date: string, hour: number): Date {
+  const [y, m, d] = date.split("-").map(Number);
+  return hour === 23 ? parisHourInstant(y, m, d + 1, 0) : parisHourInstant(y, m, d, hour + 1);
+}
+
+/** Jour courant en Europe/Paris (YYYY-MM-DD) — jamais l'UTC du navigateur ou du serveur. */
+export function todayParisDate(now: Date = new Date()): string {
+  return parisDateKey(now);
+}
+
+/**
+ * Heures encore sélectionnables ce jour-là (Europe/Paris) : une heure l'est tant que son début est
+ * strictement dans le futur. Jour passé = aucune ; jour futur = les 24 heures.
+ */
+export function selectableHoursForDay(date: string, now: Date = new Date()): number[] {
+  if (!DATE_RE.test(date)) return [];
+  const today = todayParisDate(now);
+  if (date < today) return [];
+  if (date > today) return Array.from({ length: 24 }, (_, h) => h);
+  return Array.from({ length: 24 }, (_, h) => h).filter((h) => parisSlotStart(date, h).getTime() > now.getTime());
+}
+
+/** Un jour n'est choisissable que s'il reste au moins MIN_HOURS_PER_DAY heures futures. */
+export function isDaySelectable(date: string, now: Date = new Date()): boolean {
+  return selectableHoursForDay(date, now).length >= MIN_HOURS_PER_DAY;
+}
+
+/** Nombre d'heures choisies déjà entièrement écoulées (fin <= maintenant) — utilisé avant tout paiement. */
+export function elapsedHoursCount(days: SponsoredDaySelection[], now: Date = new Date()): number {
+  let count = 0;
+  for (const day of days) {
+    for (const h of day.hours) if (parisSlotEnd(day.date, h).getTime() <= now.getTime()) count += 1;
+  }
+  return count;
+}
+
+/**
+ * Validation d'un planning. Refuse les jours passés et les heures déjà écoulées aujourd'hui
+ * (fuseau Europe/Paris, `now` injectable pour les tests) ; le minimum de MIN_HOURS_PER_DAY heures par
+ * jour s'applique aux heures futures : si moins de 3 heures restent aujourd'hui, ce jour est refusé.
+ */
+export function validateSponsoredSchedule(
+  days: SponsoredDaySelection[],
+  now: Date = new Date(),
+): { ok: true } | { ok: false; error: string } {
   if (!Array.isArray(days) || days.length < MIN_SPONSORED_DAYS) {
     return { ok: false, error: "Sélectionnez au moins un jour." };
   }
   if (days.length > MAX_SPONSORED_DAYS) {
     return { ok: false, error: `Maximum ${MAX_SPONSORED_DAYS} jours par demande.` };
   }
+  const today = todayParisDate(now);
   const seenDates = new Set<string>();
   for (const day of days) {
     if (!day || typeof day.date !== "string" || !DATE_RE.test(day.date)) {
@@ -52,11 +104,19 @@ export function validateSponsoredSchedule(days: SponsoredDaySelection[]): { ok: 
     }
     if (seenDates.has(day.date)) return { ok: false, error: `Date en double : ${day.date}.` };
     seenDates.add(day.date);
+    if (day.date < today) return { ok: false, error: `Le ${day.date} est déjà passé : choisissez un jour à venir.` };
     if (!Array.isArray(day.hours)) return { ok: false, error: `Heures invalides le ${day.date}.` };
     const uniqueHours = new Set(day.hours);
     if (uniqueHours.size !== day.hours.length) return { ok: false, error: `Heures en double le ${day.date}.` };
     for (const h of day.hours) {
       if (!Number.isInteger(h) || h < 0 || h > 23) return { ok: false, error: `Heure invalide le ${day.date}.` };
+    }
+    if (day.date === today && selectableHoursForDay(day.date, now).length < MIN_HOURS_PER_DAY) {
+      return { ok: false, error: `Il ne reste plus ${MIN_HOURS_PER_DAY} heures disponibles aujourd'hui : choisissez un autre jour.` };
+    }
+    const elapsed = day.hours.filter((h) => parisSlotStart(day.date, h).getTime() <= now.getTime());
+    if (elapsed.length > 0) {
+      return { ok: false, error: `Les heures ${elapsed.sort((a, b) => a - b).map((h) => `${h} h`).join(", ")} du ${day.date} sont déjà passées.` };
     }
     if (day.hours.length < MIN_HOURS_PER_DAY) {
       return { ok: false, error: `Au moins ${MIN_HOURS_PER_DAY} heures requises le ${day.date} (${day.hours.length} sélectionnée${day.hours.length > 1 ? "s" : ""}).` };

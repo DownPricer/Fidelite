@@ -19,14 +19,15 @@ import { isWithinUtcIntervals, type UtcInterval } from "./sponsored-hours-pricin
  * FRÉQUENCE (simple, documentée — aucun plafonnement par client n'existait avant ; la rotation
  * quotidienne de la page Découvrir, anonyme, est remplacée par cette règle) :
  *  1. au plus UN bandeau visible par client toutes les 30 minutes, tous emplacements confondus ;
- *  2. la même campagne n'est pas re-proposée au même client avant 24 h ;
+ *  2. la même campagne n'est pas re-proposée au même client avant 2 h (une publicité fermée avec la
+ *     croix réapparaît donc à une prochaine ouverture, jamais comme un refus définitif) ;
  *  3. quand plusieurs campagnes sont éligibles, on propose celle que ce client a vue le moins
  *     récemment (jamais vue d'abord) : les campagnes tournent ;
  *  4. même éligible, un emplacement n'est rempli qu'environ une fois sur deux : tirage déterministe
  *     par (client, emplacement, tranche de 10 min), donc stable pendant un rechargement rapide.
  */
 export const GLOBAL_COOLDOWN_MS = 30 * 60_000;
-export const SAME_AD_COOLDOWN_MS = 24 * 3_600_000;
+export const SAME_AD_COOLDOWN_MS = 2 * 3_600_000;
 export const IMPRESSION_DEDUPE_MS = 10 * 60_000;
 export const SHOW_RATE_PERCENT = 50;
 const SLOT_BUCKET_MS = 10 * 60_000;
@@ -65,7 +66,14 @@ async function loadCandidates(now: Date) {
     },
     include: {
       merchant: { select: { slug: true, name: true, logoUrl: true, city: true, postalCode: true, isActive: true, status: true } },
-      campaign: { select: { quotaConsumedAt: true, payment: { select: { status: true } } } },
+      campaign: {
+        select: {
+          quotaConsumedAt: true,
+          payment: { select: { status: true } },
+          // Paiement par le solde marketing : ligne DEBIT payée (campaignId unique).
+          ledgerEntry: { select: { type: true, status: true } },
+        },
+      },
     },
     orderBy: { id: "asc" },
     take: 100,
@@ -79,7 +87,12 @@ function isWithinSchedule(ad: Pick<AdCandidate, "hourlyIntervals" | "startDate" 
 }
 
 function isPaidOrFunded(ad: AdCandidate) {
-  return ad.campaign?.payment?.status === "PAID" || Boolean(ad.campaign?.quotaConsumedAt);
+  const ledger = ad.campaign?.ledgerEntry;
+  return (
+    ad.campaign?.payment?.status === "PAID" ||
+    (ledger?.type === "DEBIT" && ledger.status === "PAID") ||
+    Boolean(ad.campaign?.quotaConsumedAt)
+  );
 }
 
 export type CustomerZone = { notifyFifeLifeNews: boolean; city: string | null; postalCode: string | null } | null;
@@ -91,17 +104,50 @@ function inAudience(ad: AdCandidate, zone: CustomerZone) {
   return Boolean(m.city && zone.city && m.city.toLowerCase() === zone.city.toLowerCase());
 }
 
+export type DeliveryCheck = { key: string; ok: boolean; label: string; detail: string };
+
+/** Vérifications propres à la campagne (indépendantes du client) — source unique de l'éligibilité et du diagnostic. */
+export function evaluateCampaignChecks(ad: AdCandidate, now: Date): DeliveryCheck[] {
+  const live = ad.status === "SCHEDULED" || ad.status === "LIVE";
+  return [
+    {
+      key: "approved",
+      ok: live && Boolean(ad.finalImageUrl),
+      label: "Visuel validé et campagne programmée",
+      detail: live ? (ad.finalImageUrl ? "Programmée avec un visuel final." : "Aucun visuel final enregistré.") : `Statut actuel : ${ad.status}.`,
+    },
+    {
+      key: "mode",
+      ok: ad.fundingMode !== "TEST",
+      label: "Campagne réelle (pas une simulation)",
+      detail:
+        ad.fundingMode === "TEST"
+          ? "Campagne de TEST (mode Stripe test) : elle est simulée et n'est jamais affichée aux vrais clients."
+          : "Financée en mode réel (ou par quota gratuit).",
+    },
+    {
+      key: "paid",
+      ok: isPaidOrFunded(ad),
+      label: "Paiement confirmé",
+      detail: isPaidOrFunded(ad) ? "Payée (Stripe, solde marketing) ou couverte par le quota." : "Aucun paiement confirmé (le retour de Stripe seul ne suffit pas : il faut le webhook).",
+    },
+    {
+      key: "merchant",
+      ok: ad.merchant.isActive && (ad.merchant.status === "ACTIVE" || ad.merchant.status === "TRIAL"),
+      label: "Commerce actif",
+      detail: ad.merchant.isActive ? `Statut du commerce : ${ad.merchant.status}.` : "Le commerce est désactivé.",
+    },
+    {
+      key: "slot",
+      ok: isWithinSchedule(ad, now),
+      label: "Heure actuelle dans un créneau réservé",
+      detail: isWithinSchedule(ad, now) ? "Un créneau acheté est en cours." : "Aucun créneau acheté n'est en cours à cet instant.",
+    },
+  ];
+}
+
 export function isEligibleNow(ad: AdCandidate, zone: CustomerZone, now: Date) {
-  return (
-    (ad.status === "SCHEDULED" || ad.status === "LIVE") &&
-    Boolean(ad.finalImageUrl) &&
-    ad.fundingMode !== "TEST" &&
-    isPaidOrFunded(ad) &&
-    ad.merchant.isActive &&
-    (ad.merchant.status === "ACTIVE" || ad.merchant.status === "TRIAL") &&
-    isWithinSchedule(ad, now) &&
-    inAudience(ad, zone)
-  );
+  return evaluateCampaignChecks(ad, now).every((check) => check.ok) && inAudience(ad, zone);
 }
 
 async function loadZone(userId: string): Promise<CustomerZone> {
@@ -139,33 +185,54 @@ function toCard(ad: AdCandidate, placement: AdPlacement): SponsoredCard {
   };
 }
 
-/** Bandeau à proposer à ce client pour cet emplacement, ou null. Ne compte rien (voir recordImpression). */
-export async function selectSponsoredForCustomer(input: {
+export type SelectionResult = { card: SponsoredCard | null; reason: string };
+
+/** Sélection avec la raison de l'absence de bandeau (diagnostic) — voir selectSponsoredForCustomer. */
+export async function selectSponsoredWithReason(input: {
   userId: string;
   placement: AdPlacement;
   now?: Date;
-}): Promise<SponsoredCard | null> {
+  /** Campagnes fermées avec la croix pendant cette utilisation de l'application (jamais un refus définitif). */
+  exclude?: string[];
+}): Promise<SelectionResult> {
   const now = input.now ?? new Date();
   const zone = await loadZone(input.userId);
-  if (!zone) return null;
+  if (!zone) return { card: null, reason: "client inactif ou sans préférences enregistrées" };
+  if (!zone.notifyFifeLifeNews) return { card: null, reason: "le client n'a pas accepté les bons plans Fideto (préférence « bons plans locaux »)" };
+  if (!zone.city && !zone.postalCode) return { card: null, reason: "le client n'a renseigné ni ville ni code postal (zone marketing)" };
 
   const [candidates, views] = await Promise.all([
     loadCandidates(now),
     prisma.adCustomerView.findMany({ where: { userId: input.userId }, select: { adRequestId: true, lastShownAt: true } }),
   ]);
-  const eligible = candidates.filter((ad) => isEligibleNow(ad, zone, now));
-  if (eligible.length === 0) return null;
+  const excluded = new Set(input.exclude ?? []);
+  const eligible = candidates.filter((ad) => !excluded.has(ad.id) && isEligibleNow(ad, zone, now));
+  if (eligible.length === 0) {
+    return { card: null, reason: "aucune campagne diffusable pour sa zone à cet instant (test/simulation, impayée, hors créneau, autre secteur ou fermée par le client)" };
+  }
 
   const lastShownBy = new Map(views.map((v) => [v.adRequestId, v.lastShownAt.getTime()]));
   const lastAny = views.reduce((max, v) => Math.max(max, v.lastShownAt.getTime()), 0);
-  if (now.getTime() - lastAny < GLOBAL_COOLDOWN_MS) return null;
-  if (!passesOccasionalGate(input.userId, input.placement, now)) return null;
+  if (now.getTime() - lastAny < GLOBAL_COOLDOWN_MS) return { card: null, reason: "un bandeau a déjà été vu il y a moins de 30 min" };
+  if (!passesOccasionalGate(input.userId, input.placement, now)) return { card: null, reason: "tirage « occasionnel » défavorable pour cette tranche de 10 min (réessayez plus tard)" };
 
   const fresh = eligible.filter((ad) => now.getTime() - (lastShownBy.get(ad.id) ?? 0) >= SAME_AD_COOLDOWN_MS);
-  if (fresh.length === 0) return null;
+  if (fresh.length === 0) return { card: null, reason: "toutes les campagnes éligibles ont été vues il y a moins de 2 h" };
   // Rotation : la campagne la moins récemment vue par ce client (jamais vue = 0), puis par id.
   fresh.sort((a, b) => (lastShownBy.get(a.id) ?? 0) - (lastShownBy.get(b.id) ?? 0) || a.id.localeCompare(b.id));
-  return toCard(fresh[0], input.placement);
+  return { card: toCard(fresh[0], input.placement), reason: "ok" };
+}
+
+export const selectSponsoredForCustomerDebug = selectSponsoredWithReason;
+
+/** Bandeau à proposer à ce client pour cet emplacement, ou null. Ne compte rien (voir recordImpression). */
+export async function selectSponsoredForCustomer(input: {
+  userId: string;
+  placement: AdPlacement;
+  now?: Date;
+  exclude?: string[];
+}): Promise<SponsoredCard | null> {
+  return (await selectSponsoredWithReason(input)).card;
 }
 
 /** Revérifie qu'une campagne précise est toujours affichable à ce client maintenant (impression/clic). */
@@ -206,4 +273,61 @@ export async function recordImpression(input: { adId: string; userId: string; pl
   }
   if (counted) await prisma.adEvent.create({ data: { adRequestId: input.adId, type: "IMPRESSION", placement: input.placement } });
   return counted;
+}
+
+/** Diagnostic de diffusion d'une campagne : pourquoi elle apparaît (ou non) chez les clients. */
+export async function diagnoseAdDelivery(adId: string, now: Date = new Date()) {
+  const candidates = await loadCandidates(now);
+  const ad = candidates.find((c) => c.id === adId);
+  const base = await prisma.adRequest.findUnique({
+    where: { id: adId },
+    select: { id: true, status: true, fundingMode: true, startDate: true, endDate: true, hourlyIntervals: true, finalImageUrl: true, merchantId: true },
+  });
+  if (!base) return null;
+
+  let checks: DeliveryCheck[];
+  if (ad) {
+    checks = evaluateCampaignChecks(ad, now);
+  } else {
+    // Hors de la fenêtre de candidats (statut non programmé, hors dates, TEST, …) : on explique la raison.
+    const live = base.status === "SCHEDULED" || base.status === "LIVE";
+    const inWindow = base.startDate <= now && base.endDate >= now;
+    checks = [
+      { key: "approved", ok: live && Boolean(base.finalImageUrl), label: "Visuel validé et campagne programmée", detail: live ? "Programmée." : `Statut actuel : ${base.status}.` },
+      {
+        key: "mode",
+        ok: base.fundingMode !== "TEST",
+        label: "Campagne réelle (pas une simulation)",
+        detail: base.fundingMode === "TEST" ? "Campagne de TEST (mode Stripe test) : simulée, jamais affichée aux vrais clients." : "Financée en mode réel (ou par quota gratuit).",
+      },
+      { key: "slot", ok: inWindow && isWithinSchedule(base as never, now), label: "Heure actuelle dans un créneau réservé", detail: inWindow ? "Voir les créneaux réservés." : "Hors de la période réservée." },
+    ];
+  }
+
+  // Audience : clients actifs ayant accepté les bons plans Fideto, dans la zone du commerce.
+  const merchant = await prisma.merchant.findUnique({ where: { id: base.merchantId }, select: { city: true, postalCode: true } });
+  const zoneFilters: Record<string, unknown>[] = [];
+  if (merchant?.postalCode) zoneFilters.push({ marketingZonePostalCode: merchant.postalCode });
+  if (merchant?.city) zoneFilters.push({ marketingZoneCity: { equals: merchant.city, mode: "insensitive" } });
+  const eligibleCustomers = zoneFilters.length
+    ? await prisma.customerPreferences.count({ where: { notifyFifeLifeNews: true, OR: zoneFilters, user: { isActive: true } } })
+    : 0;
+  checks.push({
+    key: "audience",
+    ok: eligibleCustomers > 0,
+    label: "Clients éligibles dans le secteur",
+    detail: !zoneFilters.length
+      ? "Le commerce n'a ni ville ni code postal : aucune audience locale n'est possible."
+      : eligibleCustomers > 0
+        ? `${eligibleCustomers} client${eligibleCustomers > 1 ? "s" : ""} (bons plans Fideto acceptés, même zone que le commerce).`
+        : "Aucun client n'a accepté les bons plans Fideto avec une zone (ville ou code postal) correspondant à celle du commerce.",
+  });
+
+  return {
+    mode: base.fundingMode === "TEST" ? ("TEST" as const) : ("LIVE" as const),
+    simulated: base.fundingMode === "TEST",
+    checks,
+    deliverable: checks.every((c) => c.ok),
+    eligibleCustomers,
+  };
 }

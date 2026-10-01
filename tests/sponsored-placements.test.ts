@@ -256,7 +256,7 @@ describe("fréquence et rotation", () => {
     expect((await get("SEARCH")).ad !== null).toBe(first);
   });
 
-  it("au plus un bandeau toutes les 30 min tous emplacements confondus ; même campagne pas avant 24 h", async () => {
+  it("au plus un bandeau toutes les 30 min tous emplacements confondus ; même campagne pas avant 2 h", async () => {
     seedAd("ad1");
     const open = await getWhenOpen("WALLET_HOME");
     const t0 = Date.now();
@@ -266,13 +266,16 @@ describe("fréquence et rotation", () => {
       expect((await get(placement)).ad).toBeNull(); // dans les 30 min
     }
     expect(open.ad).not.toBeNull();
-    // Après 30 min mais avant 24 h : la même campagne n'est pas re-proposée.
-    setNow(t0 + 40 * 60_000);
+    // Campagne longue pour que le créneau couvre toute la période de test.
     tables.adRequest[0].endDate = new Date(t0 + 3 * 86_400_000);
     tables.adRequest[0].hourlyIntervals = [{ start: START.toISOString(), end: new Date(t0 + 3 * 86_400_000).toISOString() }];
-    expect((await getWhenOpen("SEARCH", "c1", t0 + 40 * 60_000)).ad).toBeNull();
-    // Au-delà de 24 h elle redevient éligible.
-    expect((await getWhenOpen("SEARCH", "c1", t0 + 25 * 3_600_000)).ad?.id).toBe("ad1");
+    // Après 30 min mais avant 2 h : la même campagne n'est pas re-proposée (quel que soit le tirage).
+    for (let k = 0; k < 8; k += 1) {
+      setNow(t0 + 40 * 60_000 + k * 600_000);
+      expect((await get("SEARCH")).ad).toBeNull();
+    }
+    // Au-delà de 2 h elle redevient éligible : une prochaine ouverture peut la ré-afficher.
+    expect((await getWhenOpen("SEARCH", "c1", t0 + 125 * 60_000)).ad?.id).toBe("ad1");
   });
 
   it("plusieurs campagnes éligibles : elles tournent (la moins récemment vue d'abord)", async () => {

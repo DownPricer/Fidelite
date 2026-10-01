@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 export type SponsoredAd = {
   id: string;
@@ -16,8 +16,7 @@ export type SponsoredAd = {
 
 /**
  * Bandeau "Sponsorisé" réutilisable — Découvrir et tout autre emplacement client.
- * Fermable côté viewer uniquement (pas de préférence serveur), impressions/clics
- * traqués via les URLs déjà fournies par /api/public/merchants (Partie 12).
+ * Fermable côté viewer uniquement (aucune préférence enregistrée côté serveur).
  */
 export type SponsoredVariant = "search" | "home" | "notifications";
 
@@ -27,16 +26,21 @@ const IMAGE_CLASS: Record<SponsoredVariant, string> = {
   notifications: "h-12 w-12",
 };
 
-export function SponsoredBanner({ ad, variant = "search" }: { ad: SponsoredAd; variant?: SponsoredVariant }) {
+export function SponsoredBanner({
+  ad,
+  variant = "search",
+  onDismiss,
+}: {
+  ad: SponsoredAd;
+  variant?: SponsoredVariant;
+  /**
+   * Fermeture par la croix. Fournie par SponsoredSlot : la publicité est alors masquée pour toute
+   * l'utilisation en cours de l'application (voir sponsored-slot.tsx) — jamais un refus définitif.
+   * Sans onDismiss (aperçus), la croix ne masque que ce rendu.
+   */
+  onDismiss?: () => void;
+}) {
   const [dismissed, setDismissed] = useState(false);
-
-  useEffect(() => {
-    try {
-      if (sessionStorage.getItem(`sponsored-dismissed-${ad.id}`) === "1") setDismissed(true);
-    } catch {
-      // stockage indisponible (navigation privée…) — le bandeau reste affiché
-    }
-  }, [ad.id]);
 
   if (dismissed) return null;
 
@@ -52,12 +56,8 @@ export function SponsoredBanner({ ad, variant = "search" }: { ad: SponsoredAd; v
         onClick={(e) => {
           e.preventDefault();
           e.stopPropagation();
-          try {
-            sessionStorage.setItem(`sponsored-dismissed-${ad.id}`, "1");
-          } catch {
-            // ignore
-          }
-          setDismissed(true);
+          if (onDismiss) onDismiss();
+          else setDismissed(true);
         }}
         className="absolute right-2 top-2 grid h-5 w-5 place-items-center rounded-full bg-black/60 text-white"
       >

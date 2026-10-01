@@ -3,10 +3,11 @@ import { consumeQuotaForCampaign, priceSponsoredAd } from "@/lib/campaign-pricin
 import { calendarPeriodKeyEuropeParis, getQuotaUsage, includedQuotaFor, resolvePlanTier } from "@/lib/campaign-quota";
 import { writeAudit } from "@/lib/audit";
 import { resolveAppOriginFromRequestHost } from "@/lib/hosts";
-import { clientIp, jsonError, jsonOk, userAgent } from "@/lib/http";
+import { clientIp, jsonError, jsonOk, readJson, userAgent } from "@/lib/http";
 import { prisma } from "@/lib/prisma";
 import { notifyMerchant } from "@/lib/ad-visual-workflow";
-import { priceSponsoredHours, type SponsoredDaySelection } from "@/lib/sponsored-hours-pricing";
+import { elapsedHoursCount, priceSponsoredHours, type SponsoredDaySelection } from "@/lib/sponsored-hours-pricing";
+import { debitForCampaign, getMarketingBalanceCents } from "@/lib/marketing-balance";
 import { StripeNotConfiguredError, createCampaignCheckoutSession } from "@/lib/stripe";
 import { getActiveStripeMode, isPaymentAllowedForMerchant, isStripeConfigured } from "@/lib/stripe-mode";
 
@@ -62,23 +63,55 @@ async function computeAdPricing(adRequest: {
   };
 }
 
-/** Aperçu du prix avant paiement (Partie 15) : le commerçant doit voir le détail avant de valider. */
+/** Une session Checkout non terminée bloque un paiement par solde tant qu'elle peut encore aboutir. */
+const CHECKOUT_IN_PROGRESS_MS = 35 * 60_000;
+
+function pendingCheckout(
+  payment: { status: string; createdAt?: Date | string | null; updatedAt?: Date | string | null } | null | undefined,
+  now: Date,
+) {
+  if (!payment || payment.status !== "PENDING") return false;
+  const since = new Date((payment.updatedAt ?? payment.createdAt ?? 0) as string | number | Date).getTime();
+  return now.getTime() - since < CHECKOUT_IN_PROGRESS_MS;
+}
+
+/**
+ * Aperçu avant paiement : montant, solde marketing disponible (mode actif) et options possibles.
+ * Rien n'est débité ici.
+ */
 export async function GET(req: Request, context: { params: Promise<{ id: string }> }) {
   const staff = await requireMerchantAdmin(req);
   if (staff.error || !staff.user || !staff.membership) return staff.error ?? jsonError("Accès refusé.", 403);
 
   const { id } = await context.params;
   const merchantId = staff.membership.merchantId;
-  const adRequest = await prisma.adRequest.findFirst({ where: { id, merchantId } });
+  const adRequest = await prisma.adRequest.findFirst({
+    where: { id, merchantId },
+    include: { campaign: { include: { payment: true } } },
+  });
   if (!adRequest) return jsonError("Demande introuvable.", 404);
 
   const pricing = await computeAdPricing({ ...adRequest, merchantId });
+  const mode = getActiveStripeMode();
+  const balanceCents = mode ? await getMarketingBalanceCents(merchantId, mode) : 0;
+  const now = new Date();
   return jsonOk({
     days: pricing.days,
     requiresPayment: pricing.requiresPayment,
     priceCents: pricing.priceCents,
     breakdown: pricing.breakdown,
     description: pricing.description,
+    mode,
+    // Mode test : le paiement est fictif et la campagne reste simulée (jamais affichée aux vrais clients).
+    simulated: mode === "TEST",
+    paymentsAvailable: Boolean(mode && isPaymentAllowedForMerchant(merchantId)),
+    stripeAvailable: Boolean(mode && isStripeConfigured() && isPaymentAllowedForMerchant(merchantId)),
+    balanceCents,
+    balanceSufficient: balanceCents >= pricing.priceCents,
+    slotsExpired: Array.isArray(adRequest.hourlySchedule)
+      ? elapsedHoursCount(adRequest.hourlySchedule as SponsoredDaySelection[], now) > 0
+      : false,
+    checkoutInProgress: pendingCheckout(adRequest.campaign?.payment, now),
   });
 }
 
@@ -95,13 +128,28 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
 
   const { id } = await context.params;
   const merchantId = staff.membership.merchantId;
-  const adRequest = await prisma.adRequest.findFirst({ where: { id, merchantId }, include: { campaign: true } });
+  const body = (await readJson<{ method?: string }>(req)) ?? {};
+  // Deux façons de payer une campagne payante : le solde marketing ou Stripe (carte), au choix.
+  const method = body.method === "BALANCE" ? "BALANCE" : "STRIPE";
+
+  const adRequest = await prisma.adRequest.findFirst({
+    where: { id, merchantId },
+    include: { campaign: { include: { payment: true } } },
+  });
   if (!adRequest || !adRequest.campaign) return jsonError("Demande introuvable.", 404);
   if (adRequest.status !== "APPROVED") {
     return jsonError("Le visuel final n'est pas encore prêt à être validé.", 409, { code: "NOT_APPROVED" });
   }
   if (!adRequest.finalImageUrl) {
     return jsonError("Aucun visuel final fourni par Fideto pour le moment.", 409, { code: "NO_FINAL_VISUAL" });
+  }
+  // Jamais de paiement ni de quota consommé pour des heures déjà écoulées.
+  if (Array.isArray(adRequest.hourlySchedule) && elapsedHoursCount(adRequest.hourlySchedule as SponsoredDaySelection[]) > 0) {
+    return jsonError(
+      "Certains créneaux choisis sont déjà passés : cette mise en avant ne peut plus être payée telle quelle. Créez une nouvelle mise en avant avec des créneaux à venir.",
+      409,
+      { code: "SLOTS_EXPIRED" },
+    );
   }
 
   const { days, periodKey, limit, ...pricing } = await computeAdPricing({ ...adRequest, merchantId });
@@ -110,26 +158,34 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
     // Le commerce de test ne doit jamais publier de mise en avant réelle, même via un quota
     // gratuit : voir la même règle sur /api/merchant/campaigns/[id]/confirm.
     const simulateFreeSend = getActiveStripeMode() === "TEST" && isPaymentAllowedForMerchant(merchantId);
-    const consumed = await prisma.$transaction(async (tx) => {
-      const ok = await consumeQuotaForCampaign(tx, { merchantId, kind: "SPONSORED_DAY", periodKey, limit, amount: days });
-      if (!ok) return false;
-      await tx.campaign.update({
-        where: { id: adRequest.campaign!.id },
-        data: {
-          status: "SCHEDULED",
-          quotaPeriodKey: periodKey,
-          quotaConsumedAt: new Date(),
-          priceCents: 0,
-          fundingMode: simulateFreeSend ? "TEST" : undefined,
-        },
+    const consumed = await prisma
+      .$transaction(async (tx) => {
+        // Réservation atomique APPROVED → SCHEDULED : un second appel (double clic) ne consomme rien.
+        const claimed = await tx.adRequest.updateMany({
+          where: { id: adRequest.id, status: "APPROVED" },
+          data: { status: "SCHEDULED", fundingMode: simulateFreeSend ? "TEST" : undefined },
+        });
+        if (claimed.count !== 1) return "already" as const;
+        const ok = await consumeQuotaForCampaign(tx, { merchantId, kind: "SPONSORED_DAY", periodKey, limit, amount: days });
+        if (!ok) throw new QuotaExhausted();
+        await tx.campaign.update({
+          where: { id: adRequest.campaign!.id },
+          data: {
+            status: "SCHEDULED",
+            quotaPeriodKey: periodKey,
+            quotaConsumedAt: new Date(),
+            priceCents: 0,
+            fundingMode: simulateFreeSend ? "TEST" : undefined,
+          },
+        });
+        return "ok" as const;
+      })
+      .catch((error) => {
+        if (error instanceof QuotaExhausted) return "quota" as const;
+        throw error;
       });
-      await tx.adRequest.update({
-        where: { id: adRequest.id },
-        data: { status: "SCHEDULED", fundingMode: simulateFreeSend ? "TEST" : undefined },
-      });
-      return true;
-    });
-    if (!consumed) {
+    if (consumed === "already") return jsonError("Cette mise en avant est déjà confirmée.", 409, { code: "ALREADY_CONFIRMED" });
+    if (consumed === "quota") {
       return jsonError("Le quota de jours sponsorisés vient d'être épuisé.", 409, { code: "QUOTA_EXHAUSTED" });
     }
     await notifyMerchant(prisma, adRequest, "CAMPAIGN_SCHEDULED", "Votre campagne est programmée.");
@@ -137,8 +193,8 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
   }
 
   const mode = getActiveStripeMode();
-  if (!mode || !isStripeConfigured()) {
-    return jsonError("Les achats de publicité ne sont pas disponibles : Stripe n'est pas configuré.", 503, {
+  if (!mode) {
+    return jsonError("Les achats de publicité ne sont pas disponibles : mode de paiement invalide.", 503, {
       code: "STRIPE_NOT_CONFIGURED",
     });
   }
@@ -146,6 +202,88 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
     return jsonError("Les paiements de test sont réservés au commerce de test configuré.", 403, {
       code: "TEST_MODE_RESTRICTED",
     });
+  }
+
+  /* ----------------------------- paiement par le solde marketing ----------------------------- */
+  if (method === "BALANCE") {
+    // Une session Checkout encore ouverte pourrait aboutir plus tard : on n'ouvre pas un second paiement.
+    if (pendingCheckout(adRequest.campaign.payment, new Date())) {
+      return jsonError(
+        "Un paiement par carte est déjà en cours pour cette campagne. Terminez-le ou attendez son expiration avant d'utiliser votre solde.",
+        409,
+        { code: "PAYMENT_IN_PROGRESS" },
+      );
+    }
+    const balanceBefore = await getMarketingBalanceCents(merchantId, mode);
+    try {
+      const outcome = await prisma.$transaction(async (tx) => {
+        // Réservation atomique : seule la requête qui fait passer APPROVED → SCHEDULED poursuit.
+        const claimed = await tx.adRequest.updateMany({
+          where: { id: adRequest.id, status: "APPROVED" },
+          data: { status: "SCHEDULED", fundingMode: mode },
+        });
+        if (claimed.count !== 1) return { claimed: false as const };
+        // Débit atomique (jamais négatif) ; la ligne d'historique porte campaignId UNIQUE : pas de double débit.
+        const debit = await debitForCampaign(tx, {
+          merchantId,
+          mode,
+          campaignId: adRequest.campaign!.id,
+          amountCents: pricing.priceCents,
+          description: `Mise en avant — ${adRequest.requestedText.slice(0, 80)}`,
+        });
+        if (!debit.ok) throw new InsufficientBalance();
+        await tx.campaignPayment.updateMany({
+          where: { campaignId: adRequest.campaign!.id, status: "PENDING" },
+          data: { status: "CANCELLED" },
+        });
+        await tx.campaign.update({
+          where: { id: adRequest.campaign!.id },
+          data: { status: "SCHEDULED", priceCents: pricing.priceCents, requiresPayment: true, fundingMode: mode },
+        });
+        return { claimed: true as const, balanceAfterCents: debit.balanceAfterCents };
+      });
+      if (!outcome.claimed) return jsonError("Cette mise en avant est déjà payée ou confirmée.", 409, { code: "ALREADY_CONFIRMED" });
+
+      await writeAudit({
+        actorId: staff.user.id,
+        merchantId,
+        action: "AD_PAID_BALANCE",
+        metadata: { adRequestId: adRequest.id, mode, amountCents: pricing.priceCents, balanceAfterCents: outcome.balanceAfterCents },
+        ip: clientIp(req),
+        userAgent: userAgent(req),
+      });
+      await notifyMerchant(prisma, adRequest, "CAMPAIGN_SCHEDULED", "Paiement par votre solde marketing confirmé : votre campagne est programmée.");
+      return jsonOk({
+        ok: true,
+        requiresPayment: true,
+        method: "BALANCE",
+        amountCents: pricing.priceCents,
+        balanceAfterCents: outcome.balanceAfterCents,
+      });
+    } catch (error) {
+      if (error instanceof InsufficientBalance) {
+        return jsonError("Solde marketing insuffisant. Rechargez votre solde ou payez cette campagne directement par carte.", 402, {
+          code: "INSUFFICIENT_BALANCE",
+          balanceCents: balanceBefore,
+          requiredCents: pricing.priceCents,
+        });
+      }
+      if ((error as { code?: string }).code === "P2002") {
+        return jsonError("Cette mise en avant a déjà été débitée.", 409, { code: "ALREADY_CONFIRMED" });
+      }
+      throw error;
+    }
+  }
+
+  /* ------------------------------------- paiement Stripe ------------------------------------- */
+  if (!isStripeConfigured()) {
+    return jsonError("Les achats de publicité ne sont pas disponibles : Stripe n'est pas configuré.", 503, {
+      code: "STRIPE_NOT_CONFIGURED",
+    });
+  }
+  const alreadyDebited = await prisma.marketingLedgerEntry.findUnique({ where: { campaignId: adRequest.campaign.id } });
+  if (alreadyDebited && alreadyDebited.type === "DEBIT" && alreadyDebited.status === "PAID") {
+    return jsonError("Cette mise en avant a déjà été payée avec votre solde marketing.", 409, { code: "ALREADY_CONFIRMED" });
   }
 
   const appOrigin = resolveAppOriginFromRequestHost(req.headers.get("host") ?? "");
@@ -210,5 +348,8 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
     userAgent: userAgent(req),
   });
 
-  return jsonOk({ ok: true, requiresPayment: true, checkoutUrl, amountCents: pricing.priceCents });
+  return jsonOk({ ok: true, requiresPayment: true, method: "STRIPE", checkoutUrl, amountCents: pricing.priceCents });
 }
+
+class InsufficientBalance extends Error {}
+class QuotaExhausted extends Error {}

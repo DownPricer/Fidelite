@@ -109,6 +109,17 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session, 
   await prisma.$transaction(async (tx) => {
     const payment = await tx.campaignPayment.findUnique({ where: { campaignId } });
     if (!payment || payment.status === "PAID" || payment.mode !== mode) return;
+    if (payment.status === "CANCELLED" && payment.stripeCheckoutSessionId === session.id) {
+      // La campagne a été réglée autrement (solde marketing) alors que cette session Checkout aboutissait :
+      // on n'active rien une seconde fois et on trace l'encaissement à rembourser manuellement.
+      await writeAudit({
+        actorId: null,
+        merchantId: payment.merchantId,
+        action: "CAMPAIGN_PAYMENT_DUPLICATE",
+        metadata: { campaignId, stripeCheckoutSessionId: session.id, amountCents: session.amount_total },
+      });
+      return;
+    }
     // Session obsolète (paiement relancé avec une nouvelle session) ou montant inattendu : on n'active rien.
     if (payment.stripeCheckoutSessionId !== session.id) return;
     if (session.amount_total !== payment.amountCents) {

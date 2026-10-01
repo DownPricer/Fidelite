@@ -14,8 +14,11 @@ import { CAMPAIGN_PRICE_CENTS } from "@/lib/campaign-prices";
 import {
   MIN_HOURS_PER_DAY,
   SPONSORED_HOUR_RATE_CENTS,
+  isDaySelectable,
   priceSponsoredHours,
   rateForParisHour,
+  selectableHoursForDay,
+  todayParisDate,
   validateSponsoredSchedule,
   type SponsoredDaySelection,
 } from "@/lib/sponsored-hours-pricing";
@@ -292,14 +295,6 @@ export function CampagnesPanel({ demo = false }: { demo?: boolean }) {
   const [error, setError] = useState<string | null>(null);
   const [creating, setCreating] = useState<"announcement" | "sponsor" | null>(null);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
-  const [sponsorPreview, setSponsorPreview] = useState<{
-    adRequestId: string;
-    loading: boolean;
-    days: number;
-    requiresPayment: boolean;
-    priceCents: number;
-    breakdown: { date: string; hours: number[]; priceCents: number }[] | null;
-  } | null>(null);
 
   const load = useCallback(async () => {
     if (demo) return;
@@ -338,59 +333,6 @@ export function CampagnesPanel({ demo = false }: { demo?: boolean }) {
     if (demo) return;
     await fetch(`/api/merchant/campaigns/${id}/duplicate`, { method: "POST" }).catch(() => {});
     void load();
-  }
-
-  async function openSponsorPreview(adRequestId: string) {
-    if (demo) return;
-    setError(null);
-    setSponsorPreview({ adRequestId, loading: true, days: 0, requiresPayment: false, priceCents: 0, breakdown: null });
-    try {
-      const response = await fetch(`/api/merchant/ads/${adRequestId}/confirm`);
-      const data = (await response.json()) as {
-        days?: number;
-        requiresPayment?: boolean;
-        priceCents?: number;
-        breakdown?: { byDay: { date: string; hours: number[]; priceCents: number }[] } | null;
-        error?: string;
-      };
-      if (!response.ok) {
-        setError(data.error ?? "Impossible de calculer le prix.");
-        setSponsorPreview(null);
-        return;
-      }
-      setSponsorPreview({
-        adRequestId,
-        loading: false,
-        days: data.days ?? 0,
-        requiresPayment: Boolean(data.requiresPayment),
-        priceCents: data.priceCents ?? 0,
-        breakdown: data.breakdown?.byDay ?? null,
-      });
-    } catch {
-      setError("Impossible de calculer le prix. Réessayez.");
-      setSponsorPreview(null);
-    }
-  }
-
-  async function confirmSponsor(adRequestId: string) {
-    if (demo) return;
-    setError(null);
-    try {
-      const response = await fetch(`/api/merchant/ads/${adRequestId}/confirm`, { method: "POST" });
-      const data = (await response.json()) as { checkoutUrl?: string; error?: string };
-      if (!response.ok) {
-        setError(data.error ?? "Impossible de valider la mise en avant.");
-        return;
-      }
-      if (data.checkoutUrl) {
-        window.location.href = data.checkoutUrl;
-        return;
-      }
-      setSponsorPreview(null);
-      void load();
-    } catch {
-      setError("Impossible de valider la mise en avant. Réessayez.");
-    }
   }
 
   if (loading) {
@@ -643,10 +585,10 @@ export function CampagnesPanel({ demo = false }: { demo?: boolean }) {
                           type="button"
                           onClick={() => {
                             setOpenMenuId(null);
-                            void openSponsorPreview(ad!.id);
+                            window.location.href = `/app/campagnes/${c.id}`;
                           }}
                         >
-                          Valider le visuel
+                          Valider et payer
                         </button>
                       ) : null}
                       {canDuplicate ? (
@@ -681,45 +623,6 @@ export function CampagnesPanel({ demo = false }: { demo?: boolean }) {
         )}
       </section>
 
-      {sponsorPreview ? (
-        <div className="glass-panel space-y-3 p-5" aria-label="Confirmation du paiement de la mise en avant">
-          <p className="text-sm font-bold text-[var(--ink)]">Confirmer et payer la mise en avant</p>
-          {sponsorPreview.loading ? (
-            <p className="text-sm text-[var(--muted-strong)]">Calcul du prix…</p>
-          ) : (
-            <>
-              {sponsorPreview.breakdown ? (
-                <div className="space-y-1">
-                  {sponsorPreview.breakdown.map((d) => (
-                    <div key={d.date} className="campaign-wizard-summary-row">
-                      <span className="text-xs text-[var(--muted)]">
-                        {formatDate(new Date(`${d.date}T00:00:00`).toISOString())} — {d.hours.length} h
-                      </span>
-                      <span className="text-sm font-bold text-[var(--ink)]">{formatCents(d.priceCents)}</span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-xs text-[var(--muted)]">{sponsorPreview.days} jour{sponsorPreview.days > 1 ? "s" : ""} (tarif historique 5 €/jour).</p>
-              )}
-              <div className="campaign-wizard-summary-row border-t border-[var(--border)] pt-2">
-                <span className="text-xs font-bold text-[var(--muted)]">Montant à débiter</span>
-                <span className="text-sm font-black text-[var(--ink)]">
-                  {sponsorPreview.requiresPayment ? formatCents(sponsorPreview.priceCents) : "0 € — couvert par votre quota"}
-                </span>
-              </div>
-              <div className="flex gap-2">
-                <Button type="button" onClick={() => void confirmSponsor(sponsorPreview.adRequestId)}>
-                  {sponsorPreview.requiresPayment ? `Confirmer et payer ${formatCents(sponsorPreview.priceCents)}` : "Confirmer"}
-                </Button>
-                <Button type="button" variant="secondary" onClick={() => setSponsorPreview(null)}>
-                  Annuler
-                </Button>
-              </div>
-            </>
-          )}
-        </div>
-      ) : null}
     </div>
   );
 }
@@ -1295,14 +1198,29 @@ function CampaignWizard({
   );
 }
 
+/** Jour courant en Europe/Paris (jamais l'UTC du navigateur). */
 function todayDateInputValue() {
-  return new Date().toISOString().slice(0, 10);
+  return todayParisDate();
 }
 
 function addDaysToDateInput(dateInput: string, days: number) {
-  const d = new Date(`${dateInput}T00:00:00`);
-  d.setDate(d.getDate() + days);
-  return d.toISOString().slice(0, 10);
+  const [y, m, d] = dateInput.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d + days)).toISOString().slice(0, 10);
+}
+
+/** Premier jour réellement choisissable à partir d'aujourd'hui (au moins 3 heures futures). */
+function firstSelectableDate(now: Date) {
+  let date = todayParisDate(now);
+  for (let i = 0; i < 3 && !isDaySelectable(date, now); i += 1) date = addDaysToDateInput(date, 1);
+  return date;
+}
+
+/** Créneau proposé par défaut pour un jour : 8 h–11 h, ou les 3 premières heures encore à venir. */
+function defaultSlotFor(date: string, now: Date): Slot {
+  const selectable = selectableHoursForDay(date, now);
+  const first = selectable[0] ?? 8;
+  const start = Math.min(Math.max(8, first), 21);
+  return [start, start + 3];
 }
 
 /** Reflète priceSponsoredHours (src/lib/sponsored-hours-pricing.ts) : le serveur recalcule
@@ -1375,7 +1293,13 @@ function slotLabel(slot: Slot) {
   return `${formatHourRange(slot[0]).split("–")[0]}–${slot[1] === 24 ? "00h" : formatHourRange(slot[1]).split("–")[0]}`;
 }
 
-function scheduleDayError(hours: number[], slots: Slot[]): string {
+function scheduleDayError(hours: number[], slots: Slot[], date: string, now: Date): string {
+  if (date < todayParisDate(now)) return "Ce jour est déjà passé : retirez-le.";
+  const selectable = new Set(selectableHoursForDay(date, now));
+  if (date === todayParisDate(now) && selectable.size < MIN_HOURS_PER_DAY) {
+    return "Il ne reste plus 3 heures disponibles aujourd'hui : retirez ce jour.";
+  }
+  if (hours.some((h) => !selectable.has(h))) return "Certaines de ces heures sont déjà passées : choisissez des heures à venir.";
   if (hours.length === 0) return "Choisissez au moins 3 h pour ce jour.";
   const ordered = [...slots].sort((a, b) => a[0] - b[0]);
   for (let i = 0; i < ordered.length; i++) {
@@ -1386,12 +1310,14 @@ function scheduleDayError(hours: number[], slots: Slot[]): string {
   return "";
 }
 
-function hourSelectOptions(value: number, isEnd: boolean) {
+function hourSelectOptions(value: number, isEnd: boolean, firstSelectableHour = 0) {
   const options: ReactElement[] = [];
   for (let h = 0; h <= 24; h++) {
     if ((!isEnd && h === 24) || (isEnd && h === 0)) continue;
+    // Heures déjà écoulées aujourd'hui : visibles mais non sélectionnables (une fin h clôt l'heure h-1).
+    const elapsed = isEnd ? h - 1 < firstSelectableHour : h < firstSelectableHour;
     options.push(
-      <option key={h} value={h}>
+      <option key={h} value={h} disabled={elapsed && h !== value}>
         {h === 24 ? "00 h (fin de journée)" : formatHourRange(h).split("–")[0]}
       </option>,
     );
@@ -1408,7 +1334,7 @@ type ScheduleDayState = { date: string; slots: Slot[] };
  * valide et facture le serveur (voir sponsored-hours-pricing.ts) ; les créneaux ne sont qu'une
  * représentation d'édition côté client.
  */
-function HourlySchedulePicker({
+export function HourlySchedulePicker({
   initial,
   onChange,
 }: {
@@ -1419,7 +1345,15 @@ function HourlySchedulePicker({
     initial.length > 0 ? initial.map((d) => ({ date: d.date, slots: hoursToSlots(d.hours) })) : [],
   );
   const [active, setActive] = useState<string | null>(days[0]?.date ?? null);
-  const [newDate, setNewDate] = useState(todayDateInputValue);
+  // L'heure courante (Paris) avance : les heures écoulées deviennent non sélectionnables en direct.
+  const [now, setNow] = useState(() => new Date());
+  const [newDate, setNewDate] = useState(() => firstSelectableDate(new Date()));
+  const [pickerError, setPickerError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(new Date()), 30_000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     onChange(days.map((d) => ({ date: d.date, hours: slotsToHours(d.slots) })));
@@ -1429,7 +1363,17 @@ function HourlySchedulePicker({
 
   function addDay() {
     if (!newDate || days.some((d) => d.date === newDate)) return;
-    const next = [...days, { date: newDate, slots: [[8, 11] as Slot] }].sort((a, b) => a.date.localeCompare(b.date));
+    const current = new Date();
+    if (newDate < todayParisDate(current)) {
+      setPickerError("Ce jour est déjà passé : choisissez un jour à venir.");
+      return;
+    }
+    if (!isDaySelectable(newDate, current)) {
+      setPickerError("Il ne reste plus 3 heures disponibles aujourd'hui : choisissez un autre jour.");
+      return;
+    }
+    setPickerError(null);
+    const next = [...days, { date: newDate, slots: [defaultSlotFor(newDate, current)] }].sort((a, b) => a.date.localeCompare(b.date));
     setDays(next);
     setActive(newDate);
     setNewDate(addDaysToDateInput(newDate, 1));
@@ -1503,7 +1447,10 @@ function HourlySchedulePicker({
             aria-label="Jour à ajouter"
             value={newDate}
             min={todayDateInputValue()}
-            onChange={(e) => setNewDate(e.target.value)}
+            onChange={(e) => {
+              setNewDate(e.target.value);
+              setPickerError(null);
+            }}
           />
           <Button type="button" variant="secondary" onClick={addDay}>
             + Ajouter un jour
@@ -1511,13 +1458,20 @@ function HourlySchedulePicker({
         </div>
       </div>
 
+      {pickerError ? (
+        <p className="sponsor-error mb-2 text-xs text-[var(--danger)]" role="alert">
+          {pickerError}
+        </p>
+      ) : null}
+
       {days.length === 0 ? (
         <p className="text-xs text-[var(--muted)]">Ajoutez au moins un jour, puis choisissez ses heures d&apos;exposition.</p>
       ) : (
         <div className="sponsor-days">
           {days.map((day) => {
             const hours = slotsToHours(day.slots);
-            const err = scheduleDayError(hours, day.slots);
+            const err = scheduleDayError(hours, day.slots, day.date, now);
+            const firstSelectable = selectableHoursForDay(day.date, now)[0] ?? 24;
             const opened = active === day.date;
             const amount = day.slots.reduce((sum, s) => sum + slotAmountCents(s), 0);
             return (
@@ -1572,7 +1526,7 @@ function HourlySchedulePicker({
                               updateSlots(day.date, next);
                             }}
                           >
-                            {hourSelectOptions(slot[0], false)}
+                            {hourSelectOptions(slot[0], false, firstSelectable)}
                           </select>
                           <span className="sponsor-dash">→</span>
                           <select
@@ -1583,7 +1537,7 @@ function HourlySchedulePicker({
                               updateSlots(day.date, next);
                             }}
                           >
-                            {hourSelectOptions(slot[1], true)}
+                            {hourSelectOptions(slot[1], true, firstSelectable)}
                           </select>
                           <span className="sponsor-slot-amount">{formatCents(slotAmountCents(slot))}</span>
                           <button
@@ -1602,7 +1556,7 @@ function HourlySchedulePicker({
                       <button
                         type="button"
                         className="btn-secondary sponsor-tiny"
-                        onClick={() => updateSlots(day.date, [...day.slots, [8, 11]])}
+                        onClick={() => updateSlots(day.date, [...day.slots, defaultSlotFor(day.date, new Date())])}
                       >
                         + Ajouter un créneau
                       </button>
