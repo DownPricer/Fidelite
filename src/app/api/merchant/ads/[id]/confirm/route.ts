@@ -5,6 +5,7 @@ import { writeAudit } from "@/lib/audit";
 import { resolveAppOriginFromRequestHost } from "@/lib/hosts";
 import { clientIp, jsonError, jsonOk, userAgent } from "@/lib/http";
 import { prisma } from "@/lib/prisma";
+import { notifyMerchant } from "@/lib/ad-visual-workflow";
 import { priceSponsoredHours, type SponsoredDaySelection } from "@/lib/sponsored-hours-pricing";
 import { StripeNotConfiguredError, createCampaignCheckoutSession } from "@/lib/stripe";
 import { getActiveStripeMode, isPaymentAllowedForMerchant, isStripeConfigured } from "@/lib/stripe-mode";
@@ -131,6 +132,7 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
     if (!consumed) {
       return jsonError("Le quota de jours sponsorisés vient d'être épuisé.", 409, { code: "QUOTA_EXHAUSTED" });
     }
+    await notifyMerchant(prisma, adRequest, "CAMPAIGN_SCHEDULED", "Votre campagne est programmée.");
     return jsonOk({ ok: true, requiresPayment: false });
   }
 

@@ -22,6 +22,7 @@ type NetworkCampaign = {
 type AdStatus =
   | "DRAFT"
   | "PENDING_REVIEW"
+  | "AWAITING_MERCHANT"
   | "NEEDS_CHANGES"
   | "APPROVED"
   | "REJECTED"
@@ -51,8 +52,9 @@ type AdRequest = {
 
 const AD_STATUS_LABELS: Record<AdStatus, string> = {
   DRAFT: "Brouillon",
-  PENDING_REVIEW: "En attente de validation",
-  NEEDS_CHANGES: "Correction demandée",
+  PENDING_REVIEW: "À traiter par Fideto",
+  AWAITING_MERCHANT: "Proposition envoyée — attend le commerçant",
+  NEEDS_CHANGES: "Visuel refusé — à corriger",
   APPROVED: "Approuvée — en attente de paiement",
   REJECTED: "Refusée",
   SCHEDULED: "Programmée",
@@ -64,8 +66,9 @@ const AD_STATUS_LABELS: Record<AdStatus, string> = {
 };
 
 const AD_STATUS_FILTER_OPTIONS: { value: string; label: string }[] = [
-  { value: "PENDING_REVIEW", label: "En attente de validation" },
-  { value: "NEEDS_CHANGES", label: "Correction demandée" },
+  { value: "PENDING_REVIEW", label: "À traiter par Fideto" },
+  { value: "AWAITING_MERCHANT", label: "En attente du commerçant" },
+  { value: "NEEDS_CHANGES", label: "Visuels refusés — à corriger" },
   { value: "APPROVED", label: "Approuvées — en attente de paiement" },
   { value: "SCHEDULED", label: "Programmées" },
   { value: "LIVE", label: "En cours de diffusion" },
@@ -98,7 +101,7 @@ export function CampaignModerationHome({ firstName }: { firstName: string }) {
     try {
       const [campaignsRes, adsRes] = await Promise.all([
         fetch("/api/super-admin/campaigns?status=PENDING_REVIEW"),
-        fetch(`/api/super-admin/ads?status=${adStatusFilter}`),
+        fetch(`/api/super-admin/visuels?status=${adStatusFilter}`),
       ]);
       const campaignsData = campaignsRes.ok ? await campaignsRes.json() : { campaigns: [] };
       const adsData = adsRes.ok ? await adsRes.json() : { ads: [] };
@@ -130,7 +133,7 @@ export function CampaignModerationHome({ firstName }: { firstName: string }) {
     const path =
       rejectTarget.kind === "campaign"
         ? `/api/super-admin/campaigns/${rejectTarget.id}/moderate`
-        : `/api/super-admin/ads/${rejectTarget.id}`;
+        : `/api/super-admin/visuels/${rejectTarget.id}`;
     const method = rejectTarget.kind === "campaign" ? "POST" : "PATCH";
     await fetch(path, {
       method,
@@ -275,7 +278,7 @@ export function CampaignModerationHome({ firstName }: { firstName: string }) {
                         ) : null}
                       </div>
                       <div className="flex shrink-0 flex-col gap-2">
-                        <Link href={`/super-admin/campagnes/ads/${ad.id}`}>
+                        <Link href={`/super-admin/campagnes/fiche/${ad.id}`}>
                           <Button>Ouvrir la fiche</Button>
                         </Link>
                       </div>

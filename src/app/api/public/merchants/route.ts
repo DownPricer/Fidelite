@@ -68,6 +68,8 @@ export async function GET(req: Request) {
           // Le worker peut avoir déjà basculé le statut affiché en LIVE (Partie 15bis) ; dans les
           // deux cas, la diffusion réelle reste décidée uniquement par hourlyIntervals ci-dessous.
           status: { in: ["SCHEDULED", "LIVE"] },
+          // Jamais de diffusion sans version finale approuvée (une version en attente n'est jamais publique).
+          finalImageUrl: { not: null },
           startDate: { lte: now },
           endDate: { gte: now },
           // Une mise en avant payée en mode test n'est jamais publiée.
@@ -93,7 +95,7 @@ export async function GET(req: Request) {
       merchantSlug: ad.merchant.slug,
       merchantName: ad.merchant.name,
       merchantLogoUrl: ad.merchant.logoUrl,
-      imageUrl: ad.finalImageUrl ?? ad.requestedImageUrl,
+      imageUrl: ad.finalImageUrl,
       text: ad.requestedText,
       ctaLabel: ad.ctaLabel,
       impressionUrl: `/api/public/ads/${ad.id}/impression`,

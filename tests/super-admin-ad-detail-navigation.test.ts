@@ -15,9 +15,9 @@ function makeRequest(host: string, path: string, cookie?: string) {
   return new NextRequest(`http://${host}${path}`, { headers });
 }
 
-const AD_DETAIL_PATH = "/super-admin/campagnes/ads/ad_123";
+const AD_DETAIL_PATH = "/super-admin/campagnes/fiche/ad_123";
 
-describe("middleware — /super-admin/campagnes/ads/[id] ne devient jamais une route commerçant", () => {
+describe("middleware — /super-admin/campagnes/fiche/[id] ne devient jamais une route commerçant", () => {
   it("n'est jamais classée cross-space vers /app, quel que soit l'hôte (historique ou nouveau)", async () => {
     const middleware = await loadMiddleware();
     for (const host of ["fidelite.sitereadyshd.fr", "fideto.fr", "app.fideto.fr", "admin.fideto.fr"]) {
@@ -50,7 +50,7 @@ describe("middleware — /super-admin/campagnes/ads/[id] ne devient jamais une r
 });
 
 /**
- * Le bouton "Ouvrir la fiche" utilise une route relative /super-admin/campagnes/ads/[id] —
+ * Le bouton "Ouvrir la fiche" utilise une route relative /super-admin/campagnes/fiche/[id] —
  * jamais /app, une route commerçant, APP_ORIGIN, ou une URL absolue vers app.fideto.fr.
  */
 describe("campaign-moderation-home.tsx — destination du bouton « Ouvrir la fiche »", () => {
@@ -59,8 +59,8 @@ describe("campaign-moderation-home.tsx — destination du bouton « Ouvrir la fi
     "utf8",
   );
 
-  it("pointe vers une route relative /super-admin/campagnes/ads/[id]", () => {
-    expect(source).toContain("href={`/super-admin/campagnes/ads/${ad.id}`}");
+  it("pointe vers une route relative /super-admin/campagnes/fiche/[id]", () => {
+    expect(source).toContain("href={`/super-admin/campagnes/fiche/${ad.id}`}");
   });
 
   it("n'utilise jamais /app, appOrigin ni une URL absolue vers app.fideto.fr", () => {

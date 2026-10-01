@@ -17,11 +17,15 @@ vi.mock("@/lib/prisma", () => ({
       update: (...args: unknown[]) => adRequestUpdate(...args),
     },
     auditLog: { findMany: vi.fn().mockResolvedValue([]) },
+    adVisualVersion: { updateMany: vi.fn(), findFirst: vi.fn().mockResolvedValue(null) },
+    staffNotification: { create: vi.fn() },
     adEvent: { findMany: vi.fn().mockResolvedValue([]) },
     $transaction: async (callback: (tx: unknown) => Promise<unknown>) =>
       callback({
         adRequest: { update: (...args: unknown[]) => adRequestUpdate(...args) },
         campaign: { update: (...args: unknown[]) => campaignUpdate(...args) },
+        adVisualVersion: { updateMany: vi.fn(), findFirst: vi.fn().mockResolvedValue(null) },
+        staffNotification: { create: vi.fn() },
       }),
   },
 }));
@@ -76,7 +80,7 @@ describe("PATCH /api/super-admin/ads/[id]", () => {
   it("approve : refuse si aucun créneau valide", async () => {
     adRequestFindUnique.mockResolvedValueOnce(baseAd({ hourlySchedule: [] }));
     const { PATCH } = await import("../src/app/api/super-admin/ads/[id]/route");
-    const response = await PATCH(req({ action: "approve", finalImageUrl: "/api/media/campaigns/m1/x.jpg" }), {
+    const response = await PATCH(req({ action: "approve" }), {
       params: Promise.resolve({ id: "ad_1" }),
     });
     expect(response.status).toBe(409);
@@ -86,7 +90,7 @@ describe("PATCH /api/super-admin/ads/[id]", () => {
     adRequestFindUnique.mockResolvedValueOnce(baseAd());
     const { PATCH } = await import("../src/app/api/super-admin/ads/[id]/route");
     const response = await PATCH(
-      req({ action: "approve", finalImageUrl: "/api/media/campaigns/m1/x.jpg", ctaUrl: "javascript:alert(1)" }),
+      req({ action: "approve", ctaUrl: "javascript:alert(1)" }),
       { params: Promise.resolve({ id: "ad_1" }) },
     );
     expect(response.status).toBe(400);

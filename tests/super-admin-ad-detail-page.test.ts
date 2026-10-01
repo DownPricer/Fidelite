@@ -18,10 +18,10 @@ beforeEach(() => {
   vi.clearAllMocks();
 });
 
-describe("page /super-admin/campagnes/ads/[id] — gardes serveur", () => {
+describe("page /super-admin/campagnes/fiche/[id] — gardes serveur", () => {
   it("redirige vers /super-admin/connexion si non authentifié (jamais vers /app)", async () => {
     getSuperAdminSessionUser.mockResolvedValueOnce(null);
-    const { default: Page } = await import("../src/app/super-admin/campagnes/ads/[id]/page");
+    const { default: Page } = await import("../src/app/super-admin/campagnes/fiche/[id]/page");
     await expect(Page({ params: Promise.resolve({ id: "ad_1" }) })).rejects.toThrow("REDIRECT:/super-admin/connexion");
     expect(adRequestFindUnique).not.toHaveBeenCalled();
   });
@@ -29,14 +29,14 @@ describe("page /super-admin/campagnes/ads/[id] — gardes serveur", () => {
   it("renvoie une vraie page 404 si la mise en avant n'existe pas", async () => {
     getSuperAdminSessionUser.mockResolvedValueOnce({ firstName: "Admin" });
     adRequestFindUnique.mockResolvedValueOnce(null);
-    const { default: Page } = await import("../src/app/super-admin/campagnes/ads/[id]/page");
+    const { default: Page } = await import("../src/app/super-admin/campagnes/fiche/[id]/page");
     await expect(Page({ params: Promise.resolve({ id: "missing" }) })).rejects.toThrow("NOT_FOUND");
   });
 
   it("rend la fiche quand authentifié et que la mise en avant existe", async () => {
     getSuperAdminSessionUser.mockResolvedValueOnce({ firstName: "Admin" });
     adRequestFindUnique.mockResolvedValueOnce({ id: "ad_1" });
-    const { default: Page } = await import("../src/app/super-admin/campagnes/ads/[id]/page");
+    const { default: Page } = await import("../src/app/super-admin/campagnes/fiche/[id]/page");
     const result = await Page({ params: Promise.resolve({ id: "ad_1" }) });
     expect(result).toBeTruthy();
   });

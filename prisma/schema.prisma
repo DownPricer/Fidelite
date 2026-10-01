@@ -888,6 +888,9 @@ enum InAppNotificationKind {
 enum AdRequestStatus {
   DRAFT
   PENDING_REVIEW
+  /// Fideto a envoyé une proposition de bandeau : c'est au commerçant de l'accepter ou de demander
+  /// une modification (aucun paiement ni diffusion tant qu'il n'a pas accepté).
+  AWAITING_MERCHANT
   /// Le super-admin a demandé une correction (motif dans rejectionReason) : le commerçant peut
   /// modifier sa demande (PATCH /api/merchant/ads/[id]), ce qui la repasse en PENDING_REVIEW.
   NEEDS_CHANGES
@@ -1168,6 +1171,10 @@ model AdRequest {
   /// contigus) — voir /api/public/merchants. Null pour les anciennes demandes (diffusion continue startDate→endDate).
   hourlyIntervals   Json?
   finalImageUrl     String?
+  /// Version de visuel validée dont finalImageUrl est la copie — seule cette version est diffusable.
+  finalVersionId    String?
+  /// Courte indication facultative du commerçant pour la création du bandeau par Fideto.
+  visualBrief       String?
   /// TEST = payée en mode test : jamais publiée. Null = quota gratuit ou paiement réel.
   fundingMode       StripeMode?
   rejectionReason   String?
@@ -1180,6 +1187,7 @@ model AdRequest {
   campaign Campaign?      @relation(fields: [campaignId], references: [id])
   events   AdEvent[]
   images   AdRequestImage[]
+  versions AdVisualVersion[]
 
   @@index([merchantId, status])
   @@index([status, startDate, endDate])
@@ -1193,11 +1201,82 @@ model AdRequestImage {
   adRequestId String
   url         String
   position    Int      @default(0)
+  fileName    String?
+  sizeBytes   Int?
   createdAt   DateTime @default(now())
 
   adRequest AdRequest @relation(fields: [adRequestId], references: [id], onDelete: Cascade)
 
   @@index([adRequestId, position])
+}
+
+enum AdVisualAuthor {
+  MERCHANT
+  FIDETO
+}
+
+enum AdVisualVersionStatus {
+  /// Bandeau du commerçant téléversé mais pas encore soumis.
+  DRAFT
+  /// Soumis, en attente de la décision du super-admin.
+  SUBMITTED
+  /// Proposé par Fideto, en attente de la réponse du commerçant.
+  PROPOSED
+  /// Version finale (approuvée par Fideto ou acceptée par le commerçant) : la seule diffusable.
+  APPROVED
+  /// Refusée / modification demandée (motif dans `comment`) — conservée dans l'historique.
+  CHANGES_REQUESTED
+  /// Remplacée par une version plus récente avant décision.
+  SUPERSEDED
+}
+
+/// Historique des versions du bandeau (jamais supprimées) : `url` = fichier au format exact du
+/// bandeau public, `originalUrl` = fichier d'origine en qualité complète.
+model AdVisualVersion {
+  id          String                @id @default(cuid())
+  adRequestId String
+  number      Int
+  author      AdVisualAuthor
+  status      AdVisualVersionStatus
+  url         String
+  originalUrl String
+  width       Int?
+  height      Int?
+  /// Cadrage appliqué par Fideto/le commerçant si le fichier d'origine n'était pas au format exact.
+  reframed    Boolean               @default(false)
+  /// Motif du refus ou commentaire de demande de modification.
+  comment     String?
+  decidedBy   String?
+  decidedAt   DateTime?
+  createdBy   String?
+  createdAt   DateTime              @default(now())
+
+  adRequest AdRequest @relation(fields: [adRequestId], references: [id], onDelete: Cascade)
+
+  @@unique([adRequestId, number])
+  @@index([adRequestId, status])
+}
+
+enum StaffNotificationAudience {
+  MERCHANT
+  SUPER_ADMIN
+}
+
+/// Notifications persistantes du parcours « visuel » des mises en avant (cloche commerçant et
+/// super-admin). Partagées par audience : MERCHANT par commerce, SUPER_ADMIN pour toute l'équipe.
+model StaffNotification {
+  id          String                    @id @default(cuid())
+  audience    StaffNotificationAudience
+  merchantId  String?
+  campaignId  String?
+  adRequestId String?
+  kind        String
+  message     String
+  readAt      DateTime?
+  createdAt   DateTime                  @default(now())
+
+  @@index([audience, merchantId, readAt, createdAt])
+  @@index([adRequestId, createdAt])
 }
 
 model AdEvent {

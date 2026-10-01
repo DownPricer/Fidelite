@@ -30,7 +30,12 @@ export default async function DashboardLayout({ children }: { children: React.Re
         : null;
 
   return (
-    <DashboardLayoutClient admin={admin} canViewStatistics={statsAccess} identity={identity}>
+    <DashboardLayoutClient
+      admin={admin}
+      canViewStatistics={statsAccess}
+      identity={identity}
+      showNotifications={access.access === "MERCHANT" && access.admin}
+    >
       {children}
     </DashboardLayoutClient>
   );

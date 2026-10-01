@@ -1,0 +1,142 @@
+/**
+ * Mini base en mémoire (assez de Prisma pour exécuter les VRAIES routes du parcours « visuel
+ * des mises en avant ») : where (égalité, in, not, lte, gte, OR, NOT), orderBy, include.
+ */
+type Row = Record<string, unknown> & { id: string };
+
+let counter = 0;
+const nextId = (prefix: string) => `${prefix}_${++counter}`;
+
+function matchValue(actual: unknown, expected: unknown): boolean {
+  if (expected && typeof expected === "object" && !(expected instanceof Date) && !Array.isArray(expected)) {
+    const ops = expected as Record<string, unknown>;
+    if ("in" in ops) return (ops.in as unknown[]).includes(actual);
+    if ("not" in ops) return ops.not === null ? actual !== null && actual !== undefined : actual !== ops.not;
+    if ("lte" in ops) return (actual as Date).getTime() <= (ops.lte as Date).getTime();
+    if ("gte" in ops) return (actual as Date).getTime() >= (ops.gte as Date).getTime();
+    if ("equals" in ops) return actual === ops.equals;
+  }
+  if (expected === null) return actual === null || actual === undefined;
+  return actual === expected;
+}
+
+function match(row: Row, where: Record<string, unknown> = {}): boolean {
+  return Object.entries(where).every(([key, value]) => {
+    if (key === "OR") return (value as Record<string, unknown>[]).some((w) => match(row, w));
+    if (key === "NOT") return !match(row, value as Record<string, unknown>);
+    return matchValue(row[key], value);
+  });
+}
+
+function sortRows(rows: Row[], orderBy?: Record<string, "asc" | "desc"> | Record<string, "asc" | "desc">[]) {
+  const spec = Array.isArray(orderBy) ? orderBy[0] : orderBy;
+  if (!spec) return rows;
+  const [key, dir] = Object.entries(spec)[0];
+  return [...rows].sort((a, b) => {
+    const av = a[key] as number | Date;
+    const bv = b[key] as number | Date;
+    const diff = +av - +bv;
+    return dir === "desc" ? -diff : diff;
+  });
+}
+
+export function createFakeAdDb() {
+  const tables: Record<string, Row[]> = {
+    adRequest: [],
+    campaign: [],
+    adVisualVersion: [],
+    adRequestImage: [],
+    staffNotification: [],
+    campaignPayment: [],
+    auditLog: [],
+    stripeWebhookEvent: [],
+  };
+
+  function hydrate(table: string, row: Row | undefined, include?: Record<string, unknown>) {
+    if (!row) return null;
+    const out: Record<string, unknown> = { ...row };
+    if (!include) return out;
+    if (table === "adRequest") {
+      if (include.campaign) {
+        const campaign = tables.campaign.find((c) => c.id === row.campaignId);
+        out.campaign = campaign ? { ...campaign, payment: tables.campaignPayment.find((p) => p.campaignId === campaign.id) ?? null } : null;
+      }
+      if (include.images) out.images = sortRows(tables.adRequestImage.filter((i) => i.adRequestId === row.id), { position: "asc" });
+      if (include.versions) out.versions = sortRows(tables.adVisualVersion.filter((v) => v.adRequestId === row.id), { number: "desc" });
+      if (include.merchant) out.merchant = { id: row.merchantId, slug: "boulangerie", name: "Boulangerie Test", logoUrl: null };
+      if (include._count) out._count = { versions: tables.adVisualVersion.filter((v) => v.adRequestId === row.id).length };
+    }
+    return out;
+  }
+
+  function model(table: string, prefix: string) {
+    return {
+      create: async ({ data }: { data: Record<string, unknown> }) => {
+        const row = { id: nextId(prefix), createdAt: new Date(counter * 1000 + 1_700_000_000_000), updatedAt: new Date(), ...data } as Row;
+        tables[table].push(row);
+        return { ...row };
+      },
+      createMany: async ({ data }: { data: Record<string, unknown>[] }) => {
+        for (const d of data) tables[table].push({ id: nextId(prefix), createdAt: new Date(counter * 1000 + 1_700_000_000_000), ...d } as Row);
+        return { count: data.length };
+      },
+      findFirst: async ({ where, orderBy, include, select }: { where?: Record<string, unknown>; orderBy?: never; include?: Record<string, unknown>; select?: unknown } = {}) => {
+        const found = sortRows(tables[table].filter((r) => match(r, where)), orderBy)[0];
+        void select;
+        return hydrate(table, found, include);
+      },
+      findUnique: async ({ where, include }: { where: Record<string, unknown>; include?: Record<string, unknown> }) =>
+        hydrate(table, tables[table].find((r) => match(r, where)), include),
+      findMany: async ({ where, orderBy, include, take }: { where?: Record<string, unknown>; orderBy?: never; include?: Record<string, unknown>; take?: number } = {}) => {
+        const rows = sortRows(tables[table].filter((r) => match(r, where)), orderBy);
+        return rows.slice(0, take ?? rows.length).map((r) => hydrate(table, r, include));
+      },
+      update: async ({ where, data }: { where: Record<string, unknown>; data: Record<string, unknown> }) => {
+        const row = tables[table].find((r) => match(r, where));
+        if (!row) throw new Error(`${table}: introuvable`);
+        for (const [k, v] of Object.entries(data)) if (v !== undefined) row[k] = v;
+        return { ...row };
+      },
+      updateMany: async ({ where, data }: { where?: Record<string, unknown>; data: Record<string, unknown> }) => {
+        const rows = tables[table].filter((r) => match(r, where));
+        for (const row of rows) for (const [k, v] of Object.entries(data)) if (v !== undefined) row[k] = v;
+        return { count: rows.length };
+      },
+      deleteMany: async ({ where }: { where?: Record<string, unknown> }) => {
+        const before = tables[table].length;
+        tables[table] = tables[table].filter((r) => !match(r, where));
+        return { count: before - tables[table].length };
+      },
+      count: async ({ where }: { where?: Record<string, unknown> } = {}) => tables[table].filter((r) => match(r, where)).length,
+      upsert: async ({ where, create, update }: { where: Record<string, unknown>; create: Record<string, unknown>; update: Record<string, unknown> }) => {
+        const row = tables[table].find((r) => match(r, where));
+        if (row) {
+          Object.assign(row, update);
+          return { ...row };
+        }
+        const created = { id: nextId(prefix), ...create } as Row;
+        tables[table].push(created);
+        return { ...created };
+      },
+      delete: async ({ where }: { where: Record<string, unknown> }) => {
+        tables[table] = tables[table].filter((r) => !match(r, where));
+      },
+    };
+  }
+
+  const prisma = {
+    adRequest: model("adRequest", "ad"),
+    campaign: model("campaign", "camp"),
+    adVisualVersion: model("adVisualVersion", "ver"),
+    adRequestImage: model("adRequestImage", "img"),
+    staffNotification: model("staffNotification", "notif"),
+    campaignPayment: model("campaignPayment", "pay"),
+    auditLog: model("auditLog", "audit"),
+    stripeWebhookEvent: model("stripeWebhookEvent", "evt"),
+    merchant: { findMany: async () => [] as unknown[] },
+    $transaction: async (callback: (client: unknown) => Promise<unknown>) => callback(prisma),
+    $executeRaw: async () => 1,
+  };
+
+  return { prisma, tables };
+}

@@ -17,6 +17,7 @@ vi.mock("@/lib/stripe", () => ({
   constructStripeWebhookEvent: (...args: unknown[]) => constructStripeWebhookEvent(...args),
   StripeNotConfiguredError: class extends Error {},
 }));
+vi.mock("@/lib/ad-visual-workflow", () => ({ notifyMerchant: vi.fn() }));
 vi.mock("@/lib/audit", () => ({ writeAudit: (...args: unknown[]) => writeAudit(...args) }));
 vi.mock("@/lib/campaign-quota", () => ({ refundIncludedQuota: vi.fn() }));
 vi.mock("@/lib/marketing-balance", () => ({ creditTopup: (...args: unknown[]) => creditTopup(...args) }));

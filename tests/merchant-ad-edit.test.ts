@@ -17,6 +17,8 @@ vi.mock("@/lib/prisma", () => ({
       update: (...args: unknown[]) => adRequestUpdate(...args),
     },
     campaign: { update: (...args: unknown[]) => campaignUpdate(...args) },
+    adVisualVersion: { updateMany: vi.fn() },
+    staffNotification: { create: vi.fn() },
   },
 }));
 

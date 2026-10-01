@@ -2,6 +2,8 @@ import { requireMerchantAdmin, requireMutatingRequest } from "@/lib/api-guard";
 import { writeAudit } from "@/lib/audit";
 import { clientIp, jsonError, jsonOk, readJson, userAgent } from "@/lib/http";
 import { prisma } from "@/lib/prisma";
+import { adVisualFileSize, validateStagedAdFile } from "@/lib/ad-visuals";
+import { notifySuperAdmin, setAdSources, submitMerchantVersion } from "@/lib/ad-visual-workflow";
 import { priceSponsoredHours, scheduleToUtcIntervals, validateSponsoredSchedule } from "@/lib/sponsored-hours-pricing";
 import { adRequestCreateSchema, zodErrorMessage } from "@/lib/validation";
 
@@ -43,6 +45,32 @@ export async function POST(req: Request) {
   const requestedImageUrl = visualMode === "SELF" ? (parsed.data.requestedImageUrl ?? null) : null;
   const requestedImageUrls = visualMode === "FIDETO" ? (parsed.data.requestedImageUrls ?? []) : [];
 
+  // Fichiers : toujours des fichiers privés déjà téléversés par CE commerce, vérifiés côté serveur
+  // (type réel, taille, format exact du bandeau pour SELF) — jamais une URL arbitraire.
+  let selfFiles: { url: string; originalUrl: string; width: number; height: number; reframed: boolean } | null = null;
+  const sources: { url: string; sizeBytes: number | null }[] = [];
+  if (visualMode === "SELF" && requestedImageUrl) {
+    const display = await validateStagedAdFile(requestedImageUrl, merchantId, { requireExactFormat: true });
+    if (!display.ok) return jsonError(display.error);
+    const originalUrl = parsed.data.requestedOriginalUrl ?? requestedImageUrl;
+    if (originalUrl !== requestedImageUrl) {
+      const original = await validateStagedAdFile(originalUrl, merchantId);
+      if (!original.ok) return jsonError(original.error);
+    }
+    selfFiles = {
+      url: requestedImageUrl,
+      originalUrl,
+      width: display.image.width,
+      height: display.image.height,
+      reframed: originalUrl !== requestedImageUrl,
+    };
+  }
+  for (const url of requestedImageUrls) {
+    const check = await validateStagedAdFile(url, merchantId);
+    if (!check.ok) return jsonError(check.error);
+    sources.push({ url, sizeBytes: await adVisualFileSize(url) });
+  }
+
   const result = await prisma.$transaction(async (tx) => {
     const campaign = await tx.campaign.create({
       data: {
@@ -52,9 +80,8 @@ export async function POST(req: Request) {
         status: "PENDING_REVIEW",
         title: `Publicité sponsorisée (${days} j, ${pricingEstimate.totalHours} h)`,
         body: parsed.data.requestedText,
-        // Visuel déjà final (SELF) affiché tel quel une fois approuvé ; FIDETO reste sans image
-        // tant que le super-admin n'a pas choisi finalImageUrl (jamais les brouillons envoyés).
-        imageUrl: requestedImageUrl,
+        // Jamais d'image tant qu'aucune version n'est approuvée (voir publishVersionAsFinal).
+        imageUrl: null,
         actionLabel: parsed.data.ctaLabel ?? null,
         actionUrl: parsed.data.ctaUrl ?? null,
         quotaKind: "SPONSORED_DAY",
@@ -69,6 +96,7 @@ export async function POST(req: Request) {
         requestedText: parsed.data.requestedText,
         visualMode,
         requestedImageUrl,
+        visualBrief: visualMode === "FIDETO" ? (parsed.data.visualBrief ?? null) : null,
         objective: parsed.data.objective ?? null,
         ctaLabel: parsed.data.ctaLabel ?? null,
         ctaUrl: parsed.data.ctaUrl ?? null,
@@ -78,10 +106,11 @@ export async function POST(req: Request) {
         hourlyIntervals: intervals,
       },
     });
-    if (requestedImageUrls.length > 0) {
-      await tx.adRequestImage.createMany({
-        data: requestedImageUrls.map((url, position) => ({ adRequestId: adRequest.id, url, position })),
-      });
+    if (selfFiles) {
+      await submitMerchantVersion(tx, adRequest, selfFiles, staff.user!.id, true);
+    } else {
+      await setAdSources(tx, adRequest.id, sources);
+      await notifySuperAdmin(tx, adRequest, "MERCHANT_IMAGES_SENT", "Un commerçant a envoyé des images pour une création Fideto.");
     }
     return { campaign, adRequest };
   });

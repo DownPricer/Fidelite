@@ -21,6 +21,7 @@ vi.mock("@/lib/stripe-mode", () => ({
   isPaymentAllowedForMerchant: () => stripeMode.allowed,
   isStripeConfigured: () => stripeMode.configured,
 }));
+vi.mock("@/lib/ad-visual-workflow", () => ({ notifyMerchant: vi.fn() }));
 vi.mock("@/lib/audit", () => ({ writeAudit: vi.fn() }));
 vi.mock("@/lib/stripe", () => ({
   createCampaignCheckoutSession: (...args: unknown[]) => createCampaignCheckoutSession(...args),

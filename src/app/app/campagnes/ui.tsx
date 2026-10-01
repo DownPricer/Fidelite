@@ -25,6 +25,7 @@ type Audience = "MERCHANT_MEMBERS" | "NETWORK_LOCAL";
 type AdStatus =
   | "DRAFT"
   | "PENDING_REVIEW"
+  | "AWAITING_MERCHANT"
   | "NEEDS_CHANGES"
   | "APPROVED"
   | "REJECTED"
@@ -99,8 +100,9 @@ const QUOTA_LABELS: Record<string, string> = {
 const AD_STATUS_LABELS: Record<AdStatus, string> = {
   DRAFT: "Brouillon",
   PENDING_REVIEW: "En préparation par Fideto",
-  NEEDS_CHANGES: "Correction demandée",
-  APPROVED: "Visuel prêt — à valider",
+  AWAITING_MERCHANT: "Proposition de Fideto — à vous de répondre",
+  NEEDS_CHANGES: "Visuel refusé — à corriger",
+  APPROVED: "Visuel validé — à payer",
   REJECTED: "Refusée",
   SCHEDULED: "Programmée",
   LIVE: "En cours de diffusion",
@@ -597,7 +599,13 @@ export function CampagnesPanel({ demo = false }: { demo?: boolean }) {
             return (
               <div key={c.id} className="campaign-activity-row">
                 <div className="campaign-activity-title">
-                  <strong>{c.title || "(Sans titre)"}</strong>
+                  {ad && !demo ? (
+                    <Link href={`/app/campagnes/${c.id}`} className="font-black underline-offset-2 hover:underline">
+                      {c.title || "(Sans titre)"} — ouvrir la fiche
+                    </Link>
+                  ) : (
+                    <strong>{c.title || "(Sans titre)"}</strong>
+                  )}
                   <span>
                     {typeLabel} · {audienceLabel}
                   </span>
@@ -1628,14 +1636,15 @@ const SELF_VISUAL_OUTPUT_PX = 800;
 const MAX_FIDETO_IMAGES = 5;
 
 export type VisualPickerValue =
-  | { mode: "SELF"; selfUrl: string | null; fidetoUrls: [] }
-  | { mode: "FIDETO"; selfUrl: null; fidetoUrls: string[] };
+  | { mode: "SELF"; selfUrl: string | null; selfOriginalUrl: string | null; fidetoUrls: [] }
+  | { mode: "FIDETO"; selfUrl: null; selfOriginalUrl: null; fidetoUrls: string[] };
 
-async function uploadCampaignMedia(dataUrl: string): Promise<string> {
-  const res = await fetch("/api/merchant/campaigns/media", {
+/** Téléversement PRIVÉ des visuels de mise en avant (type réel, taille et format vérifiés côté serveur). */
+async function uploadCampaignMedia(dataUrl: string, kind: "source" | "banniere" | "original"): Promise<string> {
+  const res = await fetch("/api/merchant/visuels/televerser", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ dataUrl }),
+    body: JSON.stringify({ dataUrl, kind }),
   });
   const data = (await res.json().catch(() => null)) as { url?: string; error?: string } | null;
   if (!res.ok || !data?.url) throw new Error(data?.error || "Image invalide.");
@@ -1644,7 +1653,7 @@ async function uploadCampaignMedia(dataUrl: string): Promise<string> {
 
 async function deleteCampaignMediaUrl(url: string) {
   try {
-    await fetch("/api/merchant/campaigns/media", {
+    await fetch("/api/merchant/visuels/televerser", {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ url }),
@@ -1822,28 +1831,55 @@ function VisualPicker({
   function switchMode(mode: "SELF" | "FIDETO") {
     if (mode === value.mode) return;
     // On change de parcours : on retire les fichiers déjà envoyés sous l'autre parcours.
-    if (value.mode === "SELF" && value.selfUrl) void deleteCampaignMediaUrl(value.selfUrl);
+    if (value.mode === "SELF") dropSelfFiles(value);
     if (value.mode === "FIDETO") value.fidetoUrls.forEach((url) => void deleteCampaignMediaUrl(url));
     setPendingFile(null);
-    onChange(mode === "SELF" ? { mode: "SELF", selfUrl: null, fidetoUrls: [] } : { mode: "FIDETO", selfUrl: null, fidetoUrls: [] });
+    onChange(
+      mode === "SELF"
+        ? { mode: "SELF", selfUrl: null, selfOriginalUrl: null, fidetoUrls: [] }
+        : { mode: "FIDETO", selfUrl: null, selfOriginalUrl: null, fidetoUrls: [] },
+    );
+  }
+
+  function dropSelfFiles(current: VisualPickerValue) {
+    if (current.mode !== "SELF") return;
+    if (current.selfUrl) void deleteCampaignMediaUrl(current.selfUrl);
+    if (current.selfOriginalUrl && current.selfOriginalUrl !== current.selfUrl) void deleteCampaignMediaUrl(current.selfOriginalUrl);
   }
 
   async function onSelfFileSelected(file: File | null) {
     if (!file) return;
-    if (file.size > 5 * 1024 * 1024) {
-      onError("Image trop lourde (5 Mo maximum).");
+    if (file.size > 10 * 1024 * 1024) {
+      onError("Image trop lourde (10 Mo maximum).");
       return;
     }
-    if (value.mode === "SELF" && value.selfUrl) await deleteCampaignMediaUrl(value.selfUrl);
-    onChange({ mode: "SELF", selfUrl: null, fidetoUrls: [] });
-    setPendingFile(file);
+    dropSelfFiles(value);
+    onChange({ mode: "SELF", selfUrl: null, selfOriginalUrl: null, fidetoUrls: [] });
+    setSelfBusy(true);
+    try {
+      const dataUrl = await readFileAsDataUrl(file);
+      const img = await loadImageElement(dataUrl);
+      if (img.naturalWidth === img.naturalHeight && img.naturalWidth >= 400) {
+        // Déjà au format exact du bandeau (carré) : envoi direct, sans recadrage obligatoire.
+        const url = await uploadCampaignMedia(dataUrl, "banniere");
+        onChange({ mode: "SELF", selfUrl: url, selfOriginalUrl: url, fidetoUrls: [] });
+      } else {
+        setPendingFile(file);
+      }
+    } catch (err) {
+      onError(err instanceof Error ? err.message : "Envoi de l'image impossible.");
+    } finally {
+      setSelfBusy(false);
+    }
   }
 
   async function onCropConfirm(dataUrl: string) {
     setSelfBusy(true);
     try {
-      const url = await uploadCampaignMedia(dataUrl);
-      onChange({ mode: "SELF", selfUrl: url, fidetoUrls: [] });
+      // Le fichier d'origine est conservé en qualité complète à côté du bandeau recadré.
+      const originalUrl = pendingFile ? await uploadCampaignMedia(await readFileAsDataUrl(pendingFile), "original") : null;
+      const url = await uploadCampaignMedia(dataUrl, "banniere");
+      onChange({ mode: "SELF", selfUrl: url, selfOriginalUrl: originalUrl ?? url, fidetoUrls: [] });
       setPendingFile(null);
     } catch (err) {
       onError(err instanceof Error ? err.message : "Envoi de l'image impossible.");
@@ -1853,8 +1889,8 @@ function VisualPicker({
   }
 
   async function removeSelfImage() {
-    if (value.mode === "SELF" && value.selfUrl) await deleteCampaignMediaUrl(value.selfUrl);
-    onChange({ mode: "SELF", selfUrl: null, fidetoUrls: [] });
+    dropSelfFiles(value);
+    onChange({ mode: "SELF", selfUrl: null, selfOriginalUrl: null, fidetoUrls: [] });
     setPendingFile(null);
   }
 
@@ -1870,14 +1906,14 @@ function VisualPicker({
     try {
       const newUrls: string[] = [];
       for (const file of selected) {
-        if (file.size > 5 * 1024 * 1024) {
-          onError(`« ${file.name} » dépasse 5 Mo — ignorée.`);
+        if (file.size > 10 * 1024 * 1024) {
+          onError(`« ${file.name} » dépasse 10 Mo — ignorée.`);
           continue;
         }
         const dataUrl = await readFileAsDataUrl(file);
-        newUrls.push(await uploadCampaignMedia(dataUrl));
+        newUrls.push(await uploadCampaignMedia(dataUrl, "source"));
       }
-      onChange({ mode: "FIDETO", selfUrl: null, fidetoUrls: [...value.fidetoUrls, ...newUrls] });
+      onChange({ mode: "FIDETO", selfUrl: null, selfOriginalUrl: null, fidetoUrls: [...value.fidetoUrls, ...newUrls] });
     } catch (err) {
       onError(err instanceof Error ? err.message : "Envoi d'une image impossible.");
     } finally {
@@ -1888,7 +1924,7 @@ function VisualPicker({
   async function removeFidetoImage(url: string) {
     if (value.mode !== "FIDETO") return;
     await deleteCampaignMediaUrl(url);
-    onChange({ mode: "FIDETO", selfUrl: null, fidetoUrls: value.fidetoUrls.filter((u) => u !== url) });
+    onChange({ mode: "FIDETO", selfUrl: null, selfOriginalUrl: null, fidetoUrls: value.fidetoUrls.filter((u) => u !== url) });
   }
 
   return (
@@ -1923,7 +1959,7 @@ function VisualPicker({
                 ▧
               </span>
               <b>Importer mon bandeau</b>
-              <small>PNG, JPG ou WebP · 5 Mo max · aperçu au format de diffusion (carré)</small>
+              <small>PNG, JPG ou WebP · 10 Mo max · format de diffusion carré (cadrage proposé si besoin)</small>
               <input
                 type="file"
                 accept="image/png,image/jpeg,image/webp"
@@ -1973,7 +2009,7 @@ function VisualPicker({
               ＋
             </span>
             <b>Ajouter vos images</b>
-            <small>Jusqu&apos;à {MAX_FIDETO_IMAGES} images · PNG, JPG ou WebP · 5 Mo maximum par image</small>
+            <small>Jusqu&apos;à {MAX_FIDETO_IMAGES} images · PNG, JPG ou WebP · 10 Mo maximum par image</small>
             <input
               type="file"
               accept="image/png,image/jpeg,image/webp"
@@ -2019,7 +2055,8 @@ function SponsorWizard({
   const [objective, setObjective] = useState("");
   const [text, setText] = useState("");
   const [ctaUrl, setCtaUrl] = useState("");
-  const [visual, setVisual] = useState<VisualPickerValue>({ mode: "FIDETO", selfUrl: null, fidetoUrls: [] });
+  const [visual, setVisual] = useState<VisualPickerValue>({ mode: "FIDETO", selfUrl: null, selfOriginalUrl: null, fidetoUrls: [] });
+  const [brief, setBrief] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
@@ -2078,6 +2115,8 @@ function SponsorWizard({
           requestedText: text,
           visualMode: visual.mode,
           requestedImageUrl: visual.mode === "SELF" ? visual.selfUrl : null,
+          requestedOriginalUrl: visual.mode === "SELF" ? visual.selfOriginalUrl : null,
+          visualBrief: visual.mode === "FIDETO" ? brief.trim() || null : null,
           requestedImageUrls: visual.mode === "FIDETO" ? visual.fidetoUrls : undefined,
           objective: objective.trim() || null,
           ctaUrl: ctaUrl.trim() || null,
@@ -2105,8 +2144,9 @@ function SponsorWizard({
         <div className="glass-panel space-y-3 p-6 text-center">
           <p className="text-sm font-bold text-[var(--ink)]">Demande envoyée</p>
           <p className="text-sm text-[var(--muted-strong)]">
-            Fideto prépare votre visuel. Vous recevrez un aperçu à valider avant tout paiement — suivez son statut
-            dans l&apos;historique des campagnes.
+            {visual.mode === "SELF"
+              ? "Fideto examine votre bandeau. Vous serez prévenu(e) par la cloche dès qu'il est approuvé ou s'il faut le corriger."
+              : "Fideto prépare votre visuel. Vous recevrez un aperçu à valider avant tout paiement — vous serez prévenu(e) par la cloche."}
           </p>
           <Button className="w-full" onClick={onDone}>
             Terminer
@@ -2178,6 +2218,19 @@ function SponsorWizard({
                 </p>
               </div>
               <VisualPicker value={visual} onChange={setVisual} onError={setError} />
+              {visual.mode === "FIDETO" ? (
+                <label className="mt-4 block text-xs text-[var(--muted)]">
+                  Ce que vous souhaitez (facultatif)
+                  <textarea
+                    className="profile-select mt-1 w-full"
+                    rows={2}
+                    value={brief}
+                    onChange={(e) => setBrief(e.target.value)}
+                    maxLength={500}
+                    placeholder="Ex. : ambiance chaleureuse, mettre en avant la promo du week-end"
+                  />
+                </label>
+              ) : null}
               <label className="mt-4 block text-xs text-[var(--muted)]">
                 Texte du bandeau
                 <textarea

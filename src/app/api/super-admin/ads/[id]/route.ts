@@ -6,6 +6,7 @@ import { writeAudit } from "@/lib/audit";
 import { clientIp, jsonError, jsonOk, readJson, userAgent } from "@/lib/http";
 import { prisma } from "@/lib/prisma";
 import { computeAdLifecycleStatus } from "@/lib/ad-lifecycle-worker";
+import { approveSubmittedVersion, notifyMerchant, refuseVisual } from "@/lib/ad-visual-workflow";
 import { adModerationSchema, zodErrorMessage } from "@/lib/validation";
 
 /** Fiche complète d'une demande de bandeau — super-admin uniquement (historique, paiement, stats). */
@@ -55,7 +56,10 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
   const data = parsedBody.data;
   const { action } = data;
 
-  const found = await prisma.adRequest.findUnique({ where: { id }, include: { campaign: true } });
+  const found = await prisma.adRequest.findUnique({
+    where: { id },
+    include: { campaign: true },
+  });
   if (!found) return jsonError("Demande introuvable.", 404);
   const adRequest = found;
   const previousStatus = adRequest.status;
@@ -101,10 +105,18 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
   }
 
   if (action === "reject") {
-    if (previousStatus !== "PENDING_REVIEW" && previousStatus !== "NEEDS_CHANGES" && previousStatus !== "APPROVED") {
+    if (
+      previousStatus !== "PENDING_REVIEW" &&
+      previousStatus !== "NEEDS_CHANGES" &&
+      previousStatus !== "APPROVED" &&
+      previousStatus !== "AWAITING_MERCHANT"
+    ) {
       return jsonError("Cette demande ne peut plus être refusée dans son état actuel.", 409);
     }
-    await applyStatus("REJECTED", { rejectionReason: data.rejectionReason ?? "Refusée par Fideto." });
+    // Refus de la CAMPAGNE entière (définitif) — distinct du refus d'un simple visuel (request_changes).
+    const campaignReason = data.rejectionReason?.trim() || "Refusée par Fideto.";
+    await applyStatus("REJECTED", { rejectionReason: campaignReason });
+    await notifyMerchant(prisma, adRequest, "CAMPAIGN_REFUSED", `Votre campagne est refusée : ${campaignReason}`);
     return jsonOk({ ok: true, status: "REJECTED" });
   }
 
@@ -115,16 +127,23 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
     if (!data.rejectionReason?.trim()) {
       return jsonError("Indiquez le motif de la correction demandée.", 400);
     }
-    await applyStatus("NEEDS_CHANGES", { rejectionReason: data.rejectionReason.trim() });
+    // Refus du VISUEL seulement : la campagne reste en vie, le commerçant corrige et re-soumet.
+    const reason = data.rejectionReason.trim();
+    await prisma.$transaction((tx) => refuseVisual(tx, adRequest, actorId, reason));
+    await writeAudit({
+      actorId,
+      merchantId: adRequest.merchantId,
+      action: "AD_REQUEST_CHANGES",
+      metadata: { adRequestId: id, previousStatus, nextStatus: "NEEDS_CHANGES", reason },
+      ip: clientIp(req),
+      userAgent: userAgent(req),
+    });
     return jsonOk({ ok: true, status: "NEEDS_CHANGES" });
   }
 
   if (action === "approve") {
     if (previousStatus !== "PENDING_REVIEW" && previousStatus !== "NEEDS_CHANGES") {
       return jsonError("Cette demande n'est plus en attente de validation.", 409);
-    }
-    if (!data.finalImageUrl) {
-      return jsonError("Un visuel final est requis pour approuver.", 400);
     }
     const ctaUrl = data.ctaUrl !== undefined ? data.ctaUrl : adRequest.ctaUrl;
     if (ctaUrl && !isSafeAdUrl(ctaUrl)) {
@@ -134,19 +153,38 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
       return jsonError("Cette demande ne possède aucun créneau valide.", 409, { code: "NO_SCHEDULE" });
     }
 
-    await applyStatus("APPROVED", {
-      finalImageUrl: data.finalImageUrl,
-      startDate: data.startDate ? new Date(data.startDate) : undefined,
-      endDate: data.endDate ? new Date(data.endDate) : undefined,
-      requestedText: data.requestedText,
-      ctaLabel: data.ctaLabel,
-      ctaUrl: data.ctaUrl,
-      rejectionReason: null,
-      reviewedBy: auth.user.id,
-      reviewedAt: new Date(),
+    // On n'approuve QUE la version soumise par le commerçant (jamais une URL fournie par le client).
+    // Les créneaux ne sont jamais modifiés ici. Sans version soumise (création par Fideto, ou ancienne
+    // demande), le super-admin importe un bandeau et le propose au commerçant.
+    const approved = await prisma.$transaction(async (tx) => {
+      const version = await approveSubmittedVersion(tx, adRequest, actorId);
+      if (!version) return null;
+      await tx.adRequest.update({
+        where: { id },
+        data: { requestedText: data.requestedText, ctaLabel: data.ctaLabel, ctaUrl: data.ctaUrl },
+      });
+      if (adRequest.campaignId) {
+        await tx.campaign.update({
+          where: { id: adRequest.campaignId },
+          data: { body: data.requestedText, actionLabel: data.ctaLabel, actionUrl: data.ctaUrl },
+        });
+      }
+      return version;
     });
-    const updated = await prisma.adRequest.findUnique({ where: { id } });
-    return jsonOk({ ok: true, status: "APPROVED", adRequest: updated });
+    if (!approved) {
+      return jsonError("Aucun bandeau soumis à approuver. Importez un bandeau et envoyez-le au commerçant.", 409, {
+        code: "NO_SUBMITTED_VERSION",
+      });
+    }
+    await writeAudit({
+      actorId,
+      merchantId: adRequest.merchantId,
+      action: "AD_APPROVE",
+      metadata: { adRequestId: id, previousStatus, nextStatus: "APPROVED", versionId: approved.id },
+      ip: clientIp(req),
+      userAgent: userAgent(req),
+    });
+    return jsonOk({ ok: true, status: "APPROVED" });
   }
 
   if (action === "suspend") {

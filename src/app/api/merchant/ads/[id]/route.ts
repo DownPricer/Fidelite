@@ -2,6 +2,7 @@ import { requireMerchantAdmin, requireMutatingRequest } from "@/lib/api-guard";
 import { writeAudit } from "@/lib/audit";
 import { clientIp, jsonError, jsonOk, readJson, userAgent } from "@/lib/http";
 import { prisma } from "@/lib/prisma";
+import { notifySuperAdmin } from "@/lib/ad-visual-workflow";
 import { priceSponsoredHours, scheduleToUtcIntervals, validateSponsoredSchedule } from "@/lib/sponsored-hours-pricing";
 import { adRequestUpdateSchema, zodErrorMessage } from "@/lib/validation";
 
@@ -57,9 +58,7 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
   if (data.ctaLabel !== undefined) updates.ctaLabel = data.ctaLabel;
   if (data.ctaUrl !== undefined) updates.ctaUrl = data.ctaUrl;
   if (data.objective !== undefined) updates.objective = data.objective;
-  if (adRequest.visualMode === "SELF" && data.requestedImageUrl !== undefined) {
-    updates.requestedImageUrl = data.requestedImageUrl;
-  }
+  // Le visuel ne se modifie plus ici : il passe par une nouvelle version (POST /api/merchant/visuels/[id]/soumettre).
 
   let pricing: ReturnType<typeof priceSponsoredHours> | null = null;
   if (data.hourlySchedule) {
@@ -80,15 +79,19 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
     // republication silencieuse de l'ancien visuel/texte validé par Fideto.
     updates.status = "PENDING_REVIEW";
     updates.finalImageUrl = null;
+    updates.finalVersionId = null;
     updates.reviewedBy = null;
     updates.reviewedAt = null;
     updates.rejectionReason = null;
-  } else if (adRequest.status === "NEEDS_CHANGES") {
-    updates.status = "PENDING_REVIEW";
-    updates.rejectionReason = null;
   }
+  // NEEDS_CHANGES : la demande ne repart en revue qu'avec un nouveau visuel (POST /api/merchant/visuels/[id]/soumettre).
 
   const updated = await prisma.adRequest.update({ where: { id }, data: updates });
+  if (wasApproved) {
+    // La version approuvée redevient « à valider » : jamais republiée silencieusement.
+    await prisma.adVisualVersion.updateMany({ where: { adRequestId: id, status: "APPROVED" }, data: { status: "SUBMITTED" } });
+    await notifySuperAdmin(prisma, adRequest, "MERCHANT_BANNER_RESUBMITTED", "Un commerçant a modifié sa campagne : le visuel est à revalider.");
+  }
 
   if (adRequest.campaignId) {
     const campaignUpdates: Record<string, unknown> = {};

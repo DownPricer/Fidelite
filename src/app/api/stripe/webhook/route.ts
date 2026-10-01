@@ -6,6 +6,7 @@ import type { StripeModeValue } from "@/lib/stripe-mode";
 import { writeAudit } from "@/lib/audit";
 import { jsonError, jsonOk } from "@/lib/http";
 import { prisma } from "@/lib/prisma";
+import { notifyMerchant } from "@/lib/ad-visual-workflow";
 import { StripeNotConfiguredError, constructStripeWebhookEvent } from "@/lib/stripe";
 
 /**
@@ -134,6 +135,7 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session, 
       if (adRequest?.status === "APPROVED") {
         nextStatus = "SCHEDULED";
         await tx.adRequest.update({ where: { id: adRequest.id }, data: { status: "SCHEDULED", fundingMode: mode } });
+        await notifyMerchant(tx, adRequest, "CAMPAIGN_SCHEDULED", "Paiement confirmé : votre campagne est programmée.");
       }
     }
 
