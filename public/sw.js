@@ -50,11 +50,33 @@ self.addEventListener("notificationclick", (event) => {
   );
 });
 
+/**
+ * Une requête de navigation/RSC Next.js (clic sur un <Link>, prefetch, ou chargement de page)
+ * n'est jamais interceptée : la mettre en cache par URL exacte renverrait un payload RSC périmé
+ * ou propre à une autre route sur une URL différente, et surtout, si le fetch réseau échoue pour
+ * N'IMPORTE QUELLE raison (redirection cross-domaine bloquée par CORS, coupure réseau, etc.), le
+ * `catch` ci-dessous retombait sur le cache de la page d'accueil ("/") — remplaçant SILENCIEUSEMENT le contenu
+ * demandé par la page d'accueil mise en cache, sans la moindre erreur visible. C'est cette
+ * substitution qui donnait l'impression qu'un clic "redirigeait vers l'accueil" : en réalité, la
+ * requête avait juste échoué et le service worker masquait l'échec. On laisse donc le navigateur
+ * gérer nativement toute requête de navigation ou de fetch RSC (en-têtes RSC/Next-Router-Prefetch,
+ * paramètre _rsc, ou mode "navigate") — ce service worker ne met en cache que les autres requêtes
+ * GET same-origin (assets statiques), et sans jamais masquer un échec derrière la page d'accueil.
+ */
+function isNextNavigationOrRscRequest(request, url) {
+  if (request.mode === "navigate") return true;
+  if (request.headers.get("rsc") === "1") return true;
+  if (request.headers.get("next-router-prefetch") === "1") return true;
+  if (url.searchParams.has("_rsc")) return true;
+  return false;
+}
+
 self.addEventListener("fetch", (event) => {
   const { request } = event;
   if (request.method !== "GET") return;
   const url = new URL(request.url);
   if (url.pathname.startsWith("/api/")) return;
+  if (isNextNavigationOrRscRequest(request, url)) return;
 
   event.respondWith(
     fetch(request)
@@ -65,6 +87,6 @@ self.addEventListener("fetch", (event) => {
         }
         return response;
       })
-      .catch(() => caches.match(request).then((cached) => cached || caches.match("/"))),
+      .catch(() => caches.match(request)),
   );
 });
