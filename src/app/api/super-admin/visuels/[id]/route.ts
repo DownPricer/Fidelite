@@ -1,5 +1,5 @@
 import { requireSuperAdmin } from "@/lib/api-guard";
-import { describeNextAction } from "@/lib/ad-visual-workflow";
+import { adJourney, describeNextAction } from "@/lib/ad-visual-workflow";
 import { getAdStats } from "@/lib/ad-stats";
 import { jsonError, jsonOk } from "@/lib/http";
 import { prisma } from "@/lib/prisma";
@@ -42,5 +42,13 @@ export async function GET(req: Request, context: { params: Promise<{ id: string 
     versions: adRequest.versions,
     rejectionReason: adRequest.rejectionReason,
   });
-  return jsonOk({ adRequest, audit, stats, notifications, nextAction });
+  // Noms des personnes ayant créé/décidé une version (affichés dans l'historique).
+  const personIds = [...new Set(adRequest.versions.flatMap((v) => [v.createdBy, v.decidedBy]).filter((x): x is string => Boolean(x)))];
+  const users = personIds.length
+    ? await prisma.user.findMany({ where: { id: { in: personIds } }, select: { id: true, firstName: true, lastName: true } })
+    : [];
+  const people = Object.fromEntries(users.map((u) => [u.id, `${u.firstName}${u.lastName ? ` ${u.lastName}` : ""}`]));
+
+  const journey = adJourney({ status: adRequest.status, visualMode: adRequest.visualMode });
+  return jsonOk({ adRequest, audit, stats, notifications, nextAction, journey, people });
 }

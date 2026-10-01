@@ -119,7 +119,15 @@ export async function approveSubmittedVersion(db: Db, ad: AdForWorkflow, adminId
     orderBy: { number: "desc" },
   });
   if (!version) return null;
+  // Réservation atomique : deux validations simultanées (double clic, deux onglets) ne passent jamais
+  // toutes les deux — seule la requête qui fait basculer la version de SUBMITTED à APPROVED continue.
+  const claimed = await db.adVisualVersion.updateMany({
+    where: { id: version.id, status: "SUBMITTED" },
+    data: { status: "APPROVED" satisfies AdVisualVersionStatus, decidedBy: adminId, decidedAt: new Date() },
+  });
+  if (claimed.count !== 1) return null;
   await publishVersionAsFinal(db, ad, version.id, version.url, adminId);
+  // Aucun paiement ni diffusion ici : la campagne passe seulement « prête pour le paiement ».
   await db.adRequest.update({
     where: { id: ad.id },
     data: { status: "APPROVED", rejectionReason: null, reviewedBy: adminId, reviewedAt: new Date() },
@@ -279,4 +287,38 @@ export async function setAdSources(db: Db, adRequestId: string, sources: { url: 
       data: sources.map((source, position) => ({ adRequestId, url: source.url, position, sizeBytes: source.sizeBytes ?? null })),
     });
   }
+}
+
+export type JourneyStage = { label: string; state: "done" | "current" | "todo" };
+
+/** Progression affichée en tête de la fiche super-admin : demande → visuel → accord → paiement → diffusion. */
+export function adJourney(input: { status: AdRequestStatus; visualMode: "SELF" | "FIDETO" | null }): JourneyStage[] {
+  const labels = [
+    "Demande reçue",
+    input.visualMode === "SELF" ? "Visuel examiné" : "Visuel préparé",
+    "Accord du commerçant",
+    "Paiement",
+    "Diffusion",
+  ];
+  // Indice de l'étape courante (1-5) ; 6 = tout est terminé ; 0 = aucune (campagne refusée/annulée).
+  const current: Record<AdRequestStatus, number> = {
+    DRAFT: 2,
+    PENDING_REVIEW: 2,
+    NEEDS_CHANGES: 2,
+    AWAITING_MERCHANT: 3,
+    APPROVED: 4,
+    SCHEDULED: 5,
+    LIVE: 5,
+    SUSPENDED: 5,
+    ENDED: 6,
+    STOPPED: 6,
+    REJECTED: 0,
+    CANCELLED: 0,
+  };
+  const at = current[input.status];
+  return labels.map((label, i) => {
+    const n = i + 1;
+    if (at === 0) return { label, state: n === 1 ? "done" : "todo" };
+    return { label, state: n < at ? "done" : n === at ? "current" : "todo" };
+  });
 }

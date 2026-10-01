@@ -33,6 +33,13 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
   if (!ad) return jsonError("Demande introuvable.", 404);
   if (!PROPOSABLE.has(ad.status)) return jsonError("Cette demande n'accepte plus de proposition de visuel.", 409);
 
+  // Anti-doublon : le même fichier déjà proposé et en attente ne repart pas une seconde fois (double clic).
+  const duplicate = await prisma.adVisualVersion.findFirst({
+    where: { adRequestId: id, status: "PROPOSED", url: parsed.data.url },
+    select: { id: true },
+  });
+  if (duplicate) return jsonError("Cette version a déjà été envoyée au commerçant.", 409, { code: "ALREADY_PROPOSED" });
+
   const display = await validateStagedAdFile(parsed.data.url, ad.merchantId, { requireExactFormat: true });
   if (!display.ok) return jsonError(display.error, 400);
   const originalUrl = parsed.data.originalUrl ?? parsed.data.url;
