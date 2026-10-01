@@ -45,14 +45,39 @@ function crossSpaceRedirectOrigin(host: string, pathname: string): string | null
   return null;
 }
 
+/**
+ * Un prefetch RSC (survol d'un <Link>, ou cache du routeur après navigation) est un `fetch()`
+ * en arrière-plan, pas une navigation de haut niveau : un 308 vers un autre domaine échoue alors
+ * sous CORS (pas d'en-tête Access-Control-Allow-Origin), ce qui pollue la console sans jamais
+ * empêcher le clic réel (qui est une vraie navigation, toujours redirigée normalement ci-dessous).
+ * On laisse donc ces requêtes être servies telles quelles par l'ancien hôte plutôt que de les
+ * rediriger — identifiées par l'en-tête `RSC`/`Next-Router-Prefetch` ou le paramètre `_rsc`.
+ */
+function isNextPrefetchRequest(req: NextRequest) {
+  return (
+    req.headers.has("rsc") ||
+    req.headers.has("next-router-prefetch") ||
+    req.nextUrl.searchParams.has("_rsc")
+  );
+}
+
 export function middleware(req: NextRequest) {
   const host = req.headers.get("host") ?? "";
   const { pathname } = req.nextUrl;
+  // Un prefetch ne doit jamais être redirigé vers un autre domaine (CORS, voir
+  // isNextPrefetchRequest ci-dessus) — la vraie navigation au clic, elle, l'est toujours.
+  const isPrefetch = isNextPrefetchRequest(req);
 
   // Transition de domaine : les pages de l'ancien domaine redirigent vers le nouveau en
   // conservant chemin et paramètres. Les routes techniques (/api : webhooks, callbacks OAuth,
   // scan caisse, etc.) ne sont JAMAIS redirigées ici : elles restent servies par l'ancien hôte.
-  if (env.legacyRedirectEnabled && !pathname.startsWith("/api") && !pathname.startsWith("/_next") && pathname !== "/sw.js") {
+  if (
+    env.legacyRedirectEnabled &&
+    !pathname.startsWith("/api") &&
+    !pathname.startsWith("/_next") &&
+    pathname !== "/sw.js" &&
+    !isPrefetch
+  ) {
     const target = legacyRedirectOrigin(host);
     if (target) return NextResponse.redirect(`${target}${pathname}${req.nextUrl.search}`, 308);
   }
@@ -68,7 +93,7 @@ export function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  const crossSpaceOrigin = crossSpaceRedirectOrigin(host, pathname);
+  const crossSpaceOrigin = isPrefetch ? null : crossSpaceRedirectOrigin(host, pathname);
   if (crossSpaceOrigin) {
     return NextResponse.redirect(`${crossSpaceOrigin.replace(/\/$/, "")}${pathname}${req.nextUrl.search}`, 307);
   }
