@@ -15,7 +15,7 @@ import { createFakeAdDb } from "./helpers/fake-ad-db";
 
 const h = vi.hoisted(() => ({
   uploads: "",
-  session: { merchant: "m1" as string | null, admin: false },
+  session: { merchant: "m1" as string | null, admin: false, customer: null as string | null },
   stripeMode: "LIVE" as "TEST" | "LIVE",
 }));
 
@@ -31,6 +31,8 @@ vi.mock("@/lib/merchant-card-template-service", () => ({
 }));
 vi.mock("@/lib/api-guard", () => ({
   requireMutatingRequest: async () => ({ error: null }),
+  requireStandardUser: async () =>
+    h.session.customer ? { error: null, user: { id: h.session.customer } } : { error: new Response(null, { status: 401 }), user: null },
   requireSuperAdmin: async () =>
     h.session.admin ? { error: null, user: { id: "admin_1" } } : { error: new Response(null, { status: 401 }), user: null },
   requireMerchantAdmin: async (_req: Request, merchantId?: string) => {
@@ -58,13 +60,13 @@ vi.mock("@/lib/campaign-quota", async () => {
 const { tables } = fake;
 
 function asMerchant(id: string) {
-  h.session = { merchant: id, admin: false };
+  h.session = { merchant: id, admin: false, customer: null };
 }
 function asAdmin() {
-  h.session = { merchant: null, admin: true };
+  h.session = { merchant: null, admin: true, customer: null };
 }
 function asVisitor() {
-  h.session = { merchant: null, admin: false };
+  h.session = { merchant: null, admin: false, customer: "c1" };
 }
 
 function jsonRequest(path: string, method: string, body?: unknown) {
@@ -150,10 +152,26 @@ async function stripeWebhookPaid(campaignId: string) {
   return response.status;
 }
 
-async function publicSponsored() {
-  const { GET } = await import("../src/app/api/public/merchants/route");
-  const response = await GET(new Request("http://localhost:3000/api/public/merchants"));
-  return ((await response.json()) as { sponsored: { id: string; imageUrl: string | null }[] }).sponsored;
+/**
+ * Bandeau proposé au client c1 (zone Lyon/69001, bons plans acceptés) par l'API réelle. La règle de
+ * fréquence est volontairement testée à part : ici on repart d'un historique vide et on balaie
+ * quelques tranches de 10 min (le tirage « occasionnel » est déterministe par tranche).
+ */
+async function publicSponsored(placement = "WALLET_HOME") {
+  const { GET } = await import("../src/app/api/customer/sponsored/route");
+  const start = Date.now();
+  for (let k = 0; k < 12; k += 1) {
+    tables.adCustomerView.length = 0;
+    vi.setSystemTime(start + k * 600_000);
+    const response = await GET(new Request(`http://localhost:3000/api/customer/sponsored?placement=${placement}`));
+    const { ad } = (await response.json()) as { ad: { id: string; imageUrl: string } | null };
+    if (ad) {
+      vi.setSystemTime(start);
+      return [ad];
+    }
+  }
+  vi.setSystemTime(start);
+  return [];
 }
 
 async function fetchFile(url: string, query = "") {
@@ -172,6 +190,8 @@ beforeEach(() => {
   h.uploads = mkdtempSync(join(tmpdir(), "fideto-visuels-"));
   for (const key of Object.keys(tables)) tables[key].length = 0;
   h.stripeMode = "LIVE";
+  tables.user.push({ id: "c1", isActive: true });
+  tables.customerPreferences.push({ id: "p1", userId: "c1", notifyFifeLifeNews: true, marketingZoneCity: "Lyon", marketingZonePostalCode: "69001" });
   asMerchant("m1");
 });
 
@@ -196,7 +216,9 @@ describe("Parcours A — le commerçant crée son bandeau", () => {
     // Une version en attente n'est jamais publique (fichier ni diffusion).
     asVisitor();
     expect((await fetchFile(banner1.url!)).status).toBe(404);
+    vi.useFakeTimers({ toFake: ["Date"] });
     expect(await publicSponsored()).toEqual([]);
+    vi.useRealTimers();
 
     // 2. Le super-admin télécharge l'original, puis refuse le VISUEL avec un motif précis.
     asAdmin();

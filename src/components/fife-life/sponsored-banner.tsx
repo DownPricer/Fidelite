@@ -19,7 +19,15 @@ export type SponsoredAd = {
  * Fermable côté viewer uniquement (pas de préférence serveur), impressions/clics
  * traqués via les URLs déjà fournies par /api/public/merchants (Partie 12).
  */
-export function SponsoredBanner({ ad }: { ad: SponsoredAd }) {
+export type SponsoredVariant = "search" | "home" | "notifications";
+
+const IMAGE_CLASS: Record<SponsoredVariant, string> = {
+  search: "h-14 w-14",
+  home: "h-20 w-20",
+  notifications: "h-12 w-12",
+};
+
+export function SponsoredBanner({ ad, variant = "search" }: { ad: SponsoredAd; variant?: SponsoredVariant }) {
   const [dismissed, setDismissed] = useState(false);
 
   useEffect(() => {
@@ -33,7 +41,8 @@ export function SponsoredBanner({ ad }: { ad: SponsoredAd }) {
   if (dismissed) return null;
 
   return (
-    <a href={ad.clickUrl} className="glass-panel profile-panel relative block overflow-hidden p-3">
+    <a href={ad.clickUrl} data-variant={variant}
+      className={`glass-panel profile-panel relative block overflow-hidden p-3 ${variant === "notifications" ? "border border-[var(--violet-bright)]/30" : ""}`}>
       <span className="absolute right-9 top-2 rounded-full bg-black/60 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white">
         Sponsorisé
       </span>
@@ -59,7 +68,7 @@ export function SponsoredBanner({ ad }: { ad: SponsoredAd }) {
       <div className="flex items-center gap-3">
         {ad.imageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={ad.imageUrl} alt="" className="h-14 w-14 shrink-0 rounded-xl object-cover" />
+          <img src={ad.imageUrl} alt="" className={`${IMAGE_CLASS[variant]} shrink-0 rounded-xl object-cover`} />
         ) : null}
         <div className="min-w-0">
           <p className="truncate text-xs font-bold uppercase tracking-wide text-[var(--muted)]">{ad.merchantName}</p>

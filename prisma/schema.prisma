@@ -172,6 +172,7 @@ enum CustomerRewardEntitlementStatus {
 }
 
 model User {
+  adCustomerViews    AdCustomerView[]
   id                 String       @id @default(cuid())
   email              String       @unique
   passwordHash       String
@@ -913,6 +914,13 @@ enum AdEventType {
   CLICK
 }
 
+/// Emplacement client d'origine d'une impression/d'un clic (null = événements antérieurs à cette distinction).
+enum AdPlacement {
+  WALLET_HOME
+  SEARCH
+  NOTIFICATIONS
+}
+
 /// Parcours de création du visuel (Partie 14). SELF = le commerçant a recadré une image au
 /// format exact du bandeau. FIDETO = le commerçant envoie 1 à 5 images libres, Fideto prépare
 /// le visuel final (finalImageUrl). Null = ancienne demande créée avant cette distinction
@@ -1188,6 +1196,7 @@ model AdRequest {
   events   AdEvent[]
   images   AdRequestImage[]
   versions AdVisualVersion[]
+  customerViews AdCustomerView[]
 
   @@index([merchantId, status])
   @@index([status, startDate, endDate])
@@ -1283,9 +1292,26 @@ model AdEvent {
   id          String      @id @default(cuid())
   adRequestId String
   type        AdEventType
+  placement   AdPlacement?
   createdAt   DateTime    @default(now())
 
   adRequest AdRequest @relation(fields: [adRequestId], references: [id], onDelete: Cascade)
 
   @@index([adRequestId, type, createdAt])
+}
+
+/// Fréquence d'affichage par client (plafonds : voir sponsored-selection.ts). Réservé au plafonnement
+/// et à la rotation — les statistiques publiées restent agrégées (AdEvent), jamais rattachées à un client.
+model AdCustomerView {
+  id          String   @id @default(cuid())
+  userId      String
+  adRequestId String
+  lastShownAt DateTime
+  impressions Int      @default(1)
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  adRequest AdRequest @relation(fields: [adRequestId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, adRequestId])
+  @@index([userId, lastShownAt])
 }

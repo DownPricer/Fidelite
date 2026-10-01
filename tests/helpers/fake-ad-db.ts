@@ -12,6 +12,7 @@ function matchValue(actual: unknown, expected: unknown): boolean {
     const ops = expected as Record<string, unknown>;
     if ("in" in ops) return (ops.in as unknown[]).includes(actual);
     if ("not" in ops) return ops.not === null ? actual !== null && actual !== undefined : actual !== ops.not;
+    if ("lt" in ops) return (actual as Date).getTime() < (ops.lt as Date).getTime();
     if ("lte" in ops) return (actual as Date).getTime() <= (ops.lte as Date).getTime();
     if ("gte" in ops) return (actual as Date).getTime() >= (ops.gte as Date).getTime();
     if ("equals" in ops) return actual === ops.equals;
@@ -22,6 +23,10 @@ function matchValue(actual: unknown, expected: unknown): boolean {
 
 function match(row: Row, where: Record<string, unknown> = {}): boolean {
   return Object.entries(where).every(([key, value]) => {
+    // Clé composée Prisma (ex. userId_adRequestId: { userId, adRequestId }).
+    if (key.includes("_") && value && typeof value === "object" && !Array.isArray(value) && !(value instanceof Date)) {
+      return match(row, value as Record<string, unknown>);
+    }
     if (key === "OR") return (value as Record<string, unknown>[]).some((w) => match(row, w));
     if (key === "NOT") return !match(row, value as Record<string, unknown>);
     return matchValue(row[key], value);
@@ -40,6 +45,18 @@ function sortRows(rows: Row[], orderBy?: Record<string, "asc" | "desc"> | Record
   });
 }
 
+/** Commerce simulé (zone du secteur : Lyon / 69001) — modifiable par les tests. */
+export const merchantInfo = { slug: "boulangerie", name: "Boulangerie Test", logoUrl: null as string | null, city: "Lyon", postalCode: "69001", isActive: true, status: "ACTIVE" };
+
+function applyUpdate(row: Row, data: Record<string, unknown>) {
+  for (const [k, v] of Object.entries(data)) {
+    if (v === undefined) continue;
+    if (v && typeof v === "object" && !(v instanceof Date) && "increment" in (v as object)) {
+      row[k] = ((row[k] as number) ?? 0) + (v as { increment: number }).increment;
+    } else row[k] = v;
+  }
+}
+
 export function createFakeAdDb() {
   const tables: Record<string, Row[]> = {
     adRequest: [],
@@ -50,6 +67,10 @@ export function createFakeAdDb() {
     campaignPayment: [],
     auditLog: [],
     stripeWebhookEvent: [],
+    adEvent: [],
+    adCustomerView: [],
+    user: [],
+    customerPreferences: [],
   };
 
   function hydrate(table: string, row: Row | undefined, include?: Record<string, unknown>) {
@@ -63,7 +84,7 @@ export function createFakeAdDb() {
       }
       if (include.images) out.images = sortRows(tables.adRequestImage.filter((i) => i.adRequestId === row.id), { position: "asc" });
       if (include.versions) out.versions = sortRows(tables.adVisualVersion.filter((v) => v.adRequestId === row.id), { number: "desc" });
-      if (include.merchant) out.merchant = { id: row.merchantId, slug: "boulangerie", name: "Boulangerie Test", logoUrl: null };
+      if (include.merchant) out.merchant = { id: row.merchantId, ...merchantInfo };
       if (include._count) out._count = { versions: tables.adVisualVersion.filter((v) => v.adRequestId === row.id).length };
     }
     return out;
@@ -72,6 +93,10 @@ export function createFakeAdDb() {
   function model(table: string, prefix: string) {
     return {
       create: async ({ data }: { data: Record<string, unknown> }) => {
+        // Contrainte unique (userId, adRequestId) de AdCustomerView : la seconde création concurrente échoue.
+        if (table === "adCustomerView" && tables[table].some((r) => r.userId === data.userId && r.adRequestId === data.adRequestId)) {
+          throw new Error("Unique constraint failed");
+        }
         const row = { id: nextId(prefix), createdAt: new Date(counter * 1000 + 1_700_000_000_000), updatedAt: new Date(), ...data } as Row;
         tables[table].push(row);
         return { ...row };
@@ -94,12 +119,12 @@ export function createFakeAdDb() {
       update: async ({ where, data }: { where: Record<string, unknown>; data: Record<string, unknown> }) => {
         const row = tables[table].find((r) => match(r, where));
         if (!row) throw new Error(`${table}: introuvable`);
-        for (const [k, v] of Object.entries(data)) if (v !== undefined) row[k] = v;
+        applyUpdate(row, data);
         return { ...row };
       },
       updateMany: async ({ where, data }: { where?: Record<string, unknown>; data: Record<string, unknown> }) => {
         const rows = tables[table].filter((r) => match(r, where));
-        for (const row of rows) for (const [k, v] of Object.entries(data)) if (v !== undefined) row[k] = v;
+        for (const row of rows) applyUpdate(row, data);
         return { count: rows.length };
       },
       deleteMany: async ({ where }: { where?: Record<string, unknown> }) => {
@@ -133,6 +158,10 @@ export function createFakeAdDb() {
     campaignPayment: model("campaignPayment", "pay"),
     auditLog: model("auditLog", "audit"),
     stripeWebhookEvent: model("stripeWebhookEvent", "evt"),
+    adEvent: model("adEvent", "ev"),
+    adCustomerView: model("adCustomerView", "view"),
+    user: model("user", "user"),
+    customerPreferences: model("customerPreferences", "pref"),
     merchant: { findMany: async () => [] as unknown[] },
     $transaction: async (callback: (client: unknown) => Promise<unknown>) => callback(prisma),
     $executeRaw: async () => 1,

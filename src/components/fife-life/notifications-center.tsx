@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { WalletMotionRoot } from "./wallet-motion-root";
+import { SponsoredSlot } from "./sponsored-slot";
 
 type NotificationKind = "SERVICE" | "MERCHANT_OFFER" | "NETWORK_DEAL";
 
@@ -202,6 +203,9 @@ export function NotificationsCenter({ demo = false }: { demo?: boolean }) {
             </button>
           ))}
         </div>
+
+        {/* Mise en avant intégrée : carte distincte des vraies notifications (ni push, ni e-mail, ni lue/non lue). */}
+        {!demo && filter === "all" ? <SponsoredSlot placement="NOTIFICATIONS" className="mb-4" /> : null}
 
         {loading ? (
           <div className="space-y-2">

@@ -66,6 +66,7 @@ type NotificationRow = { id: string; message: string; createdAt: string; audienc
 
 type AdStatsPayload = {
   byDay: { date: string; impressions: number; clicks: number; ctr: number | null }[];
+  byPlacement?: { placement: string; impressions: number; clicks: number; ctr: number | null }[];
   totalImpressions: number;
   totalClicks: number;
   ctr: number | null;
@@ -87,6 +88,13 @@ const STATUS_LABELS: Record<AdStatus, string> = {
 };
 
 /** Statuts où Fideto peut encore envoyer une proposition (aligné sur le serveur). */
+const PLACEMENT_LABELS: Record<string, string> = {
+  WALLET_HOME: "Accueil du Wallet",
+  SEARCH: "Recherche",
+  NOTIFICATIONS: "Notifications",
+  UNKNOWN: "Avant le suivi par emplacement",
+};
+
 const PROPOSABLE: AdStatus[] = ["PENDING_REVIEW", "NEEDS_CHANGES", "AWAITING_MERCHANT", "APPROVED", "SCHEDULED", "LIVE", "SUSPENDED"];
 
 async function postJson(url: string, body: unknown) {
@@ -540,6 +548,19 @@ export function AdDetailPage({ id, firstName }: { id: string; firstName: string 
                       </span>
                     </div>
                   ))}
+                  {stats.byPlacement?.length ? (
+                    <div className="space-y-1 border-t border-[var(--border)] pt-2" data-testid="stats-by-placement">
+                      <p className="text-xs font-bold text-[var(--muted-text)]">Par emplacement</p>
+                      {stats.byPlacement.map((p) => (
+                        <div key={p.placement} className="flex justify-between text-[var(--ink)]">
+                          <span>{PLACEMENT_LABELS[p.placement] ?? p.placement}</span>
+                          <span>
+                            {p.impressions} impr. · {p.clicks} clics
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
                 </div>
               ) : (
                 <p className="text-sm text-[var(--muted-text)]">Aucune impression ni clic enregistré pour le moment.</p>

@@ -121,15 +121,13 @@ describe("campagne payée en mode test : aucune diffusion réelle", () => {
 });
 
 describe("mise en avant payée en mode test : jamais publiée", () => {
-  it("la liste publique exclut les annonces financées en TEST", async () => {
+  it("l'annuaire public ne diffuse plus aucune mise en avant (servies par /api/customer/sponsored, qui exclut le TEST)", async () => {
     adRequestFindMany.mockResolvedValue([]);
     const { GET } = await import("../src/app/api/public/merchants/route");
     await GET(new Request("http://localhost:3000/api/public/merchants"));
-    expect(adRequestFindMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: expect.objectContaining({ OR: [{ fundingMode: null }, { fundingMode: "LIVE" }] }),
-      }),
-    );
+    expect(adRequestFindMany).not.toHaveBeenCalled();
+    const { readFileSync } = await import("fs");
+    expect(readFileSync("src/lib/sponsored-selection.ts", "utf8")).toContain('OR: [{ fundingMode: null }, { fundingMode: "LIVE" }]');
   });
 
   it("impression et clic sur une annonce test sont refusés (pas d'événement, pas de redirection vers la cible)", async () => {

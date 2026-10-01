@@ -1,5 +1,6 @@
 "use client";
 
+import { SponsoredSlot } from "./sponsored-slot";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -365,6 +366,8 @@ export function WalletHome({
             )}
           </section>
 
+          {!preview ? <SponsoredSlot placement="WALLET_HOME" className="shrink-0 lg:hidden" /> : null}
+
           <div className="wallet-sheet-trigger mt-4 flex flex-col items-center gap-3 pb-6">
             <button
               type="button"
@@ -512,6 +515,8 @@ export function WalletHome({
                 </ul>
               </section>
             ) : null}
+
+            {!preview ? <SponsoredSlot placement="WALLET_HOME" /> : null}
           </aside>
         </div>
 

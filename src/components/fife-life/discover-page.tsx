@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { WalletMotionRoot } from "./wallet-motion-root";
-import { SponsoredBanner, type SponsoredAd } from "./sponsored-banner";
+import { SponsoredSlot } from "./sponsored-slot";
 
 type Merchant = {
   slug: string;
@@ -17,31 +17,12 @@ type Merchant = {
   rewardLabel: string;
 };
 
-type Sponsored = SponsoredAd;
-
-/**
- * Rotation stable et déterministe : si plusieurs mises en avant sont éligibles en même temps,
- * une seule est montrée par chargement de page (jamais toutes empilées, pour qu'aucune ne
- * monopolise l'affichage), choisie par un indice qui change chaque jour (Europe/Paris) — tous
- * les visiteurs d'un même jour voient la même, et chaque mise en avant a sa chance sur la durée
- * de sa diffusion. Aucun système de priorité/rotation n'existait déjà pour ce cas : ce choix est
- * documenté ici plutôt que réutilisé.
- */
-function pickRotatingAd<T>(ads: T[]): T | null {
-  if (ads.length === 0) return null;
-  const dayIndex = Math.floor(Date.now() / 86_400_000);
-  return ads[dayIndex % ads.length];
-}
-
 export function DiscoverPage() {
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [merchants, setMerchants] = useState<Merchant[]>([]);
-  const [sponsored, setSponsored] = useState<Sponsored[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const trackedImpressions = useState(() => new Set<string>())[0];
-  const activeAd = pickRotatingAd(sponsored);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -54,9 +35,8 @@ export function DiscoverPage() {
           if (!r.ok) throw new Error();
           return r.json();
         })
-        .then((data: { merchants: Merchant[]; sponsored: Sponsored[] }) => {
+        .then((data: { merchants: Merchant[] }) => {
           setMerchants(data.merchants);
-          setSponsored(data.sponsored ?? []);
         })
         .catch((err) => {
           if (err?.name !== "AbortError") setError("Impossible de charger les commerces. Réessayez.");
@@ -68,14 +48,6 @@ export function DiscoverPage() {
       controller.abort();
     };
   }, [query]);
-
-  useEffect(() => {
-    // Une impression n'est comptée que pour la mise en avant réellement montrée (activeAd),
-    // jamais pour tout le lot éligible reçu de l'API.
-    if (!activeAd || trackedImpressions.has(activeAd.id)) return;
-    trackedImpressions.add(activeAd.id);
-    void fetch(activeAd.impressionUrl, { method: "POST" }).catch(() => {});
-  }, [activeAd, trackedImpressions]);
 
   function closeDiscover() {
     // Retour naturel si on a bien navigué depuis l'app (évite un router.back()
@@ -166,11 +138,7 @@ export function DiscoverPage() {
           )}
         </section>
 
-        {activeAd ? (
-          <section className="mt-4">
-            <SponsoredBanner ad={activeAd} />
-          </section>
-        ) : null}
+        <SponsoredSlot placement="SEARCH" className="mt-4" />
       </main>
     </WalletMotionRoot>
   );

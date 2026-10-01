@@ -2,9 +2,11 @@ import type { CardTemplateConfig } from "@/lib/card-template-schema";
 import { jsonOk } from "@/lib/http";
 import { normalizeResolvedPublishedTemplate, resolvePublishedMerchantCardTemplate } from "@/lib/merchant-card-template-service";
 import { prisma } from "@/lib/prisma";
-import { isWithinUtcIntervals, type UtcInterval } from "@/lib/sponsored-hours-pricing";
 
-/** Annuaire public — aucune donnée client, gabarit publié uniquement. */
+/**
+ * Annuaire public — aucune donnée client, gabarit publié uniquement. Les mises en avant n'y figurent
+ * plus : elles sont servies par /api/customer/sponsored (audience, fréquence et créneau vérifiés).
+ */
 export async function GET(req: Request) {
   const url = new URL(req.url);
   const q = url.searchParams.get("q")?.trim() ?? "";
@@ -60,46 +62,7 @@ export async function GET(req: Request) {
     }),
   );
 
-  const now = new Date();
-  const candidateAds = q
-    ? []
-    : await prisma.adRequest.findMany({
-        where: {
-          // Le worker peut avoir déjà basculé le statut affiché en LIVE (Partie 15bis) ; dans les
-          // deux cas, la diffusion réelle reste décidée uniquement par hourlyIntervals ci-dessous.
-          status: { in: ["SCHEDULED", "LIVE"] },
-          // Jamais de diffusion sans version finale approuvée (une version en attente n'est jamais publique).
-          finalImageUrl: { not: null },
-          startDate: { lte: now },
-          endDate: { gte: now },
-          // Une mise en avant payée en mode test n'est jamais publiée.
-          OR: [{ fundingMode: null }, { fundingMode: "LIVE" }],
-        },
-        include: { merchant: { select: { slug: true, name: true, logoUrl: true } } },
-        orderBy: { createdAt: "desc" },
-        take: 20,
-      });
-  // startDate/endDate ne sont que les bornes globales : pour les demandes tarifées à l'heure
-  // (hourlyIntervals renseigné), seuls les créneaux réellement choisis doivent diffuser — sinon
-  // les heures non payées entre deux créneaux seraient diffusées gratuitement. Les anciennes
-  // demandes (hourlyIntervals = null) gardent la diffusion continue historique.
-  const liveAds = candidateAds
-    .filter((ad) => (Array.isArray(ad.hourlyIntervals) ? isWithinUtcIntervals(now, ad.hourlyIntervals as UtcInterval[]) : true))
-    .slice(0, 5);
-
   return jsonOk({
     merchants: merchantsWithTemplates,
-    // Toujours marquées "Sponsorisé" côté UI — jamais mélangées aux résultats organiques.
-    sponsored: liveAds.map((ad) => ({
-      id: ad.id,
-      merchantSlug: ad.merchant.slug,
-      merchantName: ad.merchant.name,
-      merchantLogoUrl: ad.merchant.logoUrl,
-      imageUrl: ad.finalImageUrl,
-      text: ad.requestedText,
-      ctaLabel: ad.ctaLabel,
-      impressionUrl: `/api/public/ads/${ad.id}/impression`,
-      clickUrl: `/api/public/ads/${ad.id}/click`,
-    })),
   });
 }
