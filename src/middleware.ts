@@ -46,19 +46,17 @@ function crossSpaceRedirectOrigin(host: string, pathname: string): string | null
 }
 
 /**
- * Un prefetch RSC (survol d'un <Link>, ou cache du routeur après navigation) est un `fetch()`
- * en arrière-plan, pas une navigation de haut niveau : un 308 vers un autre domaine échoue alors
- * sous CORS (pas d'en-tête Access-Control-Allow-Origin), ce qui pollue la console sans jamais
- * empêcher le clic réel (qui est une vraie navigation, toujours redirigée normalement ci-dessous).
- * On laisse donc ces requêtes être servies telles quelles par l'ancien hôte plutôt que de les
- * rediriger — identifiées par l'en-tête `RSC`/`Next-Router-Prefetch` ou le paramètre `_rsc`.
+ * Un prefetch RSC pur (survol d'un <Link>, lien visible à l'écran) est un `fetch()` en
+ * arrière-plan : un 308 vers un autre domaine échoue sous CORS (pas d'en-tête
+ * Access-Control-Allow-Origin), ce qui pollue la console sans jamais bloquer le clic réel.
+ * Next.js distingue ça via l'en-tête `Next-Router-Prefetch` — présent UNIQUEMENT sur ces requêtes
+ * d'arrière-plan. L'en-tête `RSC` et le paramètre `_rsc` sont, eux, présents sur TOUTE requête
+ * RSC y compris une vraie navigation cliquée : les utiliser ici supprimerait aussi la redirection
+ * nécessaire à une vraie navigation cross-domaine (elle échouerait quand même sous CORS, mais
+ * silencieusement, au lieu d'être redirigée) — ne pas élargir au-delà de ce seul en-tête.
  */
 function isNextPrefetchRequest(req: NextRequest) {
-  return (
-    req.headers.has("rsc") ||
-    req.headers.has("next-router-prefetch") ||
-    req.nextUrl.searchParams.has("_rsc")
-  );
+  return req.headers.get("next-router-prefetch") === "1";
 }
 
 export function middleware(req: NextRequest) {
