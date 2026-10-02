@@ -72,6 +72,18 @@ type Stats = {
   ctr: number | null;
 };
 
+type WalletPreviewStatus = {
+  qaCustomerConfigured: boolean;
+  googleWalletConfigured: boolean;
+  hasGlobalWalletObject: boolean;
+  active: boolean;
+  expiresAt: string | null;
+  adRequestId: string | null;
+  lastGoogleSyncOk: boolean | null;
+  lastGoogleSyncError: string | null;
+  lastGoogleSyncAt: string | null;
+};
+
 const STATUS_LABELS: Record<AdStatus, string> = {
   DRAFT: "Brouillon",
   PENDING_REVIEW: "À traiter par Fideto",
@@ -204,6 +216,7 @@ export function AdDetailPage({ id, firstName }: { id: string; firstName: string 
   const [stats, setStats] = useState<Stats | null>(null);
   const [delivery, setDelivery] = useState<Delivery | null>(null);
   const [previewLinks, setPreviewLinks] = useState<{ home: string; search: string; notifications: string } | null>(null);
+  const [walletPreview, setWalletPreview] = useState<WalletPreviewStatus | null>(null);
   const [showMobile, setShowMobile] = useState(false);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -241,6 +254,7 @@ export function AdDetailPage({ id, firstName }: { id: string; firstName: string 
         stats: Stats | null;
         delivery: Delivery | null;
         previewLinks: { home: string; search: string; notifications: string };
+        walletPreview: WalletPreviewStatus;
       };
       setAd(data.adRequest);
       setAudit(data.audit ?? []);
@@ -250,6 +264,7 @@ export function AdDetailPage({ id, firstName }: { id: string; firstName: string 
       setStats(data.stats ?? null);
       setDelivery(data.delivery ?? null);
       setPreviewLinks(data.previewLinks ?? null);
+      setWalletPreview(data.walletPreview ?? null);
     } catch (e) {
       notify(e instanceof Error ? e.message : "Chargement impossible.", true);
     } finally {
@@ -276,6 +291,34 @@ export function AdDetailPage({ id, firstName }: { id: string; firstName: string 
     } finally {
       setBusy(false);
     }
+  }
+
+  async function startWalletPreview() {
+    await run(async () => {
+      const data = (await api(`/api/super-admin/visuels/${id}/google-wallet-preview`, { method: "POST" })) as {
+        ok?: boolean;
+        needsWalletSave?: boolean;
+        message?: string;
+        googleSync?: { ok: boolean; error: string | null };
+        walletPreview?: WalletPreviewStatus;
+      };
+      if (data.walletPreview) setWalletPreview(data.walletPreview);
+      if (data.needsWalletSave) {
+        throw new Error(data.message ?? "Ajoutez d'abord la carte globale Fideto à Google Wallet avec le compte client test.");
+      }
+      if (data.googleSync && !data.googleSync.ok) {
+        throw new Error(data.googleSync.error ?? "Google Wallet n'a pas accepté la mise à jour.");
+      }
+    }, "Aperçu envoyé sur la carte Google Wallet du client test (30 min).");
+  }
+
+  async function stopWalletPreview() {
+    await run(async () => {
+      const data = (await api(`/api/super-admin/visuels/${id}/google-wallet-preview`, { method: "DELETE" })) as {
+        walletPreview?: WalletPreviewStatus;
+      };
+      if (data.walletPreview) setWalletPreview(data.walletPreview);
+    }, "Aperçu Google Wallet arrêté.");
   }
 
   async function patch(body: Record<string, unknown>) {
@@ -912,6 +955,70 @@ export function AdDetailPage({ id, firstName }: { id: string; firstName: string 
                 </div>
               ))}
               <p className={s.note}>Le visuel sera diffusé uniquement après les accords requis et selon les créneaux réservés.</p>
+            </section>
+
+            <section className={`${s.card} ${s.pad} ${s.details}`} data-testid="wallet-preview">
+              <div className={s.eyebrow}>GOOGLE WALLET — TEST SUPER-ADMIN</div>
+              <h2>Aperçu sur la carte globale Fideto</h2>
+              <p className={s.note}>
+                Affiche le visuel de cette campagne pendant 30 minutes sur la carte Google Wallet <b>globale</b> du client test
+                (QA_CUSTOMER_USER_ID), y compris en mode Stripe test. Aucune impression, livraison ni dépense n&apos;est comptée.
+              </p>
+              {!walletPreview?.qaCustomerConfigured ? (
+                <div className={s.reasonBox} data-testid="wallet-preview-unconfigured">
+                  Configurez <code>QA_CUSTOMER_USER_ID</code> sur le serveur pour activer cet aperçu.
+                </div>
+              ) : !walletPreview.googleWalletConfigured ? (
+                <div className={s.reasonBox}>Google Wallet n&apos;est pas activé sur cet environnement.</div>
+              ) : (
+                <>
+                  {!walletPreview.hasGlobalWalletObject ? (
+                    <div className={s.reasonBox} data-testid="wallet-preview-needs-save">
+                      Le client test n&apos;a pas encore enregistré la carte globale Fideto dans Google Wallet. Connectez-vous
+                      avec ce compte sur <Link href="/carte">/carte</Link>, utilisez « Ajouter à Google Wallet », puis relancez
+                      l&apos;aperçu ici.
+                    </div>
+                  ) : null}
+                  {walletPreview.active ? (
+                    <div className={s.reasonBox} data-testid="wallet-preview-active" style={{ borderColor: "#6b9f7a" }}>
+                      Aperçu actif jusqu&apos;à{" "}
+                      <b>{walletPreview.expiresAt ? formatDateTime(walletPreview.expiresAt) : "—"}</b>
+                      {walletPreview.lastGoogleSyncOk === true ? (
+                        <span> · transmis à Google Wallet</span>
+                      ) : walletPreview.lastGoogleSyncError ? (
+                        <span style={{ color: "#f0a8b8" }}> · échec : {walletPreview.lastGoogleSyncError}</span>
+                      ) : null}
+                    </div>
+                  ) : walletPreview.lastGoogleSyncOk === false && walletPreview.lastGoogleSyncError ? (
+                    <div className={s.reasonBox} data-testid="wallet-preview-sync-error">
+                      Dernière tentative : {walletPreview.lastGoogleSyncError}
+                    </div>
+                  ) : null}
+                  <div style={{ marginTop: 14, display: "flex", flexWrap: "wrap", gap: 12 }}>
+                    <button
+                      className={s.button}
+                      type="button"
+                      disabled={busy || !shown || walletPreview.active}
+                      onClick={() => void startWalletPreview()}
+                      data-testid="wallet-preview-start"
+                    >
+                      Afficher dans ma carte Google Wallet (test)
+                    </button>
+                    {walletPreview.active ? (
+                      <button
+                        className={`${s.button} ${s.secondary}`}
+                        type="button"
+                        disabled={busy}
+                        onClick={() => void stopWalletPreview()}
+                        data-testid="wallet-preview-stop"
+                      >
+                        Arrêter le test
+                      </button>
+                    ) : null}
+                  </div>
+                  {!shown ? <p className={s.note}>Un visuel (final ou brouillon) est requis pour l&apos;aperçu Wallet.</p> : null}
+                </>
+              )}
             </section>
 
             <section className={`${s.card} ${s.pad} ${s.details}`} data-testid="delivery">

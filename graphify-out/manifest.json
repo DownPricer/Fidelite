@@ -1860,9 +1860,9 @@
     "semantic_hash": "0e326f9ae20f7623224bf5f3a12f89ab"
   },
   "src/lib/google-wallet.ts": {
-    "mtime": 1790981253.305145,
-    "seen": 1790981469.8928628,
-    "ast_hash": "72446703d3dfa33fe13bdd8ff4d7b866",
+    "mtime": 1790983212.8656247,
+    "seen": 1790983314.6720445,
+    "ast_hash": "0518a7b7c58140bee2011148ec77dc70",
     "semantic_hash": ""
   },
   "src/lib/hosts.ts": {
@@ -4752,9 +4752,9 @@
     "semantic_hash": ""
   },
   "src/lib/ad-lifecycle-worker.ts": {
-    "mtime": 1790981273.3513472,
-    "seen": 1790981469.881366,
-    "ast_hash": "0ca948cc27962799f38e55ed2f4d9f16",
+    "mtime": 1790983214.4284036,
+    "seen": 1790983314.6454215,
+    "ast_hash": "37115593acbbbfb5fb0febcbdbb31316",
     "semantic_hash": ""
   },
   "src/lib/ad-links.ts": {
@@ -4878,9 +4878,9 @@
     "semantic_hash": ""
   },
   "src/app/api/super-admin/visuels/[id]/route.ts": {
-    "mtime": 1790949462.861589,
-    "seen": 1790950170.3684855,
-    "ast_hash": "2d659b8c153da70ed9cd9afed5d93d42",
+    "mtime": 1790983217.2677615,
+    "seen": 1790983314.5773253,
+    "ast_hash": "33af4c7c4cf58f391d9d87a1b9bdbefe",
     "semantic_hash": ""
   },
   "src/app/api/super-admin/visuels/route.ts": {
@@ -4902,9 +4902,9 @@
     "semantic_hash": ""
   },
   "src/app/super-admin/campagnes/fiche/[id]/ad-detail.tsx": {
-    "mtime": 1790949462.8635821,
-    "seen": 1790950170.383651,
-    "ast_hash": "15fe3d06b64f5d76e2710b16c794f0a0",
+    "mtime": 1790983242.6499233,
+    "seen": 1790983314.60506,
+    "ast_hash": "19ebd2088c05dfbc75304fb5bf829ee8",
     "semantic_hash": ""
   },
   "src/app/super-admin/campagnes/fiche/[id]/page.tsx": {
@@ -5268,21 +5268,39 @@
     "semantic_hash": ""
   },
   "src/lib/google-wallet-campaign-module.ts": {
-    "mtime": 1790981257.3816206,
-    "seen": 1790981469.891863,
-    "ast_hash": "a799b07fa99dfd7c2897d53c0b7839e7",
+    "mtime": 1790982281.3600261,
+    "seen": 1790983314.6720445,
+    "ast_hash": "b918d6d3ca9e6a3e04e4c3ce65aaf219",
     "semantic_hash": ""
   },
   "tests/google-wallet-campaign-module.test.ts": {
-    "mtime": 1790981299.5107532,
-    "seen": 1790981469.9179742,
-    "ast_hash": "466e479f500e94eeabf953d07f110b35",
+    "mtime": 1790982287.2007093,
+    "seen": 1790983314.7350662,
+    "ast_hash": "f0b3fb4217a6adb618d874a71760f74c",
     "semantic_hash": ""
   },
   "tests/google-wallet-campaign-selection.test.ts": {
     "mtime": 1790981315.8043163,
     "seen": 1790981469.9179742,
     "ast_hash": "b326c8fdfa24a03589d55cc8f7819f05",
+    "semantic_hash": ""
+  },
+  "src/app/api/super-admin/visuels/[id]/google-wallet-preview/route.ts": {
+    "mtime": 1790983216.4970644,
+    "seen": 1790983314.5773253,
+    "ast_hash": "eecc73743eeee3bd515d0acef03ee0f2",
+    "semantic_hash": ""
+  },
+  "src/lib/google-wallet-global-preview.ts": {
+    "mtime": 1790983201.5307486,
+    "seen": 1790983314.6720445,
+    "ast_hash": "dff2bfc9f74dd8f0671af5f0f97b3ba3",
+    "semantic_hash": ""
+  },
+  "tests/google-wallet-global-preview.test.ts": {
+    "mtime": 1790983254.4458375,
+    "seen": 1790983314.7360606,
+    "ast_hash": "b04893a452f6da0290ad5ae1ef3d2c6e",
     "semantic_hash": ""
   }
 }

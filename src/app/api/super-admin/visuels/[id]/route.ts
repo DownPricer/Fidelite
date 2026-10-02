@@ -1,6 +1,7 @@
 import { requireSuperAdmin } from "@/lib/api-guard";
 import { adJourney, describeNextAction } from "@/lib/ad-visual-workflow";
 import { getAdStats } from "@/lib/ad-stats";
+import { getGoogleWalletPreviewAdminStatus } from "@/lib/google-wallet-global-preview";
 import { diagnoseAdDelivery } from "@/lib/sponsored-selection";
 import { publicCustomerUrl } from "@/lib/hosts";
 import { jsonError, jsonOk } from "@/lib/http";
@@ -58,5 +59,6 @@ export async function GET(req: Request, context: { params: Promise<{ id: string 
     search: publicCustomerUrl(`/decouvrir?apercu=${id}`),
     notifications: publicCustomerUrl(`/notifications?apercu=${id}`),
   };
-  return jsonOk({ adRequest, audit, stats, notifications, nextAction, journey, people, delivery, previewLinks });
+  const walletPreview = await getGoogleWalletPreviewAdminStatus(id);
+  return jsonOk({ adRequest, audit, stats, notifications, nextAction, journey, people, delivery, previewLinks, walletPreview });
 }

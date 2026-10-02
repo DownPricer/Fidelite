@@ -223,6 +223,7 @@ model User {
   fifeLifeQrToken       FifeLifeQrToken?
   preferences           CustomerPreferences?
   googleWalletObjects   GoogleWalletObject[]
+  googleWalletGlobalAdPreview GoogleWalletGlobalAdPreview?
   notifications         InAppNotification[]
   pushSubscriptions     PushSubscription[]
   consentEvents         ConsentEvent[]
@@ -1245,9 +1246,29 @@ model AdRequest {
   images   AdRequestImage[]
   versions AdVisualVersion[]
   customerViews AdCustomerView[]
+  googleWalletGlobalAdPreviews GoogleWalletGlobalAdPreview[]
 
   @@index([merchantId, status])
   @@index([status, startDate, endDate])
+}
+
+/// Aperçu super-admin : encart campagne forcé sur la carte Google Wallet globale du client QA (30 min max).
+model GoogleWalletGlobalAdPreview {
+  userId              String   @id
+  adRequestId         String
+  expiresAt           DateTime
+  startedById         String?
+  lastGoogleSyncOk    Boolean?
+  lastGoogleSyncError String?
+  lastGoogleSyncAt    DateTime?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  adRequest AdRequest @relation(fields: [adRequestId], references: [id], onDelete: Cascade)
+
+  @@index([adRequestId])
+  @@index([expiresAt])
 }
 
 /// Images envoyées par le commerçant pour le parcours « Fideto crée mon visuel » (1 à 5, aucune

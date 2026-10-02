@@ -22,7 +22,7 @@ import {
   type GlobalWalletCampaignModule,
 } from "./google-wallet-campaign-module";
 import { parseGoogleWalletConfig, type GoogleWalletAppearance } from "./google-wallet-appearance";
-import { selectSponsoredForGoogleWalletGlobal } from "./sponsored-selection";
+import { resolveGlobalWalletCampaignModule } from "./google-wallet-global-preview";
 import { resolveTier } from "@/components/fife-life/tier";
 import { getLoyaltyCardBackground, getLoyaltyCardTierLabel } from "./loyalty-card-assets";
 
@@ -580,6 +580,7 @@ export async function globalObjectBody(input: {
   nextReward: string | null;
   availableRewardsCount: number | null;
   campaignModule?: GlobalWalletCampaignModule | null;
+  clearCampaignModule?: boolean;
 }) {
   const displayName = [input.user.firstName, input.user.lastName].filter(Boolean).join(" ") || input.user.firstName;
   const clientNumber = resolveClientNumber({ clientNumber: input.user.clientNumber, userId: input.user.id });
@@ -619,7 +620,11 @@ export async function globalObjectBody(input: {
           : `Encore ${formatUnitCount(tier.remaining, "points")} avant ${tier.nextName}`,
       ),
     ].filter(Boolean),
-    ...(campaignPayload ? { valueAddedModuleData: [campaignPayload] } : {}),
+    ...(campaignPayload
+      ? { valueAddedModuleData: [campaignPayload] }
+      : input.clearCampaignModule
+        ? { valueAddedModuleData: [] }
+        : {}),
     appLinkData: appLinkData(cardUrl(), "Ouvrir mon wallet"),
   };
 }
@@ -772,12 +777,16 @@ async function globalObjectSyncContext(userId: string) {
   return { user, nextReward: nextGlobalReward?.rewardName ?? null, availableRewardsCount };
 }
 
-async function syncGlobalObjectToGoogle(input: { userId: string; googleObjectId: string }) {
+async function syncGlobalObjectToGoogle(input: {
+  userId: string;
+  googleObjectId: string;
+  clearCampaignModule?: boolean;
+}) {
   const { user, nextReward, availableRewardsCount } = await globalObjectSyncContext(input.userId);
   const qrValue = await customerQrValue(input.userId);
-  let campaignModule: Awaited<ReturnType<typeof selectSponsoredForGoogleWalletGlobal>> = null;
+  let campaignModule: Awaited<ReturnType<typeof resolveGlobalWalletCampaignModule>> = null;
   try {
-    campaignModule = await selectSponsoredForGoogleWalletGlobal(input.userId);
+    campaignModule = await resolveGlobalWalletCampaignModule(input.userId);
   } catch {
     campaignModule = null;
   }
@@ -789,6 +798,7 @@ async function syncGlobalObjectToGoogle(input: { userId: string; googleObjectId:
     activeCardCount: user.customerMemberships.length,
     nextReward,
     availableRewardsCount,
+    clearCampaignModule: input.clearCampaignModule,
   };
 
   try {
@@ -879,7 +889,7 @@ export async function createGlobalGoogleWalletSaveUrl(userId: string) {
   }
 }
 
-export async function syncGoogleWalletGlobalObject(userId: string) {
+export async function syncGoogleWalletGlobalObject(userId: string, options?: { clearCampaignModule?: boolean }) {
   if (!isGoogleWalletConfigured()) return;
   const row = await prisma.googleWalletObject.findFirst({
     where: { userId, customerMembershipId: null, merchantId: null },
@@ -892,7 +902,7 @@ export async function syncGoogleWalletGlobalObject(userId: string) {
     data: { syncStatus: "PENDING", needsSync: true, lastError: null },
   });
   try {
-    await syncGlobalObjectToGoogle({ userId, googleObjectId: row.googleObjectId });
+    await syncGlobalObjectToGoogle({ userId, googleObjectId: row.googleObjectId, clearCampaignModule: options?.clearCampaignModule });
     await prisma.googleWalletObject.update({
       where: { googleObjectId: row.googleObjectId },
       data: { syncStatus: "SYNCED", needsSync: false, lastSyncedAt: new Date(), lastError: null },
