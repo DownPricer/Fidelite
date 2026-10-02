@@ -37,6 +37,8 @@ export const env = {
   invitationDays: Number(read("EMPLOYEE_INVITATION_DAYS", "7")),
   invitationHours: Number(read("EMPLOYEE_INVITATION_HOURS", "48")),
   publicDemoMode: read("PUBLIC_DEMO_MODE", "true") !== "false",
+  /** Boîte qui reçoit les messages du formulaire /contact (Google Wallet, assistance). */
+  supportEmail: read("SUPPORT_EMAIL"),
   mailFrom: read("MAIL_FROM"),
   resendApiKey: read("RESEND_API_KEY"),
   smtpHost: read("SMTP_HOST"),

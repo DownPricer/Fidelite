@@ -67,6 +67,16 @@ export const customerRecoveryRequestSchema = z.object({
   email: emailSchema,
 });
 
+export const publicContactFormSchema = z.object({
+  name: z.string().trim().min(1, "Le nom est obligatoire.").max(120),
+  email: emailSchema,
+  message: z
+    .string()
+    .trim()
+    .min(10, "Votre message doit contenir au moins 10 caractères.")
+    .max(5000, "Message trop long."),
+});
+
 export const customerFinalizeSchema = z.object({
   firstName: firstNameSchema,
   lastName: z.string().trim().min(1, "Le nom est obligatoire.").max(80),

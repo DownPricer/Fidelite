@@ -1842,9 +1842,9 @@
     "semantic_hash": ""
   },
   "src/lib/env.ts": {
-    "mtime": 1790963319.22721,
-    "seen": 1790963678.7332888,
-    "ast_hash": "b75c3d345ba57e9d8dad7d1e844f46c4",
+    "mtime": 1790979976.491063,
+    "seen": 1790980223.0015364,
+    "ast_hash": "baa3d6ac6ab7ae3d1890890d2df1473e",
     "semantic_hash": ""
   },
   "src/lib/google-wallet-appearance.ts": {
@@ -2076,9 +2076,9 @@
     "semantic_hash": ""
   },
   "src/lib/rate-limit.ts": {
-    "mtime": 1789752156.5064723,
-    "seen": 1789912103.9982412,
-    "ast_hash": "e43d0cf53fadceea2aaa1ddbb73f9b62",
+    "mtime": 1790979976.3340254,
+    "seen": 1790980223.0155885,
+    "ast_hash": "b837e50993433f446eaf80cdab24e577",
     "semantic_hash": ""
   },
   "src/lib/rbac.ts": {
@@ -2148,9 +2148,9 @@
     "semantic_hash": "f5b08fc4265edef133bfe433e46ba4c2"
   },
   "src/lib/validation.ts": {
-    "mtime": 1790963333.5397012,
-    "seen": 1790963678.7422934,
-    "ast_hash": "bc4db9c1dfe2d8b1bbef0eec376a466e",
+    "mtime": 1790979988.4470215,
+    "seen": 1790980223.0196154,
+    "ast_hash": "70c7c732ea6bc181fdb9d5c190506074",
     "semantic_hash": ""
   },
   "src/lib/wallet-card-template.ts": {
@@ -5235,6 +5235,36 @@
     "mtime": 1790963478.4472673,
     "seen": 1790963678.7478068,
     "ast_hash": "f5cb49a1eae9062e150eb3e6c60e4171",
+    "semantic_hash": ""
+  },
+  "src/app/api/public/contact/route.ts": {
+    "mtime": 1790980001.15983,
+    "seen": 1790980222.926524,
+    "ast_hash": "3a34e89d819d58dbb7a2efe35df34f9d",
+    "semantic_hash": ""
+  },
+  "src/app/contact/page.tsx": {
+    "mtime": 1790979996.7124298,
+    "seen": 1790980222.9475698,
+    "ast_hash": "1490d2eeb6ac9e1d0d5635f52d2b2ded",
+    "semantic_hash": ""
+  },
+  "src/app/contact/ui.tsx": {
+    "mtime": 1790979995.6307714,
+    "seen": 1790980222.9475698,
+    "ast_hash": "787246e512cef7a7db45ce1f038fc7a8",
+    "semantic_hash": ""
+  },
+  "src/lib/support-contact.ts": {
+    "mtime": 1790979986.5037742,
+    "seen": 1790980223.0186105,
+    "ast_hash": "94bbb7d4e60ee0c340b8f7966ce5e2af",
+    "semantic_hash": ""
+  },
+  "tests/contact-page.test.ts": {
+    "mtime": 1790980194.1538806,
+    "seen": 1790980223.0261319,
+    "ast_hash": "374594d7c50e85d98f6900aaec1c2939",
     "semantic_hash": ""
   }
 }

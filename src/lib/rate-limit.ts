@@ -36,4 +36,5 @@ export const LIMITS = {
   qr: { limit: 40, windowMs: 60 * 1000 },
   googleWallet: { limit: 10, windowMs: 60 * 1000 },
   qaLoginExchange: { limit: 10, windowMs: 60 * 1000 },
+  publicContact: { limit: 5, windowMs: 15 * 60 * 1000 },
 };
