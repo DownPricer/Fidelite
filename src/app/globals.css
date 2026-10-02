@@ -8230,7 +8230,7 @@ body:has(.wallet-shell) {
 
 .pr-hero {
   text-align: center;
-  padding: 81px 20px 46px;
+  padding: 26px 20px 10px;
 }
 
 .pr-eyebrow {
@@ -8242,11 +8242,11 @@ body:has(.wallet-shell) {
 }
 
 .pr-hero h1 {
-  font-size: clamp(38px, 6vw, 68px);
-  line-height: 1.02;
-  letter-spacing: -0.065em;
+  font-size: clamp(30px, 3.2vw, 42px);
+  line-height: 1.06;
+  letter-spacing: -0.055em;
   max-width: 830px;
-  margin: 18px auto 19px;
+  margin: 10px auto 10px;
   color: #fbf8ff;
   font-weight: 800;
 }
@@ -8254,7 +8254,7 @@ body:has(.wallet-shell) {
 .pr-hero p {
   color: #c7bacf;
   max-width: 660px;
-  font-size: 16px;
+  font-size: 15px;
   margin: 0 auto;
 }
 
@@ -8262,11 +8262,11 @@ body:has(.wallet-shell) {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  margin-top: 25px;
+  margin-top: 14px;
   border: 1px solid #4b385b;
   background: #191222;
   border-radius: 99px;
-  padding: 8px 12px;
+  padding: 6px 12px;
   color: #cfbfd9;
   font-size: 11px;
 }
@@ -8280,20 +8280,50 @@ body:has(.wallet-shell) {
   font-style: normal;
 }
 
+/* Contenu de la page : une seule largeur, centrée, pour que cartes, bandeau, tableau, FAQ et CTA partagent les mêmes bords. */
+.pr-scene main .pr-wrap {
+  width: min(1080px, calc(100% - 48px));
+  margin-left: auto;
+  margin-right: auto;
+}
+
 .pr-pricing {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 20px;
+  gap: 22px;
   align-items: stretch;
-  padding: 16px 0 32px;
+  justify-content: center;
+  padding: 10px 0 26px;
+}
+
+/* Titres, prix, avantages et boutons alignés d'une carte à l'autre (lignes partagées via subgrid, quel que soit le retour à la ligne des textes). */
+@media (min-width: 901px) {
+  @supports (grid-template-rows: subgrid) {
+    .pr-pricing {
+      grid-template-rows: repeat(8, auto);
+      row-gap: 0;
+    }
+
+    .pr-plan {
+      display: grid;
+      grid-template-rows: subgrid;
+      grid-row: span 8;
+      row-gap: 0;
+      align-content: start;
+    }
+
+    .pr-plan-actions {
+      margin-top: 0;
+    }
+  }
 }
 
 .pr-plan {
   position: relative;
   display: flex;
   flex-direction: column;
-  min-height: 585px;
-  padding: 31px;
+  min-height: 0;
+  padding: 24px 30px 22px;
   border: 1px solid #392d48;
   border-radius: 25px;
   background: linear-gradient(145deg, #1a1425, #14101d);
@@ -8344,8 +8374,8 @@ body:has(.wallet-shell) {
 }
 
 .pr-price-block {
-  margin: 26px 0 22px;
-  padding: 22px 0;
+  margin: 16px 0 14px;
+  padding: 16px 0;
   border-top: 1px solid #3a2d46;
   border-bottom: 1px solid #3a2d46;
 }
@@ -8422,7 +8452,7 @@ body:has(.wallet-shell) {
   color: #b6e7c9;
   border-radius: 10px;
   padding: 10px 12px;
-  margin-bottom: 23px;
+  margin-bottom: 16px;
   font-size: 12px;
   font-weight: 720;
 }
@@ -8446,8 +8476,8 @@ body:has(.wallet-shell) {
 
 .pr-features {
   display: grid;
-  gap: 11px;
-  margin: 0 0 26px;
+  gap: 9px;
+  margin: 0 0 20px;
   padding: 0;
   list-style: none;
 }
@@ -8491,7 +8521,7 @@ body:has(.wallet-shell) {
 }
 
 .pr-same-service {
-  margin: 19px 0 35px;
+  margin: 8px auto 28px;
   padding: 23px 27px;
   display: flex;
   align-items: center;
@@ -8789,8 +8819,21 @@ body:has(.wallet-shell) {
     padding: 9px 11px;
   }
 
+  .pr-scene main .pr-wrap {
+    width: min(calc(100% - 28px), 1080px);
+  }
+
   .pr-hero {
-    padding: 57px 7px 32px;
+    padding: 24px 7px 12px;
+  }
+
+  .pr-hero h1 {
+    font-size: 30px;
+    margin: 10px auto 8px;
+  }
+
+  .pr-hero p {
+    font-size: 14px;
   }
 
   .pr-pricing {
