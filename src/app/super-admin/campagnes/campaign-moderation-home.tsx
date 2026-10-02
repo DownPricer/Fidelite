@@ -155,6 +155,12 @@ export function CampaignModerationHome({ firstName }: { firstName: string }) {
             Modération des campagnes réseau et des demandes de bandeaux sponsorisés — espace super-admin, séparé de
             l&apos;espace commerçant.
           </p>
+          <p className="mt-1 text-sm">
+            <Link href="/super-admin/campagnes/diagnostic" className="font-bold underline">
+              Diagnostic de diffusion
+            </Link>{" "}
+            — pourquoi une publicité n&apos;apparaît pas chez les clients (mode test, paiement, créneaux, audience).
+          </p>
         </div>
 
         <div className="flex gap-2">

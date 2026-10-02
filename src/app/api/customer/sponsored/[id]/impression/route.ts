@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { requireMutatingRequest, requireStandardUser } from "@/lib/api-guard";
+import { requireMutatingRequest, requireUser } from "@/lib/api-guard";
 import { jsonError, jsonOk, readJson } from "@/lib/http";
 import { isAdEligibleForCustomer, parsePlacement, recordImpression } from "@/lib/sponsored-selection";
 
@@ -13,7 +13,7 @@ const schema = z.object({ placement: z.string() });
 export async function POST(req: Request, context: { params: Promise<{ id: string }> }) {
   const csrf = await requireMutatingRequest(req);
   if (csrf.error) return csrf.error;
-  const auth = await requireStandardUser(req);
+  const auth = await requireUser(req);
   if (auth.error || !auth.user) return auth.error ?? jsonError("Connexion requise.", 401);
 
   const { id } = await context.params;

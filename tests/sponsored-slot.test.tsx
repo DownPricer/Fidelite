@@ -5,6 +5,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SponsoredSlot, resetSponsoredSessionState } from "@/components/fife-life/sponsored-slot";
 import { HourlySchedulePicker } from "@/app/app/campagnes/ui";
+import { MobilePlacementPreview } from "@/components/ad-visual-parts";
 
 /**
  * Composant de bandeau côté client : impression comptée seulement quand il est réellement visible
@@ -228,5 +229,39 @@ describe("sélecteur de créneaux : pas de jour passé ni d'heures écoulées (E
     await act(async () => add.click());
     expect(container.querySelector('[role="alert"]')?.textContent).toMatch(/passé/);
     expect(emitted.every((v) => v.length === 0)).toBe(true);
+  });
+});
+
+describe("aperçu réservé (?apercu=) : visible mais jamais compté", () => {
+  afterEach(() => window.history.replaceState({}, "", "/"));
+
+  it("affiche la campagne avec l'étiquette d'aperçu, appelle l'API d'aperçu et ne compte aucune impression", async () => {
+    window.history.replaceState({}, "", "/carte?apercu=ad1");
+    serverAd = { ...AD, impressionUrl: null as unknown as string, clickUrl: "#" };
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      calls.push({ url: String(input), method: init?.method ?? "GET", body: init?.body as string | undefined });
+      return new Response(JSON.stringify({ preview: true, simulated: true, ad: serverAd }), { status: 200 });
+    }) as typeof fetch;
+    const container = await mount(<SponsoredSlot placement="WALLET_HOME" />);
+    expect(calls[0].url).toContain("preview=ad1");
+    expect(container.querySelector('[data-testid="preview-label"]')?.textContent).toMatch(/campagne de test, simulée/);
+    expect(container.textContent).toContain("Boulangerie Soleil");
+    await intersect(1);
+    await act(async () => vi.advanceTimersByTimeAsync(3000));
+    expect(impressions()).toHaveLength(0); // jamais d'impression pour un aperçu
+  });
+
+  it("l'aperçu mobile du back-office montre la vraie bannière dans les trois emplacements, sans aucune requête", async () => {
+    const container = await mount(
+      <MobilePlacementPreview
+        ad={{ imageUrl: "/x.png", merchantName: "Boulangerie Soleil", text: "-20 %", ctaLabel: "Voir" }}
+        simulated
+        links={{ home: "/carte?apercu=ad1", search: "/decouvrir?apercu=ad1", notifications: "/notifications?apercu=ad1" }}
+      />,
+    );
+    expect([...container.querySelectorAll("[data-variant]")].map((el) => el.getAttribute("data-variant"))).toEqual(["home", "search", "notifications"]);
+    expect(container.textContent).toContain("campagne de test (simulée)");
+    expect(container.querySelector('[data-testid="preview-link-home"]')?.getAttribute("href")).toBe("/carte?apercu=ad1");
+    expect(calls).toHaveLength(0);
   });
 });

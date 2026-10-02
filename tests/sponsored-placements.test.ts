@@ -14,7 +14,7 @@ vi.mock("@/lib/prisma", () => ({ prisma: fake.prisma }));
 vi.mock("@/lib/env", () => ({ env: { appUrl: "http://localhost:3000" } }));
 vi.mock("@/lib/api-guard", () => ({
   requireMutatingRequest: async () => ({ error: null }),
-  requireStandardUser: async () =>
+  requireUser: async () =>
     h.customer ? { error: null, user: { id: h.customer } } : { error: new Response(null, { status: 401 }), user: null },
 }));
 

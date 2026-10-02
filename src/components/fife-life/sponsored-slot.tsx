@@ -63,9 +63,32 @@ const reportedThisSession = new Set<string>();
  */
 export function SponsoredSlot({ placement, className }: { placement: SponsoredPlacement; className?: string }) {
   const [ad, setAd] = useState<(SponsoredAd & { placement: SponsoredPlacement }) | null>(null);
+  const [previewInfo, setPreviewInfo] = useState<{ simulated: boolean } | null>(null);
   const hostRef = useRef<HTMLDivElement | null>(null);
+  // ?apercu=<id> : aperçu réservé (commerçant de la campagne / super-admin), jamais compté ni montré aux autres.
+  const [previewId] = useState<string | null>(() => {
+    try {
+      return new URLSearchParams(window.location.search).get("apercu");
+    } catch {
+      return null;
+    }
+  });
 
   useEffect(() => {
+    if (!previewId) return;
+    const controller = new AbortController();
+    fetch(`/api/customer/sponsored?placement=${placement}&preview=${encodeURIComponent(previewId)}`, { signal: controller.signal, cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: { ad: (SponsoredAd & { placement: SponsoredPlacement }) | null; simulated?: boolean } | null) => {
+        setAd(data?.ad ?? null);
+        setPreviewInfo(data?.ad ? { simulated: Boolean(data.simulated) } : null);
+      })
+      .catch(() => undefined);
+    return () => controller.abort();
+  }, [placement, previewId]);
+
+  useEffect(() => {
+    if (previewId) return;
     const controller = new AbortController();
     const exclude = [...getDismissedAds()].join(",");
     fetch(`/api/customer/sponsored?placement=${placement}${exclude ? `&exclude=${encodeURIComponent(exclude)}` : ""}`, {
@@ -82,7 +105,7 @@ export function SponsoredSlot({ placement, className }: { placement: SponsoredPl
 
   useEffect(() => {
     const node = hostRef.current;
-    if (!ad || !node || typeof IntersectionObserver === "undefined") return;
+    if (previewId || !ad || !node || !ad.impressionUrl || typeof IntersectionObserver === "undefined") return;
     const key = `${placement}:${ad.id}`;
     if (reportedThisSession.has(key)) return;
     let timer: number | null = null;
@@ -112,15 +135,21 @@ export function SponsoredSlot({ placement, className }: { placement: SponsoredPl
       if (timer !== null) window.clearTimeout(timer);
       observer.disconnect();
     };
-  }, [ad, placement]);
+  }, [ad, placement, previewId]);
 
   if (!ad) return null;
   return (
     <div ref={hostRef} className={className} data-testid={`sponsored-slot-${placement}`}>
+      {previewInfo ? (
+        <p className="mb-1 rounded-lg border border-amber-400/50 bg-amber-400/10 px-2 py-1 text-[11px] font-bold text-[var(--ink)]" data-testid="preview-label">
+          Aperçu réservé — {previewInfo.simulated ? "campagne de test, simulée : " : ""}non diffusé aux autres, aucune impression comptée
+        </p>
+      ) : null}
       <SponsoredBanner
         ad={ad}
         variant={VARIANT_BY_PLACEMENT[placement]}
         onDismiss={() => {
+          if (previewId) return setAd(null);
           rememberDismissed(ad.id);
           setAd(null);
         }}

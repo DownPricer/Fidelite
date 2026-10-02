@@ -1,5 +1,6 @@
 import { requireMerchantAdmin } from "@/lib/api-guard";
 import { describeNextAction } from "@/lib/ad-visual-workflow";
+import { publicCustomerUrl } from "@/lib/hosts";
 import { jsonError, jsonOkPrivate } from "@/lib/http";
 import { prisma } from "@/lib/prisma";
 
@@ -31,5 +32,10 @@ export async function GET(req: Request, context: { params: Promise<{ id: string 
     versions: adRequest.versions,
     rejectionReason: adRequest.rejectionReason,
   });
-  return jsonOkPrivate({ adRequest, history, nextAction });
+  const previewLinks = {
+    home: publicCustomerUrl(`/carte?apercu=${id}`),
+    search: publicCustomerUrl(`/decouvrir?apercu=${id}`),
+    notifications: publicCustomerUrl(`/notifications?apercu=${id}`),
+  };
+  return jsonOkPrivate({ adRequest, history, nextAction, previewLinks });
 }

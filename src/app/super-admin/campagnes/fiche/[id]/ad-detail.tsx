@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { SuperAdminShell } from "@/components/super-admin/layout-shell";
-import { RealBannerPreview, formatDateTime, isExactBanner, loadImageElement, readFileAsDataUrl, type NextActionInfo, type VisualVersion } from "@/components/ad-visual-parts";
+import { MobilePlacementPreview, RealBannerPreview, formatDateTime, isExactBanner, loadImageElement, readFileAsDataUrl, type NextActionInfo, type VisualVersion } from "@/components/ad-visual-parts";
 import { priceSponsoredHours, type SponsoredDaySelection } from "@/lib/sponsored-hours-pricing";
 import s from "./fiche.module.css";
 
@@ -203,6 +203,8 @@ export function AdDetailPage({ id, firstName }: { id: string; firstName: string 
   const [nextAction, setNextAction] = useState<NextActionInfo | null>(null);
   const [stats, setStats] = useState<Stats | null>(null);
   const [delivery, setDelivery] = useState<Delivery | null>(null);
+  const [previewLinks, setPreviewLinks] = useState<{ home: string; search: string; notifications: string } | null>(null);
+  const [showMobile, setShowMobile] = useState(false);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState<{ msg: string; error: boolean } | null>(null);
@@ -238,6 +240,7 @@ export function AdDetailPage({ id, firstName }: { id: string; firstName: string 
         nextAction: NextActionInfo;
         stats: Stats | null;
         delivery: Delivery | null;
+        previewLinks: { home: string; search: string; notifications: string };
       };
       setAd(data.adRequest);
       setAudit(data.audit ?? []);
@@ -246,6 +249,7 @@ export function AdDetailPage({ id, firstName }: { id: string; firstName: string 
       setNextAction(data.nextAction ?? null);
       setStats(data.stats ?? null);
       setDelivery(data.delivery ?? null);
+      setPreviewLinks(data.previewLinks ?? null);
     } catch (e) {
       notify(e instanceof Error ? e.message : "Chargement impossible.", true);
     } finally {
@@ -928,6 +932,20 @@ export function AdDetailPage({ id, firstName }: { id: string; firstName: string 
                       <b style={{ fontWeight: 500, color: check.ok ? "#b6ddc6" : "#f0a8b8" }}>{check.detail}</b>
                     </div>
                   ))}
+                  <div style={{ marginTop: 10 }}>
+                    <button className={`${s.button} ${s.secondary}`} type="button" onClick={() => setShowMobile((v) => !v)} data-testid="toggle-mobile-preview" disabled={!shown}>
+                      {showMobile ? "Masquer l'aperçu mobile" : "Voir l'aperçu mobile (accueil, recherche, notifications)"}
+                    </button>
+                  </div>
+                  {showMobile && shown ? (
+                    <div style={{ marginTop: 12 }}>
+                      <MobilePlacementPreview
+                        ad={{ imageUrl: ad.finalImageUrl ?? shown.url, merchantName: ad.merchant.name, text: ad.requestedText, ctaLabel: ad.ctaLabel }}
+                        simulated={Boolean(delivery.simulated)}
+                        links={previewLinks ?? undefined}
+                      />
+                    </div>
+                  ) : null}
                   <p className={s.note}>
                     Un client ne voit la campagne que si, en plus, la règle de fréquence l&apos;autorise (1 bandeau max. toutes les 30 min, tirage occasionnel).
                   </p>

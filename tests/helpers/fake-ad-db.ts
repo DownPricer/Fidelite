@@ -74,6 +74,8 @@ export function createFakeAdDb() {
     marketingBalance: [],
     marketingLedgerEntry: [],
     campaignQuotaUsage: [],
+    merchantSubscription: [],
+    merchantStripeCustomer: [],
   };
 
   function hydrate(table: string, row: Row | undefined, include?: Record<string, unknown>) {
@@ -95,6 +97,9 @@ export function createFakeAdDb() {
       if (include.versions) out.versions = sortRows(tables.adVisualVersion.filter((v) => v.adRequestId === row.id), { number: "desc" });
       if (include.merchant) out.merchant = { id: row.merchantId, ...merchantInfo };
       if (include._count) out._count = { versions: tables.adVisualVersion.filter((v) => v.adRequestId === row.id).length };
+    }
+    if (table === "campaignPayment" && include.campaign) {
+      out.campaign = tables.campaign.find((c) => c.id === row.campaignId) ?? null;
     }
     return out;
   }
@@ -183,6 +188,8 @@ export function createFakeAdDb() {
     },
     marketingBalance: model("marketingBalance", "bal"),
     campaignQuotaUsage: model("campaignQuotaUsage", "quota"),
+    merchantSubscription: model("merchantSubscription", "sub"),
+    merchantStripeCustomer: model("merchantStripeCustomer", "scus"),
     marketingLedgerEntry: model("marketingLedgerEntry", "led"),
     merchant: {
       findMany: async () => [] as unknown[],

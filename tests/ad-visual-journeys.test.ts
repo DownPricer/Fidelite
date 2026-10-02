@@ -31,7 +31,7 @@ vi.mock("@/lib/merchant-card-template-service", () => ({
 }));
 vi.mock("@/lib/api-guard", () => ({
   requireMutatingRequest: async () => ({ error: null }),
-  requireStandardUser: async () =>
+  requireUser: async () =>
     h.session.customer ? { error: null, user: { id: h.session.customer } } : { error: new Response(null, { status: 401 }), user: null },
   requireSuperAdmin: async () =>
     h.session.admin ? { error: null, user: { id: "admin_1" } } : { error: new Response(null, { status: 401 }), user: null },

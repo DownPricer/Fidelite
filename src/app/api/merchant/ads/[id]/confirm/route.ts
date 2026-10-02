@@ -297,6 +297,7 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
       amountCents: pricing.priceCents,
       quantity: pricing.checkoutQuantity,
       description: pricing.description,
+      customer: billingCustomer(staff),
       successUrl: `${appOrigin}/app/campagnes/${adRequest.campaign.id}?paid=1`,
       cancelUrl: `${appOrigin}/app/campagnes/${adRequest.campaign.id}?cancelled=1`,
     });
@@ -349,6 +350,12 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
   });
 
   return jsonOk({ ok: true, requiresPayment: true, method: "STRIPE", checkoutUrl, amountCents: pricing.priceCents });
+}
+
+/** Identité de facturation transmise à Stripe (client du commerce + facture). */
+function billingCustomer(staff: { user?: { email?: string | null } | null; membership?: { merchant?: { name?: string } | null } | null }) {
+  const name = staff.membership?.merchant?.name;
+  return name ? { name, email: staff.user?.email ?? null } : undefined;
 }
 
 class InsufficientBalance extends Error {}

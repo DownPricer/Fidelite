@@ -331,3 +331,36 @@ export async function diagnoseAdDelivery(adId: string, now: Date = new Date()) {
     eligibleCustomers,
   };
 }
+
+/**
+ * Aperçu d'une campagne dans ses vrais emplacements (accueil, recherche, notifications), réservé au
+ * super-admin ou à l'administrateur du commerce de la campagne. Ne passe par AUCUNE règle d'audience,
+ * de fréquence ni de créneau, n'écrit rien (ni impression, ni historique client) et n'est jamais
+ * montré à un autre utilisateur : la réponse n'est donnée qu'à la personne autorisée qui la demande.
+ */
+export async function loadAdPreviewCard(adId: string, placement: AdPlacement) {
+  const ad = await prisma.adRequest.findUnique({
+    where: { id: adId },
+    include: {
+      merchant: { select: { slug: true, name: true, logoUrl: true } },
+      versions: { orderBy: { number: "desc" }, take: 1, select: { url: true } },
+    },
+  });
+  if (!ad) return null;
+  const imageUrl = ad.finalImageUrl ?? ad.versions[0]?.url ?? null;
+  if (!imageUrl) return null;
+  return {
+    merchantId: ad.merchantId,
+    simulated: ad.fundingMode === "TEST",
+    card: {
+      id: ad.id,
+      placement,
+      merchantSlug: ad.merchant.slug,
+      merchantName: ad.merchant.name,
+      merchantLogoUrl: ad.merchant.logoUrl,
+      imageUrl,
+      text: ad.requestedText,
+      ctaLabel: ad.ctaLabel,
+    } satisfies SponsoredCard,
+  };
+}

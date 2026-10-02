@@ -7,7 +7,8 @@ import { writeAudit } from "@/lib/audit";
 import { jsonError, jsonOk } from "@/lib/http";
 import { prisma } from "@/lib/prisma";
 import { notifyMerchant } from "@/lib/ad-visual-workflow";
-import { StripeNotConfiguredError, constructStripeWebhookEvent } from "@/lib/stripe";
+import { syncSubscriptionFromStripeView } from "@/lib/merchant-billing";
+import { StripeNotConfiguredError, constructStripeWebhookEvent, normalizeStripeSubscription } from "@/lib/stripe";
 
 /**
  * Webhook Stripe — signé et idempotent (Partie 9 / 17).
@@ -65,6 +66,11 @@ async function handleStripeEvent(event: Stripe.Event) {
       return handleCheckoutSessionExpired(event.data.object as Stripe.Checkout.Session, mode);
     case "payment_intent.payment_failed":
       return handlePaymentIntentFailed(event.data.object as Stripe.PaymentIntent, mode);
+    case "customer.subscription.updated":
+    case "customer.subscription.deleted":
+      // Stripe = source de vérité de l'abonnement : on reporte statut, échéance et arrêt programmé.
+      await syncSubscriptionFromStripeView(normalizeStripeSubscription(event.data.object));
+      return;
     case "charge.refunded":
       return handleChargeRefunded(event.data.object as Stripe.Charge, mode);
     default:

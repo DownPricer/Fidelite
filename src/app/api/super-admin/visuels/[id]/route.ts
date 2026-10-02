@@ -2,6 +2,7 @@ import { requireSuperAdmin } from "@/lib/api-guard";
 import { adJourney, describeNextAction } from "@/lib/ad-visual-workflow";
 import { getAdStats } from "@/lib/ad-stats";
 import { diagnoseAdDelivery } from "@/lib/sponsored-selection";
+import { publicCustomerUrl } from "@/lib/hosts";
 import { jsonError, jsonOk } from "@/lib/http";
 import { prisma } from "@/lib/prisma";
 
@@ -52,5 +53,10 @@ export async function GET(req: Request, context: { params: Promise<{ id: string 
 
   const journey = adJourney({ status: adRequest.status, visualMode: adRequest.visualMode });
   const delivery = await diagnoseAdDelivery(id);
-  return jsonOk({ adRequest, audit, stats, notifications, nextAction, journey, people, delivery });
+  const previewLinks = {
+    home: publicCustomerUrl(`/carte?apercu=${id}`),
+    search: publicCustomerUrl(`/decouvrir?apercu=${id}`),
+    notifications: publicCustomerUrl(`/notifications?apercu=${id}`),
+  };
+  return jsonOk({ adRequest, audit, stats, notifications, nextAction, journey, people, delivery, previewLinks });
 }

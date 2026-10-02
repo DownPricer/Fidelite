@@ -121,6 +121,7 @@ export async function POST(req: Request) {
       merchantId,
       ledgerEntryId: entry.id,
       amountCents,
+      customer: staff.membership.merchant?.name ? { name: staff.membership.merchant.name, email: staff.user.email ?? null } : undefined,
       successUrl: `${appOrigin}/app/campagnes/solde?topup=success`,
       cancelUrl: `${appOrigin}/app/campagnes/solde?topup=cancelled`,
     });

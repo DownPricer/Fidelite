@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
-import { SponsoredBanner } from "@/components/fife-life/sponsored-banner";
+import { SponsoredBanner, type SponsoredVariant } from "@/components/fife-life/sponsored-banner";
 import { Alert, Button } from "@/components/ui";
 
 /** Taille d'export du bandeau (carré, identique au bandeau public — voir src/lib/ad-visuals.ts). */
@@ -148,11 +148,13 @@ export function RealBannerPreview({
   merchantName,
   text,
   ctaLabel,
+  variant,
 }: {
   imageUrl: string;
   merchantName: string;
   text: string;
   ctaLabel: string | null;
+  variant?: SponsoredVariant;
 }) {
   return (
     <div className="max-w-sm" data-testid="real-banner-preview" onClickCapture={(e) => e.preventDefault()}>
@@ -168,6 +170,7 @@ export function RealBannerPreview({
           impressionUrl: "#",
           clickUrl: "#",
         }}
+        variant={variant}
       />
     </div>
   );
@@ -303,3 +306,77 @@ export function FramingTool({ src, onExport, onCancel }: { src: string; onExport
   );
 }
 
+
+export type PreviewLinks = { home: string; search: string; notifications: string };
+
+const frameStyle: React.CSSProperties = {
+  width: 280,
+  minHeight: 440,
+  borderRadius: 28,
+  border: "6px solid #2b2238",
+  background: "linear-gradient(160deg,#3a2a5c,#1d1630)",
+  padding: 12,
+  color: "#f4eefc",
+  fontSize: 11,
+  display: "flex",
+  flexDirection: "column",
+  gap: 8,
+};
+const block: React.CSSProperties = { borderRadius: 12, background: "rgba(255,255,255,0.08)", padding: 10 };
+
+/**
+ * Aperçu mobile de la publicité dans ses trois emplacements réels (accueil du Wallet, recherche,
+ * notifications) avec le vrai composant de bandeau et ses vraies données. Purement visuel : aucune
+ * requête, aucune impression, jamais visible d'un autre utilisateur que celui qui ouvre cette fiche.
+ */
+export function MobilePlacementPreview({
+  ad,
+  simulated,
+  links,
+}: {
+  ad: { imageUrl: string; merchantName: string; text: string; ctaLabel: string | null };
+  simulated: boolean;
+  links?: PreviewLinks;
+}) {
+  const banner = (variant: SponsoredVariant) => (
+    <RealBannerPreview imageUrl={ad.imageUrl} merchantName={ad.merchantName} text={ad.text} ctaLabel={ad.ctaLabel} variant={variant} />
+  );
+  return (
+    <div data-testid="mobile-preview" style={{ display: "grid", gap: 12 }}>
+      <p style={{ fontSize: 11, opacity: 0.85 }}>
+        Aperçu réservé — {simulated ? "campagne de test (simulée) : " : ""}personne d&apos;autre ne la voit et aucune impression n&apos;est comptée.
+      </p>
+      <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
+        <div style={frameStyle} aria-label="Accueil du Wallet">
+          <b style={{ fontSize: 10, letterSpacing: 1.5 }}>ACCUEIL DU WALLET</b>
+          <div style={{ ...block, height: 90 }}>Votre carte Fideto · 180 pts</div>
+          <div style={block}>Prochaine récompense</div>
+          {banner("home")}
+        </div>
+        <div style={frameStyle} aria-label="Recherche">
+          <b style={{ fontSize: 10, letterSpacing: 1.5 }}>RECHERCHE</b>
+          <div style={block}>Nom du commerce ou ville…</div>
+          <div style={block}>Café du Coin · Lyon</div>
+          {banner("search")}
+        </div>
+        <div style={frameStyle} aria-label="Notifications">
+          <b style={{ fontSize: 10, letterSpacing: 1.5 }}>NOTIFICATIONS</b>
+          <div style={{ display: "flex", gap: 6 }}>
+            <span style={{ ...block, padding: "4px 8px" }}>Toutes</span>
+            <span style={{ ...block, padding: "4px 8px" }}>Offres</span>
+          </div>
+          {banner("notifications")}
+          <div style={block}>Bienvenue sur Fideto — votre carte est prête.</div>
+        </div>
+      </div>
+      {links ? (
+        <p style={{ fontSize: 11 }}>
+          Sur votre téléphone, avec votre compte connecté :{" "}
+          <a href={links.home} style={{ textDecoration: "underline" }} data-testid="preview-link-home">accueil</a> ·{" "}
+          <a href={links.search} style={{ textDecoration: "underline" }}>recherche</a> ·{" "}
+          <a href={links.notifications} style={{ textDecoration: "underline" }}>notifications</a>
+        </p>
+      ) : null}
+    </div>
+  );
+}

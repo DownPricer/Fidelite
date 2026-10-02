@@ -369,6 +369,7 @@ model Merchant {
   googleWalletObjects GoogleWalletObject[]
   campaigns           Campaign[]
   adRequests          AdRequest[]
+  stripeCustomers MerchantStripeCustomer[]
 }
 
 model MerchantMembership {
@@ -677,9 +678,30 @@ model MerchantSubscription {
   insightEnabled     Boolean               @default(false)
   insightEnabledAt   DateTime?
   insightRequestedAt DateTime?
+  /// Abonnement Stripe lié (source de vérité du statut quand il existe) ; null = abonnement géré manuellement.
+  stripeSubscriptionId String?             @unique
+  stripeMode         StripeMode?
+  /// Arrêt demandé par le commerçant : l'abonnement reste actif jusqu'à cancelEffectiveAt (fin de période).
+  cancelAtPeriodEnd  Boolean               @default(false)
+  cancelEffectiveAt  DateTime?
+  cancelRequestedAt  DateTime?
   createdAt          DateTime              @default(now())
   updatedAt          DateTime              @updatedAt
   merchant           Merchant              @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+}
+
+/// Client Stripe d'un commerce, un par mode (les clients TEST et LIVE sont distincts chez Stripe).
+/// Les factures et reçus affichés à un commerçant ne viennent que du client Stripe de CE commerce.
+model MerchantStripeCustomer {
+  id               String     @id @default(cuid())
+  merchantId       String
+  mode             StripeMode
+  stripeCustomerId String     @unique
+  createdAt        DateTime   @default(now())
+
+  merchant Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+
+  @@unique([merchantId, mode])
 }
 
 model MerchantContract {

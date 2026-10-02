@@ -24,6 +24,12 @@ const icons = {
       <path d="M4 20V10m6.5 10V4m6.5 16v-7" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   ),
+  billing: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+      <rect x="3" y="5" width="18" height="14" rx="2" strokeLinejoin="round" />
+      <path d="M3 10h18M7 15h4" strokeLinecap="round" />
+    </svg>
+  ),
   settings: (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
       <path d="M12 15a3 3 0 100-6 3 3 0 000 6z" strokeLinecap="round" strokeLinejoin="round" />
@@ -38,6 +44,7 @@ const TOOLS = [
   { href: "/app/employes", title: "Équipe", hint: "Rôles et accès du personnel", icon: icons.team },
   { href: "/app/statistiques", title: "Statistiques", hint: "Analytique et tendances", icon: icons.stats },
   { href: "/app/parametres", title: "Réglages", hint: "Identité et compte", icon: icons.settings },
+  { href: "/app/outils/facturation", title: "Réglages et facturation", hint: "Abonnement, factures, transactions", icon: icons.billing },
 ] as const;
 
 export function OutilsPanel() {

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui";
 import {
   FramingTool,
   ImageThumb,
+  MobilePlacementPreview,
   NextActionBanner,
   RealBannerPreview,
   VersionHistory,
@@ -119,6 +120,8 @@ export function MerchantCampaignFiche({ adId, paid, cancelled }: { adId: string;
   // Paiement
   const [pricing, setPricing] = useState<PaymentPreview | null>(null);
   const [payMethod, setPayMethod] = useState<PayMethod>("STRIPE");
+  const [previewLinks, setPreviewLinks] = useState<{ home: string; search: string; notifications: string } | null>(null);
+  const [showMobile, setShowMobile] = useState(false);
   const fileRef = useRef<HTMLInputElement | null>(null);
 
   const load = useCallback(async () => {
@@ -127,7 +130,9 @@ export function MerchantCampaignFiche({ adId, paid, cancelled }: { adId: string;
         adRequest: Detail;
         history: HistoryRow[];
         nextAction: NextActionInfo;
+        previewLinks: { home: string; search: string; notifications: string };
       };
+      setPreviewLinks(data.previewLinks ?? null);
       setAd(data.adRequest);
       setHistory(data.history);
       setNextAction(data.nextAction);
@@ -278,6 +283,7 @@ export function MerchantCampaignFiche({ adId, paid, cancelled }: { adId: string;
   const latestRefusal = ad.versions.find((v) => v.status === "CHANGES_REQUESTED" && v.author === "MERCHANT") ?? null;
   const current = ad.finalImageUrl;
   const merchantName = "Votre commerce";
+  const previewImage = ad.finalImageUrl ?? ad.versions[0]?.url ?? null;
 
   return (
     <div className="space-y-5" data-testid="merchant-fiche">
@@ -506,6 +512,25 @@ export function MerchantCampaignFiche({ adId, paid, cancelled }: { adId: string;
             ))}
           </div>
           {ad.visualBrief ? <p className="text-xs text-[var(--muted)]">Votre indication : « {ad.visualBrief} »</p> : null}
+        </section>
+      ) : null}
+
+      {previewImage ? (
+        <section className="glass-panel space-y-3 p-4" aria-label="Aperçu sur mobile" data-testid="mobile-preview-card">
+          <p className="text-sm font-black text-[var(--ink)]">Aperçu sur mobile</p>
+          <p className="text-xs text-[var(--muted)]">
+            Voyez votre publicité dans ses emplacements (accueil du Wallet, recherche, notifications). Cet aperçu n&apos;est visible que par vous : il n&apos;est pas diffusé aux autres et ne compte aucune impression.
+          </p>
+          <Button variant="secondary" onClick={() => setShowMobile((v) => !v)} data-testid="toggle-mobile-preview">
+            {showMobile ? "Masquer l'aperçu" : "Voir l'aperçu mobile"}
+          </Button>
+          {showMobile ? (
+            <MobilePlacementPreview
+              ad={{ imageUrl: previewImage, merchantName, text: ad.requestedText, ctaLabel: ad.ctaLabel }}
+              simulated={ad.fundingMode === "TEST"}
+              links={previewLinks ?? undefined}
+            />
+          ) : null}
         </section>
       ) : null}
 
