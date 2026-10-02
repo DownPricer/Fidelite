@@ -19,7 +19,13 @@ export async function GET(req: Request, context: { params: Promise<{ id: string 
   if (!ad) return NextResponse.redirect(fallback);
 
   const placement = parsePlacement(new URL(req.url).searchParams.get("placement"));
-  await prisma.adEvent.create({ data: { adRequestId: id, type: "CLICK", placement } });
-  const target = ad.ctaUrl && isSafeAdUrl(ad.ctaUrl) ? ad.ctaUrl : new URL(`/c/${ad.merchant.slug}`, env.appUrl).toString();
+  const { isSponsoredTestBroadcastAd } = await import("@/lib/sponsored-test-broadcast");
+  if (!(await isSponsoredTestBroadcastAd(id))) {
+    await prisma.adEvent.create({ data: { adRequestId: id, type: "CLICK", placement } });
+  }
+  const target =
+    ad.ctaUrl && isSafeAdUrl(ad.ctaUrl)
+      ? ad.ctaUrl
+      : new URL(`/c/${(ad as { merchant: { slug: string } }).merchant.slug}`, env.appUrl).toString();
   return NextResponse.redirect(target);
 }

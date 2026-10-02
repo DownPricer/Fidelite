@@ -1,5 +1,4 @@
 import type { AdRequest } from "@prisma/client";
-import { expireDueGoogleWalletGlobalAdPreviews } from "./google-wallet-global-preview";
 import { scheduleGoogleWalletGlobalCampaignResync } from "./google-wallet";
 import { prisma } from "./prisma";
 import { isWithinUtcIntervals, type UtcInterval } from "./sponsored-hours-pricing";
@@ -36,13 +35,11 @@ export async function runAdLifecycleTick(now: Date = new Date(), batchSize = 200
     else if (nextStatus === "ENDED") toEnded += 1;
   }
 
-  const expiredWalletPreviews = await expireDueGoogleWalletGlobalAdPreviews(now);
-
   if (toLive || toScheduled || toEnded) {
     scheduleGoogleWalletGlobalCampaignResync();
   }
 
-  return { checked: candidates.length, toLive, toScheduled, toEnded, expiredWalletPreviews };
+  return { checked: candidates.length, toLive, toScheduled, toEnded };
 }
 
 /** Statut affiché attendu pour une mise en avant SCHEDULED/LIVE à l'instant `now`. */

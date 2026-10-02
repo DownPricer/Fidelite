@@ -197,6 +197,12 @@ export async function selectSponsoredWithReason(input: {
   exclude?: string[];
 }): Promise<SelectionResult> {
   const now = input.now ?? new Date();
+  const { selectSponsoredTestBroadcastCard } = await import("./sponsored-test-broadcast");
+  const testCard = await selectSponsoredTestBroadcastCard(input.placement);
+  if (testCard) {
+    return { card: testCard, reason: "diffusion test globale active" };
+  }
+
   const zone = await loadZone(input.userId);
   if (!zone) return { card: null, reason: "client inactif ou sans préférences enregistrées" };
   if (!zone.notifyFifeLifeNews) return { card: null, reason: "le client n'a pas accepté les bons plans Fideto (préférence « bons plans locaux »)" };
@@ -271,6 +277,11 @@ export async function selectSponsoredForGoogleWalletGlobal(userId: string, now: 
 
 /** Revérifie qu'une campagne précise est toujours affichable à ce client maintenant (impression/clic). */
 export async function isAdEligibleForCustomer(adId: string, userId: string, now: Date = new Date()) {
+  const { isSponsoredTestBroadcastAd, loadSponsoredTestBroadcast } = await import("./sponsored-test-broadcast");
+  if (await isSponsoredTestBroadcastAd(adId)) {
+    const row = await loadSponsoredTestBroadcast();
+    return row?.adRequest ?? null;
+  }
   const zone = await loadZone(userId);
   if (!zone) return null;
   const candidates = await loadCandidates(now);
@@ -284,6 +295,9 @@ export async function isAdEligibleForCustomer(adId: string, userId: string, now:
  * (la garde est atomique côté base : mise à jour conditionnelle, sinon création unique).
  */
 export async function recordImpression(input: { adId: string; userId: string; placement: AdPlacement; now?: Date }) {
+  const { isSponsoredTestBroadcastAd } = await import("./sponsored-test-broadcast");
+  if (await isSponsoredTestBroadcastAd(input.adId)) return false;
+
   const now = input.now ?? new Date();
   const threshold = new Date(now.getTime() - IMPRESSION_DEDUPE_MS);
   const updated = await prisma.adCustomerView.updateMany({

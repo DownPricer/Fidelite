@@ -24,14 +24,16 @@ export async function GET(req: Request) {
     .filter((value) => /^[\w-]{1,40}$/.test(value))
     .slice(0, 20);
   const card = await selectSponsoredForCustomer({ userId: auth.user.id, placement, exclude });
+  if (!card) return jsonOkPrivate({ ad: null });
+  const { isSponsoredTestBroadcastAd } = await import("@/lib/sponsored-test-broadcast");
+  const testBroadcast = await isSponsoredTestBroadcastAd(card.id);
   return jsonOkPrivate({
-    ad: card
-      ? {
-          ...card,
-          impressionUrl: `/api/customer/sponsored/${card.id}/impression`,
-          clickUrl: `/api/customer/sponsored/${card.id}/ouvrir?placement=${placement}`,
-        }
-      : null,
+    ad: {
+      ...card,
+      testBroadcast,
+      impressionUrl: testBroadcast ? null : `/api/customer/sponsored/${card.id}/impression`,
+      clickUrl: testBroadcast ? "#" : `/api/customer/sponsored/${card.id}/ouvrir?placement=${placement}`,
+    },
   });
 }
 

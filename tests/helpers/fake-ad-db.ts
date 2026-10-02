@@ -76,6 +76,7 @@ export function createFakeAdDb() {
     campaignQuotaUsage: [],
     merchantSubscription: [],
     merchantStripeCustomer: [],
+    sponsoredAdTestBroadcast: [],
   };
 
   function hydrate(table: string, row: Row | undefined, include?: Record<string, unknown>) {
@@ -100,6 +101,12 @@ export function createFakeAdDb() {
     }
     if (table === "campaignPayment" && include.campaign) {
       out.campaign = tables.campaign.find((c) => c.id === row.campaignId) ?? null;
+    }
+    if (table === "sponsoredAdTestBroadcast" && include.adRequest) {
+      const ad = tables.adRequest.find((a) => a.id === row.adRequestId);
+      const adInc = include.adRequest as Record<string, unknown>;
+      const nested = (adInc.include as Record<string, unknown> | undefined) ?? adInc;
+      out.adRequest = hydrate("adRequest", ad, nested);
     }
     return out;
   }
@@ -191,6 +198,7 @@ export function createFakeAdDb() {
     merchantSubscription: model("merchantSubscription", "sub"),
     merchantStripeCustomer: model("merchantStripeCustomer", "scus"),
     marketingLedgerEntry: model("marketingLedgerEntry", "led"),
+    sponsoredAdTestBroadcast: model("sponsoredAdTestBroadcast", "tbc"),
     merchant: {
       findMany: async () => [] as unknown[],
       findUnique: async () => ({ id: "m1", city: merchantInfo.city, postalCode: merchantInfo.postalCode }),

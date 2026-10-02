@@ -294,6 +294,32 @@ describe("fréquence et rotation", () => {
   });
 });
 
+describe("diffusion test globale super-admin", () => {
+  it("priorise la campagne test sur tous les comptes sans impression ni clic facturables", async () => {
+    seedAd("ad_live");
+    seedAd("ad_test", { fundingMode: "TEST" }, false);
+    tables.sponsoredAdTestBroadcast.push({
+      id: "global",
+      adRequestId: "ad_test",
+      startedAt: new Date(),
+      googleObjectsSynced: 0,
+      googleObjectsFailed: 0,
+      googleObjectsTotal: 0,
+    });
+    for (const user of ["c1", "c2", "c3"] as const) {
+      const { ad } = await get("SEARCH", user);
+      expect(ad?.id).toBe("ad_test");
+      expect(ad!.clickUrl).toBe("#");
+      expect(ad!.impressionUrl).toBeNull();
+    }
+    const imp = await impress("ad_test", "SEARCH");
+    expect(imp.body.counted).toBe(false);
+    expect(events()).toHaveLength(0);
+    await click("ad_test", "SEARCH");
+    expect(events()).toHaveLength(0);
+  });
+});
+
 describe("cartes intégrées : ni notification, ni push, ni e-mail", () => {
   it("sélectionner et afficher un bandeau ne crée aucune notification", async () => {
     seedAd("ad1");

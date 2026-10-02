@@ -22,7 +22,7 @@ import {
   type GlobalWalletCampaignModule,
 } from "./google-wallet-campaign-module";
 import { parseGoogleWalletConfig, type GoogleWalletAppearance } from "./google-wallet-appearance";
-import { resolveGlobalWalletCampaignModule } from "./google-wallet-global-preview";
+import { resolveGlobalWalletCampaignModule } from "./sponsored-test-broadcast";
 import { resolveTier } from "@/components/fife-life/tier";
 import { getLoyaltyCardBackground, getLoyaltyCardTierLabel } from "./loyalty-card-assets";
 
@@ -840,6 +840,41 @@ export async function syncGoogleWalletGlobalObjectsForCampaignVisibility(input?:
     }
   }
   return { attempted: rows.length, synced, failed };
+}
+
+/** Synchronise toutes les cartes Google Wallet globales, par lots, jusqu'au dernier objet. */
+export async function syncAllGoogleWalletGlobalObjects(input?: { clearCampaignModule?: boolean }) {
+  if (!isGoogleWalletConfigured()) return { attempted: 0, synced: 0, failed: 0 };
+  const batchSize = GLOBAL_WALLET_CAMPAIGN_SYNC_BATCH;
+  let lastId: string | undefined;
+  let synced = 0;
+  let failed = 0;
+  let attempted = 0;
+  for (;;) {
+    const rows = await prisma.googleWalletObject.findMany({
+      where: {
+        merchantId: null,
+        customerMembershipId: null,
+        ...(lastId ? { id: { gt: lastId } } : {}),
+      },
+      select: { id: true, userId: true },
+      orderBy: { id: "asc" },
+      take: batchSize,
+    });
+    if (rows.length === 0) break;
+    for (const row of rows) {
+      attempted += 1;
+      try {
+        await syncGoogleWalletGlobalObject(row.userId, { clearCampaignModule: input?.clearCampaignModule });
+        synced += 1;
+      } catch {
+        failed += 1;
+      }
+    }
+    lastId = rows[rows.length - 1]?.id;
+    if (rows.length < batchSize) break;
+  }
+  return { attempted, synced, failed };
 }
 
 /** Déclenchement asynchrone (API / worker) sans bloquer la requête appelante. */
