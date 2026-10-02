@@ -1,4 +1,5 @@
 import type { AdPlacement } from "@prisma/client";
+import { globalWalletCampaignDetailUri } from "./google-wallet-campaign-module";
 import { prisma } from "./prisma";
 import { isWithinUtcIntervals, type UtcInterval } from "./sponsored-hours-pricing";
 
@@ -233,6 +234,39 @@ export async function selectSponsoredForCustomer(input: {
   exclude?: string[];
 }): Promise<SponsoredCard | null> {
   return (await selectSponsoredWithReason(input)).card;
+}
+
+/**
+ * Campagne à afficher sur la carte Google Wallet globale Fideto uniquement.
+ * Même éligibilité (audience, créneaux, paiement) que les bandeaux in-app, sans règles de
+ * fréquence ni impression — voir google-wallet.ts / valueAddedModuleData.
+ */
+export async function selectSponsoredForGoogleWalletGlobal(userId: string, now: Date = new Date()) {
+  const zone = await loadZone(userId);
+  if (!zone) return null;
+  if (!zone.notifyFifeLifeNews) return null;
+  if (!zone.city && !zone.postalCode) return null;
+
+  const [candidates, views] = await Promise.all([
+    loadCandidates(now),
+    prisma.adCustomerView.findMany({ where: { userId }, select: { adRequestId: true, lastShownAt: true } }),
+  ]);
+  const eligible = candidates.filter((ad) => isEligibleNow(ad, zone, now));
+  if (eligible.length === 0) return null;
+
+  const lastShownBy = new Map(views.map((v) => [v.adRequestId, v.lastShownAt.getTime()]));
+  eligible.sort((a, b) => (lastShownBy.get(a.id) ?? 0) - (lastShownBy.get(b.id) ?? 0) || a.id.localeCompare(b.id));
+  const ad = eligible[0];
+  const title = (ad.ctaLabel?.trim() || ad.merchant.name).slice(0, 60);
+  return {
+    id: ad.id,
+    title,
+    description: ad.requestedText.trim(),
+    imagePathOrUrl: ad.finalImageUrl as string,
+    detailUri: globalWalletCampaignDetailUri({ merchantSlug: ad.merchant.slug, ctaUrl: ad.ctaUrl ?? null }),
+    displayStart: ad.startDate,
+    displayEnd: ad.endDate,
+  };
 }
 
 /** Revérifie qu'une campagne précise est toujours affichable à ce client maintenant (impression/clic). */

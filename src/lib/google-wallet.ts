@@ -17,7 +17,12 @@ import { loyaltyBalanceForMode } from "./loyalty-balance";
 import { signQrToken } from "./qr";
 import { prisma } from "./prisma";
 import { getCustomerLoyaltyOverview } from "./customer-loyalty-overview";
+import {
+  buildGlobalWalletValueAddedModule,
+  type GlobalWalletCampaignModule,
+} from "./google-wallet-campaign-module";
 import { parseGoogleWalletConfig, type GoogleWalletAppearance } from "./google-wallet-appearance";
+import { selectSponsoredForGoogleWalletGlobal } from "./sponsored-selection";
 import { resolveTier } from "@/components/fife-life/tier";
 import { getLoyaltyCardBackground, getLoyaltyCardTierLabel } from "./loyalty-card-assets";
 
@@ -574,15 +579,20 @@ export async function globalObjectBody(input: {
   activeCardCount: number;
   nextReward: string | null;
   availableRewardsCount: number | null;
+  campaignModule?: GlobalWalletCampaignModule | null;
 }) {
   const displayName = [input.user.firstName, input.user.lastName].filter(Boolean).join(" ") || input.user.firstName;
   const clientNumber = resolveClientNumber({ clientNumber: input.user.clientNumber, userId: input.user.id });
   const tier = resolveTier(input.user.fifeLifePoints);
   const tierHero = publicGoogleWalletImageUrl(getLoyaltyCardBackground(tier.name));
+  const valueAddedModuleData = input.campaignModule
+    ? [buildGlobalWalletValueAddedModule(input.campaignModule)]
+    : [];
   return {
     id: input.objectId,
     classId: buildGoogleWalletIds({}).globalClassId,
     state: input.user.isActive ? "ACTIVE" : "INACTIVE",
+    notifyPreference: "DO_NOT_NOTIFY",
     accountId: clientNumber,
     accountName: displayName,
     barcode: {
@@ -612,6 +622,7 @@ export async function globalObjectBody(input: {
           : `Encore ${formatUnitCount(tier.remaining, "points")} avant ${tier.nextName}`,
       ),
     ].filter(Boolean),
+    valueAddedModuleData,
     appLinkData: appLinkData(cardUrl(), "Ouvrir mon wallet"),
   };
 }
@@ -767,6 +778,7 @@ async function globalObjectSyncContext(userId: string) {
 async function syncGlobalObjectToGoogle(input: { userId: string; googleObjectId: string }) {
   const { user, nextReward, availableRewardsCount } = await globalObjectSyncContext(input.userId);
   const qrValue = await customerQrValue(input.userId);
+  const campaignModule = await selectSponsoredForGoogleWalletGlobal(input.userId);
   await upsertGoogleResource({
     kind: "loyaltyObject",
     id: input.googleObjectId,
@@ -777,8 +789,40 @@ async function syncGlobalObjectToGoogle(input: { userId: string; googleObjectId:
       activeCardCount: user.customerMemberships.length,
       nextReward,
       availableRewardsCount,
+      campaignModule,
     }),
   });
+}
+
+const GLOBAL_WALLET_CAMPAIGN_SYNC_BATCH = 80;
+
+/** Resynchronise les objets carte globale Fideto (encart campagne) — jamais les cartes commerçants. */
+export async function syncGoogleWalletGlobalObjectsForCampaignVisibility(input?: { limit?: number }) {
+  if (!isGoogleWalletConfigured()) return { attempted: 0, synced: 0, failed: 0 };
+  const limit = input?.limit ?? GLOBAL_WALLET_CAMPAIGN_SYNC_BATCH;
+  const rows = await prisma.googleWalletObject.findMany({
+    where: { merchantId: null, customerMembershipId: null },
+    select: { userId: true },
+    take: limit,
+    orderBy: { lastSyncedAt: "asc" },
+  });
+  let synced = 0;
+  let failed = 0;
+  for (const row of rows) {
+    try {
+      await syncGoogleWalletGlobalObject(row.userId);
+      synced += 1;
+    } catch {
+      failed += 1;
+    }
+  }
+  return { attempted: rows.length, synced, failed };
+}
+
+/** Déclenchement asynchrone (API / worker) sans bloquer la requête appelante. */
+export function scheduleGoogleWalletGlobalCampaignResync(limit?: number) {
+  if (!isGoogleWalletConfigured()) return;
+  void syncGoogleWalletGlobalObjectsForCampaignVisibility({ limit }).catch(() => undefined);
 }
 
 export async function createGlobalGoogleWalletSaveUrl(userId: string) {

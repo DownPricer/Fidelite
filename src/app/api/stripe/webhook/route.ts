@@ -7,6 +7,7 @@ import { writeAudit } from "@/lib/audit";
 import { jsonError, jsonOk } from "@/lib/http";
 import { prisma } from "@/lib/prisma";
 import { notifyMerchant } from "@/lib/ad-visual-workflow";
+import { scheduleGoogleWalletGlobalCampaignResync } from "@/lib/google-wallet";
 import { syncSubscriptionFromStripeView } from "@/lib/merchant-billing";
 import { StripeNotConfiguredError, constructStripeWebhookEvent, normalizeStripeSubscription } from "@/lib/stripe";
 
@@ -112,6 +113,7 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session, 
   const campaignId = session.metadata?.campaignId;
   if (!campaignId) return;
 
+  let sponsoredAdScheduled = false;
   await prisma.$transaction(async (tx) => {
     const payment = await tx.campaignPayment.findUnique({ where: { campaignId } });
     if (!payment || payment.status === "PAID" || payment.mode !== mode) return;
@@ -153,6 +155,7 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session, 
         nextStatus = "SCHEDULED";
         await tx.adRequest.update({ where: { id: adRequest.id }, data: { status: "SCHEDULED", fundingMode: mode } });
         await notifyMerchant(tx, adRequest, "CAMPAIGN_SCHEDULED", "Paiement confirmé : votre campagne est programmée.");
+        sponsoredAdScheduled = true;
       }
     }
 
@@ -169,6 +172,7 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session, 
       metadata: { campaignId, amountCents: payment.amountCents, stripeCheckoutSessionId: session.id },
     });
   });
+  if (sponsoredAdScheduled) scheduleGoogleWalletGlobalCampaignResync();
 }
 
 async function handleCheckoutSessionExpired(session: Stripe.Checkout.Session, mode: StripeModeValue) {

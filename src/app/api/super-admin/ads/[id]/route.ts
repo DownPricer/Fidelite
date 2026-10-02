@@ -6,6 +6,7 @@ import { writeAudit } from "@/lib/audit";
 import { clientIp, jsonError, jsonOk, readJson, userAgent } from "@/lib/http";
 import { prisma } from "@/lib/prisma";
 import { computeAdLifecycleStatus } from "@/lib/ad-lifecycle-worker";
+import { scheduleGoogleWalletGlobalCampaignResync } from "@/lib/google-wallet";
 import { approveSubmittedVersion, notifyMerchant, refuseVisual } from "@/lib/ad-visual-workflow";
 import { adModerationSchema, zodErrorMessage } from "@/lib/validation";
 
@@ -192,6 +193,7 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
       return jsonError("Seule une mise en avant programmée ou en cours de diffusion peut être suspendue.", 409);
     }
     await applyStatus("SUSPENDED", { rejectionReason: data.rejectionReason ?? null });
+    scheduleGoogleWalletGlobalCampaignResync();
     return jsonOk({ ok: true, status: "SUSPENDED" });
   }
 
@@ -204,6 +206,7 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
       new Date(),
     );
     await applyStatus(nextStatus, { rejectionReason: null });
+    scheduleGoogleWalletGlobalCampaignResync();
     return jsonOk({ ok: true, status: nextStatus });
   }
 
@@ -212,6 +215,7 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
       return jsonError("Cette mise en avant ne peut pas être arrêtée dans son état actuel.", 409);
     }
     await applyStatus("STOPPED", { rejectionReason: data.rejectionReason ?? null });
+    scheduleGoogleWalletGlobalCampaignResync();
     return jsonOk({ ok: true, status: "STOPPED" });
   }
 

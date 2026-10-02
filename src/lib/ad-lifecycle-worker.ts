@@ -1,4 +1,5 @@
 import type { AdRequest } from "@prisma/client";
+import { scheduleGoogleWalletGlobalCampaignResync } from "./google-wallet";
 import { prisma } from "./prisma";
 import { isWithinUtcIntervals, type UtcInterval } from "./sponsored-hours-pricing";
 
@@ -32,6 +33,10 @@ export async function runAdLifecycleTick(now: Date = new Date(), batchSize = 200
     if (nextStatus === "LIVE") toLive += 1;
     else if (nextStatus === "SCHEDULED") toScheduled += 1;
     else if (nextStatus === "ENDED") toEnded += 1;
+  }
+
+  if (toLive || toScheduled || toEnded) {
+    scheduleGoogleWalletGlobalCampaignResync();
   }
 
   return { checked: candidates.length, toLive, toScheduled, toEnded };

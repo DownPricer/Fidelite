@@ -9,6 +9,7 @@ import { notifyMerchant } from "@/lib/ad-visual-workflow";
 import { elapsedHoursCount, priceSponsoredHours, type SponsoredDaySelection } from "@/lib/sponsored-hours-pricing";
 import { debitForCampaign, getMarketingBalanceCents } from "@/lib/marketing-balance";
 import { StripeNotConfiguredError, createCampaignCheckoutSession } from "@/lib/stripe";
+import { scheduleGoogleWalletGlobalCampaignResync } from "@/lib/google-wallet";
 import { getActiveStripeMode, isPaymentAllowedForMerchant, isStripeConfigured } from "@/lib/stripe-mode";
 
 /**
@@ -189,6 +190,7 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
       return jsonError("Le quota de jours sponsorisés vient d'être épuisé.", 409, { code: "QUOTA_EXHAUSTED" });
     }
     await notifyMerchant(prisma, adRequest, "CAMPAIGN_SCHEDULED", "Votre campagne est programmée.");
+    scheduleGoogleWalletGlobalCampaignResync();
     return jsonOk({ ok: true, requiresPayment: false });
   }
 
@@ -253,6 +255,7 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
         userAgent: userAgent(req),
       });
       await notifyMerchant(prisma, adRequest, "CAMPAIGN_SCHEDULED", "Paiement par votre solde marketing confirmé : votre campagne est programmée.");
+      scheduleGoogleWalletGlobalCampaignResync();
       return jsonOk({
         ok: true,
         requiresPayment: true,
