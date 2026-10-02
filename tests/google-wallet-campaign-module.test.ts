@@ -22,7 +22,22 @@ describe("Google Wallet encart campagne (carte globale)", () => {
     expect(module.uri).toBe("https://boulangerie.example/offre");
     expect((module.header as { defaultValue: { value: string } }).defaultValue.value).toBe("Voir l'offre");
     expect((module.image as { sourceUri: { uri: string } }).sourceUri.uri).toBe("https://cdn.example.com/banner.png");
-    expect(module.viewConstraints).toBeDefined();
+    expect(module.body).toBeDefined();
+  });
+
+  it("refuse un module si le lien n'est pas https", async () => {
+    vi.resetModules();
+    process.env.GOOGLE_WALLET_ORIGIN = "https://fideto.fr";
+    const { buildGlobalWalletValueAddedModule } = await import("../src/lib/google-wallet-campaign-module");
+    expect(
+      buildGlobalWalletValueAddedModule({
+        id: "ad1",
+        title: "Offre",
+        description: "Texte",
+        imagePathOrUrl: "https://cdn.example.com/b.png",
+        detailUri: "http://insecure.example/offre",
+      }),
+    ).toBeNull();
   });
 
   it("n'ajoute pas valueAddedModuleData sur l'objet commerçant", async () => {
@@ -96,7 +111,6 @@ describe("Google Wallet encart campagne (carte globale)", () => {
       },
     })) as Record<string, unknown>;
     expect(withCampaign.valueAddedModuleData).toHaveLength(1);
-    expect(withCampaign.notifyPreference).toBe("DO_NOT_NOTIFY");
     expect(withCampaign.barcode).toMatchObject({ type: "QR_CODE", value: "qr" });
 
     const without = (await globalObjectBody({
@@ -108,6 +122,6 @@ describe("Google Wallet encart campagne (carte globale)", () => {
       availableRewardsCount: 0,
       campaignModule: null,
     })) as Record<string, unknown>;
-    expect(without.valueAddedModuleData).toEqual([]);
+    expect(without.valueAddedModuleData).toBeUndefined();
   });
 });

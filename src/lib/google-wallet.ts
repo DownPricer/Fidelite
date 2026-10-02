@@ -585,14 +585,11 @@ export async function globalObjectBody(input: {
   const clientNumber = resolveClientNumber({ clientNumber: input.user.clientNumber, userId: input.user.id });
   const tier = resolveTier(input.user.fifeLifePoints);
   const tierHero = publicGoogleWalletImageUrl(getLoyaltyCardBackground(tier.name));
-  const valueAddedModuleData = input.campaignModule
-    ? [buildGlobalWalletValueAddedModule(input.campaignModule)]
-    : [];
+  const campaignPayload = input.campaignModule ? buildGlobalWalletValueAddedModule(input.campaignModule) : null;
   return {
     id: input.objectId,
     classId: buildGoogleWalletIds({}).globalClassId,
     state: input.user.isActive ? "ACTIVE" : "INACTIVE",
-    notifyPreference: "DO_NOT_NOTIFY",
     accountId: clientNumber,
     accountName: displayName,
     barcode: {
@@ -622,7 +619,7 @@ export async function globalObjectBody(input: {
           : `Encore ${formatUnitCount(tier.remaining, "points")} avant ${tier.nextName}`,
       ),
     ].filter(Boolean),
-    valueAddedModuleData,
+    ...(campaignPayload ? { valueAddedModuleData: [campaignPayload] } : {}),
     appLinkData: appLinkData(cardUrl(), "Ouvrir mon wallet"),
   };
 }
@@ -778,20 +775,36 @@ async function globalObjectSyncContext(userId: string) {
 async function syncGlobalObjectToGoogle(input: { userId: string; googleObjectId: string }) {
   const { user, nextReward, availableRewardsCount } = await globalObjectSyncContext(input.userId);
   const qrValue = await customerQrValue(input.userId);
-  const campaignModule = await selectSponsoredForGoogleWalletGlobal(input.userId);
-  await upsertGoogleResource({
-    kind: "loyaltyObject",
-    id: input.googleObjectId,
-    body: await globalObjectBody({
-      user,
-      objectId: input.googleObjectId,
-      qrValue,
-      activeCardCount: user.customerMemberships.length,
-      nextReward,
-      availableRewardsCount,
-      campaignModule,
-    }),
-  });
+  let campaignModule: Awaited<ReturnType<typeof selectSponsoredForGoogleWalletGlobal>> = null;
+  try {
+    campaignModule = await selectSponsoredForGoogleWalletGlobal(input.userId);
+  } catch {
+    campaignModule = null;
+  }
+
+  const baseBodyInput = {
+    user,
+    objectId: input.googleObjectId,
+    qrValue,
+    activeCardCount: user.customerMemberships.length,
+    nextReward,
+    availableRewardsCount,
+  };
+
+  try {
+    await upsertGoogleResource({
+      kind: "loyaltyObject",
+      id: input.googleObjectId,
+      body: await globalObjectBody({ ...baseBodyInput, campaignModule }),
+    });
+  } catch (error) {
+    if (!(error instanceof GoogleWalletApiError) || !campaignModule) throw error;
+    await upsertGoogleResource({
+      kind: "loyaltyObject",
+      id: input.googleObjectId,
+      body: await globalObjectBody({ ...baseBodyInput, campaignModule: null }),
+    });
+  }
 }
 
 const GLOBAL_WALLET_CAMPAIGN_SYNC_BATCH = 80;
