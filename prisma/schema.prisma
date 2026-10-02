@@ -57,6 +57,12 @@ enum SessionKind {
   SUPER_ADMIN
 }
 
+enum CustomerAccessTokenKind {
+  EMAIL_VERIFICATION
+  ACCOUNT_RECOVERY
+  PHONE_VERIFICATION
+}
+
 enum QaLoginRole {
   merchant
   employee
@@ -193,6 +199,11 @@ model User {
   isActive           Boolean      @default(true)
   mustChangePassword Boolean      @default(false)
   privacyConsentAt   DateTime?
+  /// Début de la fenêtre de 24 h après inscription client (null = compte antérieur au parcours guidé).
+  onboardingStartedAt DateTime?
+  emailConfirmedAt   DateTime?
+  profileFinalizedAt DateTime?
+  finalizationReminderSentAt DateTime?
   /// Solde global de points Fideto (tous commerces confondus).
   fifeLifePoints     Int          @default(0)
   /// Numéro client court affiché sur la carte et saisissable en caisse.
@@ -215,6 +226,21 @@ model User {
   notifications         InAppNotification[]
   pushSubscriptions     PushSubscription[]
   consentEvents         ConsentEvent[]
+  customerAccessTokens  CustomerAccessToken[]
+}
+
+model CustomerAccessToken {
+  id        String                  @id @default(cuid())
+  userId    String
+  kind      CustomerAccessTokenKind
+  tokenHash String                  @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime                @default(now())
+  user      User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, kind])
+  @@index([expiresAt])
 }
 
 model OAuthAccount {

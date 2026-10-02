@@ -59,6 +59,24 @@ export const customerRegisterSchema = z.object({
   marketingConsent: z.boolean().optional(),
 });
 
+export const platformCustomerRegisterSchema = customerRegisterSchema.extend({
+  lastName: z.string().trim().min(1, "Le nom est obligatoire.").max(80),
+});
+
+export const customerRecoveryRequestSchema = z.object({
+  email: emailSchema,
+});
+
+export const customerFinalizeSchema = z.object({
+  firstName: firstNameSchema,
+  lastName: z.string().trim().min(1, "Le nom est obligatoire.").max(80),
+  city: z.string().trim().min(1, "La ville est obligatoire.").max(100),
+  addressLine1: z.string().trim().max(200).optional().or(z.literal("")),
+  addressLine2: z.string().trim().max(200).optional().or(z.literal("")),
+  postalCode: z.string().trim().max(20).optional().or(z.literal("")),
+  country: z.string().trim().max(2).optional().or(z.literal("")),
+});
+
 export const deletionRequestSchema = z.object({
   message: z.string().trim().max(500).optional(),
 });
@@ -80,6 +98,18 @@ export const phoneSchema = z
   .regex(/^[\d\s().+-]{6,20}$/, "Numéro de téléphone invalide.")
   .optional()
   .or(z.literal(""));
+
+export const customerPhoneSendSchema = z.object({
+  phone: z
+    .string()
+    .trim()
+    .regex(/^[\d\s().+-]{6,20}$/, "Numéro de téléphone invalide."),
+  phoneCountryCode: z.string().trim().max(6).default("+33"),
+});
+
+export const customerPhoneVerifySchema = z.object({
+  code: z.string().trim().regex(/^\d{6}$/, "Code à 6 chiffres requis."),
+});
 
 export const profileUpdateSchema = z.object({
   firstName: firstNameSchema.optional(),

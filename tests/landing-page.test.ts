@@ -43,7 +43,7 @@ describe("landing page structure and balance", () => {
     expect(page).toMatch(/href=\{clientHref\}/);
     expect(page).toMatch(/href=\{proHref\}/);
     expect(header).toMatch(/href=\{clientHref\}/);
-    expect(header).toMatch(/href=\{proHref\}/);
+    expect(header).not.toMatch(/href=\{proHref\}/);
   });
 
   it("does not create separate marketing pages replacing the single landing page", () => {
@@ -113,9 +113,10 @@ describe("landing page structure and balance", () => {
     );
   });
 
-  it("gives the header a violet primary CTA, not a white one", () => {
-    expect(header).toContain("Créer mon programme");
+  it("keeps a single violet client sign-in CTA in the header", () => {
+    expect(header).toContain("Se connecter");
     expect(header).toContain("linear-gradient(135deg, #7c3aed, #a855f7)");
+    expect(header).not.toContain("Créer mon programme");
   });
 
   it("describes the real client onboarding flow: account first, own QR presented at checkout", () => {

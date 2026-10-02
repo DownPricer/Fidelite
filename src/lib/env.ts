@@ -76,6 +76,9 @@ export const env = {
   unsubscribeSecret: read("UNSUBSCRIBE_SECRET", "dev-only-change-me-unsubscribe-secret"),
   campaignWorkerBatchSize: Number(read("CAMPAIGN_WORKER_BATCH_SIZE", "50")),
   campaignWorkerIntervalMs: Number(read("CAMPAIGN_WORKER_INTERVAL_MS", "15000")),
+  twilioAccountSid: read("TWILIO_ACCOUNT_SID"),
+  twilioAuthToken: read("TWILIO_AUTH_TOKEN"),
+  twilioFromNumber: read("TWILIO_FROM_NUMBER"),
 };
 
 export function isProduction() {

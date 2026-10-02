@@ -8,6 +8,11 @@ import { env, isGoogleAuthConfigured, isProduction } from "./env";
 import { clientIp, userAgent } from "./http";
 import { hashPassword } from "./password";
 import { prisma } from "./prisma";
+import {
+  createCustomerSession,
+  runCustomerOnboardingSideEffects,
+  sendCustomerFinalizationInvite,
+} from "./customer-onboarding";
 import { createSession } from "./session";
 
 const PROVIDER = "google";
@@ -212,7 +217,8 @@ export async function signInWithGoogleProfile(
     if (!linked.user.isActive) {
       return { ok: false, redirectTo: appendQuery(fallback, "google", "erreur"), reason: "inactive_user" };
     }
-    await createSession(linked.userId, meta);
+    await createCustomerSession(linked.userId, meta);
+    await runCustomerOnboardingSideEffects(linked.userId);
     await writeAudit({ actorId: linked.userId, action: "GOOGLE_LOGIN", ip: meta.ip, userAgent: meta.userAgent });
     return { ok: true, redirectTo: sanitizeInternalReturnTo(intent.returnTo), userId: linked.userId, isNewUser: false };
   }
@@ -240,6 +246,7 @@ export async function signInWithGoogleProfile(
   if (intent.slug && (!merchant || !merchant.isActive || !merchant.program)) {
     return { ok: false, redirectTo: appendQuery(fallback, "google", "invitation_invalide"), reason: "invalid_slug" };
   }
+  const platformSignup = !intent.slug;
 
   const firstName = profile.givenName?.trim() || profile.email.split("@")[0] || "Client";
   const randomPassword = randomBytes(48).toString("base64url");
@@ -255,6 +262,8 @@ export async function signInWithGoogleProfile(
           avatarUrl: profile.picture?.trim() || null,
           platformRole: PlatformRole.CUSTOMER,
           privacyConsentAt: new Date(),
+          onboardingStartedAt: platformSignup ? new Date() : undefined,
+          emailConfirmedAt: platformSignup ? new Date() : undefined,
           customerMemberships: merchant ? { create: { merchantId: merchant.id } } : undefined,
         },
       });
@@ -276,7 +285,7 @@ export async function signInWithGoogleProfile(
         include: { user: true },
       });
       if (account?.user.isActive) {
-        await createSession(account.userId, meta);
+        await createCustomerSession(account.userId, meta);
         return { ok: true, redirectTo: sanitizeInternalReturnTo(intent.returnTo), userId: account.userId, isNewUser: false };
       }
       return {
@@ -288,7 +297,14 @@ export async function signInWithGoogleProfile(
     throw error;
   }
 
-  await createSession(user.id, meta);
+  if (platformSignup) {
+    const createdUser = await prisma.user.findUnique({ where: { id: user.id } });
+    if (createdUser) {
+      await sendCustomerFinalizationInvite(createdUser);
+    }
+  }
+
+  await createCustomerSession(user.id, meta);
   await writeAudit({
     actorId: user.id,
     merchantId: merchant?.id,
@@ -297,9 +313,11 @@ export async function signInWithGoogleProfile(
     userAgent: meta.userAgent,
   });
 
+  const defaultReturn = platformSignup ? "/carte?onboarding=1" : merchant ? `/carte/${merchant.slug}` : "/carte";
+
   return {
     ok: true,
-    redirectTo: sanitizeInternalReturnTo(intent.returnTo, merchant ? `/carte/${merchant.slug}` : "/carte"),
+    redirectTo: sanitizeInternalReturnTo(intent.returnTo, defaultReturn),
     userId: user.id,
     isNewUser: true,
   };

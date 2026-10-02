@@ -4,7 +4,7 @@ import { isGoogleSignInEnabled } from "@/lib/google-auth";
 export default async function CustomerLoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ google?: string; returnTo?: string }>;
+  searchParams: Promise<{ google?: string; returnTo?: string; recover?: string }>;
 }) {
   const params = await searchParams;
   return (
@@ -12,6 +12,7 @@ export default async function CustomerLoginPage({
       googleEnabled={isGoogleSignInEnabled()}
       googleStatus={params.google ?? null}
       returnTo={params.returnTo ?? null}
+      recoverStatus={params.recover ?? null}
     />
   );
 }

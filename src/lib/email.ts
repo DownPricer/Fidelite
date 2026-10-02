@@ -171,6 +171,106 @@ export function canExposeInvitationLinkInAdmin() {
   return !isProduction() || env.publicDemoMode;
 }
 
+export type CustomerFinalizationEmailInput = {
+  to: string;
+  firstName: string;
+  verifyUrl: string;
+  finalizeUrl: string;
+  expiresAt: Date;
+};
+
+function buildCustomerFinalizationContent(input: CustomerFinalizationEmailInput) {
+  const expiry = formatExpiry(input.expiresAt);
+  const subject = "Finalisez votre compte Fideto";
+  const html = `<!DOCTYPE html>
+<html lang="fr">
+<body style="margin:0;padding:0;background:#0b0f19;font-family:Segoe UI,Helvetica,Arial,sans-serif;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#0b0f19;padding:32px 16px;">
+    <tr><td align="center">
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:520px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:16px;padding:32px;">
+        <tr><td>
+          <h1 style="margin:0 0 16px;font-size:22px;color:#f8fafc;">Bienvenue sur Fideto</h1>
+          <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#cbd5e1;">Bonjour ${escapeHtml(input.firstName)},</p>
+          <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#cbd5e1;">
+            Confirmez votre e-mail et complétez votre profil dans les 24 heures pour conserver l'accès à votre portefeuille.
+          </p>
+          <p style="margin:0 0 24px;text-align:center;">
+            <a href="${escapeHtml(input.verifyUrl)}" style="display:inline-block;padding:14px 24px;border-radius:999px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;font-weight:700;text-decoration:none;font-size:15px;">
+              Confirmer mon e-mail
+            </a>
+          </p>
+          <p style="margin:0 0 8px;font-size:13px;line-height:1.5;color:#94a3b8;">
+            Ensuite, finalisez votre profil : <a href="${escapeHtml(input.finalizeUrl)}" style="color:#c4b5fd;">${escapeHtml(input.finalizeUrl)}</a>
+          </p>
+          <p style="margin:16px 0 0;font-size:12px;color:#64748b;">Ce lien de confirmation expire le ${escapeHtml(expiry)} et ne peut être utilisé qu'une fois.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+  const text = [
+    `Bonjour ${input.firstName},`,
+    "",
+    "Confirmez votre e-mail et complétez votre profil dans les 24 heures pour conserver l'accès à votre portefeuille.",
+    "",
+    "Confirmer mon e-mail :",
+    input.verifyUrl,
+    "",
+    `Finaliser mon profil : ${input.finalizeUrl}`,
+    "",
+    `Ce lien expire le ${expiry} (usage unique).`,
+  ].join("\n");
+  return { subject, html, text };
+}
+
+export async function sendCustomerFinalizationEmail(input: CustomerFinalizationEmailInput): Promise<EmailSendResult> {
+  if (!isEmailConfigured()) {
+    return { ok: false, error: emailConfigHint() ?? "Service e-mail non configuré." };
+  }
+  const content = buildCustomerFinalizationContent(input);
+  if (env.resendApiKey) return sendViaResend({ to: input.to, ...content });
+  return sendViaSmtp({ to: input.to, ...content });
+}
+
+export async function sendCustomerFinalizationReminderEmail(input: {
+  to: string;
+  firstName: string;
+  finalizeUrl: string;
+}): Promise<EmailSendResult> {
+  if (!isEmailConfigured()) {
+    return { ok: false, error: emailConfigHint() ?? "Service e-mail non configuré." };
+  }
+  const subject = "Rappel — finalisez votre compte Fideto";
+  const html = `<!DOCTYPE html><html lang="fr"><body style="font-family:Segoe UI,sans-serif;background:#0b0f19;color:#e2e8f0;padding:24px;">
+<p>Bonjour ${escapeHtml(input.firstName)},</p>
+<p>Votre compte Fideto n'est pas encore finalisé. Complétez votre profil pour conserver l'accès à vos cartes et avantages.</p>
+<p><a href="${escapeHtml(input.finalizeUrl)}" style="color:#c4b5fd;">Finaliser mon compte</a></p>
+</body></html>`;
+  const text = `Bonjour ${input.firstName},\n\nFinalisez votre compte : ${input.finalizeUrl}`;
+  if (env.resendApiKey) return sendViaResend({ to: input.to, subject, html, text });
+  return sendViaSmtp({ to: input.to, subject, html, text });
+}
+
+export async function sendCustomerAccountRecoveryEmail(input: {
+  to: string;
+  firstName: string;
+  recoveryUrl: string;
+}): Promise<EmailSendResult> {
+  if (!isEmailConfigured()) {
+    return { ok: false, error: emailConfigHint() ?? "Service e-mail non configuré." };
+  }
+  const subject = "Reprendre votre compte Fideto";
+  const html = `<!DOCTYPE html><html lang="fr"><body style="font-family:Segoe UI,sans-serif;background:#0b0f19;color:#e2e8f0;padding:24px;">
+<p>Bonjour ${escapeHtml(input.firstName)},</p>
+<p>Utilisez ce lien sécurisé pour vous reconnecter à votre compte Fideto. Il est à usage unique et expire rapidement.</p>
+<p><a href="${escapeHtml(input.recoveryUrl)}" style="color:#c4b5fd;">Reprendre mon compte</a></p>
+</body></html>`;
+  const text = `Bonjour ${input.firstName},\n\nReprendre mon compte : ${input.recoveryUrl}`;
+  if (env.resendApiKey) return sendViaResend({ to: input.to, subject, html, text });
+  return sendViaSmtp({ to: input.to, subject, html, text });
+}
+
 // ───────────────────────── E-mails de campagne (Partie 10) ─────────────────────────
 
 export type CampaignEmailInput = {

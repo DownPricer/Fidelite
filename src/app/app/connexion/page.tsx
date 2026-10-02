@@ -21,7 +21,6 @@ export default async function AppLoginPage({
       otherSpaces={[
         { label: "Client", href: "/connexion" },
         { label: "Employé", href: "/employe/connexion" },
-        { label: "Démos", href: "/demo" },
       ]}
     />
   );

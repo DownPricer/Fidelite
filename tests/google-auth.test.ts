@@ -14,6 +14,18 @@ vi.mock("@/lib/session", () => ({
   }),
 }));
 
+vi.mock("@/lib/customer-onboarding", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/customer-onboarding")>();
+  return {
+    ...actual,
+    createCustomerSession: vi.fn(async (userId: string) => {
+      state.sessions.push(userId);
+    }),
+    sendCustomerFinalizationInvite: vi.fn(async () => ({ ok: true as const })),
+    runCustomerOnboardingSideEffects: vi.fn(async () => {}),
+  };
+});
+
 vi.mock("@/lib/audit", () => ({
   writeAudit: vi.fn(async (input: Record<string, unknown>) => {
     state.audits.push(input);
@@ -35,7 +47,15 @@ vi.mock("@/lib/prisma", () => ({
       }),
     },
     user: {
-      findUnique: vi.fn(async ({ where }) => state.users.find((user) => user.email === where.email) ?? null),
+      findUnique: vi.fn(async ({ where }) => {
+        if ("email" in where && where.email) {
+          return state.users.find((user) => user.email === where.email) ?? null;
+        }
+        if ("id" in where && where.id) {
+          return state.users.find((user) => user.id === where.id) ?? null;
+        }
+        return null;
+      }),
     },
     merchant: {
       findUnique: vi.fn(async ({ where }) => state.merchants.find((merchant) => merchant.slug === where.slug) ?? null),
