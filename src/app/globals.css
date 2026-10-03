@@ -1857,6 +1857,34 @@ body:has(.wallet-shell) {
   transform: translateY(0);
 }
 
+/* Publicité sponsorisée — même gabarit compact que .merchant-search-row, teinte cuivre/ambre */
+.sponsored-offer-row {
+  padding: 0.875rem 1rem;
+  border-radius: 1.25rem;
+  background: linear-gradient(
+    145deg,
+    light-dark(rgba(58, 38, 24, 0.92), rgba(36, 24, 16, 0.94)),
+    light-dark(rgba(42, 28, 18, 0.88), rgba(28, 18, 12, 0.96))
+  );
+  border: 1px solid light-dark(rgba(168, 118, 62, 0.38), rgba(196, 150, 90, 0.28));
+  box-shadow:
+    inset 0 1px 0 light-dark(rgba(255, 240, 220, 0.08), rgba(255, 230, 200, 0.06)),
+    0 2px 8px rgba(0, 0, 0, 0.18);
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.sponsored-offer-row:hover {
+  border-color: light-dark(rgba(180, 130, 72, 0.48), rgba(210, 165, 100, 0.34));
+  transform: translateY(-1px);
+  box-shadow:
+    inset 0 1px 0 light-dark(rgba(255, 240, 220, 0.1), rgba(255, 230, 200, 0.08)),
+    0 4px 14px rgba(0, 0, 0, 0.22);
+}
+
+.sponsored-offer-row:active {
+  transform: translateY(0);
+}
+
 .wallet-card-preview {
   width: 120px;
   position: relative;

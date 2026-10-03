@@ -149,7 +149,7 @@ describe("impressions : uniquement quand le bandeau est réellement visible", ()
   });
 });
 
-describe("croix de fermeture : masquage pour la session, jamais un refus définitif", () => {
+describe("croix de fermeture : masquage par emplacement pour la session, jamais un refus définitif", () => {
   it("masque la publicité pendant l'utilisation en cours, sans aucune requête serveur de refus", async () => {
     const container = await mount(<SponsoredSlot placement="WALLET_HOME" />);
     const close = container.querySelector('button[aria-label="Masquer cette publicité"]') as HTMLButtonElement;
@@ -158,12 +158,21 @@ describe("croix de fermeture : masquage pour la session, jamais un refus défini
     await act(async () => close.click());
     expect(container.textContent).not.toContain("Boulangerie Soleil");
     expect(calls.length).toBe(before); // aucun appel : pas de refus enregistré côté serveur
-    expect(JSON.parse(sessionStorage.getItem("fideto-sponsored-dismissed") ?? "[]")).toEqual(["ad1"]);
+    expect(JSON.parse(sessionStorage.getItem("fideto-sponsored-dismissed") ?? "[]")).toEqual(["WALLET_HOME:ad1"]);
 
-    // Un autre emplacement, pendant la même utilisation : la campagne est exclue (même si le serveur la renvoie).
+    // Un autre emplacement : la fermeture Avantages n'y applique pas — la pub reste visible en Recherche.
     const other = await mount(<SponsoredSlot placement="SEARCH" />);
-    expect(calls[calls.length - 1].url).toContain("exclude=ad1");
-    expect(other.textContent).not.toContain("Boulangerie Soleil");
+    expect(calls[calls.length - 1].url).not.toContain("exclude=ad1");
+    expect(other.textContent).toContain("Boulangerie Soleil");
+  });
+
+  it("fermer en Recherche ne masque pas Notifications", async () => {
+    const search = await mount(<SponsoredSlot placement="SEARCH" />);
+    await act(async () => (search.querySelector('button[aria-label="Masquer cette publicité"]') as HTMLButtonElement).click());
+    expect(search.textContent).not.toContain("Boulangerie Soleil");
+    const notif = await mount(<SponsoredSlot placement="NOTIFICATIONS" />);
+    expect(notif.textContent).toContain("Boulangerie Soleil");
+    expect(JSON.parse(sessionStorage.getItem("fideto-sponsored-dismissed") ?? "[]")).toEqual(["SEARCH:ad1"]);
   });
 
   it("à la prochaine ouverture de l'application, elle peut réapparaître si son créneau est toujours actif", async () => {

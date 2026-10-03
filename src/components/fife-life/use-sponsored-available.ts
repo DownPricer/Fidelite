@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { getDismissedAds, type SponsoredPlacement } from "./sponsored-slot";
+import { getDismissedAdIds, type SponsoredPlacement } from "./sponsored-slot";
 
 export const SPONSORED_AVAILABILITY_EVENT = "fideto-sponsored-availability-changed";
 
@@ -19,13 +19,13 @@ export function useSponsoredAvailable(placement: SponsoredPlacement, enabled = t
       return;
     }
     try {
-      const exclude = [...getDismissedAds()].join(",");
+      const exclude = [...getDismissedAdIds(placement)].join(",");
       const response = await fetch(
         `/api/customer/sponsored?placement=${placement}${exclude ? `&exclude=${encodeURIComponent(exclude)}` : ""}`,
         { cache: "no-store" },
       );
       const data = (await response.json()) as { ad?: { id: string } | null };
-      const ad = data.ad && !getDismissedAds().has(data.ad.id) ? data.ad : null;
+      const ad = data.ad && !getDismissedAdIds(placement).has(data.ad.id) ? data.ad : null;
       setAvailable(Boolean(ad));
     } catch {
       setAvailable(false);

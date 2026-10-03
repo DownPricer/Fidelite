@@ -5,13 +5,6 @@ import { SponsoredOfferCard, type SponsoredAd, type SponsoredVariant } from "./s
 
 export type { SponsoredAd, SponsoredVariant };
 
-const LAYOUT_BY_VARIANT: Record<SponsoredVariant, "feed" | "compact"> = {
-  search: "feed",
-  avantages: "feed",
-  home: "feed",
-  notifications: "compact",
-};
-
 export function SponsoredBanner({
   ad,
   variant = "search",
@@ -27,12 +20,5 @@ export function SponsoredBanner({
 
   const handleDismiss = onDismiss ?? (() => setDismissed(true));
 
-  return (
-    <SponsoredOfferCard
-      ad={ad}
-      layout={LAYOUT_BY_VARIANT[variant]}
-      variant={variant}
-      onDismiss={handleDismiss}
-    />
-  );
+  return <SponsoredOfferCard ad={ad} variant={variant} onDismiss={handleDismiss} />;
 }

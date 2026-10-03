@@ -15,20 +15,27 @@ const VARIANT_BY_PLACEMENT: Record<SponsoredPlacement, SponsoredVariant> = {
 /** Délai de visibilité continue avant de compter une impression (évite les passages éclairs). */
 const VISIBLE_MS = 1000;
 /**
- * Publicités fermées avec la croix pendant cette utilisation de l'application : masquées partout
- * (accueil, recherche, notifications) jusqu'à la fin de la session (sessionStorage = jusqu'à la
- * fermeture de l'application/de l'onglet). Aucune trace serveur : à la prochaine ouverture, si le
- * créneau est toujours actif et si la règle de fréquence le permet, la publicité peut réapparaître.
+ * Fermeture par croix : masquage par campagne ET par emplacement (sessionStorage uniquement).
+ * Fermer dans Avantages n'affecte pas Recherche ni Notifications. Nouvelle ouverture d'app → peut réapparaître.
  */
 const DISMISS_KEY = "fideto-sponsored-dismissed";
 let dismissedThisSession: Set<string> | null = null;
 
-export function getDismissedAds(): Set<string> {
+function dismissToken(placement: SponsoredPlacement, adId: string) {
+  return `${placement}:${adId}`;
+}
+
+function loadDismissedTokens(): Set<string> {
   if (!dismissedThisSession) {
     dismissedThisSession = new Set();
     try {
       const raw = sessionStorage.getItem(DISMISS_KEY);
-      if (raw) for (const id of JSON.parse(raw) as string[]) dismissedThisSession.add(id);
+      if (raw) {
+        for (const entry of JSON.parse(raw) as string[]) {
+          if (typeof entry === "string" && entry.includes(":")) dismissedThisSession.add(entry);
+          // ignore anciennes entrées globales (id seul) — pas de migration localStorage
+        }
+      }
     } catch {
       // stockage indisponible (navigation privée…) : la mémoire du module suffit pour cette session
     }
@@ -36,9 +43,24 @@ export function getDismissedAds(): Set<string> {
   return dismissedThisSession;
 }
 
-function rememberDismissed(id: string) {
-  const set = getDismissedAds();
-  set.add(id);
+/** Identifiants de campagnes masqués pour un emplacement donné (session en cours). */
+export function getDismissedAdIds(placement: SponsoredPlacement): Set<string> {
+  const prefix = `${placement}:`;
+  const ids = new Set<string>();
+  for (const token of loadDismissedTokens()) {
+    if (token.startsWith(prefix)) ids.add(token.slice(prefix.length));
+  }
+  return ids;
+}
+
+/** @deprecated Préférer getDismissedAdIds(placement). Conservé pour compatibilité tests outils. */
+export function getDismissedAds(): Set<string> {
+  return getDismissedAdIds("WALLET_HOME");
+}
+
+function rememberDismissed(placement: SponsoredPlacement, adId: string) {
+  const set = loadDismissedTokens();
+  set.add(dismissToken(placement, adId));
   try {
     sessionStorage.setItem(DISMISS_KEY, JSON.stringify([...set]));
   } catch {
@@ -91,14 +113,14 @@ export function SponsoredSlot({ placement, className }: { placement: SponsoredPl
   useEffect(() => {
     if (previewId) return;
     const controller = new AbortController();
-    const exclude = [...getDismissedAds()].join(",");
+    const exclude = [...getDismissedAdIds(placement)].join(",");
     fetch(`/api/customer/sponsored?placement=${placement}${exclude ? `&exclude=${encodeURIComponent(exclude)}` : ""}`, {
       signal: controller.signal,
       cache: "no-store",
     })
       .then((r) => (r.ok ? r.json() : { ad: null }))
       .then((data: { ad: (SponsoredAd & { placement: SponsoredPlacement }) | null }) => {
-        const next = data.ad && !getDismissedAds().has(data.ad.id) ? data.ad : null;
+        const next = data.ad && !getDismissedAdIds(placement).has(data.ad.id) ? data.ad : null;
         setAd(next);
         notifySponsoredAvailabilityChanged();
       })
@@ -154,7 +176,7 @@ export function SponsoredSlot({ placement, className }: { placement: SponsoredPl
         variant={VARIANT_BY_PLACEMENT[placement]}
         onDismiss={() => {
           if (previewId) return setAd(null);
-          rememberDismissed(ad.id);
+          rememberDismissed(placement, ad.id);
           setAd(null);
           notifySponsoredAvailabilityChanged();
         }}
