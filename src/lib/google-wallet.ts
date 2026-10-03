@@ -18,13 +18,11 @@ import { signQrToken } from "./qr";
 import { prisma } from "./prisma";
 import { getCustomerLoyaltyOverview } from "./customer-loyalty-overview";
 import {
-  buildGlobalWalletValueAddedModule,
+  resolveGlobalWalletCampaignHeroUrl,
   type GlobalWalletCampaignModule,
 } from "./google-wallet-campaign-module";
 import { parseGoogleWalletConfig, type GoogleWalletAppearance } from "./google-wallet-appearance";
 import { resolveGlobalWalletCampaignModule } from "./sponsored-test-broadcast";
-
-// TODO(diagnostic): l'affichage campagne sur Google Wallet global reste à investiguer séparément (sync / encart).
 import { resolveTier } from "@/components/fife-life/tier";
 import { getLoyaltyCardBackground, getLoyaltyCardTierLabel } from "./loyalty-card-assets";
 
@@ -582,13 +580,27 @@ export async function globalObjectBody(input: {
   nextReward: string | null;
   availableRewardsCount: number | null;
   campaignModule?: GlobalWalletCampaignModule | null;
+  /** Conservé pour compatibilité appelants ; le hero est toujours réinitialisé sans module additionnel. */
   clearCampaignModule?: boolean;
 }) {
   const displayName = [input.user.firstName, input.user.lastName].filter(Boolean).join(" ") || input.user.firstName;
   const clientNumber = resolveClientNumber({ clientNumber: input.user.clientNumber, userId: input.user.id });
   const tier = resolveTier(input.user.fifeLifePoints);
   const tierHero = publicGoogleWalletImageUrl(getLoyaltyCardBackground(tier.name));
-  const campaignPayload = input.campaignModule ? buildGlobalWalletValueAddedModule(input.campaignModule) : null;
+  const tierLabel = getLoyaltyCardTierLabel(tier.name);
+  let heroImage: GoogleWalletImage | undefined;
+  if (input.campaignModule) {
+    const campaignHeroUrl = resolveGlobalWalletCampaignHeroUrl(input.campaignModule.imagePathOrUrl);
+    if (!campaignHeroUrl) {
+      throw new GoogleWalletConfigError(
+        "Visuel de campagne inaccessible pour Google Wallet (image https publique requise, dimensions adaptées au hero).",
+      );
+    }
+    const alt = (input.campaignModule.title.trim() || input.campaignModule.description.trim()).slice(0, 60);
+    heroImage = imageData(campaignHeroUrl, alt || "Offre Fideto");
+  } else {
+    heroImage = imageData(tierHero, `Niveau ${tierLabel} Fideto`);
+  }
   return {
     id: input.objectId,
     classId: buildGoogleWalletIds({}).globalClassId,
@@ -604,9 +616,9 @@ export async function globalObjectBody(input: {
       label: "Points Fideto",
       balance: { int: input.user.fifeLifePoints },
     },
-    heroImage: imageData(tierHero, `Niveau ${getLoyaltyCardTierLabel(tier.name)} Fideto`),
+    heroImage,
     textModulesData: [
-      textModule("tier", "Niveau", `Niveau ${getLoyaltyCardTierLabel(tier.name)}`),
+      textModule("tier", "Niveau", `Niveau ${tierLabel}`),
       textModule("cards", "Cartes actives", `${input.activeCardCount}`),
       textModule("next_reward", "Prochain avantage", input.nextReward ?? "Aucun avantage global disponible"),
       textModule(
@@ -622,11 +634,8 @@ export async function globalObjectBody(input: {
           : `Encore ${formatUnitCount(tier.remaining, "points")} avant ${tier.nextName}`,
       ),
     ].filter(Boolean),
-    ...(campaignPayload
-      ? { valueAddedModuleData: [campaignPayload] }
-      : input.clearCampaignModule
-        ? { valueAddedModuleData: [] }
-        : {}),
+    // Retire tout encart « Recommandations » : la campagne remplace le hero, jamais un module additionnel.
+    valueAddedModuleData: [],
     appLinkData: appLinkData(cardUrl(), "Ouvrir mon wallet"),
   };
 }
@@ -786,12 +795,7 @@ async function syncGlobalObjectToGoogle(input: {
 }) {
   const { user, nextReward, availableRewardsCount } = await globalObjectSyncContext(input.userId);
   const qrValue = await customerQrValue(input.userId);
-  let campaignModule: Awaited<ReturnType<typeof resolveGlobalWalletCampaignModule>> = null;
-  try {
-    campaignModule = await resolveGlobalWalletCampaignModule(input.userId);
-  } catch {
-    campaignModule = null;
-  }
+  const campaignModule = await resolveGlobalWalletCampaignModule(input.userId);
 
   const baseBodyInput = {
     user,
@@ -803,20 +807,17 @@ async function syncGlobalObjectToGoogle(input: {
     clearCampaignModule: input.clearCampaignModule,
   };
 
-  try {
-    await upsertGoogleResource({
-      kind: "loyaltyObject",
-      id: input.googleObjectId,
-      body: await globalObjectBody({ ...baseBodyInput, campaignModule }),
-    });
-  } catch (error) {
-    if (!(error instanceof GoogleWalletApiError) || !campaignModule) throw error;
-    await upsertGoogleResource({
-      kind: "loyaltyObject",
-      id: input.googleObjectId,
-      body: await globalObjectBody({ ...baseBodyInput, campaignModule: null }),
-    });
-  }
+  await upsertGoogleResource({
+    kind: "loyaltyObject",
+    id: input.googleObjectId,
+    body: await globalObjectBody({ ...baseBodyInput, campaignModule }),
+  });
+}
+
+/** Lecture API Google (diagnostic / tests) — objet loyaltyObject existant. */
+export async function getGoogleWalletLoyaltyObject(objectId: string) {
+  assertConfigured();
+  return walletFetch<Record<string, unknown>>(`/loyaltyObject/${encodeURIComponent(objectId)}`, { method: "GET" });
 }
 
 const GLOBAL_WALLET_CAMPAIGN_SYNC_BATCH = 80;
@@ -837,8 +838,11 @@ export async function syncGoogleWalletGlobalObjectsForCampaignVisibility(input?:
     try {
       await syncGoogleWalletGlobalObject(row.userId);
       synced += 1;
-    } catch {
+    } catch (error) {
       failed += 1;
+      if (process.env.NODE_ENV !== "test") {
+        console.error("[google-wallet] resync campagne échouée", row.userId, publicGoogleWalletError(error));
+      }
     }
   }
   return { attempted: rows.length, synced, failed };
@@ -869,8 +873,12 @@ export async function syncAllGoogleWalletGlobalObjects(input?: { clearCampaignMo
       try {
         await syncGoogleWalletGlobalObject(row.userId, { clearCampaignModule: input?.clearCampaignModule });
         synced += 1;
-      } catch {
+      } catch (error) {
         failed += 1;
+        // syncGoogleWalletGlobalObject enregistre lastError sur l'objet ; ne pas masquer l'échec ici.
+        if (process.env.NODE_ENV !== "test") {
+          console.error("[google-wallet] sync globale échouée", row.userId, publicGoogleWalletError(error));
+        }
       }
     }
     lastId = rows[rows.length - 1]?.id;

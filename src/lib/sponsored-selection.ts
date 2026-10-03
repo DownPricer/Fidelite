@@ -245,7 +245,7 @@ export async function selectSponsoredForCustomer(input: {
 /**
  * Campagne à afficher sur la carte Google Wallet globale Fideto uniquement.
  * Même éligibilité (audience, créneaux, paiement) que les bandeaux in-app, sans règles de
- * fréquence ni impression — voir google-wallet.ts / valueAddedModuleData.
+ * fréquence ni impression — voir google-wallet.ts (heroImage de l'objet global).
  */
 export async function selectSponsoredForGoogleWalletGlobal(userId: string, now: Date = new Date()) {
   const zone = await loadZone(userId);

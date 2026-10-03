@@ -1,43 +1,34 @@
 import { describe, expect, it, vi } from "vitest";
 
-describe("Google Wallet encart campagne (carte globale)", () => {
-  it("construit un ValueAddedModuleData cliquable avec image https", async () => {
+describe("Google Wallet campagne (carte globale)", () => {
+  it("expose une URL hero https pour le visuel campagne", async () => {
     vi.resetModules();
     process.env.GOOGLE_WALLET_ORIGIN = "https://fideto.fr";
-    const { buildGlobalWalletValueAddedModule, globalWalletCampaignDetailUri } = await import(
+    const { resolveGlobalWalletCampaignHeroUrl, globalWalletCampaignDetailUri } = await import(
       "../src/lib/google-wallet-campaign-module"
     );
     expect(globalWalletCampaignDetailUri({ merchantSlug: "boulangerie", ctaUrl: null })).toBe(
       "https://fideto.fr/c/boulangerie",
     );
+    expect(resolveGlobalWalletCampaignHeroUrl("https://cdn.example.com/banner.png")).toBe("https://cdn.example.com/banner.png");
+    expect(resolveGlobalWalletCampaignHeroUrl("/api/media/visuels/m1/ad.png")).toBe(
+      "https://fideto.fr/api/media/visuels/m1/ad.png",
+    );
+    expect(resolveGlobalWalletCampaignHeroUrl("http://insecure.example/x.png")).toBeNull();
+  });
+
+  it("construit encore un ValueAddedModule pour validation interne (non envoyé à Google)", async () => {
+    vi.resetModules();
+    process.env.GOOGLE_WALLET_ORIGIN = "https://fideto.fr";
+    const { buildGlobalWalletValueAddedModule } = await import("../src/lib/google-wallet-campaign-module");
     const module = buildGlobalWalletValueAddedModule({
       id: "ad1",
       title: "Voir l'offre",
       description: "-20 % sur le pain",
       imagePathOrUrl: "https://cdn.example.com/banner.png",
       detailUri: "https://boulangerie.example/offre",
-      displayStart: new Date("2026-10-05T09:00:00.000Z"),
-      displayEnd: new Date("2026-10-05T12:00:00.000Z"),
     }) as Record<string, unknown>;
     expect(module.uri).toBe("https://boulangerie.example/offre");
-    expect((module.header as { defaultValue: { value: string } }).defaultValue.value).toBe("Voir l'offre");
-    expect((module.image as { sourceUri: { uri: string } }).sourceUri.uri).toBe("https://cdn.example.com/banner.png");
-    expect(module.body).toBeDefined();
-  });
-
-  it("refuse un module si le lien n'est pas https", async () => {
-    vi.resetModules();
-    process.env.GOOGLE_WALLET_ORIGIN = "https://fideto.fr";
-    const { buildGlobalWalletValueAddedModule } = await import("../src/lib/google-wallet-campaign-module");
-    expect(
-      buildGlobalWalletValueAddedModule({
-        id: "ad1",
-        title: "Offre",
-        description: "Texte",
-        imagePathOrUrl: "https://cdn.example.com/b.png",
-        detailUri: "http://insecure.example/offre",
-      }),
-    ).toBeNull();
   });
 
   it("n'ajoute pas valueAddedModuleData sur l'objet commerçant", async () => {
@@ -81,7 +72,7 @@ describe("Google Wallet encart campagne (carte globale)", () => {
     expect(body.valueAddedModuleData).toBeUndefined();
   });
 
-  it("inclut ou retire l'encart sur la carte globale selon la campagne", async () => {
+  it("remplace le hero Bronze par le visuel campagne et vide les modules recommandations", async () => {
     vi.resetModules();
     process.env.GOOGLE_WALLET_ISSUER_ID = "3388000000023198536";
     process.env.GOOGLE_WALLET_GLOBAL_CLASS_ID = "3388000000023198536.fifelife_global";
@@ -110,7 +101,8 @@ describe("Google Wallet encart campagne (carte globale)", () => {
         detailUri: "https://fideto.fr/c/boulangerie",
       },
     })) as Record<string, unknown>;
-    expect(withCampaign.valueAddedModuleData).toHaveLength(1);
+    expect((withCampaign.heroImage as { sourceUri: { uri: string } }).sourceUri.uri).toBe("https://cdn.example.com/b.png");
+    expect(withCampaign.valueAddedModuleData).toEqual([]);
     expect(withCampaign.barcode).toMatchObject({ type: "QR_CODE", value: "qr" });
 
     const without = (await globalObjectBody({
@@ -122,6 +114,39 @@ describe("Google Wallet encart campagne (carte globale)", () => {
       availableRewardsCount: 0,
       campaignModule: null,
     })) as Record<string, unknown>;
-    expect(without.valueAddedModuleData).toBeUndefined();
+    expect((without.heroImage as { sourceUri: { uri: string } }).sourceUri.uri).toContain("/cards/bronze-good.png");
+    expect(without.valueAddedModuleData).toEqual([]);
+  });
+
+  it("refuse une campagne dont l'image n'est pas accessible par Google", async () => {
+    vi.resetModules();
+    process.env.GOOGLE_WALLET_ISSUER_ID = "3388000000023198536";
+    process.env.GOOGLE_WALLET_GLOBAL_CLASS_ID = "3388000000023198536.fifelife_global";
+    process.env.GOOGLE_WALLET_ORIGIN = "https://fideto.fr";
+    const { globalObjectBody, GoogleWalletConfigError } = await import("../src/lib/google-wallet");
+    await expect(
+      globalObjectBody({
+        user: {
+          id: "u1",
+          firstName: "Ada",
+          lastName: null,
+          clientNumber: "100001",
+          fifeLifePoints: 20,
+          isActive: true,
+        },
+        objectId: "obj",
+        qrValue: "qr",
+        activeCardCount: 1,
+        nextReward: null,
+        availableRewardsCount: 0,
+        campaignModule: {
+          id: "ad1",
+          title: "Offre",
+          description: "Texte",
+          imagePathOrUrl: "http://bad.example/b.png",
+          detailUri: "https://fideto.fr/c/boulangerie",
+        },
+      }),
+    ).rejects.toBeInstanceOf(GoogleWalletConfigError);
   });
 });

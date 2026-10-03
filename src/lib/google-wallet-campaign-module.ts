@@ -1,7 +1,8 @@
 import { isSafeAdUrl } from "./ad-links";
 import { env } from "./env";
 
-function publicCampaignImageUrl(pathOrUrl: string) {
+/** URL https publique du visuel campagne pour le hero de la carte globale Google Wallet. */
+export function resolveGlobalWalletCampaignHeroUrl(pathOrUrl: string) {
   if (pathOrUrl.startsWith("https://")) {
     try {
       const url = new URL(pathOrUrl);
@@ -65,7 +66,7 @@ export function buildGlobalWalletValueAddedModule(input: GlobalWalletCampaignMod
     uri,
     sortIndex: 0,
   };
-  const imageUrl = publicCampaignImageUrl(input.imagePathOrUrl);
+  const imageUrl = resolveGlobalWalletCampaignHeroUrl(input.imagePathOrUrl);
   if (imageUrl) {
     module.image = { sourceUri: { uri: imageUrl } };
   }

@@ -1854,9 +1854,9 @@
     "semantic_hash": "0e326f9ae20f7623224bf5f3a12f89ab"
   },
   "src/lib/google-wallet.ts": {
-    "mtime": 1791025853.1248662,
-    "seen": 1791025893.1347353,
-    "ast_hash": "4ab18cd281c178858c87cd93924646e4",
+    "mtime": 1791036403.0097983,
+    "seen": 1791036538.6361933,
+    "ast_hash": "049add0a3a9ee239f4646bbcfb4d87c6",
     "semantic_hash": ""
   },
   "src/lib/hosts.ts": {
@@ -4968,15 +4968,15 @@
     "semantic_hash": ""
   },
   "src/components/fife-life/sponsored-slot.tsx": {
-    "mtime": 1791025826.7170107,
-    "seen": 1791025893.12074,
-    "ast_hash": "48e33c6ba8d1399b662f9d4612898d4f",
+    "mtime": 1791025945.4687736,
+    "seen": 1791036538.618074,
+    "ast_hash": "ff9d5856bcfa029c28fcbee07d5e8f69",
     "semantic_hash": ""
   },
   "src/lib/sponsored-selection.ts": {
-    "mtime": 1790984285.421677,
-    "seen": 1790984412.923797,
-    "ast_hash": "e1d71ca059e239f6a847f076558f1922",
+    "mtime": 1791036395.4924493,
+    "seen": 1791036538.646722,
+    "ast_hash": "5af9be80246d0a1302bebe723b51ee02",
     "semantic_hash": ""
   },
   "tests/sponsored-placements.test.ts": {
@@ -5262,15 +5262,15 @@
     "semantic_hash": ""
   },
   "src/lib/google-wallet-campaign-module.ts": {
-    "mtime": 1790982281.3600261,
-    "seen": 1790983314.6720445,
-    "ast_hash": "b918d6d3ca9e6a3e04e4c3ce65aaf219",
+    "mtime": 1791036385.8731892,
+    "seen": 1791036538.6361933,
+    "ast_hash": "338dccb6f125aa2eab3aaa77279e2663",
     "semantic_hash": ""
   },
   "tests/google-wallet-campaign-module.test.ts": {
-    "mtime": 1790982287.2007093,
-    "seen": 1790983314.7350662,
-    "ast_hash": "f0b3fb4217a6adb618d874a71760f74c",
+    "mtime": 1791036398.423281,
+    "seen": 1791036538.6572444,
+    "ast_hash": "040e60115b9dd0690bf015bf73d8f83f",
     "semantic_hash": ""
   },
   "tests/google-wallet-campaign-selection.test.ts": {
@@ -5304,9 +5304,9 @@
     "semantic_hash": ""
   },
   "src/components/fife-life/use-sponsored-available.ts": {
-    "mtime": 1791025814.4168763,
-    "seen": 1791025893.12074,
-    "ast_hash": "9f62f57358c93d4d16861deaa96f26e5",
+    "mtime": 1791026038.5828214,
+    "seen": 1791036538.6190715,
+    "ast_hash": "2ee75a517d2199b2438402a8cdec9bfe",
     "semantic_hash": ""
   },
   "src/components/fife-life/wallet-avantages-page.tsx": {
