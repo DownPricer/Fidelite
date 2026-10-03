@@ -1,4 +1,48 @@
-import { env } from "./env";
+import { env, isProduction } from "./env";
+
+const FORBIDDEN_PUBLIC_HOSTS = new Set(["localhost", "127.0.0.1", "0.0.0.0"]);
+
+function hostnameForbidden(hostname: string) {
+  const name = hostname.toLowerCase();
+  return FORBIDDEN_PUBLIC_HOSTS.has(name);
+}
+
+/** Origine publique pour liens e-mail et onboarding — jamais Host/0.0.0.0/docker interne. */
+export function canonicalOrigin(configured: string, productionDefault: string) {
+  const trimmed = configured.trim().replace(/\/$/, "");
+  if (!trimmed) return isProduction() ? productionDefault : "http://localhost:3000";
+  try {
+    const url = new URL(trimmed);
+    if (hostnameForbidden(url.hostname)) {
+      return isProduction() ? productionDefault : trimmed;
+    }
+    if (isProduction() && url.protocol !== "https:") return productionDefault;
+    return trimmed;
+  } catch {
+    return isProduction() ? productionDefault : "http://localhost:3000";
+  }
+}
+
+export function customerOriginForPublicLinks() {
+  return canonicalOrigin(env.customerOrigin, "https://fideto.fr");
+}
+
+export function appOriginForPublicLinks() {
+  return canonicalOrigin(env.appOrigin, "https://app.fideto.fr");
+}
+
+export function employeeOriginForPublicLinks() {
+  return canonicalOrigin(env.employeeAppUrl, "https://employe.fideto.fr");
+}
+
+/** Vérifie qu'une URL d'e-mail production n'expose pas d'hôte interne. */
+export function assertSafeEmailLink(url: string) {
+  if (!isProduction()) return;
+  const parsed = new URL(url);
+  if (hostnameForbidden(parsed.hostname)) {
+    throw new Error(`Lien e-mail interdit en production : ${parsed.hostname}`);
+  }
+}
 
 function hostnameOf(hostHeader: string) {
   return hostHeader.split(":")[0]?.toLowerCase() ?? "";
@@ -66,13 +110,19 @@ export function isEmployeeHost(host: string) {
 }
 
 export function employeeInvitationUrl(token: string) {
-  const base = env.employeeAppUrl.replace(/\/$/, "");
-  return `${base}/invitation?token=${encodeURIComponent(token)}`;
+  const base = employeeOriginForPublicLinks();
+  const url = `${base}/invitation?token=${encodeURIComponent(token)}`;
+  assertSafeEmailLink(url);
+  return url;
 }
 
 export function publicCustomerUrl(path = "/") {
-  if (env.customerOrigin) {
-    return `${env.customerOrigin.replace(/\/$/, "")}${path}`;
-  }
-  return path;
+  return `${customerOriginForPublicLinks()}${path.startsWith("/") ? path : `/${path}`}`;
+}
+
+export function publicAppUrl(path = "/") {
+  const normalized = path.startsWith("/") ? path : `/${path}`;
+  const url = `${appOriginForPublicLinks()}${normalized}`;
+  assertSafeEmailLink(url);
+  return url;
 }

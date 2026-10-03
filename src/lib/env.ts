@@ -1,5 +1,7 @@
 function read(name: string, fallback = "") {
-  return process.env[name] ?? fallback;
+  const value = process.env[name];
+  if (value === undefined || value.trim() === "") return fallback;
+  return value.trim();
 }
 
 export const env = {

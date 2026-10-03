@@ -1200,9 +1200,9 @@
     "semantic_hash": "fde9589471d1ef24c4376853a862b71b"
   },
   "src/components/fife-life/cards-sheet.tsx": {
-    "mtime": 1791040659.6627853,
-    "seen": 1791040717.0046513,
-    "ast_hash": "36b597b386bcb05a0b5582aa0ae32fbb",
+    "mtime": 1791044560.0981386,
+    "seen": 1791044860.5807831,
+    "ast_hash": "038996c01d477b72464553163d866c4d",
     "semantic_hash": ""
   },
   "src/components/fife-life/expandable-qr-code.tsx": {
@@ -1428,9 +1428,9 @@
     "semantic_hash": ""
   },
   "src/components/fife-life/wallet-home.tsx": {
-    "mtime": 1791040659.4031866,
-    "seen": 1791040717.0186236,
-    "ast_hash": "178da2e7f9653533a9557093f49f0c74",
+    "mtime": 1791044569.6268816,
+    "seen": 1791044860.5948591,
+    "ast_hash": "83434c162f4a72ed0566690cf6b3687d",
     "semantic_hash": ""
   },
   "src/components/fife-life/wallet-motion-root.tsx": {
@@ -1836,9 +1836,9 @@
     "semantic_hash": ""
   },
   "src/lib/env.ts": {
-    "mtime": 1790979976.491063,
-    "seen": 1790980223.0015364,
-    "ast_hash": "baa3d6ac6ab7ae3d1890890d2df1473e",
+    "mtime": 1791044528.8934796,
+    "seen": 1791044860.6149387,
+    "ast_hash": "ad51486750ea6b19a265b37c497fb736",
     "semantic_hash": ""
   },
   "src/lib/google-wallet-appearance.ts": {
@@ -1854,15 +1854,15 @@
     "semantic_hash": "0e326f9ae20f7623224bf5f3a12f89ab"
   },
   "src/lib/google-wallet.ts": {
-    "mtime": 1791036403.0097983,
-    "seen": 1791036538.6361933,
-    "ast_hash": "049add0a3a9ee239f4646bbcfb4d87c6",
+    "mtime": 1791044538.0503216,
+    "seen": 1791044860.6179504,
+    "ast_hash": "c7e8dba9ef9d4b3379281af9cc10af61",
     "semantic_hash": ""
   },
   "src/lib/hosts.ts": {
-    "mtime": 1790863263.8467896,
-    "seen": 1790864511.2994916,
-    "ast_hash": "beea28b4a9e25a4d528f5d4ee08c0efd",
+    "mtime": 1791044532.1610544,
+    "seen": 1791044860.6179504,
+    "ast_hash": "efb514ddb4f6d5776964a992ab8b2e7f",
     "semantic_hash": ""
   },
   "src/lib/http.ts": {
@@ -2856,9 +2856,9 @@
     "semantic_hash": ""
   },
   "deploy/docker-compose.yml": {
-    "mtime": 1790081870.451834,
-    "seen": 1790084051.7511053,
-    "ast_hash": "9c1666d77160d4bafa9102779f9c1b28",
+    "mtime": 1791044571.0346775,
+    "seen": 1791044860.664364,
+    "ast_hash": "1d6a2ca80f7532fb9ab01d259a6cdbce",
     "semantic_hash": ""
   },
   "Carte/Argent.png": {
@@ -4416,9 +4416,9 @@
     "semantic_hash": ""
   },
   "src/lib/campaign-worker.ts": {
-    "mtime": 1790795678.6890445,
-    "seen": 1790796679.5591097,
-    "ast_hash": "6706077e6e4fac55b075f63eacd63799",
+    "mtime": 1791044562.5909328,
+    "seen": 1791044860.6033785,
+    "ast_hash": "977408ec745ad54580675d535ebac576",
     "semantic_hash": ""
   },
   "src/lib/consent.ts": {
@@ -4566,9 +4566,9 @@
     "semantic_hash": ""
   },
   "src/components/fife-life/sponsored-banner.tsx": {
-    "mtime": 1791025825.2120342,
-    "seen": 1791025893.12074,
-    "ast_hash": "87de202095cf5b44ac9d10008729e87a",
+    "mtime": 1791044615.1448486,
+    "seen": 1791044860.5923328,
+    "ast_hash": "58f4c6ec67c094779d52987071ba6c05",
     "semantic_hash": ""
   },
   "src/components/fife-life/merchant-profile.tsx": {
@@ -4980,9 +4980,9 @@
     "semantic_hash": ""
   },
   "tests/sponsored-placements.test.ts": {
-    "mtime": 1791040666.1443777,
-    "seen": 1791040717.0881884,
-    "ast_hash": "327e2ba40b1c81df636e281f99cda7f4",
+    "mtime": 1791044586.0571113,
+    "seen": 1791044860.6558583,
+    "ast_hash": "d8c572cb087759beea9619819f7e6933",
     "semantic_hash": ""
   },
   "tests/admin-ad-fiche.test.ts": {
@@ -5208,9 +5208,9 @@
     "semantic_hash": ""
   },
   "src/lib/customer-onboarding.ts": {
-    "mtime": 1790963478.1881156,
-    "seen": 1790963678.7312906,
-    "ast_hash": "527698865caabdc88d0c858a1a521eed",
+    "mtime": 1791044546.3595662,
+    "seen": 1791044860.6083932,
+    "ast_hash": "85b4b19c4223209ef89d3dcc18d936c0",
     "semantic_hash": ""
   },
   "src/lib/sms.ts": {
@@ -5319,6 +5319,24 @@
     "mtime": 1791025853.1528728,
     "seen": 1791025893.1608663,
     "ast_hash": "70149f7096ce2781fb9de5afcb1fe575",
+    "semantic_hash": ""
+  },
+  "src/components/fife-life/sponsored-offer-card.tsx": {
+    "mtime": 1791044615.1072612,
+    "seen": 1791044860.5923328,
+    "ast_hash": "363b0215cfbb895072997c7d5b056680",
+    "semantic_hash": ""
+  },
+  "tests/customer-account-email.test.ts": {
+    "mtime": 1791044586.0007665,
+    "seen": 1791044860.6359794,
+    "ast_hash": "aaaaa3a58913e1da298d37f5d132d32e",
+    "semantic_hash": ""
+  },
+  "tests/google-wallet-global-sync.test.ts": {
+    "mtime": 1791044639.9030144,
+    "seen": 1791044860.6409826,
+    "ast_hash": "6a597c4a86b51b73375fc824502a9fc0",
     "semantic_hash": ""
   }
 }

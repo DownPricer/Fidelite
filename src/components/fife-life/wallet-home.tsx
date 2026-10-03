@@ -455,11 +455,6 @@ export function WalletHome({
             </section>
 
             <section className="wallet-cards-rail glass-panel">
-              {!preview ? (
-                <div className="mb-3" aria-label="Offre sponsorisée">
-                  <SponsoredSlot placement="WALLET_HOME" />
-                </div>
-              ) : null}
               <div className="mb-3 flex items-center justify-between gap-3">
                 <h3 className="section-title">Mes cartes et avantages</h3>
                 <div className="flex gap-2 text-xs font-semibold">
@@ -512,6 +507,11 @@ export function WalletHome({
                 </div>
               ) : null}
               <WalletCardsList cards={cards} onOpenCard={openCard} compact desktopGrid enablePublicSearch />
+              {!preview ? (
+                <div className="mt-4" aria-label="Offre sponsorisée">
+                  <SponsoredSlot placement="WALLET_HOME" />
+                </div>
+              ) : null}
             </section>
 
             {recentActivity.length ? (

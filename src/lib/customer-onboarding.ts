@@ -1,6 +1,6 @@
 import { CustomerAccessTokenKind, PlatformRole, type User } from "@prisma/client";
 import { sendCustomerFinalizationEmail, sendCustomerFinalizationReminderEmail } from "./email";
-import { publicCustomerUrl } from "./hosts";
+import { assertSafeEmailLink, publicCustomerUrl } from "./hosts";
 import { prisma } from "./prisma";
 import { createSession } from "./session";
 import {
@@ -119,11 +119,15 @@ export async function createCustomerSession(
 }
 
 export function buildEmailVerificationUrl(rawToken: string) {
-  return publicCustomerUrl(`/api/customer/auth/verify-email?token=${encodeURIComponent(rawToken)}`);
+  const url = publicCustomerUrl(`/api/customer/auth/verify-email?token=${encodeURIComponent(rawToken)}`);
+  assertSafeEmailLink(url);
+  return url;
 }
 
 export function buildAccountRecoveryUrl(rawToken: string) {
-  return publicCustomerUrl(`/api/customer/auth/recover?token=${encodeURIComponent(rawToken)}`);
+  const url = publicCustomerUrl(`/api/customer/auth/recover?token=${encodeURIComponent(rawToken)}`);
+  assertSafeEmailLink(url);
+  return url;
 }
 
 export async function sendCustomerFinalizationInvite(user: Pick<User, "id" | "email" | "firstName">) {
@@ -135,6 +139,7 @@ export async function sendCustomerFinalizationInvite(user: Pick<User, "id" | "em
   );
   const verifyUrl = buildEmailVerificationUrl(raw);
   const finalizeUrl = publicCustomerUrl("/finalisation");
+  assertSafeEmailLink(finalizeUrl);
   return sendCustomerFinalizationEmail({
     to: user.email,
     firstName: user.firstName,

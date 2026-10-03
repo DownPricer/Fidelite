@@ -335,7 +335,9 @@ describe("cartes intégrées : ni notification, ni push, ni e-mail", () => {
     const { readFileSync } = await import("fs");
     const center = readFileSync("src/components/fife-life/notifications-center.tsx", "utf8");
     expect(center).toContain('<SponsoredSlot placement="NOTIFICATIONS"');
-    expect(readFileSync("src/components/fife-life/cards-sheet.tsx", "utf8")).toContain('placement="WALLET_HOME"');
+    const sheet = readFileSync("src/components/fife-life/cards-sheet.tsx", "utf8");
+    expect(sheet).toContain('placement="WALLET_HOME"');
+    expect(sheet.indexOf("WalletCardsList")).toBeLessThan(sheet.indexOf('placement="WALLET_HOME"'));
     const home = readFileSync("src/components/fife-life/wallet-home.tsx", "utf8");
     expect(home).not.toContain("WalletBottomNav");
     expect(home).toContain("wallet-chevron-sponsored-badge");

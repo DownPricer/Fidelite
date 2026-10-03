@@ -92,12 +92,12 @@ export function CardsSheet({
             </div>
             <div className="relative z-10 flex min-h-0 flex-1 flex-col overflow-y-auto px-5 pb-8 pt-4">
               <h2 className="section-title mb-4 hidden shrink-0 lg:block">Mes cartes et mes avantages</h2>
+              <WalletCardsList cards={cards} onOpenCard={onOpenCard} compact desktopGrid enablePublicSearch={false} />
               {!preview ? (
-                <div className="mb-4 shrink-0" aria-label="Offre sponsorisée">
+                <div className="mt-4 shrink-0" aria-label="Offre sponsorisée">
                   <SponsoredSlot placement="WALLET_HOME" />
                 </div>
               ) : null}
-              <WalletCardsList cards={cards} onOpenCard={onOpenCard} compact desktopGrid enablePublicSearch={false} />
             </div>
           </motion.section>
         </>

@@ -2,6 +2,7 @@ import type { Campaign, CampaignDelivery, CampaignDeliveryChannel, Merchant } fr
 import { estimateMerchantMembersAudience, estimateNetworkLocalAudience, networkAudienceWhere } from "./campaign-audience";
 import { sendCampaignEmail, isValidEmailAddress } from "./email";
 import { env } from "./env";
+import { customerOriginForPublicLinks, publicCustomerUrl } from "./hosts";
 import { prisma } from "./prisma";
 import { sendPushToUser } from "./push";
 import { unsubscribeUrl, signUnsubscribeToken, type UnsubscribeScope } from "./unsubscribe-token";
@@ -182,8 +183,8 @@ async function sendOneDeliveryUnsafe(
       campaign.audienceType === "NETWORK_LOCAL"
         ? "Vous recevez cet e-mail car vous avez accepté les bons plans locaux Fideto."
         : `Vous recevez cet e-mail car vous avez la carte de ${merchant.name}.`,
-    unsubscribeUrl: unsubscribeUrl(env.appUrl, token),
-    preferencesUrl: `${env.appUrl}/compte/parametres`,
+    unsubscribeUrl: unsubscribeUrl(customerOriginForPublicLinks(), token),
+    preferencesUrl: publicCustomerUrl("/compte/parametres"),
   });
 
   return result.ok ? { status: "SENT" } : { status: "FAILED", error: result.error };

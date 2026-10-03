@@ -200,6 +200,19 @@ async function walletFetch<T>(path: string, init: RequestInit = {}) {
   return { status: response.status, body: (await response.json()) as T };
 }
 
+function logGoogleWalletPatchFailure(
+  input: { kind: "loyaltyClass" | "loyaltyObject"; id: string },
+  error: unknown,
+) {
+  if (process.env.NODE_ENV === "test") return;
+  console.error(
+    "[google-wallet] PATCH échoué",
+    input.kind,
+    input.id,
+    publicGoogleWalletError(error),
+  );
+}
+
 async function upsertGoogleResource<T>(input: {
   kind: "loyaltyClass" | "loyaltyObject";
   id: string;
@@ -211,20 +224,30 @@ async function upsertGoogleResource<T>(input: {
       await walletFetch(`/${input.kind}`, { method: "POST", body: JSON.stringify(input.body) });
     } catch (error) {
       if (error instanceof GoogleWalletApiError && error.googleStatus === 409) {
-        await walletFetch(`/${input.kind}/${encodeURIComponent(input.id)}`, {
-          method: "PATCH",
-          body: JSON.stringify(input.body),
-        });
+        try {
+          await walletFetch(`/${input.kind}/${encodeURIComponent(input.id)}`, {
+            method: "PATCH",
+            body: JSON.stringify(input.body),
+          });
+        } catch (patchError) {
+          logGoogleWalletPatchFailure(input, patchError);
+          throw patchError;
+        }
       } else {
         throw error;
       }
     }
     return;
   }
-  await walletFetch(`/${input.kind}/${encodeURIComponent(input.id)}`, {
-    method: "PATCH",
-    body: JSON.stringify(input.body),
-  });
+  try {
+    await walletFetch(`/${input.kind}/${encodeURIComponent(input.id)}`, {
+      method: "PATCH",
+      body: JSON.stringify(input.body),
+    });
+  } catch (error) {
+    logGoogleWalletPatchFailure(input, error);
+    throw error;
+  }
 }
 
 function textModule(id: string, header: string, body: string | null | undefined) {
@@ -822,30 +845,9 @@ export async function getGoogleWalletLoyaltyObject(objectId: string) {
 
 const GLOBAL_WALLET_CAMPAIGN_SYNC_BATCH = 80;
 
-/** Resynchronise les objets carte globale Fideto (encart campagne) — jamais les cartes commerçants. */
-export async function syncGoogleWalletGlobalObjectsForCampaignVisibility(input?: { limit?: number }) {
-  if (!isGoogleWalletConfigured()) return { attempted: 0, synced: 0, failed: 0 };
-  const limit = input?.limit ?? GLOBAL_WALLET_CAMPAIGN_SYNC_BATCH;
-  const rows = await prisma.googleWalletObject.findMany({
-    where: { merchantId: null, customerMembershipId: null },
-    select: { userId: true },
-    take: limit,
-    orderBy: { lastSyncedAt: "asc" },
-  });
-  let synced = 0;
-  let failed = 0;
-  for (const row of rows) {
-    try {
-      await syncGoogleWalletGlobalObject(row.userId);
-      synced += 1;
-    } catch (error) {
-      failed += 1;
-      if (process.env.NODE_ENV !== "test") {
-        console.error("[google-wallet] resync campagne échouée", row.userId, publicGoogleWalletError(error));
-      }
-    }
-  }
-  return { attempted: rows.length, synced, failed };
+/** Resynchronise tous les objets carte globale Fideto (hero campagne / palier) — jamais les cartes commerçants. */
+export async function syncGoogleWalletGlobalObjectsForCampaignVisibility(input?: { clearCampaignModule?: boolean }) {
+  return syncAllGoogleWalletGlobalObjects(input);
 }
 
 /** Synchronise toutes les cartes Google Wallet globales, par lots, jusqu'au dernier objet. */
@@ -888,9 +890,13 @@ export async function syncAllGoogleWalletGlobalObjects(input?: { clearCampaignMo
 }
 
 /** Déclenchement asynchrone (API / worker) sans bloquer la requête appelante. */
-export function scheduleGoogleWalletGlobalCampaignResync(limit?: number) {
+export function scheduleGoogleWalletGlobalCampaignResync() {
   if (!isGoogleWalletConfigured()) return;
-  void syncGoogleWalletGlobalObjectsForCampaignVisibility({ limit }).catch(() => undefined);
+  void syncAllGoogleWalletGlobalObjects().catch((error) => {
+    if (process.env.NODE_ENV !== "test") {
+      console.error("[google-wallet] resync campagne globale interrompue", publicGoogleWalletError(error));
+    }
+  });
 }
 
 export async function createGlobalGoogleWalletSaveUrl(userId: string) {
