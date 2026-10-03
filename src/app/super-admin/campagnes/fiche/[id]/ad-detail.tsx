@@ -102,7 +102,7 @@ const STATUS_LABELS: Record<AdStatus, string> = {
 };
 
 const PLACEMENT_LABELS: Record<string, string> = {
-  WALLET_HOME: "Accueil du Wallet",
+  WALLET_HOME: "Avantages (Wallet)",
   SEARCH: "Recherche",
   NOTIFICATIONS: "Notifications",
   UNKNOWN: "Avant le suivi par emplacement",

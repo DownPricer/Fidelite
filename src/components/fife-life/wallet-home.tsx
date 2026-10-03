@@ -1,7 +1,7 @@
 "use client";
 
-import { SponsoredSlot } from "./sponsored-slot";
 import Link from "next/link";
+import { Suspense } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { CardDeck } from "./card-deck";
@@ -24,6 +24,7 @@ import { WalletMotionRoot } from "./wallet-motion-root";
 import { AddToGoogleWalletButton } from "./add-to-google-wallet-button";
 import { DiscoverIconLink, NotificationBellLink } from "./header-icon-links";
 import { WalletQrAction } from "./wallet-qr-action";
+import { WalletBottomNav } from "./wallet-bottom-nav";
 import {
   buildFifeLifeNextReward,
   resolveNextRewardForActiveCard,
@@ -366,8 +367,6 @@ export function WalletHome({
             )}
           </section>
 
-          {!preview ? <SponsoredSlot placement="WALLET_HOME" className="shrink-0 lg:hidden" /> : null}
-
           <div className="wallet-sheet-trigger mt-4 flex flex-col items-center gap-3 pb-6">
             <button
               type="button"
@@ -516,9 +515,14 @@ export function WalletHome({
               </section>
             ) : null}
 
-            {!preview ? <SponsoredSlot placement="WALLET_HOME" /> : null}
           </aside>
         </div>
+
+        {!preview ? (
+          <Suspense fallback={null}>
+            <WalletBottomNav />
+          </Suspense>
+        ) : null}
 
         <CardsSheet open={sheetOpen} cards={cards} onClose={() => setSheetOpen(false)} onOpenCard={openCard} />
         <NewCardToast

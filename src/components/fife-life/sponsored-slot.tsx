@@ -2,11 +2,12 @@
 
 import { useEffect, useRef, useState } from "react";
 import { SponsoredBanner, type SponsoredAd, type SponsoredVariant } from "./sponsored-banner";
+import { notifySponsoredAvailabilityChanged } from "./use-sponsored-available";
 
 export type SponsoredPlacement = "WALLET_HOME" | "SEARCH" | "NOTIFICATIONS";
 
 const VARIANT_BY_PLACEMENT: Record<SponsoredPlacement, SponsoredVariant> = {
-  WALLET_HOME: "home",
+  WALLET_HOME: "avantages",
   SEARCH: "search",
   NOTIFICATIONS: "notifications",
 };
@@ -96,16 +97,19 @@ export function SponsoredSlot({ placement, className }: { placement: SponsoredPl
       cache: "no-store",
     })
       .then((r) => (r.ok ? r.json() : { ad: null }))
-      .then((data: { ad: (SponsoredAd & { placement: SponsoredPlacement }) | null }) =>
-        setAd(data.ad && !getDismissedAds().has(data.ad.id) ? data.ad : null),
-      )
+      .then((data: { ad: (SponsoredAd & { placement: SponsoredPlacement }) | null }) => {
+        const next = data.ad && !getDismissedAds().has(data.ad.id) ? data.ad : null;
+        setAd(next);
+        notifySponsoredAvailabilityChanged();
+      })
       .catch(() => undefined);
     return () => controller.abort();
-  }, [placement]);
+  }, [placement, previewId]);
 
   useEffect(() => {
     const node = hostRef.current;
-    if (previewId || !ad || !node || !ad.impressionUrl || typeof IntersectionObserver === "undefined") return;
+    const impressionUrl = ad?.impressionUrl;
+    if (previewId || !ad || !node || !impressionUrl || typeof IntersectionObserver === "undefined") return;
     const key = `${placement}:${ad.id}`;
     if (reportedThisSession.has(key)) return;
     let timer: number | null = null;
@@ -121,7 +125,7 @@ export function SponsoredSlot({ placement, className }: { placement: SponsoredPl
           if (reportedThisSession.has(key)) return;
           reportedThisSession.add(key);
           observer.disconnect();
-          void fetch(ad.impressionUrl, {
+          void fetch(impressionUrl, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ placement }),
@@ -152,6 +156,7 @@ export function SponsoredSlot({ placement, className }: { placement: SponsoredPl
           if (previewId) return setAd(null);
           rememberDismissed(ad.id);
           setAd(null);
+          notifySponsoredAvailabilityChanged();
         }}
       />
     </div>

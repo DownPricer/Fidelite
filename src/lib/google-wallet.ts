@@ -23,6 +23,8 @@ import {
 } from "./google-wallet-campaign-module";
 import { parseGoogleWalletConfig, type GoogleWalletAppearance } from "./google-wallet-appearance";
 import { resolveGlobalWalletCampaignModule } from "./sponsored-test-broadcast";
+
+// TODO(diagnostic): l'affichage campagne sur Google Wallet global reste à investiguer séparément (sync / encart).
 import { resolveTier } from "@/components/fife-life/tier";
 import { getLoyaltyCardBackground, getLoyaltyCardTierLabel } from "./loyalty-card-assets";
 

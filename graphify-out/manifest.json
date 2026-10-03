@@ -312,8 +312,8 @@
     "semantic_hash": "b22480eb7789960a7a45445af4cccf5b"
   },
   "src/app/api/caisse/scan/route.ts": {
-    "mtime": 1790963180.9709182,
-    "seen": 1790963678.6722815,
+    "mtime": 1791023802.329461,
+    "seen": 1791025893.076739,
     "ast_hash": "b0a7a66cf39f07746e453d409f04b005",
     "semantic_hash": ""
   },
@@ -456,14 +456,14 @@
     "semantic_hash": "6e2e96ee88de235a080c9895dd57d212"
   },
   "src/app/api/employe/auth/accept-invitation/route.ts": {
-    "mtime": 1790963180.9819167,
-    "seen": 1790963678.6762817,
+    "mtime": 1791023802.3485155,
+    "seen": 1791025893.0827372,
     "ast_hash": "10ba236608361ee69e5209876678a754",
     "semantic_hash": "10ba236608361ee69e5209876678a754"
   },
   "src/app/api/employe/auth/invitation/route.ts": {
-    "mtime": 1790963180.9649174,
-    "seen": 1790963678.6762817,
+    "mtime": 1791023802.321931,
+    "seen": 1791025893.0827372,
     "ast_hash": "5ea013e144e09a78e6bcc490d4bbff17",
     "semantic_hash": "5ea013e144e09a78e6bcc490d4bbff17"
   },
@@ -552,8 +552,8 @@
     "semantic_hash": ""
   },
   "src/app/api/merchant/employees/route.ts": {
-    "mtime": 1790963180.968919,
-    "seen": 1790963678.6812851,
+    "mtime": 1791023802.321931,
+    "seen": 1791025893.0877385,
     "ast_hash": "825ba3810515a7d1f503d059edfc83bd",
     "semantic_hash": "825ba3810515a7d1f503d059edfc83bd"
   },
@@ -660,14 +660,14 @@
     "semantic_hash": "32cbba8e1514fe70a57ee7550461de7e"
   },
   "src/app/app/caisse/page.tsx": {
-    "mtime": 1790963180.968919,
-    "seen": 1790963678.691283,
+    "mtime": 1791023802.322933,
+    "seen": 1791025893.0957398,
     "ast_hash": "29588b6d175a297a18afbb566988e52c",
     "semantic_hash": "29588b6d175a297a18afbb566988e52c"
   },
   "src/app/app/caisse/ui.tsx": {
-    "mtime": 1790963180.9669197,
-    "seen": 1790963678.691283,
+    "mtime": 1791023802.321931,
+    "seen": 1791025893.0957398,
     "ast_hash": "3066ce214f1d07c7355b3f0e9bfdb010",
     "semantic_hash": ""
   },
@@ -708,8 +708,8 @@
     "semantic_hash": "595228d40cc59d302ac109af942e84ad"
   },
   "src/app/app/employes/ui.tsx": {
-    "mtime": 1790963180.9789157,
-    "seen": 1790963678.6932917,
+    "mtime": 1791023802.344987,
+    "seen": 1791025893.097738,
     "ast_hash": "e284e3ba17990d319e4ceb09775aedad",
     "semantic_hash": ""
   },
@@ -804,20 +804,20 @@
     "semantic_hash": "9d056d5c4d8e8379e1424cbbfffc2074"
   },
   "src/app/carte/[slug]/page.tsx": {
-    "mtime": 1790963180.9599164,
-    "seen": 1790963678.7002912,
+    "mtime": 1791023802.317921,
+    "seen": 1791025893.102747,
     "ast_hash": "95f482c32fa5b88029b4c4eabaa6934a",
     "semantic_hash": ""
   },
   "src/app/carte/[slug]/ui.tsx": {
-    "mtime": 1790963180.9629207,
-    "seen": 1790963678.7002912,
+    "mtime": 1791023802.3199315,
+    "seen": 1791025893.102747,
     "ast_hash": "c877131ab0999deda91d2ee8d461d1df",
     "semantic_hash": "c877131ab0999deda91d2ee8d461d1df"
   },
   "src/app/carte/identite/page.tsx": {
-    "mtime": 1790963180.9569185,
-    "seen": 1790963678.7002912,
+    "mtime": 1791023802.3088622,
+    "seen": 1791025893.102747,
     "ast_hash": "10d9b957d02a10396ab7b3be75e39cce",
     "semantic_hash": "10d9b957d02a10396ab7b3be75e39cce"
   },
@@ -894,8 +894,8 @@
     "semantic_hash": ""
   },
   "src/app/employe/connexion/page.tsx": {
-    "mtime": 1790963180.9789157,
-    "seen": 1790963678.70228,
+    "mtime": 1791023802.344987,
+    "seen": 1791025893.1047382,
     "ast_hash": "83da42013a8be9ce56bac64ce40b7731",
     "semantic_hash": "83da42013a8be9ce56bac64ce40b7731"
   },
@@ -906,8 +906,8 @@
     "semantic_hash": ""
   },
   "src/app/employe/demo/scan/page.tsx": {
-    "mtime": 1790963180.9609184,
-    "seen": 1790963678.70228,
+    "mtime": 1791023802.317921,
+    "seen": 1791025893.1057355,
     "ast_hash": "a7615bf03df0226654b31721356ee350",
     "semantic_hash": "a7615bf03df0226654b31721356ee350"
   },
@@ -918,14 +918,14 @@
     "semantic_hash": "91c260a0de778b35cc5070a699f6b5e1"
   },
   "src/app/employe/enter-demo/route.ts": {
-    "mtime": 1790963180.9539163,
-    "seen": 1790963678.703285,
+    "mtime": 1791023802.3043387,
+    "seen": 1791025893.1057355,
     "ast_hash": "16734a6d37cb07cf7ebf23a1fbd834d7",
     "semantic_hash": "16734a6d37cb07cf7ebf23a1fbd834d7"
   },
   "src/app/employe/exit-demo/route.ts": {
-    "mtime": 1790963180.9659183,
-    "seen": 1790963678.703285,
+    "mtime": 1791023802.321931,
+    "seen": 1791025893.1057355,
     "ast_hash": "e687956c5ea3a264c40ac060bf054d24",
     "semantic_hash": "e687956c5ea3a264c40ac060bf054d24"
   },
@@ -936,8 +936,8 @@
     "semantic_hash": "22c96c0c38bbb65e96d6c6adb179dc7c"
   },
   "src/app/employe/invitation/ui.tsx": {
-    "mtime": 1790963180.9729178,
-    "seen": 1790963678.703285,
+    "mtime": 1791023802.329461,
+    "seen": 1791025893.1057355,
     "ast_hash": "5819c24cb10d90ee1648cba9ccfb7a31",
     "semantic_hash": "5819c24cb10d90ee1648cba9ccfb7a31"
   },
@@ -1182,14 +1182,14 @@
     "semantic_hash": "a89a050b10c819a7e2f42c7552340cd9"
   },
   "src/components/fife-life/card-deck.tsx": {
-    "mtime": 1790963180.9579206,
-    "seen": 1790963678.713278,
+    "mtime": 1791023802.3138602,
+    "seen": 1791025893.1147382,
     "ast_hash": "5ec7e2b7a0c49adb3a54f2a38c6d6427",
     "semantic_hash": ""
   },
   "src/components/fife-life/card-enlarged-view.tsx": {
-    "mtime": 1790963180.9579206,
-    "seen": 1790963678.713278,
+    "mtime": 1791023802.3128624,
+    "seen": 1791025893.1147382,
     "ast_hash": "aebaebd39c7cdb3c417c81304f96f1c6",
     "semantic_hash": ""
   },
@@ -1212,20 +1212,20 @@
     "semantic_hash": "b7439f4ffe61174dc32118237fde757a"
   },
   "src/components/fife-life/global-card.tsx": {
-    "mtime": 1790963180.9709182,
-    "seen": 1790963678.7142785,
+    "mtime": 1791023802.329461,
+    "seen": 1791025893.115736,
     "ast_hash": "9a8a2df8b8bf39e48ff4f2fb4f9cc19e",
     "semantic_hash": "9a8a2df8b8bf39e48ff4f2fb4f9cc19e"
   },
   "src/components/fife-life/interactive-card-shell.tsx": {
-    "mtime": 1790963180.968919,
-    "seen": 1790963678.7142785,
+    "mtime": 1791023802.322933,
+    "seen": 1791025893.115736,
     "ast_hash": "b1f8c3eb46f8827ae1b1d51c968b7667",
     "semantic_hash": "b1f8c3eb46f8827ae1b1d51c968b7667"
   },
   "src/components/fife-life/interactive-loyalty-card.tsx": {
-    "mtime": 1790963180.954916,
-    "seen": 1790963678.7142785,
+    "mtime": 1791023802.3068497,
+    "seen": 1791025893.115736,
     "ast_hash": "f10a1cb9571e53d5e158b8fb0cf03353",
     "semantic_hash": ""
   },
@@ -1278,8 +1278,8 @@
     "semantic_hash": "832b7262a854a7331c3c56a8a306a090"
   },
   "src/components/fife-life/merchant-interactive-card.tsx": {
-    "mtime": 1790963180.9599164,
-    "seen": 1790963678.7152777,
+    "mtime": 1791023802.3138602,
+    "seen": 1791025893.116736,
     "ast_hash": "8aa5b83b527ed5e26173161bd7493cfc",
     "semantic_hash": ""
   },
@@ -1392,10 +1392,10 @@
     "semantic_hash": ""
   },
   "src/components/fife-life/universal-detail.tsx": {
-    "mtime": 1788869538.2152886,
-    "seen": 1789638975.0281594,
-    "ast_hash": "4cd1541a8d02910c493fd16004613bbe",
-    "semantic_hash": "4cd1541a8d02910c493fd16004613bbe"
+    "mtime": 1791025862.5810308,
+    "seen": 1791025893.12074,
+    "ast_hash": "765f166fcda6eb37230d9919ca7f0ee8",
+    "semantic_hash": ""
   },
   "src/components/fife-life/use-client-mounted.ts": {
     "mtime": 1789052932.1985574,
@@ -1428,9 +1428,9 @@
     "semantic_hash": ""
   },
   "src/components/fife-life/wallet-home.tsx": {
-    "mtime": 1790963180.9599164,
-    "seen": 1790963678.719277,
-    "ast_hash": "4871d068a173da95458025634ddf6a0c",
+    "mtime": 1791025836.6921227,
+    "seen": 1791025893.1217372,
+    "ast_hash": "e62c50afa5f6dc905eb12c45293a21a9",
     "semantic_hash": ""
   },
   "src/components/fife-life/wallet-motion-root.tsx": {
@@ -1438,12 +1438,6 @@
     "seen": 1789638975.0281594,
     "ast_hash": "317ea4f0719759169d609c93db0d4c93",
     "semantic_hash": "317ea4f0719759169d609c93db0d4c93"
-  },
-  "src/components/fife-life/wallet-nav.tsx": {
-    "mtime": 1788184596.2962863,
-    "seen": 1789638975.0281594,
-    "ast_hash": "cc96db19aa13d4e46456a957e97b8629",
-    "semantic_hash": "cc96db19aa13d4e46456a957e97b8629"
   },
   "src/components/fife-life/wallet-qr-action.tsx": {
     "mtime": 1789255001.3603914,
@@ -1482,8 +1476,8 @@
     "semantic_hash": "bd4737e96143afcca1bfd2698ce961c1"
   },
   "src/components/qr-scanner.tsx": {
-    "mtime": 1790963180.9669197,
-    "seen": 1790963678.7222776,
+    "mtime": 1791023802.321931,
+    "seen": 1791025893.123737,
     "ast_hash": "9e62908fb91655228a8fa699d3b3b0ac",
     "semantic_hash": "9e62908fb91655228a8fa699d3b3b0ac"
   },
@@ -1788,8 +1782,8 @@
     "semantic_hash": "ff2c486e53af2880693a0926c5bb6072"
   },
   "src/lib/demo-visual.ts": {
-    "mtime": 1790963180.9629207,
-    "seen": 1790963678.7322893,
+    "mtime": 1791023802.317921,
+    "seen": 1791025893.1337354,
     "ast_hash": "48ef7f6044d9062cafc5560b3f0f6fb4",
     "semantic_hash": ""
   },
@@ -1818,8 +1812,8 @@
     "semantic_hash": "232f14a856d20792bfef5424d0e0b75f"
   },
   "src/lib/employee-demo.ts": {
-    "mtime": 1790963180.9779203,
-    "seen": 1790963678.7332888,
+    "mtime": 1791023802.344987,
+    "seen": 1791025893.1347353,
     "ast_hash": "8d359c16ab54591422974d51f8c19667",
     "semantic_hash": "8d359c16ab54591422974d51f8c19667"
   },
@@ -1830,14 +1824,14 @@
     "semantic_hash": "dc381b577e44afd84c1440b8d0efeda4"
   },
   "src/lib/employee-invitation.ts": {
-    "mtime": 1790963180.9539163,
-    "seen": 1790963678.7332888,
+    "mtime": 1791023802.30786,
+    "seen": 1791025893.1347353,
     "ast_hash": "6d0c2535851edc5186c5fc3421b804fe",
     "semantic_hash": "6d0c2535851edc5186c5fc3421b804fe"
   },
   "src/lib/employee-session.ts": {
-    "mtime": 1790963180.9809194,
-    "seen": 1790963678.7332888,
+    "mtime": 1791023802.3475046,
+    "seen": 1791025893.1347353,
     "ast_hash": "14b56bc815cceab2f0a467235661560e",
     "semantic_hash": ""
   },
@@ -1860,9 +1854,9 @@
     "semantic_hash": "0e326f9ae20f7623224bf5f3a12f89ab"
   },
   "src/lib/google-wallet.ts": {
-    "mtime": 1790984278.2017677,
-    "seen": 1790984412.9147732,
-    "ast_hash": "13e3ce19921406965f6d39d4cf664d44",
+    "mtime": 1791025853.1248662,
+    "seen": 1791025893.1347353,
+    "ast_hash": "4ab18cd281c178858c87cd93924646e4",
     "semantic_hash": ""
   },
   "src/lib/hosts.ts": {
@@ -2100,8 +2094,8 @@
     "semantic_hash": "15d8a55866221329762bceeb18bad80a"
   },
   "src/lib/scan-session.ts": {
-    "mtime": 1790963180.9779203,
-    "seen": 1790963678.7402945,
+    "mtime": 1791023802.3324616,
+    "seen": 1791025893.1427357,
     "ast_hash": "73e26fe243bc74e7677647435a70b9d6",
     "semantic_hash": ""
   },
@@ -2316,8 +2310,8 @@
     "semantic_hash": "3f8efb11217e9e79585e92b311e3b921"
   },
   "tests/employee-invitation.test.ts": {
-    "mtime": 1790963180.9659183,
-    "seen": 1790963678.749806,
+    "mtime": 1791023802.321931,
+    "seen": 1791025893.1527455,
     "ast_hash": "08a66c8573d1fd0380c5673d9eb511c9",
     "semantic_hash": "08a66c8573d1fd0380c5673d9eb511c9"
   },
@@ -2526,8 +2520,8 @@
     "semantic_hash": ""
   },
   "tests/scan-session.test.ts": {
-    "mtime": 1790963180.9629207,
-    "seen": 1790963678.7568107,
+    "mtime": 1791023802.3199315,
+    "seen": 1791025893.1608663,
     "ast_hash": "d81cfe46929681f25157fcfa3daf17f5",
     "semantic_hash": ""
   },
@@ -4572,9 +4566,9 @@
     "semantic_hash": ""
   },
   "src/components/fife-life/sponsored-banner.tsx": {
-    "mtime": 1790898241.3341255,
-    "seen": 1790898888.6723795,
-    "ast_hash": "65d4f8eb6a2067fb4716a77f58150445",
+    "mtime": 1791025825.2120342,
+    "seen": 1791025893.12074,
+    "ast_hash": "87de202095cf5b44ac9d10008729e87a",
     "semantic_hash": ""
   },
   "src/components/fife-life/merchant-profile.tsx": {
@@ -4812,9 +4806,9 @@
     "semantic_hash": ""
   },
   "src/app/api/media/visuels/[merchantId]/[filename]/route.ts": {
-    "mtime": 1790863601.2463303,
-    "seen": 1790864511.2464073,
-    "ast_hash": "690b640e7a3d1a9a8b3a8262530b568b",
+    "mtime": 1791025831.047839,
+    "seen": 1791025893.083737,
+    "ast_hash": "045f7ce95a4f77d67c8fe6266e1f49e0",
     "semantic_hash": ""
   },
   "src/app/api/merchant/notifications/route.ts": {
@@ -4836,9 +4830,9 @@
     "semantic_hash": ""
   },
   "src/app/api/merchant/visuels/[id]/route.ts": {
-    "mtime": 1790949462.8605702,
-    "seen": 1790950170.3684855,
-    "ast_hash": "e13213f5bfa2d5977f5679b780772d48",
+    "mtime": 1791025847.180623,
+    "seen": 1791025893.0897398,
+    "ast_hash": "7e12e5f366b83cc0966e15254e78cd89",
     "semantic_hash": ""
   },
   "src/app/api/merchant/visuels/[id]/soumettre/route.ts": {
@@ -4878,9 +4872,9 @@
     "semantic_hash": ""
   },
   "src/app/api/super-admin/visuels/[id]/route.ts": {
-    "mtime": 1790984295.7301512,
-    "seen": 1790984412.8532004,
-    "ast_hash": "6a1ba9e0f36eaceb7e1acb94e8b57ba6",
+    "mtime": 1791025846.6866264,
+    "seen": 1791025893.0957398,
+    "ast_hash": "018e43921c19286ad26f26da206a8212",
     "semantic_hash": ""
   },
   "src/app/api/super-admin/visuels/route.ts": {
@@ -4902,9 +4896,9 @@
     "semantic_hash": ""
   },
   "src/app/super-admin/campagnes/fiche/[id]/ad-detail.tsx": {
-    "mtime": 1790984341.646463,
-    "seen": 1790984412.8785405,
-    "ast_hash": "b1e69cfaa7655443a26135dadfb9c05d",
+    "mtime": 1791025847.4059522,
+    "seen": 1791025893.1107352,
+    "ast_hash": "dfb80c74d857efae6c23c547f904b91e",
     "semantic_hash": ""
   },
   "src/app/super-admin/campagnes/fiche/[id]/page.tsx": {
@@ -4968,15 +4962,15 @@
     "semantic_hash": ""
   },
   "src/app/api/customer/sponsored/route.ts": {
-    "mtime": 1790984292.786456,
-    "seen": 1790984412.8386877,
-    "ast_hash": "c92359990680eac0e81162c04597e30c",
+    "mtime": 1791025818.5274231,
+    "seen": 1791025893.081737,
+    "ast_hash": "d14984d5853bca27fd2357486aae237c",
     "semantic_hash": ""
   },
   "src/components/fife-life/sponsored-slot.tsx": {
-    "mtime": 1790949408.1349747,
-    "seen": 1790950170.40025,
-    "ast_hash": "bef503abc2ea24574488bda0b4aeda71",
+    "mtime": 1791025826.7170107,
+    "seen": 1791025893.12074,
+    "ast_hash": "48e33c6ba8d1399b662f9d4612898d4f",
     "semantic_hash": ""
   },
   "src/lib/sponsored-selection.ts": {
@@ -4986,9 +4980,9 @@
     "semantic_hash": ""
   },
   "tests/sponsored-placements.test.ts": {
-    "mtime": 1790984366.2417338,
-    "seen": 1790984412.9491498,
-    "ast_hash": "eb4bf6f8cb629da25b41b54b9e6d2e3d",
+    "mtime": 1791025871.3948007,
+    "seen": 1791025893.1608663,
+    "ast_hash": "99484af6020f4275299aa01f6a919d95",
     "semantic_hash": ""
   },
   "tests/admin-ad-fiche.test.ts": {
@@ -5010,9 +5004,9 @@
     "semantic_hash": ""
   },
   "tests/sponsored-slot.test.tsx": {
-    "mtime": 1790949989.2463984,
-    "seen": 1790950170.4335203,
-    "ast_hash": "550b6f0a4557949685d98fc03854bb81",
+    "mtime": 1791025848.9721122,
+    "seen": 1791025893.1608663,
+    "ast_hash": "3b6cb1ebe3ae4a8ba90f7655233ca6c4",
     "semantic_hash": ""
   },
   "src/app/api/merchant/facturation/abonnement/arret/route.ts": {
@@ -5301,6 +5295,42 @@
     "mtime": 1790984355.336275,
     "seen": 1790984412.9491498,
     "ast_hash": "758b024590c618d87a5d4f792e89aa9b",
+    "semantic_hash": ""
+  },
+  "src/app/carte/avantages/page.tsx": {
+    "mtime": 1791025834.2006419,
+    "seen": 1791025893.102747,
+    "ast_hash": "9974ab674c0b4d3193248f7297444146",
+    "semantic_hash": ""
+  },
+  "src/components/fife-life/use-sponsored-available.ts": {
+    "mtime": 1791025814.4168763,
+    "seen": 1791025893.12074,
+    "ast_hash": "9f62f57358c93d4d16861deaa96f26e5",
+    "semantic_hash": ""
+  },
+  "src/components/fife-life/wallet-avantages-page.tsx": {
+    "mtime": 1791025845.1945043,
+    "seen": 1791025893.1217372,
+    "ast_hash": "8706955767e31978bcf4e15f55969003",
+    "semantic_hash": ""
+  },
+  "src/components/fife-life/wallet-bottom-nav.tsx": {
+    "mtime": 1791025816.6141598,
+    "seen": 1791025893.1217372,
+    "ast_hash": "e91ca9a8c549392a8fe76a857b0a2bf8",
+    "semantic_hash": ""
+  },
+  "src/lib/sponsored-image.ts": {
+    "mtime": 1791025813.9279313,
+    "seen": 1791025893.1437411,
+    "ast_hash": "29eef842897639c4e274a4e133e88a78",
+    "semantic_hash": ""
+  },
+  "tests/sponsored-image.test.ts": {
+    "mtime": 1791025853.1528728,
+    "seen": 1791025893.1608663,
+    "ast_hash": "70149f7096ce2781fb9de5afcb1fe575",
     "semantic_hash": ""
   }
 }

@@ -105,7 +105,7 @@ describe("même campagne, trois emplacements, mêmes vérifications serveur", ()
     seedAd("ad1");
     const { ad } = await getWhenOpen(placement);
     expect(ad).not.toBeNull();
-    expect(ad!.imageUrl).toBe("/api/media/visuels/m1/ad1.png");
+    expect(ad!.imageUrl).toBe("http://localhost:3000/api/media/visuels/m1/ad1.png");
     expect(ad!.clickUrl).toContain(`placement=${placement}`);
   });
 
@@ -335,7 +335,8 @@ describe("cartes intégrées : ni notification, ni push, ni e-mail", () => {
     const { readFileSync } = await import("fs");
     const center = readFileSync("src/components/fife-life/notifications-center.tsx", "utf8");
     expect(center).toContain('<SponsoredSlot placement="NOTIFICATIONS"');
-    expect(readFileSync("src/components/fife-life/wallet-home.tsx", "utf8")).toContain('placement="WALLET_HOME"');
+    expect(readFileSync("src/components/fife-life/wallet-avantages-page.tsx", "utf8")).toContain('placement="WALLET_HOME"');
+    expect(readFileSync("src/components/fife-life/wallet-home.tsx", "utf8")).not.toContain('placement="WALLET_HOME"');
     expect(readFileSync("src/components/fife-life/discover-page.tsx", "utf8")).toContain('placement="SEARCH"');
   });
 });

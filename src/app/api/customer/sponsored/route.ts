@@ -1,6 +1,11 @@
 import { requireUser, requireSuperAdmin, staffContext } from "@/lib/api-guard";
 import { jsonError, jsonOkPrivate } from "@/lib/http";
+import { resolveSponsoredImageUrl } from "@/lib/sponsored-image";
 import { loadAdPreviewCard, parsePlacement, selectSponsoredForCustomer } from "@/lib/sponsored-selection";
+
+function withResolvedImage<T extends { imageUrl: string }>(card: T) {
+  return { ...card, imageUrl: resolveSponsoredImageUrl(card.imageUrl) ?? card.imageUrl };
+}
 
 /**
  * Bandeau « Sponsorisé » à afficher à ce client dans un emplacement (WALLET_HOME, SEARCH,
@@ -27,9 +32,10 @@ export async function GET(req: Request) {
   if (!card) return jsonOkPrivate({ ad: null });
   const { isSponsoredTestBroadcastAd } = await import("@/lib/sponsored-test-broadcast");
   const testBroadcast = await isSponsoredTestBroadcastAd(card.id);
+  const enriched = withResolvedImage(card);
   return jsonOkPrivate({
     ad: {
-      ...card,
+      ...enriched,
       testBroadcast,
       impressionUrl: testBroadcast ? null : `/api/customer/sponsored/${card.id}/impression`,
       clickUrl: testBroadcast ? "#" : `/api/customer/sponsored/${card.id}/ouvrir?placement=${placement}`,
@@ -60,6 +66,6 @@ async function previewResponse(req: Request, adId: string) {
     preview: true,
     simulated: preview.simulated,
     // Aucune URL d'impression : un aperçu ne compte jamais comme une impression.
-    ad: { ...preview.card, impressionUrl: null, clickUrl: "#" },
+    ad: { ...withResolvedImage(preview.card), impressionUrl: null, clickUrl: "#" },
   });
 }

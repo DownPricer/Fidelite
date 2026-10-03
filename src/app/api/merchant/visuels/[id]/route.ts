@@ -33,7 +33,7 @@ export async function GET(req: Request, context: { params: Promise<{ id: string 
     rejectionReason: adRequest.rejectionReason,
   });
   const previewLinks = {
-    home: publicCustomerUrl(`/carte?apercu=${id}`),
+    home: publicCustomerUrl(`/carte/avantages?apercu=${id}`),
     search: publicCustomerUrl(`/decouvrir?apercu=${id}`),
     notifications: publicCustomerUrl(`/notifications?apercu=${id}`),
   };

@@ -25,16 +25,38 @@ export async function GET(req: Request, context: { params: Promise<{ merchantId:
   }
 
   if (!privateAccess) {
+    const fileUrl = adVisualUrl(merchantId, filename);
     const published = await prisma.adRequest.findFirst({
       where: {
         merchantId,
-        finalImageUrl: adVisualUrl(merchantId, filename),
+        finalImageUrl: fileUrl,
         status: { in: ["SCHEDULED", "LIVE"] },
         OR: [{ fundingMode: null }, { fundingMode: "LIVE" }],
       },
       select: { id: true },
     });
-    if (!published) return NextResponse.json({ error: "Fichier introuvable." }, { status: 404 });
+    let publicReadable = Boolean(published);
+    if (!publicReadable) {
+      const broadcast = await prisma.sponsoredAdTestBroadcast.findUnique({
+        where: { id: "global" },
+        include: {
+          adRequest: {
+            select: {
+              merchantId: true,
+              finalImageUrl: true,
+              requestedImageUrl: true,
+              versions: { orderBy: { number: "desc" }, take: 1, select: { url: true } },
+            },
+          },
+        },
+      });
+      if (broadcast?.adRequest.merchantId === merchantId) {
+        const { resolveAdTestBroadcastImageUrl } = await import("@/lib/sponsored-test-broadcast");
+        const activeImage = resolveAdTestBroadcastImageUrl(broadcast.adRequest);
+        if (activeImage === fileUrl) publicReadable = true;
+      }
+    }
+    if (!publicReadable) return NextResponse.json({ error: "Fichier introuvable." }, { status: 404 });
   }
 
   try {

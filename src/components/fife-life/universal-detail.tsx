@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { Suspense } from "react";
+import { WalletBottomNav } from "./wallet-bottom-nav";
 import { GlobalCard, loyaltyCardDisplayName } from "./global-card";
 import { QrBlock } from "./qr-block";
 import type { CardHistoryItem } from "./types";
@@ -88,6 +90,11 @@ export function UniversalDetail({
           )}
         </section>
       </div>
+      {!preview ? (
+        <Suspense fallback={null}>
+          <WalletBottomNav />
+        </Suspense>
+      ) : null}
     </main>
   );
 }

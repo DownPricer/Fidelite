@@ -10,7 +10,7 @@ export type SponsoredAd = {
   imageUrl: string | null;
   text: string;
   ctaLabel: string | null;
-  impressionUrl: string;
+  impressionUrl: string | null;
   clickUrl: string;
 };
 
@@ -18,12 +18,13 @@ export type SponsoredAd = {
  * Bandeau "Sponsorisé" réutilisable — Découvrir et tout autre emplacement client.
  * Fermable côté viewer uniquement (aucune préférence enregistrée côté serveur).
  */
-export type SponsoredVariant = "search" | "home" | "notifications";
+export type SponsoredVariant = "search" | "home" | "notifications" | "avantages";
 
 const IMAGE_CLASS: Record<SponsoredVariant, string> = {
   search: "h-14 w-14",
   home: "h-20 w-20",
   notifications: "h-12 w-12",
+  avantages: "h-20 w-20 min-w-[5rem]",
 };
 
 export function SponsoredBanner({
@@ -41,8 +42,11 @@ export function SponsoredBanner({
   onDismiss?: () => void;
 }) {
   const [dismissed, setDismissed] = useState(false);
+  const [imageFailed, setImageFailed] = useState(false);
 
   if (dismissed) return null;
+
+  const showVisual = ad.imageUrl && !imageFailed;
 
   return (
     <a href={ad.clickUrl} data-variant={variant}
@@ -66,10 +70,32 @@ export function SponsoredBanner({
         </svg>
       </button>
       <div className="flex items-center gap-3">
-        {ad.imageUrl ? (
+        {showVisual ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={ad.imageUrl} alt="" className={`${IMAGE_CLASS[variant]} shrink-0 rounded-xl object-cover`} />
-        ) : null}
+          <img
+            src={ad.imageUrl!}
+            alt=""
+            className={`${IMAGE_CLASS[variant]} shrink-0 rounded-xl object-cover`}
+            onError={() => setImageFailed(true)}
+          />
+        ) : (
+          <div
+            className={`${IMAGE_CLASS[variant]} grid shrink-0 place-items-center rounded-xl bg-[light-dark(rgba(122,69,242,0.12),rgba(255,255,255,0.08))] text-sm font-black text-[var(--violet-bright)]`}
+            aria-hidden
+          >
+            {ad.merchantLogoUrl && !imageFailed ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={ad.merchantLogoUrl}
+                alt=""
+                className="h-full w-full rounded-xl object-cover"
+                onError={() => setImageFailed(true)}
+              />
+            ) : (
+              ad.merchantName.slice(0, 1).toUpperCase()
+            )}
+          </div>
+        )}
         <div className="min-w-0">
           <p className="truncate text-xs font-bold uppercase tracking-wide text-[var(--muted)]">{ad.merchantName}</p>
           <p className="text-sm font-semibold text-[var(--ink)]">{ad.text}</p>
