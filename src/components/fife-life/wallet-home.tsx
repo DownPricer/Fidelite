@@ -508,7 +508,7 @@ export function WalletHome({
               ) : null}
               <WalletCardsList cards={cards} onOpenCard={openCard} compact desktopGrid enablePublicSearch />
               {!preview ? (
-                <div className="mt-4" aria-label="Offre sponsorisée">
+                <div className="wallet-sponsored-slot-wrap mt-4" aria-label="Offre sponsorisée">
                   <SponsoredSlot placement="WALLET_HOME" />
                 </div>
               ) : null}

@@ -1200,9 +1200,9 @@
     "semantic_hash": "fde9589471d1ef24c4376853a862b71b"
   },
   "src/components/fife-life/cards-sheet.tsx": {
-    "mtime": 1791044560.0981386,
-    "seen": 1791044860.5807831,
-    "ast_hash": "038996c01d477b72464553163d866c4d",
+    "mtime": 1791048125.6558945,
+    "seen": 1791048334.8751101,
+    "ast_hash": "964b5c55fae56fc5e886b6ba29d9eac2",
     "semantic_hash": ""
   },
   "src/components/fife-life/expandable-qr-code.tsx": {
@@ -1428,9 +1428,9 @@
     "semantic_hash": ""
   },
   "src/components/fife-life/wallet-home.tsx": {
-    "mtime": 1791044569.6268816,
-    "seen": 1791044860.5948591,
-    "ast_hash": "83434c162f4a72ed0566690cf6b3687d",
+    "mtime": 1791048127.8475676,
+    "seen": 1791048334.8871465,
+    "ast_hash": "3f1a74b9472204d7164c04f62c51cfdf",
     "semantic_hash": ""
   },
   "src/components/fife-life/wallet-motion-root.tsx": {
@@ -4566,9 +4566,9 @@
     "semantic_hash": ""
   },
   "src/components/fife-life/sponsored-banner.tsx": {
-    "mtime": 1791044615.1448486,
-    "seen": 1791044860.5923328,
-    "ast_hash": "58f4c6ec67c094779d52987071ba6c05",
+    "mtime": 1791046000.135712,
+    "seen": 1791046365.3357015,
+    "ast_hash": "582932c294776e9159846d2fe9a850b3",
     "semantic_hash": ""
   },
   "src/components/fife-life/merchant-profile.tsx": {
@@ -4938,9 +4938,9 @@
     "semantic_hash": ""
   },
   "tests/ad-visual-ui-contracts.test.ts": {
-    "mtime": 1790864255.9714465,
-    "seen": 1790864511.3120084,
-    "ast_hash": "1a7be41ae80111fa7baa992fb5ba4b89",
+    "mtime": 1791048149.121976,
+    "seen": 1791048334.9338465,
+    "ast_hash": "238c11965408a9f329cbcbb13dd570ff",
     "semantic_hash": ""
   },
   "tests/helpers/fake-ad-db.ts": {
@@ -4968,9 +4968,9 @@
     "semantic_hash": ""
   },
   "src/components/fife-life/sponsored-slot.tsx": {
-    "mtime": 1791025945.4687736,
-    "seen": 1791036538.618074,
-    "ast_hash": "ff9d5856bcfa029c28fcbee07d5e8f69",
+    "mtime": 1791046018.7122967,
+    "seen": 1791046365.3357015,
+    "ast_hash": "61ca63fad3343657fc9cec87ff63c665",
     "semantic_hash": ""
   },
   "src/lib/sponsored-selection.ts": {
@@ -5004,9 +5004,9 @@
     "semantic_hash": ""
   },
   "tests/sponsored-slot.test.tsx": {
-    "mtime": 1791040668.7560341,
-    "seen": 1791040717.0881884,
-    "ast_hash": "cd8e41a2bcba68d8d98c93958ae8d264",
+    "mtime": 1791046038.4177895,
+    "seen": 1791046365.4351196,
+    "ast_hash": "8b1792306fbbfa681640e0feae5efe1e",
     "semantic_hash": ""
   },
   "src/app/api/merchant/facturation/abonnement/arret/route.ts": {
@@ -5304,9 +5304,9 @@
     "semantic_hash": ""
   },
   "src/components/fife-life/use-sponsored-available.ts": {
-    "mtime": 1791026038.5828214,
-    "seen": 1791036538.6190715,
-    "ast_hash": "2ee75a517d2199b2438402a8cdec9bfe",
+    "mtime": 1791046022.434494,
+    "seen": 1791046365.3396974,
+    "ast_hash": "594377635d0e40f124db5f59ae24f4ca",
     "semantic_hash": ""
   },
   "src/lib/sponsored-image.ts": {
@@ -5322,9 +5322,9 @@
     "semantic_hash": ""
   },
   "src/components/fife-life/sponsored-offer-card.tsx": {
-    "mtime": 1791044615.1072612,
-    "seen": 1791044860.5923328,
-    "ast_hash": "363b0215cfbb895072997c7d5b056680",
+    "mtime": 1791048120.6848357,
+    "seen": 1791048334.8831458,
+    "ast_hash": "7a1aa87d11373ee8539349b0bad24a05",
     "semantic_hash": ""
   },
   "tests/customer-account-email.test.ts": {

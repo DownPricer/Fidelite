@@ -38,7 +38,8 @@ describe("format du bandeau public", () => {
     expect(isExactBannerFormat(2000, 2000)).toBe(true);
     expect(isExactBannerFormat(800, 600)).toBe(false);
     expect(isExactBannerFormat(300, 300)).toBe(false);
-    expect(read("src/components/fife-life/sponsored-banner.tsx")).toContain("h-14 w-14");
+    expect(read("src/components/fife-life/sponsored-offer-card.tsx")).toContain("sponsored-offer-thumb");
+    expect(read("src/app/globals.css")).toContain("object-fit: cover");
   });
 });
 

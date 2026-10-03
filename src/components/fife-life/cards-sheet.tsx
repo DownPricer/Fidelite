@@ -94,7 +94,7 @@ export function CardsSheet({
               <h2 className="section-title mb-4 hidden shrink-0 lg:block">Mes cartes et mes avantages</h2>
               <WalletCardsList cards={cards} onOpenCard={onOpenCard} compact desktopGrid enablePublicSearch={false} />
               {!preview ? (
-                <div className="mt-4 shrink-0" aria-label="Offre sponsorisée">
+                <div className="wallet-sponsored-slot-wrap mt-4 shrink-0" aria-label="Offre sponsorisée">
                   <SponsoredSlot placement="WALLET_HOME" />
                 </div>
               ) : null}
