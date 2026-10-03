@@ -1627,27 +1627,6 @@ body:has(.wallet-shell) {
   box-shadow: 0 18px 40px light-dark(rgba(76, 46, 148, 0.14), rgba(0, 0, 0, 0.65));
 }
 
-.wallet-bottom-nav-wrap {
-  position: fixed;
-  inset-inline: 0;
-  bottom: calc(0.35rem + env(safe-area-inset-bottom));
-  z-index: 55;
-  display: flex;
-  justify-content: center;
-  padding-inline: 0.75rem;
-  pointer-events: none;
-}
-
-.wallet-bottom-nav-wrap > nav {
-  pointer-events: auto;
-}
-
-@media (max-width: 1023px) {
-  .wallet-shell.fife-page-shell:has(.wallet-bottom-nav-wrap) {
-    padding-bottom: calc(4.75rem + env(safe-area-inset-bottom));
-  }
-}
-
 .glass-chip {
   border-radius: 999px;
   border: 1px solid light-dark(rgba(122, 69, 242, 0.16), rgba(190, 164, 255, 0.2));

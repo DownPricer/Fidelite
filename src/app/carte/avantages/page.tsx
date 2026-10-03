@@ -1,26 +1,17 @@
 import { redirect } from "next/navigation";
-import { WalletAvantagesPage } from "@/components/fife-life/wallet-avantages-page";
-import { isClientDemoPage } from "@/lib/demo-visual-server";
-import { getCustomerLoyaltyOverview } from "@/lib/customer-loyalty-overview";
-import { getSessionUser } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 
+/** Ancienne route : les avantages sponsorisés s’ouvrent via le sheet sur /carte. */
 export default async function CarteAvantagesPage({
   searchParams,
 }: {
   searchParams: Promise<{ demo?: string; apercu?: string }>;
 }) {
   const params = await searchParams;
-  const user = await getSessionUser();
-
-  if (!user) {
-    if (await isClientDemoPage(params)) {
-      return <WalletAvantagesPage preview cardRewards={[]} />;
-    }
-    redirect("/connexion");
-  }
-
-  const overview = await getCustomerLoyaltyOverview({ userId: user.id, activityLimit: 0 });
-  return <WalletAvantagesPage cardRewards={overview.cardRewards} />;
+  const qs = new URLSearchParams();
+  if (params.demo) qs.set("demo", params.demo);
+  if (params.apercu) qs.set("apercu", params.apercu);
+  qs.set("sheet", "1");
+  redirect(`/carte?${qs.toString()}`);
 }

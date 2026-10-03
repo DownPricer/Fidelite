@@ -20,7 +20,7 @@ export const dynamic = "force-dynamic";
 export default async function CarteIndexPage({
   searchParams,
 }: {
-  searchParams: Promise<{ demo?: string; sheet?: string; toast?: string }>;
+  searchParams: Promise<{ demo?: string; sheet?: string; toast?: string; apercu?: string }>;
 }) {
   const params = await searchParams;
   const user = await getSessionUser();
@@ -74,7 +74,7 @@ export default async function CarteIndexPage({
       customerName={[user.firstName, user.lastName].filter(Boolean).join(" ") || user.firstName}
       clientNumber={resolveClientNumber({ clientNumber: user.clientNumber, userId: user.id })}
       fifeLifePoints={user.fifeLifePoints}
-      initialSheetOpen={params.sheet === "1"}
+      initialSheetOpen={params.sheet === "1" || Boolean(params.apercu)}
       initialNewCard={params.toast ?? null}
       cards={cards}
       initialOverview={overview}

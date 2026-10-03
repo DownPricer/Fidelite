@@ -256,12 +256,12 @@ describe("aperçu réservé (?apercu=) : visible mais jamais compté", () => {
       <MobilePlacementPreview
         ad={{ imageUrl: "/x.png", merchantName: "Boulangerie Soleil", text: "-20 %", ctaLabel: "Voir" }}
         simulated
-        links={{ home: "/carte/avantages?apercu=ad1", search: "/decouvrir?apercu=ad1", notifications: "/notifications?apercu=ad1" }}
+        links={{ home: "/carte?sheet=1&apercu=ad1", search: "/decouvrir?apercu=ad1", notifications: "/notifications?apercu=ad1" }}
       />,
     );
     expect([...container.querySelectorAll("[data-variant]")].map((el) => el.getAttribute("data-variant"))).toEqual(["home", "search", "notifications"]);
     expect(container.textContent).toContain("campagne de test (simulée)");
-    expect(container.querySelector('[data-testid="preview-link-home"]')?.getAttribute("href")).toBe("/carte/avantages?apercu=ad1");
+    expect(container.querySelector('[data-testid="preview-link-home"]')?.getAttribute("href")).toBe("/carte?sheet=1&apercu=ad1");
     expect(calls).toHaveLength(0);
   });
 });

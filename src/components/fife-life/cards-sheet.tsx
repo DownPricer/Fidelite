@@ -2,17 +2,20 @@
 
 import { AnimatePresence, motion, useMotionValue, useTransform } from "motion/react";
 import { WalletCardsList } from "./wallet-cards-list";
+import { SponsoredSlot } from "./sponsored-slot";
 import type { MerchantCardData } from "./types";
 import { useHydrationSafeReducedMotion } from "./use-client-mounted";
 
 export function CardsSheet({
   open,
   cards,
+  preview = false,
   onClose,
   onOpenCard,
 }: {
   open: boolean;
   cards: MerchantCardData[];
+  preview?: boolean;
   onClose: () => void;
   onOpenCard: (card: MerchantCardData) => void;
 }) {
@@ -87,8 +90,13 @@ export function CardsSheet({
                 />
               </svg>
             </div>
-            <div className="relative z-10 flex min-h-0 flex-1 flex-col px-5 pb-8 pt-4">
+            <div className="relative z-10 flex min-h-0 flex-1 flex-col overflow-y-auto px-5 pb-8 pt-4">
               <h2 className="section-title mb-4 hidden shrink-0 lg:block">Mes cartes et mes avantages</h2>
+              {!preview ? (
+                <div className="mb-4 shrink-0" aria-label="Offre sponsorisée">
+                  <SponsoredSlot placement="WALLET_HOME" />
+                </div>
+              ) : null}
               <WalletCardsList cards={cards} onOpenCard={onOpenCard} compact desktopGrid enablePublicSearch={false} />
             </div>
           </motion.section>

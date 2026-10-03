@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { Suspense } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { CardDeck } from "./card-deck";
@@ -24,7 +23,8 @@ import { WalletMotionRoot } from "./wallet-motion-root";
 import { AddToGoogleWalletButton } from "./add-to-google-wallet-button";
 import { DiscoverIconLink, NotificationBellLink } from "./header-icon-links";
 import { WalletQrAction } from "./wallet-qr-action";
-import { WalletBottomNav } from "./wallet-bottom-nav";
+import { SponsoredSlot } from "./sponsored-slot";
+import { useSponsoredAvailable } from "./use-sponsored-available";
 import {
   buildFifeLifeNextReward,
   resolveNextRewardForActiveCard,
@@ -89,6 +89,7 @@ export function WalletHome({
   } = useWalletUnlockAnimation(!preview, setCards);
 
   const tier = resolveTier(points);
+  const sponsoredOnAvantages = useSponsoredAvailable("WALLET_HOME", !preview);
 
   const googleWalletEndpoint = useMemo(() => {
     return googleWalletEndpointForActiveCard(activeCard);
@@ -399,9 +400,16 @@ export function WalletHome({
                   document.removeEventListener("touchmove", handleTouchMove);
                 }, { once: true });
               }}
-              className="wallet-chevron-btn wallet-chevron-glassy flex items-center justify-center"
-              aria-label="Tirer vers le haut pour ouvrir"
+              className="wallet-chevron-btn wallet-chevron-glassy relative flex items-center justify-center"
+              aria-label="Ouvrir mes cartes et avantages"
             >
+              {sponsoredOnAvantages ? (
+                <span
+                  className="absolute right-1 top-1 h-2 w-2 rounded-full bg-[#e5484d] ring-2 ring-[light-dark(#fff,#0f0a1d)]"
+                  aria-hidden
+                  data-testid="wallet-chevron-sponsored-badge"
+                />
+              ) : null}
               <svg
                 className={`wallet-chevron h-6 w-6 transition-transform duration-300 ${sheetOpen ? "rotate-180" : ""}`}
                 viewBox="0 0 24 24"
@@ -447,6 +455,11 @@ export function WalletHome({
             </section>
 
             <section className="wallet-cards-rail glass-panel">
+              {!preview ? (
+                <div className="mb-3" aria-label="Offre sponsorisée">
+                  <SponsoredSlot placement="WALLET_HOME" />
+                </div>
+              ) : null}
               <div className="mb-3 flex items-center justify-between gap-3">
                 <h3 className="section-title">Mes cartes et avantages</h3>
                 <div className="flex gap-2 text-xs font-semibold">
@@ -518,13 +531,13 @@ export function WalletHome({
           </aside>
         </div>
 
-        {!preview ? (
-          <Suspense fallback={null}>
-            <WalletBottomNav />
-          </Suspense>
-        ) : null}
-
-        <CardsSheet open={sheetOpen} cards={cards} onClose={() => setSheetOpen(false)} onOpenCard={openCard} />
+        <CardsSheet
+          open={sheetOpen}
+          cards={cards}
+          preview={preview}
+          onClose={() => setSheetOpen(false)}
+          onOpenCard={openCard}
+        />
         <NewCardToast
           phase={unlockPhase}
           card={unlockCard}
