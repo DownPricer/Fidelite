@@ -14,6 +14,7 @@ const { tables } = fake;
 
 vi.mock("@/lib/media-storage", () => ({ getUploadsRoot: () => h.uploads }));
 vi.mock("@/lib/prisma", () => ({ prisma: fake.prisma }));
+vi.mock("@/lib/staff-notification-delivery", () => ({ deliverStaffNotificationSideEffects: vi.fn() }));
 vi.mock("@/lib/audit", () => ({ writeAudit: vi.fn() }));
 vi.mock("@/lib/api-guard", () => ({
   requireMutatingRequest: async () => ({ error: null }),
@@ -183,9 +184,18 @@ describe("nouvelle version envoyée au commerçant", () => {
     asAdmin();
     // Fichier non carré 1600×900 : le navigateur envoie l'original ET le rendu recadré 800×800.
     const originalData = await dataUrl(1600, 900, "jpeg", "#aa3366");
-    const croppedData = await dataUrl(800, 800, "jpeg", "#aa3366");
     const original = await adminStage(adId, "original", originalData);
-    const display = await adminStage(adId, "banniere", croppedData);
+    const { POST: Recadrer } = await import("../src/app/api/super-admin/visuels/[id]/recadrer/route");
+    const croppedRes = await Recadrer(
+      jsonReq(`/api/super-admin/visuels/${adId}/recadrer`, "POST", {
+        originalUrl: original.url,
+        target: "banniere",
+        crop: { x: 0.42, y: 0.58, zoom: 1.15 },
+      }),
+      ctx(adId),
+    );
+    const display = (await croppedRes.json()) as { url: string };
+    expect(croppedRes.status).toBe(200);
     expect((await propose(adId, { url: display.url, originalUrl: original.url })).status).toBe(200);
 
     const version = versions(adId)[0];

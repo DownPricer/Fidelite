@@ -4,8 +4,10 @@ import { canManageMerchantSettings, firstActiveStaffMembership } from "@/lib/rba
 import { CampagnesPanel } from "./ui";
 import { MerchantPageHeader, MerchantPageShell } from "@/components/merchant/merchant-ui";
 
-export default async function CampagnesPage() {
+export default async function CampagnesPage({ searchParams }: { searchParams: Promise<{ filtre?: string }> }) {
   const { user, demo } = await resolveMerchantDemo();
+  const { filtre } = await searchParams;
+  const filtreEnCours = filtre === "en-cours";
 
   if (demo) {
     return (
@@ -16,7 +18,7 @@ export default async function CampagnesPage() {
           subtitle="Envoyez une annonce à vos clients ou mettez votre commerce en avant dans Fideto."
           backHref="/app/outils"
         />
-        <CampagnesPanel demo />
+        <CampagnesPanel demo filtreEnCours={filtreEnCours} />
       </MerchantPageShell>
     );
   }
@@ -33,7 +35,7 @@ export default async function CampagnesPage() {
         subtitle="Envoyez une annonce à vos clients ou mettez votre commerce en avant dans Fideto."
         backHref="/app/outils"
       />
-      <CampagnesPanel />
+      <CampagnesPanel filtreEnCours={filtreEnCours} />
     </MerchantPageShell>
   );
 }

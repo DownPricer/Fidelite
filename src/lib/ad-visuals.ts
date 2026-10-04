@@ -138,7 +138,7 @@ export function adVisualFilePath(merchantId: string, filename: string) {
   return join(getUploadsRoot(), "ad-visuals", merchantId, filename);
 }
 
-export type AdVisualFileKind = "source" | "banniere" | "original";
+export type AdVisualFileKind = "source" | "banniere" | "original" | "google-wallet-hero";
 
 export async function saveAdVisualFile(merchantId: string, kind: AdVisualFileKind, buffer: Buffer, ext: string) {
   const dir = join(getUploadsRoot(), "ad-visuals", merchantId);
@@ -268,6 +268,12 @@ export async function stageAdFile(merchantId: string, dataUrl: string, kind: AdV
     return {
       ok: false as const,
       error: `Le bandeau doit être carré (format 1:1, au moins ${AD_VISUAL_MIN_PX} px). Cadrez l'image avant de l'envoyer.`,
+    };
+  }
+  if (kind === "google-wallet-hero" && (image.width !== 1032 || image.height !== 812)) {
+    return {
+      ok: false as const,
+      error: "Le visuel Google Wallet doit faire exactement 1032 × 812 px.",
     };
   }
   const url = await saveAdVisualFile(merchantId, kind, buffer, image.ext);

@@ -16,6 +16,8 @@ import {
   type NextActionInfo,
   type VisualVersion,
 } from "@/components/ad-visual-parts";
+import { WALLET_VISUAL_STATUS_LABELS } from "@/lib/ad-google-wallet-visual-labels";
+import type { AdGoogleWalletVisualStatus } from "@prisma/client";
 
 type AdStatus =
   | "DRAFT"
@@ -33,6 +35,7 @@ type AdStatus =
 
 type Detail = {
   id: string;
+  merchantId: string;
   status: AdStatus;
   visualMode: "SELF" | "FIDETO" | null;
   visualBrief: string | null;
@@ -44,6 +47,10 @@ type Detail = {
   campaign: { id: string; title: string; payment: { status: string; amountCents: number } | null } | null;
   images: { id: string; url: string }[];
   versions: VisualVersion[];
+  googleWalletHeroUrl: string | null;
+  googleWalletVisualStatus: AdGoogleWalletVisualStatus;
+  googleWalletVisualComment: string | null;
+  walletVisualVersions: VisualVersion[];
 };
 type HistoryRow = { id: string; message: string; createdAt: string };
 type PaymentPreview = {
@@ -112,6 +119,8 @@ export function MerchantCampaignFiche({ adId, paid, cancelled }: { adId: string;
   // Réponse à une proposition
   const [changeComment, setChangeComment] = useState("");
   const [showChange, setShowChange] = useState(false);
+  const [walletChangeComment, setWalletChangeComment] = useState("");
+  const [showWalletChange, setShowWalletChange] = useState(false);
   // Remplacement du visuel (après refus)
   const [pendingFile, setPendingFile] = useState<{ dataUrl: string } | null>(null);
   const [draft, setDraft] = useState<{ url: string; originalUrl: string; previewUrl: string } | null>(null);
@@ -195,6 +204,15 @@ export function MerchantCampaignFiche({ adId, paid, cancelled }: { adId: string;
       setShowChange(false);
     }, "Votre demande de modification a été envoyée à Fideto.");
 
+  const acceptWallet = () =>
+    run(() => post(`/api/merchant/visuels/${adId}/wallet/reponse`, { action: "accept" }).then(() => undefined), "Visuel Google Wallet accepté.");
+  const requestWalletChanges = () =>
+    run(async () => {
+      await post(`/api/merchant/visuels/${adId}/wallet/reponse`, { action: "request_changes", comment: walletChangeComment });
+      setWalletChangeComment("");
+      setShowWalletChange(false);
+    }, "Votre demande de modification Wallet a été envoyée à Fideto.");
+
   async function onFile(file: File | null) {
     if (!file) return;
     setError(null);
@@ -219,19 +237,9 @@ export function MerchantCampaignFiche({ adId, paid, cancelled }: { adId: string;
     }
   }
 
-  async function onFramed(cropped: string) {
-    if (!pendingFile) return;
-    setBusy(true);
-    try {
-      const original = await post("/api/merchant/visuels/televerser", { dataUrl: pendingFile.dataUrl, kind: "original" });
-      const display = await post("/api/merchant/visuels/televerser", { dataUrl: cropped, kind: "banniere" });
-      setDraft({ url: display.url as string, originalUrl: original.url as string, previewUrl: cropped });
-      setPendingFile(null);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Envoi impossible.");
-    } finally {
-      setBusy(false);
-    }
+  function onFramed(result: { url: string; originalUrl: string; previewUrl: string }) {
+    setDraft({ url: result.url, originalUrl: result.originalUrl, previewUrl: result.previewUrl });
+    setPendingFile(null);
   }
 
   async function addSources(files: FileList | null) {
@@ -278,7 +286,9 @@ export function MerchantCampaignFiche({ adId, paid, cancelled }: { adId: string;
   if (!ad) return <p className="text-sm text-[var(--danger)]">{error ?? "Campagne introuvable."}</p>;
 
   const proposed = ad.versions.find((v) => v.status === "PROPOSED") ?? null;
+  const walletProposed = ad.walletVisualVersions?.find((v) => v.status === "PROPOSED") ?? null;
   const awaitingMyAnswer = Boolean(proposed);
+  const awaitingWalletAnswer = Boolean(walletProposed);
   const canReplace = ad.status === "NEEDS_CHANGES" || ad.status === "DRAFT";
   const latestRefusal = ad.versions.find((v) => v.status === "CHANGES_REQUESTED" && v.author === "MERCHANT") ?? null;
   const current = ad.finalImageUrl;
@@ -342,6 +352,51 @@ export function MerchantCampaignFiche({ adId, paid, cancelled }: { adId: string;
         </section>
       ) : null}
 
+      {awaitingWalletAnswer && walletProposed ? (
+        <section className="glass-panel space-y-3 p-4" aria-label="Visuel Google Wallet proposé" data-testid="wallet-proposal">
+          <p className="text-sm font-black text-[var(--ink)]">
+            Visuel Google Wallet · version {walletProposed.number} ({WALLET_VISUAL_STATUS_LABELS[ad.googleWalletVisualStatus]})
+          </p>
+          <ImageThumb src={walletProposed.url} label={`Visuel Wallet proposé, version ${walletProposed.number}`} size={200} />
+          <p className="text-xs text-[var(--muted)]">Format 1032 × 812 px — affiché sur les cartes Google Wallet après validation.</p>
+          {showWalletChange ? (
+            <div className="space-y-2">
+              <label className="block text-xs text-[var(--muted)]">
+                Que souhaitez-vous modifier ?
+                <textarea className="profile-select mt-1 w-full" rows={3} value={walletChangeComment} onChange={(e) => setWalletChangeComment(e.target.value)} maxLength={500} />
+              </label>
+              <div className="flex gap-2">
+                <Button disabled={busy || walletChangeComment.trim().length < 3} onClick={() => void requestWalletChanges()} data-testid="wallet-send-change-request">
+                  Envoyer ma demande
+                </Button>
+                <Button variant="secondary" onClick={() => setShowWalletChange(false)}>
+                  Annuler
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              <Button disabled={busy} onClick={() => void acceptWallet()} data-testid="accept-wallet-proposal">
+                Accepter ce visuel Wallet
+              </Button>
+              <Button variant="secondary" disabled={busy} onClick={() => setShowWalletChange(true)} data-testid="ask-wallet-change">
+                Demander une modification
+              </Button>
+            </div>
+          )}
+        </section>
+      ) : null}
+
+      {ad.googleWalletHeroUrl && !awaitingWalletAnswer ? (
+        <section className="glass-panel space-y-2 p-4" aria-label="Visuel Google Wallet validé" data-testid="wallet-final">
+          <p className="text-sm font-black text-[var(--ink)]">Visuel Google Wallet validé</p>
+          <ImageThumb src={ad.googleWalletHeroUrl} label="Visuel Google Wallet final" size={200} />
+          {ad.googleWalletVisualComment ? (
+            <p className="text-xs text-[var(--muted)]">Dernière demande : « {ad.googleWalletVisualComment} »</p>
+          ) : null}
+        </section>
+      ) : null}
+
       {/* Visuel refusé : motif + remplacement */}
       {canReplace ? (
         <section className="glass-panel space-y-3 p-4" aria-label="Corriger le visuel" data-testid="replace-visual">
@@ -363,7 +418,14 @@ export function MerchantCampaignFiche({ adId, paid, cancelled }: { adId: string;
                 {draft || pendingFile ? "Choisir un autre fichier" : "Importer un nouveau bandeau"}
               </Button>
               <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" data-testid="replace-file" onChange={(e) => void onFile(e.target.files?.[0] ?? null)} />
-              {pendingFile ? <FramingTool src={pendingFile.dataUrl} onExport={(d) => void onFramed(d)} onCancel={() => setPendingFile(null)} /> : null}
+              {pendingFile && ad ? (
+                <FramingTool
+                  src={pendingFile.dataUrl}
+                  merchantId={ad.merchantId}
+                  onExport={onFramed}
+                  onCancel={() => setPendingFile(null)}
+                />
+              ) : null}
               {draft ? (
                 <div className="space-y-3">
                   <RealBannerPreview imageUrl={draft.previewUrl} merchantName={merchantName} text={ad.requestedText} ctaLabel={ad.ctaLabel} />

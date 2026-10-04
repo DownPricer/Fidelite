@@ -24,6 +24,7 @@ export async function GET(req: Request, context: { params: Promise<{ id: string 
       campaign: { include: { payment: true } },
       images: { orderBy: { position: "asc" } },
       versions: { orderBy: { number: "desc" } },
+      walletVisualVersions: { orderBy: { number: "desc" } },
     },
   });
   if (!adRequest) return jsonError("Demande introuvable.", 404);

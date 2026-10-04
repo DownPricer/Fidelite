@@ -1,4 +1,5 @@
 import type { AdRequest } from "@prisma/client";
+import { notifyMerchant, type AdForWorkflow } from "./ad-visual-workflow";
 import { scheduleGoogleWalletGlobalCampaignResync } from "./google-wallet";
 import { prisma } from "./prisma";
 import { isWithinUtcIntervals, type UtcInterval } from "./sponsored-hours-pricing";
@@ -30,6 +31,20 @@ export async function runAdLifecycleTick(now: Date = new Date(), batchSize = 200
     if (nextStatus === ad.status) continue;
 
     await prisma.adRequest.update({ where: { id: ad.id }, data: { status: nextStatus } });
+    const row = await prisma.adRequest.findUnique({
+      where: { id: ad.id },
+      select: { id: true, merchantId: true, campaignId: true, status: true },
+    });
+    if (row) {
+      const ctx: AdForWorkflow = { id: row.id, merchantId: row.merchantId, campaignId: row.campaignId, status: row.status };
+      if (nextStatus === "LIVE" && ad.status !== "LIVE") {
+        await notifyMerchant(prisma, ctx, "CAMPAIGN_LIVE", "Votre mise en avant est en cours de diffusion.");
+      } else if (nextStatus === "SCHEDULED" && ad.status === "LIVE") {
+        await notifyMerchant(prisma, ctx, "CAMPAIGN_SCHEDULED_SLOT", "Votre mise en avant est en pause jusqu'au prochain créneau.");
+      } else if (nextStatus === "ENDED") {
+        await notifyMerchant(prisma, ctx, "CAMPAIGN_ENDED", "Votre mise en avant est terminée.");
+      }
+    }
     if (nextStatus === "LIVE") toLive += 1;
     else if (nextStatus === "SCHEDULED") toScheduled += 1;
     else if (nextStatus === "ENDED") toEnded += 1;

@@ -62,8 +62,11 @@ export function createFakeAdDb() {
     adRequest: [],
     campaign: [],
     adVisualVersion: [],
+    adGoogleWalletVisualVersion: [],
     adRequestImage: [],
     staffNotification: [],
+    staffNotificationDispatch: [],
+    merchantMembership: [],
     campaignPayment: [],
     auditLog: [],
     stripeWebhookEvent: [],
@@ -96,8 +99,27 @@ export function createFakeAdDb() {
       }
       if (include.images) out.images = sortRows(tables.adRequestImage.filter((i) => i.adRequestId === row.id), { position: "asc" });
       if (include.versions) out.versions = sortRows(tables.adVisualVersion.filter((v) => v.adRequestId === row.id), { number: "desc" });
+      if (include.walletVisualVersions) {
+        out.walletVisualVersions = sortRows(
+          tables.adGoogleWalletVisualVersion.filter((v) => v.adRequestId === row.id),
+          { number: "desc" },
+        );
+      }
+      if (include.walletVisualVersions) {
+        out.walletVisualVersions = sortRows(tables.adGoogleWalletVisualVersion.filter((v) => v.adRequestId === row.id), { number: "desc" });
+      }
       if (include.merchant) out.merchant = { id: row.merchantId, ...merchantInfo };
       if (include._count) out._count = { versions: tables.adVisualVersion.filter((v) => v.adRequestId === row.id).length };
+    }
+    if (table === "merchantMembership" && include?.user) {
+      const user = tables.user.find((u) => u.id === row.userId);
+      out.user = user
+        ? {
+            id: user.id,
+            email: user.email,
+            firstName: user.firstName,
+          }
+        : null;
     }
     if (table === "campaignPayment" && include.campaign) {
       out.campaign = tables.campaign.find((c) => c.id === row.campaignId) ?? null;
@@ -121,6 +143,9 @@ export function createFakeAdDb() {
         if (table === "adCustomerView" && tables[table].some((r) => r.userId === data.userId && r.adRequestId === data.adRequestId)) {
           throw new Error("Unique constraint failed");
         }
+        if (table === "staffNotificationDispatch" && tables[table].some((r) => r.dedupeKey === data.dedupeKey)) {
+          throw Object.assign(new Error("Unique constraint failed"), { code: "P2002" });
+        }
         const row = { id: nextId(prefix), createdAt: new Date(counter * 1000 + 1_700_000_000_000), updatedAt: new Date(), ...data } as Row;
         tables[table].push(row);
         return { ...row };
@@ -136,9 +161,22 @@ export function createFakeAdDb() {
       },
       findUnique: async ({ where, include }: { where: Record<string, unknown>; include?: Record<string, unknown> }) =>
         hydrate(table, tables[table].find((r) => match(r, where)), include),
-      findMany: async ({ where, orderBy, include, take }: { where?: Record<string, unknown>; orderBy?: never; include?: Record<string, unknown>; take?: number } = {}) => {
+      findMany: async ({
+        where,
+        orderBy,
+        include,
+        select,
+        take,
+      }: {
+        where?: Record<string, unknown>;
+        orderBy?: never;
+        include?: Record<string, unknown>;
+        select?: Record<string, unknown>;
+        take?: number;
+      } = {}) => {
         const rows = sortRows(tables[table].filter((r) => match(r, where)), orderBy);
-        return rows.slice(0, take ?? rows.length).map((r) => hydrate(table, r, include));
+        const rel = include ?? select;
+        return rows.slice(0, take ?? rows.length).map((r) => hydrate(table, r, rel));
       },
       update: async ({ where, data }: { where: Record<string, unknown>; data: Record<string, unknown> }) => {
         const row = tables[table].find((r) => match(r, where));
@@ -177,8 +215,11 @@ export function createFakeAdDb() {
     adRequest: model("adRequest", "ad"),
     campaign: model("campaign", "camp"),
     adVisualVersion: model("adVisualVersion", "ver"),
+    adGoogleWalletVisualVersion: model("adGoogleWalletVisualVersion", "wver"),
     adRequestImage: model("adRequestImage", "img"),
     staffNotification: model("staffNotification", "notif"),
+    staffNotificationDispatch: model("staffNotificationDispatch", "dispatch"),
+    merchantMembership: model("merchantMembership", "mm"),
     campaignPayment: model("campaignPayment", "pay"),
     auditLog: model("auditLog", "audit"),
     stripeWebhookEvent: model("stripeWebhookEvent", "evt"),
@@ -199,9 +240,16 @@ export function createFakeAdDb() {
     merchantStripeCustomer: model("merchantStripeCustomer", "scus"),
     marketingLedgerEntry: model("marketingLedgerEntry", "led"),
     sponsoredAdTestBroadcast: model("sponsoredAdTestBroadcast", "tbc"),
+    googleWalletObject: { count: async () => 0 },
     merchant: {
       findMany: async () => [] as unknown[],
-      findUnique: async () => ({ id: "m1", city: merchantInfo.city, postalCode: merchantInfo.postalCode }),
+      findUnique: async () => ({
+        id: "m1",
+        name: merchantInfo.name,
+        logoUrl: merchantInfo.logoUrl,
+        city: merchantInfo.city,
+        postalCode: merchantInfo.postalCode,
+      }),
     },
     $transaction: async (callback: (client: unknown) => Promise<unknown>) => {
       // Transaction avec annulation : si le callback échoue, les tables reviennent à leur état d'avant.

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type KeyboardEvent, type MouseEvent } from "react";
 
 export type SponsoredAd = {
   id: string;
@@ -15,6 +15,10 @@ export type SponsoredAd = {
 };
 
 export type SponsoredVariant = "search" | "home" | "notifications" | "avantages";
+
+function isExternalUrl(url: string) {
+  return /^https?:\/\//i.test(url);
+}
 
 /**
  * Bandeau compact aligné sur les lignes de cartes (sheet Avantages, Recherche, Notifications).
@@ -31,14 +35,41 @@ export function SponsoredOfferCard({
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageFailed, setImageFailed] = useState(false);
   const showImage = Boolean(ad.imageUrl) && !imageFailed;
+  const disabled = !ad.clickUrl || ad.clickUrl === "#";
+
+  function navigate() {
+    if (disabled) return;
+    window.location.assign(ad.clickUrl);
+  }
+
+  function onCardClick(e: MouseEvent) {
+    if (disabled) return;
+    e.preventDefault();
+    navigate();
+  }
+
+  function onCardKeyDown(e: KeyboardEvent) {
+    if (disabled) return;
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      navigate();
+    }
+  }
 
   return (
-    <a
-      href={ad.clickUrl}
+    <div
+      role="link"
+      tabIndex={disabled ? -1 : 0}
       data-testid="sponsored-offer-card"
       data-variant={variant}
       data-layout="compact"
-      className={`sponsored-offer-row sponsored-offer-row--${variant} group relative flex w-full max-w-full min-w-0 items-center text-left no-underline`}
+      data-href={disabled ? undefined : ad.clickUrl}
+      className={`sponsored-offer-row sponsored-offer-row--${variant} group relative flex w-full max-w-full min-w-0 items-center text-left no-underline ${
+        disabled ? "cursor-default" : "cursor-pointer"
+      }`}
+      onClick={onCardClick}
+      onKeyDown={onCardKeyDown}
+      onPointerDown={(e) => e.stopPropagation()}
     >
       <div className="sponsored-offer-thumb" aria-hidden={!showImage}>
         {!imageLoaded && showImage ? (
@@ -96,6 +127,9 @@ export function SponsoredOfferCard({
           </svg>
         </button>
       ) : null}
-    </a>
+      {!disabled && isExternalUrl(ad.clickUrl) ? (
+        <span className="sr-only">(ouvre un lien externe sécurisé)</span>
+      ) : null}
+    </div>
   );
 }

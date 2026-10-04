@@ -1229,6 +1229,12 @@ model AdRequest {
   finalImageUrl     String?
   /// Version de visuel validée dont finalImageUrl est la copie — seule cette version est diffusable.
   finalVersionId    String?
+  /// Visuel hero Google Wallet (1032×812) — indépendant du bandeau ; utilisé seulement après validation.
+  googleWalletHeroUrl           String?
+  googleWalletHeroOriginalUrl   String?
+  googleWalletVisualStatus      AdGoogleWalletVisualStatus @default(NOT_PREPARED)
+  googleWalletVisualComment     String?
+  googleWalletFinalVersionId    String?
   /// Courte indication facultative du commerçant pour la création du bandeau par Fideto.
   visualBrief       String?
   /// TEST = payée en mode test : jamais publiée. Null = quota gratuit ou paiement réel.
@@ -1244,6 +1250,7 @@ model AdRequest {
   events   AdEvent[]
   images   AdRequestImage[]
   versions AdVisualVersion[]
+  walletVisualVersions AdGoogleWalletVisualVersion[]
   customerViews AdCustomerView[]
   sponsoredAdTestBroadcast SponsoredAdTestBroadcast?
 
@@ -1285,6 +1292,13 @@ model AdRequestImage {
   adRequest AdRequest @relation(fields: [adRequestId], references: [id], onDelete: Cascade)
 
   @@index([adRequestId, position])
+}
+
+enum AdGoogleWalletVisualStatus {
+  NOT_PREPARED
+  SENT_TO_MERCHANT
+  CHANGES_REQUESTED
+  APPROVED
 }
 
 enum AdVisualAuthor {
@@ -1334,6 +1348,30 @@ model AdVisualVersion {
   @@index([adRequestId, status])
 }
 
+/// Historique du visuel Google Wallet campagne (1032×812), indépendant du bandeau Fideto.
+model AdGoogleWalletVisualVersion {
+  id          String                @id @default(cuid())
+  adRequestId String
+  number      Int
+  author      AdVisualAuthor
+  status      AdVisualVersionStatus
+  url         String
+  originalUrl String
+  width       Int?
+  height      Int?
+  reframed    Boolean               @default(false)
+  comment     String?
+  decidedBy   String?
+  decidedAt   DateTime?
+  createdBy   String?
+  createdAt   DateTime              @default(now())
+
+  adRequest AdRequest @relation(fields: [adRequestId], references: [id], onDelete: Cascade)
+
+  @@unique([adRequestId, number])
+  @@index([adRequestId, status])
+}
+
 enum StaffNotificationAudience {
   MERCHANT
   SUPER_ADMIN
@@ -1354,6 +1392,14 @@ model StaffNotification {
 
   @@index([audience, merchantId, readAt, createdAt])
   @@index([adRequestId, createdAt])
+}
+
+/// Idempotence des envois e-mail / push liés aux notifications staff (retry webhook, redémarrage worker).
+model StaffNotificationDispatch {
+  id        String   @id @default(cuid())
+  dedupeKey String   @unique
+  channel   String
+  createdAt DateTime @default(now())
 }
 
 model AdEvent {

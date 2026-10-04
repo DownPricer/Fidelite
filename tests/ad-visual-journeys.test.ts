@@ -3,6 +3,7 @@ import { tmpdir } from "os";
 import { join } from "path";
 import sharp from "sharp";
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { resolveSponsoredImageUrl } from "../src/lib/sponsored-image";
 import { createFakeAdDb } from "./helpers/fake-ad-db";
 
 /**
@@ -23,6 +24,7 @@ const fake = createFakeAdDb();
 
 vi.mock("@/lib/media-storage", () => ({ getUploadsRoot: () => h.uploads }));
 vi.mock("@/lib/prisma", () => ({ prisma: fake.prisma }));
+vi.mock("@/lib/staff-notification-delivery", () => ({ deliverStaffNotificationSideEffects: vi.fn() }));
 vi.mock("@/lib/audit", () => ({ writeAudit: vi.fn() }));
 vi.mock("@/lib/rate-limit", () => ({ LIMITS: {}, rateLimit: () => ({ ok: true }) }));
 vi.mock("@/lib/merchant-card-template-service", () => ({
@@ -270,7 +272,7 @@ describe("Parcours A — le commerçant crée son bandeau", () => {
     asVisitor();
     vi.setSystemTime(new Date(new Date(intervals[0].start).getTime() + 10 * 60_000));
     const live = await publicSponsored();
-    expect(live.map((a) => a.imageUrl)).toEqual([banner2.url]); // jamais la version refusée
+    expect(live.map((a) => a.imageUrl)).toEqual([resolveSponsoredImageUrl(banner2.url)]); // jamais la version refusée
     vi.setSystemTime(new Date(new Date(intervals[0].end).getTime() + 3600_000));
     expect(await publicSponsored()).toEqual([]);
     vi.useRealTimers();
@@ -358,7 +360,7 @@ describe("Parcours B — Fideto crée le bandeau", () => {
     vi.setSystemTime(inSlot);
     const live = await publicSponsored();
     expect(live).toHaveLength(1);
-    expect(live[0].imageUrl).toBe(v2.url);
+    expect(live[0].imageUrl).toBe(resolveSponsoredImageUrl(v2.url));
     expect((await fetchFile(v2.url)).status).toBe(200); // le public lit le fichier diffusé…
     expect((await fetchFile(v1.url)).status).toBe(404); // …jamais une ancienne version
     expect((await fetchFile(s1.url!)).status).toBe(404); // …ni une source
@@ -370,13 +372,13 @@ describe("Parcours B — Fideto crée le bandeau", () => {
     expect(adRow(adId).status).toBe("SCHEDULED");
     expect(adRow(adId).finalImageUrl).toBe(v2.url);
     asVisitor();
-    expect((await publicSponsored())[0].imageUrl).toBe(v2.url);
+    expect((await publicSponsored())[0].imageUrl).toBe(resolveSponsoredImageUrl(v2.url));
     expect((await fetchFile(v3.url)).status).toBe(404);
     asMerchant("m1");
     expect((await merchantRespond(adId, { action: "accept" })).status).toBe(200);
     expect(adRow(adId)).toMatchObject({ status: "SCHEDULED", finalImageUrl: v3.url });
     asVisitor();
-    expect((await publicSponsored())[0].imageUrl).toBe(v3.url);
+    expect((await publicSponsored())[0].imageUrl).toBe(resolveSponsoredImageUrl(v3.url));
     expect(versionsOf(adId).filter((v) => v.status === "APPROVED")).toHaveLength(1);
     vi.useRealTimers();
   });

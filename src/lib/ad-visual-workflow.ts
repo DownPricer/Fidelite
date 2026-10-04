@@ -1,5 +1,6 @@
 import type { AdRequestStatus, AdVisualAuthor, AdVisualVersionStatus, Prisma, StaffNotificationAudience } from "@prisma/client";
 import { prisma } from "./prisma";
+import { deliverStaffNotificationSideEffects } from "./staff-notification-delivery";
 
 /** Client Prisma ou transaction — seules les méthodes utilisées ici sont requises. */
 export type Db = Prisma.TransactionClient | typeof prisma;
@@ -31,6 +32,14 @@ export async function notifyMerchant(
       message,
     },
   });
+  await deliverStaffNotificationSideEffects(db, {
+    audience: "MERCHANT",
+    kind,
+    message,
+    merchantId: ad.merchantId,
+    campaignId: ad.campaignId,
+    adRequestId: ad.id,
+  });
 }
 
 export async function notifySuperAdmin(db: Db, ad: AdForWorkflow, kind: string, message: string) {
@@ -43,6 +52,14 @@ export async function notifySuperAdmin(db: Db, ad: AdForWorkflow, kind: string, 
       kind,
       message,
     },
+  });
+  await deliverStaffNotificationSideEffects(db, {
+    audience: "SUPER_ADMIN",
+    kind,
+    message,
+    merchantId: ad.merchantId,
+    campaignId: ad.campaignId,
+    adRequestId: ad.id,
   });
 }
 

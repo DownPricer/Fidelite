@@ -49,6 +49,13 @@
 .h2 { font-size: 20px; letter-spacing: -0.035em; margin: 5px 0 0; font-weight: 800; color: var(--text); }
 .h2Small { font-size: 17px; margin: 5px 0 15px; font-weight: 800; color: var(--text); }
 .sub { font-size: 11px; color: #ab9db9; margin: 6px 0 0; }
+.visualTabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+.visualTab { border: 1px solid #5a456e; background: #221a30; border-radius: 99px; padding: 8px 14px; font-size: 11px; font-weight: 760; color: #c4b4d8; cursor: pointer; }
+.visualTab:hover { border-color: #ad81df; color: #fff; }
+.visualTabActive { background: #965fe8; border-color: #b58afa; color: #fff; }
+.walletHeroPreview { margin-top: 16px; max-width: 360px; border-radius: 12px; overflow: hidden; border: 1px solid #674d81; background: #1a1427; }
+.walletHeroPreview img { display: block; width: 100%; height: auto; aspect-ratio: 1032 / 812; object-fit: cover; }
+.walletHeroPreview a { display: inline-block; padding: 10px 12px; }
 .workspace { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(305px, 0.75fr); gap: 18px; align-items: start; }
 .left, .right { display: grid; gap: 18px; min-width: 0; }
 

@@ -55,6 +55,7 @@ describe("selectSponsoredForGoogleWalletGlobal", () => {
       title: "Découvrir",
       description: "-20 % sur le pain",
       detailUri: "https://fideto.fr/c/boulangerie",
+      imagePathOrUrl: "",
     });
     expect(tables.adEvent).toHaveLength(0);
     expect(tables.adCustomerView).toHaveLength(0);

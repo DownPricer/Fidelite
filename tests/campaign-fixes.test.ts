@@ -32,7 +32,19 @@ const { tables } = fake;
 vi.mock("@/lib/media-storage", () => ({ getUploadsRoot: () => h.uploads }));
 vi.mock("@/lib/prisma", () => ({ prisma: fake.prisma }));
 vi.mock("@/lib/audit", () => ({ writeAudit: vi.fn() }));
-vi.mock("@/lib/env", () => ({ env: { appUrl: "http://localhost:3000" } }));
+vi.mock("@/lib/env", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/env")>();
+  return {
+    ...actual,
+    env: {
+      ...actual.env,
+      appUrl: "http://localhost:3000",
+      appOrigin: "https://app.fideto.fr",
+      customerOrigin: "https://fideto.fr",
+    },
+  };
+});
+vi.mock("@/lib/staff-notification-delivery", () => ({ deliverStaffNotificationSideEffects: vi.fn() }));
 vi.mock("@/lib/api-guard", () => ({
   requireMutatingRequest: async () => ({ error: null }),
   requireUser: async () =>

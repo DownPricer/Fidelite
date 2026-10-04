@@ -154,6 +154,12 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session, 
       if (adRequest?.status === "APPROVED") {
         nextStatus = "SCHEDULED";
         await tx.adRequest.update({ where: { id: adRequest.id }, data: { status: "SCHEDULED", fundingMode: mode } });
+        await notifyMerchant(
+          tx,
+          adRequest,
+          "CAMPAIGN_PAYMENT_CONFIRMED",
+          `Paiement confirmé (${(payment.amountCents / 100).toLocaleString("fr-FR", { style: "currency", currency: "EUR" })}) : votre campagne est prête.`,
+        );
         await notifyMerchant(tx, adRequest, "CAMPAIGN_SCHEDULED", "Paiement confirmé : votre campagne est programmée.");
         sponsoredAdScheduled = true;
       }

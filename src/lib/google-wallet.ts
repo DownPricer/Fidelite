@@ -613,14 +613,15 @@ export async function globalObjectBody(input: {
   const tierLabel = getLoyaltyCardTierLabel(tier.name);
   let heroImage: GoogleWalletImage | undefined;
   if (input.campaignModule) {
-    const campaignHeroUrl = resolveGlobalWalletCampaignHeroUrl(input.campaignModule.imagePathOrUrl);
-    if (!campaignHeroUrl) {
-      throw new GoogleWalletConfigError(
-        "Visuel de campagne inaccessible pour Google Wallet (image https publique requise, dimensions adaptées au hero).",
-      );
+    const campaignHeroUrl = input.campaignModule.imagePathOrUrl
+      ? resolveGlobalWalletCampaignHeroUrl(input.campaignModule.imagePathOrUrl)
+      : null;
+    if (campaignHeroUrl) {
+      const alt = (input.campaignModule.title.trim() || input.campaignModule.description.trim()).slice(0, 60);
+      heroImage = imageData(campaignHeroUrl, alt || "Offre Fideto");
+    } else {
+      heroImage = imageData(tierHero, `Niveau ${tierLabel} Fideto`);
     }
-    const alt = (input.campaignModule.title.trim() || input.campaignModule.description.trim()).slice(0, 60);
-    heroImage = imageData(campaignHeroUrl, alt || "Offre Fideto");
   } else {
     heroImage = imageData(tierHero, `Niveau ${tierLabel} Fideto`);
   }

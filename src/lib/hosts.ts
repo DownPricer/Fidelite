@@ -8,8 +8,8 @@ function hostnameForbidden(hostname: string) {
 }
 
 /** Origine publique pour liens e-mail et onboarding — jamais Host/0.0.0.0/docker interne. */
-export function canonicalOrigin(configured: string, productionDefault: string) {
-  const trimmed = configured.trim().replace(/\/$/, "");
+export function canonicalOrigin(configured: string | undefined, productionDefault: string) {
+  const trimmed = (configured ?? "").trim().replace(/\/$/, "");
   if (!trimmed) return isProduction() ? productionDefault : "http://localhost:3000";
   try {
     const url = new URL(trimmed);

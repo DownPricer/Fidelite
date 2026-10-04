@@ -45,6 +45,7 @@ export async function GET(req: Request) {
   const failedByCampaignId = new Map(failedCounts.map((row) => [row.campaignId, row._count._all]));
 
   return jsonOk({
+    merchantId,
     plan: tier,
     period: periodKey,
     quotas,

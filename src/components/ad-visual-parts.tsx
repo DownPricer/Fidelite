@@ -1,8 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
+import { CoverCropEditor } from "@/components/cover-crop-editor";
 import { SponsoredBanner, type SponsoredVariant } from "@/components/fife-life/sponsored-banner";
 import { Alert, Button } from "@/components/ui";
+import { AD_BANNER_CROP_SPEC } from "@/lib/ad-visual-crop-specs";
+import type { CropState } from "@/lib/cover-crop";
 
 /** Taille d'export du bandeau (carré, identique au bandeau public — voir src/lib/ad-visuals.ts). */
 const OUTPUT_PX = 800;
@@ -210,98 +213,72 @@ export function VersionHistory({
   );
 }
 
+export type FramingExport = { url: string; originalUrl: string; previewUrl: string };
+
 /**
- * Cadrage minimal d'un fichier qui n'a pas exactement le format du bandeau : déplacement + zoom
- * uniquement, sortie carrée 800×800. Aucun texte, calque ni outil de création (fait dans Photoshop).
+ * Recadrage bandeau : éditeur + fichier final généré côté serveur (EXIF + coordonnées normalisées).
  */
-export function FramingTool({ src, onExport, onCancel }: { src: string; onExport: (dataUrl: string) => void; onCancel: () => void }) {
-  const [imgEl, setImgEl] = useState<HTMLImageElement | null>(null);
-  const [zoom, setZoom] = useState(1);
-  const [offset, setOffset] = useState({ x: 0, y: 0 });
+export function FramingTool({
+  src,
+  merchantId,
+  onExport,
+  onCancel,
+}: {
+  src: string;
+  merchantId: string;
+  onExport: (result: FramingExport) => void;
+  onCancel: () => void;
+}) {
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const dragRef = useRef<{ startX: number; startY: number; origin: { x: number; y: number } } | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadImageElement(src)
-      .then((img) => setImgEl(img))
-      .catch(() => setError("Image illisible. Utilisez un fichier PNG, JPEG ou WebP."));
-  }, [src]);
+  async function applyCrop(crop: CropState) {
+    setBusy(true);
+    setError(null);
+    try {
+      const originalRes = await fetch("/api/merchant/visuels/televerser", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ dataUrl: src, kind: "original" }),
+      });
+      const originalBody = (await originalRes.json()) as { url?: string; error?: string };
+      if (!originalRes.ok || !originalBody.url) throw new Error(originalBody.error ?? "Envoi de l'original impossible.");
 
-  if (!imgEl) return error ? <Alert>{error}</Alert> : <p className="text-sm text-[var(--muted-text)]">Chargement…</p>;
+      const cropRes = await fetch("/api/merchant/visuels/recadrer", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          merchantId,
+          originalUrl: originalBody.url,
+          target: "banniere",
+          crop,
+        }),
+      });
+      const cropBody = (await cropRes.json()) as { url?: string; error?: string };
+      if (!cropRes.ok || !cropBody.url) throw new Error(cropBody.error ?? "Recadrage impossible.");
 
-  const baseScale = Math.max(FRAME_PX / imgEl.width, FRAME_PX / imgEl.height);
-  const displayWidth = imgEl.width * baseScale * zoom;
-  const displayHeight = imgEl.height * baseScale * zoom;
-  const maxX = Math.max(0, (displayWidth - FRAME_PX) / 2);
-  const maxY = Math.max(0, (displayHeight - FRAME_PX) / 2);
-  const clamped = { x: Math.min(maxX, Math.max(-maxX, offset.x)), y: Math.min(maxY, Math.max(-maxY, offset.y)) };
-
-  function onPointerDown(e: ReactPointerEvent) {
-    (e.target as Element).setPointerCapture(e.pointerId);
-    dragRef.current = { startX: e.clientX, startY: e.clientY, origin: clamped };
-  }
-  function onPointerMove(e: ReactPointerEvent) {
-    if (!dragRef.current) return;
-    setOffset({ x: dragRef.current.origin.x + e.clientX - dragRef.current.startX, y: dragRef.current.origin.y + e.clientY - dragRef.current.startY });
-  }
-
-  function exportCrop() {
-    const canvas = document.createElement("canvas");
-    canvas.width = OUTPUT_PX;
-    canvas.height = OUTPUT_PX;
-    const ctx = canvas.getContext("2d");
-    if (!ctx || !imgEl) {
-      setError("Recadrage impossible sur cet appareil.");
-      return;
+      setPreviewUrl(cropBody.url);
+      onExport({ url: cropBody.url, originalUrl: originalBody.url, previewUrl: cropBody.url });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Recadrage impossible.");
+    } finally {
+      setBusy(false);
     }
-    const k = OUTPUT_PX / FRAME_PX;
-    ctx.fillStyle = "#fff";
-    ctx.fillRect(0, 0, OUTPUT_PX, OUTPUT_PX);
-    ctx.drawImage(
-      imgEl,
-      OUTPUT_PX / 2 - (displayWidth * k) / 2 + clamped.x * k,
-      OUTPUT_PX / 2 - (displayHeight * k) / 2 + clamped.y * k,
-      displayWidth * k,
-      displayHeight * k,
-    );
-    onExport(canvas.toDataURL("image/jpeg", 0.95));
   }
 
   return (
     <div className="space-y-3" data-testid="framing-tool">
       {error ? <Alert>{error}</Alert> : null}
-      <p className="text-xs text-[var(--muted-text)]">
-        Ce fichier n&apos;est pas carré : ajustez uniquement le cadrage et le zoom (sortie {OUTPUT_PX}×{OUTPUT_PX}, format du bandeau public).
-      </p>
-      <div
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={() => (dragRef.current = null)}
-        onPointerLeave={() => (dragRef.current = null)}
-        className="relative mx-auto overflow-hidden rounded-lg border border-[var(--border)] bg-white"
-        style={{ width: FRAME_PX, height: FRAME_PX, touchAction: "none", cursor: "grab" }}
-      >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={imgEl.src}
-          alt=""
-          draggable={false}
-          className="pointer-events-none absolute select-none"
-          style={{ width: displayWidth, height: displayHeight, left: FRAME_PX / 2 - displayWidth / 2 + clamped.x, top: FRAME_PX / 2 - displayHeight / 2 + clamped.y }}
-        />
-      </div>
-      <label className="block text-xs text-[var(--muted-text)]">
-        Zoom
-        <input type="range" min={1} max={3} step={0.05} value={zoom} onChange={(e) => setZoom(Number(e.target.value))} className="mt-1 w-full" />
-      </label>
-      <div className="flex gap-2">
-        <Button type="button" onClick={exportCrop}>
-          Valider le cadrage
-        </Button>
-        <Button type="button" variant="secondary" onClick={onCancel}>
-          Choisir un autre fichier
-        </Button>
-      </div>
+      {previewUrl ? (
+        <div className="mx-auto max-w-[280px]">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={previewUrl} alt="Bandeau recadré enregistré" className="w-full rounded-lg border border-[var(--border)]" />
+          <p className="mt-1 text-[11px] text-[var(--muted-text)]">Fichier final enregistré — c&apos;est celui-ci qui sera diffusé.</p>
+        </div>
+      ) : (
+        <CoverCropEditor previewSrc={src} spec={AD_BANNER_CROP_SPEC} busy={busy} onCancel={onCancel} onConfirm={applyCrop} />
+      )}
     </div>
   );
 }

@@ -118,35 +118,34 @@ describe("Google Wallet campagne (carte globale)", () => {
     expect(without.valueAddedModuleData).toEqual([]);
   });
 
-  it("refuse une campagne dont l'image n'est pas accessible par Google", async () => {
+  it("conserve le hero Bronze si le visuel campagne Wallet n'est pas une URL https publique", async () => {
     vi.resetModules();
     process.env.GOOGLE_WALLET_ISSUER_ID = "3388000000023198536";
     process.env.GOOGLE_WALLET_GLOBAL_CLASS_ID = "3388000000023198536.fifelife_global";
     process.env.GOOGLE_WALLET_ORIGIN = "https://fideto.fr";
-    const { globalObjectBody, GoogleWalletConfigError } = await import("../src/lib/google-wallet");
-    await expect(
-      globalObjectBody({
-        user: {
-          id: "u1",
-          firstName: "Ada",
-          lastName: null,
-          clientNumber: "100001",
-          fifeLifePoints: 20,
-          isActive: true,
-        },
-        objectId: "obj",
-        qrValue: "qr",
-        activeCardCount: 1,
-        nextReward: null,
-        availableRewardsCount: 0,
-        campaignModule: {
-          id: "ad1",
-          title: "Offre",
-          description: "Texte",
-          imagePathOrUrl: "http://bad.example/b.png",
-          detailUri: "https://fideto.fr/c/boulangerie",
-        },
-      }),
-    ).rejects.toBeInstanceOf(GoogleWalletConfigError);
+    const { globalObjectBody } = await import("../src/lib/google-wallet");
+    const body = await globalObjectBody({
+      user: {
+        id: "u1",
+        firstName: "Ada",
+        lastName: null,
+        clientNumber: "100001",
+        fifeLifePoints: 20,
+        isActive: true,
+      },
+      objectId: "obj",
+      qrValue: "qr",
+      activeCardCount: 1,
+      nextReward: null,
+      availableRewardsCount: 0,
+      campaignModule: {
+        id: "ad1",
+        title: "Offre",
+        description: "Texte",
+        imagePathOrUrl: "http://bad.example/b.png",
+        detailUri: "https://fideto.fr/c/boulangerie",
+      },
+    });
+    expect(body.heroImage?.sourceUri?.uri).toContain("/cards/bronze-good.png");
   });
 });

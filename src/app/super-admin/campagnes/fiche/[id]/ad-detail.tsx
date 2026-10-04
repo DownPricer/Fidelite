@@ -3,13 +3,15 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { SuperAdminShell } from "@/components/super-admin/layout-shell";
+import { CenteredDialog } from "@/components/centered-dialog";
+import { CoverCropEditor } from "@/components/cover-crop-editor";
 import { MobilePlacementPreview, RealBannerPreview, formatDateTime, isExactBanner, loadImageElement, readFileAsDataUrl, type NextActionInfo, type VisualVersion } from "@/components/ad-visual-parts";
+import { AD_BANNER_CROP_SPEC } from "@/lib/ad-visual-crop-specs";
+import { centeredCropState, type CropState } from "@/lib/cover-crop";
 import { priceSponsoredHours, type SponsoredDaySelection } from "@/lib/sponsored-hours-pricing";
+import type { AdGoogleWalletVisualStatus } from "@prisma/client";
+import { AdDetailWalletPanel } from "./ad-detail-wallet-panel";
 import s from "./fiche.module.css";
-
-/** Taille d'export du bandeau (carré, identique au bandeau public — voir src/lib/ad-visuals.ts). */
-const OUTPUT_PX = 800;
-const PREVIEW_PX = 340;
 
 type AdStatus =
   | "DRAFT"
@@ -26,6 +28,7 @@ type AdStatus =
   | "CANCELLED";
 
 type Version = VisualVersion & { createdBy?: string | null; decidedBy?: string | null };
+type WalletVersion = VisualVersion & { createdBy?: string | null; decidedBy?: string | null };
 
 type AdRequestDetail = {
   id: string;
@@ -35,6 +38,9 @@ type AdRequestDetail = {
   visualBrief: string | null;
   finalImageUrl: string | null;
   finalVersionId: string | null;
+  googleWalletHeroUrl: string | null;
+  googleWalletVisualStatus: AdGoogleWalletVisualStatus;
+  googleWalletVisualComment: string | null;
   objective: string | null;
   ctaLabel: string | null;
   ctaUrl: string | null;
@@ -53,6 +59,7 @@ type AdRequestDetail = {
   } | null;
   images: { id: string; url: string; sizeBytes: number | null; createdAt: string }[];
   versions: Version[];
+  walletVisualVersions: WalletVersion[];
 };
 
 type AuditRow = { id: string; action: string; createdAt: string; actor: { firstName: string; lastName: string } | null };
@@ -191,23 +198,8 @@ async function api(url: string, init?: RequestInit) {
 const post = (url: string, body: unknown) =>
   api(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
 
-/** Recadrage réel : même calcul pour l'aperçu et pour le fichier enregistré (zoom + position, sortie carrée). */
-function renderFrame(img: HTMLImageElement, size: number, zoom: number, h: number, v: number) {
-  const canvas = document.createElement("canvas");
-  canvas.width = size;
-  canvas.height = size;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) throw new Error("Recadrage impossible sur cet appareil.");
-  const scale = Math.max(size / img.naturalWidth, size / img.naturalHeight) * (zoom / 100);
-  const dw = img.naturalWidth * scale;
-  const dh = img.naturalHeight * scale;
-  ctx.fillStyle = "#fff";
-  ctx.fillRect(0, 0, size, size);
-  ctx.drawImage(img, -(dw - size) * (h / 100), -(dh - size) * (v / 100), dw, dh);
-  return canvas.toDataURL("image/jpeg", 0.95);
-}
-
 type Draft = { dataUrl: string; name: string; width: number; height: number };
+type VisualWorkspaceTab = "banniere" | "wallet";
 
 export function AdDetailPage({ id, firstName }: { id: string; firstName: string }) {
   const [ad, setAd] = useState<AdRequestDetail | null>(null);
@@ -224,15 +216,15 @@ export function AdDetailPage({ id, firstName }: { id: string; firstName: string 
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState<{ msg: string; error: boolean } | null>(null);
 
+  const [visualTab, setVisualTab] = useState<VisualWorkspaceTab>("banniere");
   const [draft, setDraft] = useState<Draft | null>(null);
-  const [zoom, setZoom] = useState(100);
-  const [horizontal, setHorizontal] = useState(50);
-  const [vertical, setVertical] = useState(50);
-  const [framePreview, setFramePreview] = useState<string | null>(null);
-  const draftImg = useRef<HTMLImageElement | null>(null);
+  const [cropState, setCropState] = useState<CropState>(() => centeredCropState());
+  const [stagedOriginalUrl, setStagedOriginalUrl] = useState<string | null>(null);
+  const [croppedPreviewUrl, setCroppedPreviewUrl] = useState<string | null>(null);
+  const [cropBusy, setCropBusy] = useState(false);
   const fileInput = useRef<HTMLInputElement | null>(null);
 
-  const directDialog = useRef<HTMLDialogElement | null>(null);
+  const [directOpen, setDirectOpen] = useState(false);
   const replaceDialog = useRef<HTMLDialogElement | null>(null);
   const reasonDialog = useRef<HTMLDialogElement | null>(null);
   const imageDialog = useRef<HTMLDialogElement | null>(null);
@@ -331,7 +323,7 @@ export function AdDetailPage({ id, firstName }: { id: string; firstName: string 
   }
 
   const approveAsIs = async () => {
-    directDialog.current?.close();
+    setDirectOpen(false);
     await run(() => patch({ action: "approve" }), "Visuel validé : le commerçant peut passer au paiement.");
   };
 
@@ -368,10 +360,9 @@ export function AdDetailPage({ id, firstName }: { id: string; firstName: string 
       if (file.size > 10 * 1024 * 1024) throw new Error("Ce fichier dépasse la limite de 10 Mo.");
       const dataUrl = await readFileAsDataUrl(file);
       const img = await loadImageElement(dataUrl);
-      draftImg.current = img;
-      setZoom(100);
-      setHorizontal(50);
-      setVertical(50);
+      setCropState(centeredCropState());
+      setStagedOriginalUrl(null);
+      setCroppedPreviewUrl(null);
       setDraft({ dataUrl, name: file.name, width: img.naturalWidth, height: img.naturalHeight });
     } catch (e) {
       notify(e instanceof Error ? e.message : "Fichier invalide.", true);
@@ -381,22 +372,30 @@ export function AdDetailPage({ id, firstName }: { id: string; firstName: string 
   }
 
   const exact = draft ? isExactBanner(draft.width, draft.height) : false;
-  const adjusted = zoom !== 100 || horizontal !== 50 || vertical !== 50;
-  // Fichier non carré : le recadrage est obligatoire (cadrage centré par défaut) ; carré : facultatif.
-  const needsFrame = Boolean(draft) && (!exact || adjusted);
+  const cropChanged = cropState.x !== 0.5 || cropState.y !== 0.5 || cropState.zoom !== 1;
+  const needsFrame = Boolean(draft) && (!exact || cropChanged || Boolean(croppedPreviewUrl));
 
-  useEffect(() => {
-    if (!draft || !draftImg.current) {
-      setFramePreview(null);
-      return;
-    }
+  async function confirmBannerCrop(crop: CropState) {
+    if (!draft) return;
+    setCropState(crop);
+    setCropBusy(true);
     try {
-      // Le rendu affiché est celui qui sera enregistré (même calcul, seule la taille change).
-      setFramePreview(needsFrame ? renderFrame(draftImg.current, PREVIEW_PX, zoom, horizontal, vertical) : draft.dataUrl);
-    } catch {
-      setFramePreview(draft.dataUrl);
+      const original =
+        stagedOriginalUrl ??
+        ((await post(`/api/super-admin/visuels/${id}/fichier`, { dataUrl: draft.dataUrl, kind: "original" })).url as string);
+      setStagedOriginalUrl(original);
+      const cropped = await post(`/api/super-admin/visuels/${id}/recadrer`, {
+        originalUrl: original,
+        target: "banniere",
+        crop,
+      });
+      setCroppedPreviewUrl(cropped.url as string);
+    } catch (e) {
+      notify(e instanceof Error ? e.message : "Recadrage impossible.", true);
+    } finally {
+      setCropBusy(false);
     }
-  }, [draft, zoom, horizontal, vertical, needsFrame]);
+  }
 
   const pendingProposal = ad?.versions.find((v) => v.status === "PROPOSED") ?? null;
 
@@ -408,23 +407,32 @@ export function AdDetailPage({ id, firstName }: { id: string; firstName: string 
 
   async function sendProposal() {
     replaceDialog.current?.close();
-    if (!draft || !draftImg.current) return;
+    if (!draft) return;
     const current = draft;
-    const img = draftImg.current;
     await run(async () => {
-      if (!needsFrame) {
-        // Fichier déjà au bon format : envoyé tel quel, sans recadrage.
+      if (exact && !cropChanged && !croppedPreviewUrl) {
         const staged = await post(`/api/super-admin/visuels/${id}/fichier`, { dataUrl: current.dataUrl, kind: "banniere" });
         await post(`/api/super-admin/visuels/${id}/proposition`, { url: staged.url });
       } else {
-        // Fichier recadré : on enregistre le rendu recadré (800×800) ET le fichier d'origine.
-        const cropped = renderFrame(img, OUTPUT_PX, zoom, horizontal, vertical);
-        const original = await post(`/api/super-admin/visuels/${id}/fichier`, { dataUrl: current.dataUrl, kind: "original" });
-        const display = await post(`/api/super-admin/visuels/${id}/fichier`, { dataUrl: cropped, kind: "banniere" });
-        await post(`/api/super-admin/visuels/${id}/proposition`, { url: display.url, originalUrl: original.url });
+        const original =
+          stagedOriginalUrl ??
+          ((await post(`/api/super-admin/visuels/${id}/fichier`, { dataUrl: current.dataUrl, kind: "original" })).url as string);
+        const display = croppedPreviewUrl
+          ? { url: croppedPreviewUrl, originalUrl: original, reframed: true }
+          : await post(`/api/super-admin/visuels/${id}/recadrer`, {
+              originalUrl: original,
+              target: "banniere",
+              crop: cropState,
+            });
+        await post(`/api/super-admin/visuels/${id}/proposition`, {
+          url: display.url,
+          originalUrl: display.originalUrl ?? original,
+        });
       }
       setDraft(null);
-      draftImg.current = null;
+      setStagedOriginalUrl(null);
+      setCroppedPreviewUrl(null);
+      setCropState(centeredCropState());
     }, "Nouvelle version envoyée au commerçant.");
   }
 
@@ -582,7 +590,46 @@ export function AdDetailPage({ id, firstName }: { id: string; firstName: string 
 
         <div className={s.workspace}>
           <div className={s.left}>
+            <div className={s.visualTabs} role="tablist" aria-label="Espace visuel">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={visualTab === "banniere"}
+                className={`${s.visualTab} ${visualTab === "banniere" ? s.visualTabActive : ""}`}
+                onClick={() => setVisualTab("banniere")}
+                data-testid="visual-tab-banniere"
+              >
+                Bandeau
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={visualTab === "wallet"}
+                className={`${s.visualTab} ${visualTab === "wallet" ? s.visualTabActive : ""}`}
+                onClick={() => setVisualTab("wallet")}
+                data-testid="visual-tab-wallet"
+              >
+                Visuel Google Wallet
+              </button>
+            </div>
+
+            {visualTab === "wallet" ? (
+              <AdDetailWalletPanel
+                id={id}
+                googleWalletVisualStatus={ad.googleWalletVisualStatus}
+                googleWalletVisualComment={ad.googleWalletVisualComment}
+                googleWalletHeroUrl={ad.googleWalletHeroUrl}
+                walletVisualVersions={ad.walletVisualVersions ?? []}
+                canPropose={canPropose}
+                busy={busy}
+                people={people}
+                onNotify={notify}
+                onReload={load}
+              />
+            ) : null}
+
             {/* ------------------------- Visuel de la campagne ------------------------- */}
+            {visualTab === "banniere" ? (
             <section className={`${s.card} ${s.pad}`} aria-labelledby="visual-title" data-testid="visual-section">
               <div className={s.sectionTitle}>
                 <div>
@@ -743,48 +790,46 @@ export function AdDetailPage({ id, firstName }: { id: string; firstName: string 
                     {draft ? (
                       <div className={s.crop} data-testid="crop">
                         <header>
-                          <b>{exact ? "Recadrage (facultatif)" : "Recadrage simple"}</b>
+                          <b>{exact ? "Recadrage (facultatif)" : "Recadrage"}</b>
                           <small>
                             {draft.name} · {draft.width}×{draft.height}
                           </small>
                         </header>
-                        <div className={s.cropLayout}>
-                          <div className={s.cropPreview}>
-                            {framePreview ? (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img
-                                src={framePreview}
-                                alt="Aperçu du fichier qui sera enregistré"
-                                onClick={() => openImage(needsFrame && draftImg.current ? renderFrame(draftImg.current, OUTPUT_PX, zoom, horizontal, vertical) : draft.dataUrl)}
-                              />
-                            ) : null}
+                        <CoverCropEditor
+                          previewSrc={draft.dataUrl}
+                          spec={{
+                            width: AD_BANNER_CROP_SPEC.width,
+                            height: AD_BANNER_CROP_SPEC.height,
+                            label: AD_BANNER_CROP_SPEC.label,
+                          }}
+                          busy={cropBusy || busy}
+                          confirmLabel="Générer l'aperçu serveur"
+                          onCancel={() => {
+                            setDraft(null);
+                            setStagedOriginalUrl(null);
+                            setCroppedPreviewUrl(null);
+                            setCropState(centeredCropState());
+                          }}
+                          onConfirm={(crop) => void confirmBannerCrop(crop)}
+                        />
+                        {croppedPreviewUrl ? (
+                          <div className={s.cropPreview} data-testid="banner-cropped-preview" style={{ marginTop: 13, width: "100%", maxWidth: 340 }}>
+                            <p className={s.note}>Aperçu généré (fichier qui sera proposé) :</p>
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={croppedPreviewUrl} alt="Aperçu du bandeau recadré" onClick={() => openImage(croppedPreviewUrl)} />
                           </div>
-                          <div className={s.cropControls}>
-                            <label>
-                              Zoom
-                              <input type="range" min={100} max={180} value={zoom} onChange={(e) => setZoom(Number(e.target.value))} data-testid="zoom" />
-                            </label>
-                            <label>
-                              Horizontal
-                              <input type="range" min={0} max={100} value={horizontal} onChange={(e) => setHorizontal(Number(e.target.value))} />
-                            </label>
-                            <label>
-                              Vertical
-                              <input type="range" min={0} max={100} value={vertical} onChange={(e) => setVertical(Number(e.target.value))} />
-                            </label>
-                            <small>
-                              {needsFrame
-                                ? `Le fichier enregistré sera ce rendu carré ${OUTPUT_PX}×${OUTPUT_PX} ; l'original est conservé.`
-                                : "Format exact : le fichier sera envoyé tel quel."}
-                            </small>
-                          </div>
-                        </div>
+                        ) : null}
+                        <small>
+                          {needsFrame
+                            ? `Le bandeau final sera généré côté serveur (${AD_BANNER_CROP_SPEC.width}×${AD_BANNER_CROP_SPEC.height}) ; l'original est conservé.`
+                            : "Format exact : le fichier sera envoyé tel quel."}
+                        </small>
                       </div>
                     ) : null}
 
                     <div className={s.uploadActions}>
                       <span>{draft ? "Nouvelle version prête à être proposée." : "Choisissez un fichier pour préparer une nouvelle proposition."}</span>
-                      <button className={`${s.button} ${s.primary}`} type="button" disabled={!draft || busy} onClick={requestSend} data-testid="send-proposal">
+                      <button className={`${s.button} ${s.primary}`} type="button" disabled={!draft || busy || cropBusy} onClick={requestSend} data-testid="send-proposal">
                         Envoyer au commerçant →
                       </button>
                     </div>
@@ -814,6 +859,7 @@ export function AdDetailPage({ id, firstName }: { id: string; firstName: string 
                 </div>
               ))}
             </section>
+            ) : null}
           </div>
 
           {/* ------------------------------ colonne droite ------------------------------ */}
@@ -825,7 +871,7 @@ export function AdDetailPage({ id, firstName }: { id: string; firstName: string 
                   <h2 id="decision-title">Le visuel du commerçant attend votre décision</h2>
                   <p>Vous pouvez le valider tel quel, sans importer de nouvelle image, ou demander une correction.</p>
                   <div className={s.decisionStack}>
-                    <button className={`${s.button} ${s.primary} ${s.full}`} type="button" disabled={busy} onClick={() => directDialog.current?.showModal()} data-testid="approve-as-is">
+                    <button className={`${s.button} ${s.primary} ${s.full}`} type="button" disabled={busy} onClick={() => setDirectOpen(true)} data-testid="approve-as-is">
                       Valider le visuel tel quel
                     </button>
                     <button className={`${s.button} ${s.secondary} ${s.full}`} type="button" disabled={busy} onClick={() => openReason("visual")} data-testid="refuse-visual">
@@ -1167,22 +1213,26 @@ export function AdDetailPage({ id, firstName }: { id: string; firstName: string 
       </div>
 
       {/* ------------------------------ boîtes de dialogue ------------------------------ */}
-      <dialog ref={directDialog} className={s.modal} data-testid="direct-dialog">
-        <div className={s.modalInner}>
-          <h2>Valider le visuel tel quel ?</h2>
-          <p>
-            Le bandeau fourni par le commerçant sera approuvé sans modification. Il sera prévenu et pourra passer au paiement. Aucun paiement n&apos;est encaissé et rien n&apos;est diffusé avant le paiement et les créneaux réservés.
-          </p>
+      <CenteredDialog
+        open={directOpen}
+        onClose={() => setDirectOpen(false)}
+        title="Valider le visuel tel quel ?"
+        testId="direct-dialog"
+        footer={
           <div className={s.modalActions}>
-            <button className={`${s.button} ${s.secondary}`} type="button" onClick={() => directDialog.current?.close()}>
+            <button className={`${s.button} ${s.secondary}`} type="button" onClick={() => setDirectOpen(false)}>
               Annuler
             </button>
             <button className={`${s.button} ${s.primary}`} type="button" disabled={busy} onClick={() => void approveAsIs()} data-testid="confirm-approve">
               Valider le visuel
             </button>
           </div>
-        </div>
-      </dialog>
+        }
+      >
+        <p>
+          Le bandeau fourni par le commerçant sera approuvé sans modification. Il sera prévenu et pourra passer au paiement. Aucun paiement n&apos;est encaissé et rien n&apos;est diffusé avant le paiement et les créneaux réservés.
+        </p>
+      </CenteredDialog>
 
       <dialog ref={replaceDialog} className={s.modal}>
         <div className={s.modalInner}>

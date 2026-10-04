@@ -1,14 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-  type PointerEvent as ReactPointerEvent,
-  type ReactElement,
-} from "react";
+import { useCallback, useEffect, useRef, useState, type ReactElement } from "react";
+import { FramingTool } from "@/components/ad-visual-parts";
 import { Button } from "@/components/ui";
 import { CAMPAIGN_PRICE_CENTS } from "@/lib/campaign-prices";
 import {
@@ -65,7 +59,7 @@ type CampaignSummary = {
   createdAt: string;
 };
 
-type Dashboard = { plan: string; period: string; quotas: Quota[]; campaigns: CampaignSummary[] };
+type Dashboard = { merchantId: string; plan: string; period: string; quotas: Quota[]; campaigns: CampaignSummary[] };
 
 type AdRequest = {
   id: string;
@@ -259,6 +253,7 @@ function IconArrowRight({ className }: { className?: string }) {
 }
 
 const DEMO_DASHBOARD: Dashboard = {
+  merchantId: "demo",
   plan: "insight",
   period: "2026-09",
   quotas: [
@@ -288,7 +283,17 @@ const DEMO_DASHBOARD: Dashboard = {
   ],
 };
 
-export function CampagnesPanel({ demo = false }: { demo?: boolean }) {
+const EN_COURS_AD: AdStatus[] = ["LIVE", "SCHEDULED", "AWAITING_MERCHANT", "NEEDS_CHANGES", "PENDING_REVIEW", "APPROVED"];
+
+function isCampaignEnCours(c: CampaignSummary, ad?: AdRequest) {
+  if (c.channel === "SPONSORED_AD" && ad) {
+    if (ad.status === "APPROVED") return c.status === "PENDING_REVIEW";
+    return EN_COURS_AD.includes(ad.status);
+  }
+  return ["SCHEDULED", "PENDING_REVIEW", "PAYMENT_REQUIRED", "PAID", "SENDING"].includes(c.status);
+}
+
+export function CampagnesPanel({ demo = false, filtreEnCours = false }: { demo?: boolean; filtreEnCours?: boolean }) {
   const [dashboard, setDashboard] = useState<Dashboard | null>(demo ? DEMO_DASHBOARD : null);
   const [ads, setAds] = useState<AdRequest[]>([]);
   const [loading, setLoading] = useState(!demo);
@@ -376,6 +381,7 @@ export function CampagnesPanel({ demo = false }: { demo?: boolean }) {
     return (
       <SponsorWizard
         demo={demo}
+        merchantId={dashboard.merchantId}
         quotas={dashboard.quotas}
         onClose={() => setCreating(null)}
         onDone={() => {
@@ -387,6 +393,9 @@ export function CampagnesPanel({ demo = false }: { demo?: boolean }) {
   }
 
   const adsByCampaignId = new Map(ads.filter((a) => a.campaignId).map((a) => [a.campaignId as string, a]));
+  const visibleCampaigns = filtreEnCours
+    ? dashboard.campaigns.filter((c) => isCampaignEnCours(c, adsByCampaignId.get(c.id)))
+    : dashboard.campaigns;
   const planLabel = dashboard.plan === "insight" ? "Fideto Insight" : "Fideto";
 
   const notifQuota = dashboard.quotas.find((q) => q.kind === "MEMBER_NOTIFICATION");
@@ -395,12 +404,31 @@ export function CampagnesPanel({ demo = false }: { demo?: boolean }) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-end">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <Link
+          href="/app/campagnes?filtre=en-cours"
+          className={`inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-black transition-colors ${
+            filtreEnCours
+              ? "border-[var(--violet-bright)] bg-[var(--violet-bright)]/15 text-[var(--ink)]"
+              : "border-[var(--border)] bg-[var(--panel)] text-[var(--ink)] hover:border-[var(--violet-bright)]"
+          }`}
+          data-testid="campaigns-en-cours-link"
+        >
+          Mes campagnes en cours
+        </Link>
         <span className="campaign-plan-badge">
           <IconSparkles />
           {planLabel}
         </span>
       </div>
+      {filtreEnCours ? (
+        <p className="text-xs text-[var(--muted-strong)]">
+          Filtre actif : campagnes en cours (validation, paiement ou diffusion).
+          <Link href="/app/campagnes" className="ml-2 font-bold text-[var(--violet-bright)] underline-offset-2 hover:underline">
+            Tout afficher
+          </Link>
+        </p>
+      ) : null}
 
       <section className="campaign-quota-grid" aria-label="Quotas du mois">
         {dashboard.quotas.map((q) => (
@@ -513,12 +541,12 @@ export function CampagnesPanel({ demo = false }: { demo?: boolean }) {
           </div>
         </div>
 
-        {dashboard.campaigns.length === 0 ? (
+        {visibleCampaigns.length === 0 ? (
           <p className="py-8 text-center text-sm text-[var(--muted)]">
-            Aucune campagne pour le moment. Créez-en une pour toucher vos clients.
+            {filtreEnCours ? "Aucune campagne en cours pour le moment." : "Aucune campagne pour le moment. Créez-en une pour toucher vos clients."}
           </p>
         ) : (
-          dashboard.campaigns.map((c) => {
+          visibleCampaigns.map((c) => {
             const ad = c.channel === "SPONSORED_AD" ? adsByCampaignId.get(c.id) : undefined;
             const typeLabel =
               c.channel === "SPONSORED_AD" ? "Mise en avant" : CHANNEL_LABELS[c.channel as Channel];
@@ -538,16 +566,10 @@ export function CampagnesPanel({ demo = false }: { demo?: boolean }) {
               c.estimatedRecipients !== null
                 ? `${c.status === "SENT" || c.status === "PARTIALLY_SENT" ? "" : "~"}${c.estimatedRecipients} destinataires`
                 : "—";
-            return (
-              <div key={c.id} className="campaign-activity-row">
+            const rowInner = (
+              <>
                 <div className="campaign-activity-title">
-                  {ad && !demo ? (
-                    <Link href={`/app/campagnes/${c.id}`} className="font-black underline-offset-2 hover:underline">
-                      {c.title || "(Sans titre)"} — ouvrir la fiche
-                    </Link>
-                  ) : (
-                    <strong>{c.title || "(Sans titre)"}</strong>
-                  )}
+                  <strong>{c.title || "(Sans titre)"}</strong>
                   <span>
                     {typeLabel} · {audienceLabel}
                   </span>
@@ -569,7 +591,11 @@ export function CampagnesPanel({ demo = false }: { demo?: boolean }) {
                   {canConfirmSponsor || canCancel || canDuplicate ? (
                     <button
                       type="button"
-                      onClick={() => setOpenMenuId(openMenuId === c.id ? null : c.id)}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setOpenMenuId(openMenuId === c.id ? null : c.id);
+                      }}
                       className="campaign-more-btn"
                       aria-label="Actions"
                     >
@@ -579,7 +605,7 @@ export function CampagnesPanel({ demo = false }: { demo?: boolean }) {
                     <span className="campaign-more-btn opacity-0" aria-hidden />
                   )}
                   {openMenuId === c.id ? (
-                    <div className="campaign-more-menu">
+                    <div className="campaign-more-menu" onClick={(e) => e.stopPropagation()}>
                       {canConfirmSponsor ? (
                         <button
                           type="button"
@@ -617,6 +643,16 @@ export function CampagnesPanel({ demo = false }: { demo?: boolean }) {
                     </div>
                   ) : null}
                 </div>
+              </>
+            );
+
+            return !demo ? (
+              <Link key={c.id} href={`/app/campagnes/${c.id}`} className="campaign-activity-row">
+                {rowInner}
+              </Link>
+            ) : (
+              <div key={c.id} className="campaign-activity-row">
+                {rowInner}
               </div>
             );
           })
@@ -1585,8 +1621,6 @@ export function HourlySchedulePicker({
 /* Visuel de la mise en avant — deux parcours (Partie 14)                  */
 /* ---------------------------------------------------------------------- */
 
-/** Taille du bandeau exporté par le recadrage (carré, cohérent avec le rendu SponsoredBanner). */
-const SELF_VISUAL_OUTPUT_PX = 800;
 const MAX_FIDETO_IMAGES = 5;
 
 export type VisualPickerValue =
@@ -1635,150 +1669,18 @@ function loadImageElement(src: string): Promise<HTMLImageElement> {
   });
 }
 
-/**
- * Recadrage carré simple : l'image source est affichée dans un cadre carré, déplaçable à la
- * souris/au doigt et zoomable via un curseur ; « Valider le recadrage » exporte exactement le
- * cadre visible en 800×800 — le format réellement accepté par le bandeau sponsorisé.
- */
-function SelfVisualCropper({
-  file,
-  onCancel,
-  onConfirm,
-  onError,
-}: {
-  file: File;
-  onCancel: () => void;
-  onConfirm: (dataUrl: string) => void;
-  onError: (message: string) => void;
-}) {
-  const [imgEl, setImgEl] = useState<HTMLImageElement | null>(null);
-  const [zoom, setZoom] = useState(1);
-  const [offset, setOffset] = useState({ x: 0, y: 0 });
-  const dragRef = useRef<{ startX: number; startY: number; origin: { x: number; y: number } } | null>(null);
-  const frameRef = useRef<HTMLDivElement | null>(null);
-  const FRAME_PX = 260;
-
-  useEffect(() => {
-    let cancelled = false;
-    readFileAsDataUrl(file)
-      .then((dataUrl) => loadImageElement(dataUrl))
-      .then((img) => {
-        if (!cancelled) setImgEl(img);
-      })
-      .catch(() => onError("Image illisible. Utilisez un fichier PNG, JPEG ou WebP."));
-    return () => {
-      cancelled = true;
-    };
-  }, [file, onError]);
-
-  if (!imgEl) {
-    return <p className="text-xs text-[var(--muted)]">Chargement de l&apos;image…</p>;
-  }
-
-  const baseScale = Math.max(FRAME_PX / imgEl.width, FRAME_PX / imgEl.height);
-  const displayScale = baseScale * zoom;
-  const displayWidth = imgEl.width * displayScale;
-  const displayHeight = imgEl.height * displayScale;
-  const maxOffsetX = Math.max(0, (displayWidth - FRAME_PX) / 2);
-  const maxOffsetY = Math.max(0, (displayHeight - FRAME_PX) / 2);
-  const clampedOffset = {
-    x: Math.min(maxOffsetX, Math.max(-maxOffsetX, offset.x)),
-    y: Math.min(maxOffsetY, Math.max(-maxOffsetY, offset.y)),
-  };
-
-  function onPointerDown(e: ReactPointerEvent) {
-    (e.target as Element).setPointerCapture(e.pointerId);
-    dragRef.current = { startX: e.clientX, startY: e.clientY, origin: clampedOffset };
-  }
-  function onPointerMove(e: ReactPointerEvent) {
-    if (!dragRef.current) return;
-    const dx = e.clientX - dragRef.current.startX;
-    const dy = e.clientY - dragRef.current.startY;
-    setOffset({ x: dragRef.current.origin.x + dx, y: dragRef.current.origin.y + dy });
-  }
-  function onPointerUp() {
-    dragRef.current = null;
-  }
-
-  function confirmCrop() {
-    if (!imgEl) return;
-    const canvas = document.createElement("canvas");
-    canvas.width = SELF_VISUAL_OUTPUT_PX;
-    canvas.height = SELF_VISUAL_OUTPUT_PX;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) {
-      onError("Recadrage impossible sur cet appareil.");
-      return;
-    }
-    const exportScale = SELF_VISUAL_OUTPUT_PX / FRAME_PX;
-    const drawWidth = displayWidth * exportScale;
-    const drawHeight = displayHeight * exportScale;
-    const drawX = SELF_VISUAL_OUTPUT_PX / 2 - drawWidth / 2 + clampedOffset.x * exportScale;
-    const drawY = SELF_VISUAL_OUTPUT_PX / 2 - drawHeight / 2 + clampedOffset.y * exportScale;
-    ctx.drawImage(imgEl, drawX, drawY, drawWidth, drawHeight);
-    onConfirm(canvas.toDataURL("image/jpeg", 0.9));
-  }
-
-  return (
-    <div className="space-y-3 rounded-xl border border-[var(--border)] bg-[var(--panel-bg)] p-3">
-      <div
-        ref={frameRef}
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={onPointerUp}
-        onPointerLeave={onPointerUp}
-        className="relative mx-auto overflow-hidden rounded-lg border border-[var(--border)]"
-        style={{ width: FRAME_PX, height: FRAME_PX, touchAction: "none", cursor: "grab" }}
-      >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={imgEl.src}
-          alt=""
-          draggable={false}
-          className="pointer-events-none absolute select-none"
-          style={{
-            width: displayWidth,
-            height: displayHeight,
-            left: FRAME_PX / 2 - displayWidth / 2 + clampedOffset.x,
-            top: FRAME_PX / 2 - displayHeight / 2 + clampedOffset.y,
-          }}
-        />
-      </div>
-      <label className="block text-xs text-[var(--muted)]">
-        Zoom
-        <input
-          type="range"
-          min={1}
-          max={3}
-          step={0.05}
-          value={zoom}
-          onChange={(e) => setZoom(Number(e.target.value))}
-          className="mt-1 w-full"
-        />
-      </label>
-      <p className="text-[11px] text-[var(--muted)]">Déplacez l&apos;image pour cadrer le bandeau (format carré).</p>
-      <div className="flex gap-2">
-        <Button type="button" onClick={confirmCrop}>
-          Valider le recadrage
-        </Button>
-        <Button type="button" variant="secondary" onClick={onCancel}>
-          Annuler
-        </Button>
-      </div>
-    </div>
-  );
-}
-
 function VisualPicker({
+  merchantId,
   value,
   onChange,
   onError,
 }: {
+  merchantId: string;
   value: VisualPickerValue;
   onChange: (value: VisualPickerValue) => void;
   onError: (message: string) => void;
 }) {
-  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [pendingCropSrc, setPendingCropSrc] = useState<string | null>(null);
   const [selfBusy, setSelfBusy] = useState(false);
   const [fidetoBusy, setFidetoBusy] = useState(false);
 
@@ -1787,7 +1689,7 @@ function VisualPicker({
     // On change de parcours : on retire les fichiers déjà envoyés sous l'autre parcours.
     if (value.mode === "SELF") dropSelfFiles(value);
     if (value.mode === "FIDETO") value.fidetoUrls.forEach((url) => void deleteCampaignMediaUrl(url));
-    setPendingFile(null);
+    setPendingCropSrc(null);
     onChange(
       mode === "SELF"
         ? { mode: "SELF", selfUrl: null, selfOriginalUrl: null, fidetoUrls: [] }
@@ -1818,23 +1720,8 @@ function VisualPicker({
         const url = await uploadCampaignMedia(dataUrl, "banniere");
         onChange({ mode: "SELF", selfUrl: url, selfOriginalUrl: url, fidetoUrls: [] });
       } else {
-        setPendingFile(file);
+        setPendingCropSrc(dataUrl);
       }
-    } catch (err) {
-      onError(err instanceof Error ? err.message : "Envoi de l'image impossible.");
-    } finally {
-      setSelfBusy(false);
-    }
-  }
-
-  async function onCropConfirm(dataUrl: string) {
-    setSelfBusy(true);
-    try {
-      // Le fichier d'origine est conservé en qualité complète à côté du bandeau recadré.
-      const originalUrl = pendingFile ? await uploadCampaignMedia(await readFileAsDataUrl(pendingFile), "original") : null;
-      const url = await uploadCampaignMedia(dataUrl, "banniere");
-      onChange({ mode: "SELF", selfUrl: url, selfOriginalUrl: originalUrl ?? url, fidetoUrls: [] });
-      setPendingFile(null);
     } catch (err) {
       onError(err instanceof Error ? err.message : "Envoi de l'image impossible.");
     } finally {
@@ -1845,7 +1732,7 @@ function VisualPicker({
   async function removeSelfImage() {
     dropSelfFiles(value);
     onChange({ mode: "SELF", selfUrl: null, selfOriginalUrl: null, fidetoUrls: [] });
-    setPendingFile(null);
+    setPendingCropSrc(null);
   }
 
   async function onFidetoFilesSelected(files: FileList | null) {
@@ -1907,7 +1794,7 @@ function VisualPicker({
           <div className="sponsor-notice">
             Ajoutez votre bandeau, vérifiez l&apos;aperçu et ajustez son cadrage avant de continuer.
           </div>
-          {!pendingFile && !value.selfUrl ? (
+          {!pendingCropSrc && !value.selfUrl ? (
             <label className="sponsor-dropzone">
               <span className="sponsor-drop-icon" aria-hidden>
                 ▧
@@ -1922,12 +1809,20 @@ function VisualPicker({
               />
             </label>
           ) : null}
-          {pendingFile ? (
-            <SelfVisualCropper
-              file={pendingFile}
-              onCancel={() => setPendingFile(null)}
-              onConfirm={onCropConfirm}
-              onError={onError}
+          {pendingCropSrc ? (
+            <FramingTool
+              src={pendingCropSrc}
+              merchantId={merchantId}
+              onCancel={() => setPendingCropSrc(null)}
+              onExport={(result) => {
+                onChange({
+                  mode: "SELF",
+                  selfUrl: result.url,
+                  selfOriginalUrl: result.originalUrl,
+                  fidetoUrls: [],
+                });
+                setPendingCropSrc(null);
+              }}
             />
           ) : null}
           {selfBusy ? <p className="mt-2 text-xs text-[var(--muted)]">Envoi de l&apos;image…</p> : null}
@@ -1995,11 +1890,13 @@ function VisualPicker({
 
 function SponsorWizard({
   demo,
+  merchantId,
   quotas,
   onClose,
   onDone,
 }: {
   demo: boolean;
+  merchantId: string;
   quotas: Quota[];
   onClose: () => void;
   onDone: () => void;
@@ -2171,7 +2068,7 @@ function SponsorWizard({
                   Choisissez comment préparer le bandeau qui représentera votre commerce.
                 </p>
               </div>
-              <VisualPicker value={visual} onChange={setVisual} onError={setError} />
+              <VisualPicker merchantId={merchantId} value={visual} onChange={setVisual} onError={setError} />
               {visual.mode === "FIDETO" ? (
                 <label className="mt-4 block text-xs text-[var(--muted)]">
                   Ce que vous souhaitez (facultatif)
