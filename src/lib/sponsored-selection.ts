@@ -1,5 +1,5 @@
 import type { AdPlacement } from "@prisma/client";
-import { approvedGoogleWalletHeroUrl } from "./google-wallet-campaign-hero";
+import { resolveApprovedWalletHeroForGoogle } from "./google-wallet-campaign-hero";
 import { globalWalletCampaignDetailUri } from "./google-wallet-campaign-module";
 import { prisma } from "./prisma";
 import { isWithinUtcIntervals, type UtcInterval } from "./sponsored-hours-pricing";
@@ -265,12 +265,12 @@ export async function selectSponsoredForGoogleWalletGlobal(userId: string, now: 
   eligible.sort((a, b) => (lastShownBy.get(a.id) ?? 0) - (lastShownBy.get(b.id) ?? 0) || a.id.localeCompare(b.id));
   const ad = eligible[0];
   const title = (ad.ctaLabel?.trim() || ad.merchant.name).slice(0, 60);
-  const walletHero = approvedGoogleWalletHeroUrl(ad);
+  const walletHeroHttps = resolveApprovedWalletHeroForGoogle(ad);
   return {
     id: ad.id,
     title,
     description: ad.requestedText.trim(),
-    imagePathOrUrl: walletHero ?? "",
+    imagePathOrUrl: walletHeroHttps ?? "",
     detailUri: globalWalletCampaignDetailUri({ merchantSlug: ad.merchant.slug, ctaUrl: ad.ctaUrl ?? null }),
     displayStart: ad.startDate,
     displayEnd: ad.endDate,

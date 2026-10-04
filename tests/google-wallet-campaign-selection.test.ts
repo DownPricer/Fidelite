@@ -70,7 +70,7 @@ describe("selectSponsoredForGoogleWalletGlobal", () => {
     const { selectSponsoredForGoogleWalletGlobal } = await import("../src/lib/sponsored-selection");
     const during = new Date(START.getTime() + 600_000);
     const mod = await selectSponsoredForGoogleWalletGlobal("c1", during);
-    expect(mod?.imagePathOrUrl).toBe("/api/media/visuels/m1/google-wallet-hero-blue.png");
+    expect(mod?.imagePathOrUrl).toBe("https://fideto.fr/api/media/visuels/m1/google-wallet-hero-blue.png");
     expect(mod?.imagePathOrUrl).not.toBe("/api/media/visuels/m1/banniere-red.png");
   });
 

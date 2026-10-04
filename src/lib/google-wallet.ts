@@ -17,6 +17,7 @@ import { loyaltyBalanceForMode } from "./loyalty-balance";
 import { signQrToken } from "./qr";
 import { prisma } from "./prisma";
 import { getCustomerLoyaltyOverview } from "./customer-loyalty-overview";
+import { resolveCampaignModuleHeroPathOrUrl } from "./google-wallet-campaign-hero";
 import {
   resolveGlobalWalletCampaignHeroUrl,
   type GlobalWalletCampaignModule,
@@ -613,9 +614,8 @@ export async function globalObjectBody(input: {
   const tierLabel = getLoyaltyCardTierLabel(tier.name);
   let heroImage: GoogleWalletImage | undefined;
   if (input.campaignModule) {
-    const campaignHeroUrl = input.campaignModule.imagePathOrUrl
-      ? resolveGlobalWalletCampaignHeroUrl(input.campaignModule.imagePathOrUrl)
-      : null;
+    const dedicatedPath = resolveCampaignModuleHeroPathOrUrl(input.campaignModule.imagePathOrUrl);
+    const campaignHeroUrl = dedicatedPath ? resolveGlobalWalletCampaignHeroUrl(dedicatedPath) : null;
     if (campaignHeroUrl) {
       const alt = (input.campaignModule.title.trim() || input.campaignModule.description.trim()).slice(0, 60);
       heroImage = imageData(campaignHeroUrl, alt || "Offre Fideto");

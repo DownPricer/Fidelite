@@ -69,13 +69,13 @@ describe("sponsored-test-broadcast", () => {
       adRequest: {
         ...adRow,
         googleWalletVisualStatus: "APPROVED",
-        googleWalletHeroUrl: "https://cdn.example.com/wallet-blue.png",
+        googleWalletHeroUrl: "https://fideto.fr/api/media/visuels/m1/google-wallet-hero-blue.png",
       },
     });
     const { resolveGlobalWalletCampaignModule } = await import("../src/lib/sponsored-test-broadcast");
     const mod = await resolveGlobalWalletCampaignModule("any-user");
     expect(mod?.title).toBe("Voir");
-    expect(mod?.imagePathOrUrl).toBe("https://cdn.example.com/wallet-blue.png");
+    expect(mod?.imagePathOrUrl).toBe("https://fideto.fr/api/media/visuels/m1/google-wallet-hero-blue.png");
     const { selectSponsoredForGoogleWalletGlobal } = await import("@/lib/sponsored-selection");
     expect(selectSponsoredForGoogleWalletGlobal).not.toHaveBeenCalled();
   });

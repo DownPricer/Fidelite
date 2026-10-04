@@ -97,11 +97,13 @@ describe("Google Wallet campagne (carte globale)", () => {
         id: "ad1",
         title: "Offre",
         description: "Texte",
-        imagePathOrUrl: "https://cdn.example.com/b.png",
+        imagePathOrUrl: "https://fideto.fr/api/media/visuels/m1/google-wallet-hero-campaign.png",
         detailUri: "https://fideto.fr/c/boulangerie",
       },
     })) as Record<string, unknown>;
-    expect((withCampaign.heroImage as { sourceUri: { uri: string } }).sourceUri.uri).toBe("https://cdn.example.com/b.png");
+    expect((withCampaign.heroImage as { sourceUri: { uri: string } }).sourceUri.uri).toBe(
+      "https://fideto.fr/api/media/visuels/m1/google-wallet-hero-campaign.png",
+    );
     expect(withCampaign.valueAddedModuleData).toEqual([]);
     expect(withCampaign.barcode).toMatchObject({ type: "QR_CODE", value: "qr" });
 
@@ -116,6 +118,37 @@ describe("Google Wallet campagne (carte globale)", () => {
     })) as Record<string, unknown>;
     expect((without.heroImage as { sourceUri: { uri: string } }).sourceUri.uri).toContain("/cards/bronze-good.png");
     expect(without.valueAddedModuleData).toEqual([]);
+  });
+
+  it("conserve le hero Bronze si le module tente d'utiliser le bandeau", async () => {
+    vi.resetModules();
+    process.env.GOOGLE_WALLET_ISSUER_ID = "3388000000023198536";
+    process.env.GOOGLE_WALLET_GLOBAL_CLASS_ID = "3388000000023198536.fifelife_global";
+    process.env.GOOGLE_WALLET_ORIGIN = "https://fideto.fr";
+    const { globalObjectBody } = await import("../src/lib/google-wallet");
+    const body = await globalObjectBody({
+      user: {
+        id: "u1",
+        firstName: "Ada",
+        lastName: null,
+        clientNumber: "100001",
+        fifeLifePoints: 20,
+        isActive: true,
+      },
+      objectId: "obj",
+      qrValue: "qr",
+      activeCardCount: 1,
+      nextReward: null,
+      availableRewardsCount: 0,
+      campaignModule: {
+        id: "ad1",
+        title: "Offre",
+        description: "Texte",
+        imagePathOrUrl: "/api/media/visuels/m1/banniere-red.png",
+        detailUri: "https://fideto.fr/c/boulangerie",
+      },
+    });
+    expect(body.heroImage?.sourceUri?.uri).toContain("/cards/bronze-good.png");
   });
 
   it("conserve le hero Bronze si le visuel campagne Wallet n'est pas une URL https publique", async () => {

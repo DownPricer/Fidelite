@@ -16,7 +16,8 @@
     "db:studio": "prisma studio",
     "test": "vitest run",
     "test:watch": "vitest",
-    "icons": "node scripts/generate-pwa-icons.mjs"
+    "icons": "node scripts/generate-pwa-icons.mjs",
+    "diagnose:wallet-hero": "tsx scripts/diagnose-google-wallet-campaign-hero.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
