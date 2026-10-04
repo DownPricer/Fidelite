@@ -4,7 +4,7 @@ import {
   globalWalletCampaignDetailUri,
   type GlobalWalletCampaignModule,
 } from "./google-wallet-campaign-module";
-import { resolveApprovedWalletHeroForGoogle } from "./google-wallet-campaign-hero";
+import { explainWalletHeroResolution, resolveApprovedWalletHeroForGoogle } from "./google-wallet-campaign-hero";
 import { GoogleWalletConfigError, publicGoogleWalletError } from "./google-wallet";
 import { prisma } from "./prisma";
 import { selectSponsoredForGoogleWalletGlobal, type SponsoredCard } from "./sponsored-selection";
@@ -40,8 +40,12 @@ export function adToGlobalWalletTestModule(
 ): GlobalWalletCampaignModule | null {
   const title = (ad.ctaLabel?.trim() || ad.merchant.name).slice(0, 60);
   const description = ad.requestedText.trim();
-  if (!title || !description || !imagePathOrUrl) return null;
+  if (!title || !description) return null;
   const detailUri = globalWalletCampaignDetailUri({ merchantSlug: ad.merchant.slug, ctaUrl: ad.ctaUrl ?? null });
+  if (!detailUri) return null;
+  if (!imagePathOrUrl) {
+    return { id: ad.id, title, description, imagePathOrUrl: "", detailUri };
+  }
   if (!buildGlobalWalletValueAddedModule({ id: ad.id, title, description, imagePathOrUrl, detailUri })) return null;
   return { id: ad.id, title, description, imagePathOrUrl, detailUri };
 }
@@ -78,18 +82,25 @@ export async function selectSponsoredTestBroadcastCard(placement: AdPlacement): 
   return adToSponsoredTestCard(row.adRequest, placement, imageUrl);
 }
 
+type TestBroadcastRow = NonNullable<Awaited<ReturnType<typeof loadSponsoredTestBroadcast>>>;
+
 /** Module Google Wallet pour toutes les cartes globales enregistrées. */
+export function getSponsoredTestBroadcastWalletModuleFromRow(row: TestBroadcastRow) {
+  const hero = resolveApprovedWalletHeroForGoogle(row.adRequest);
+  return adToGlobalWalletTestModule(row.adRequest, hero ?? "");
+}
+
 export async function getSponsoredTestBroadcastWalletModule() {
   const row = await loadSponsoredTestBroadcast();
   if (!row) return null;
-  const imageUrl = resolveApprovedWalletHeroForGoogle(row.adRequest);
-  if (!imageUrl) return null;
-  return adToGlobalWalletTestModule(row.adRequest, imageUrl);
+  return getSponsoredTestBroadcastWalletModuleFromRow(row);
 }
 
 export async function resolveGlobalWalletCampaignModule(userId: string, now: Date = new Date()) {
-  const testModule = await getSponsoredTestBroadcastWalletModule();
-  if (testModule) return testModule;
+  const row = await loadSponsoredTestBroadcast();
+  if (row) {
+    return getSponsoredTestBroadcastWalletModuleFromRow(row);
+  }
   try {
     return await selectSponsoredForGoogleWalletGlobal(userId, now);
   } catch {
@@ -145,7 +156,10 @@ export async function getSponsoredTestBroadcastAdminStatus(adRequestId: string):
 
 async function syncAllGlobalWalletObjectsForTestBroadcast(clearCampaignModule: boolean) {
   const { syncAllGoogleWalletGlobalObjects } = await import("./google-wallet");
-  return syncAllGoogleWalletGlobalObjects({ clearCampaignModule });
+  return syncAllGoogleWalletGlobalObjects({
+    clearCampaignModule,
+    verifyRemoteHero: clearCampaignModule ? "no-dedicated-wallet-hero" : "dedicated-wallet-hero",
+  });
 }
 
 export async function startSponsoredTestBroadcast(input: { adRequestId: string; startedById: string }) {
@@ -161,9 +175,15 @@ export async function startSponsoredTestBroadcast(input: { adRequestId: string; 
   if (!imageUrl || !adToSponsoredTestCard(ad, "WALLET_HOME", imageUrl)) {
     throw new GoogleWalletConfigError("Un visuel est requis pour la diffusion test.");
   }
-  if (!adToGlobalWalletTestModule(ad, imageUrl)) {
+  const walletHero = explainWalletHeroResolution(ad);
+  if (walletHero.reason !== "ok" || !walletHero.httpsUrl) {
     throw new GoogleWalletConfigError(
-      "Visuel ou lien invalide pour Google Wallet (image publique https, texte et lien valides).",
+      `Visuel Google Wallet dédié validé requis pour la diffusion test (raison : ${walletHero.reason}).`,
+    );
+  }
+  if (!adToGlobalWalletTestModule(ad, walletHero.httpsUrl)) {
+    throw new GoogleWalletConfigError(
+      "Texte ou lien invalide pour Google Wallet (texte et lien valides requis).",
     );
   }
 
@@ -190,21 +210,24 @@ export async function startSponsoredTestBroadcast(input: { adRequestId: string; 
   let googleSync = { ok: true as boolean, error: null as string | null, synced: 0, failed: 0, total: 0 };
   try {
     const result = await syncAllGlobalWalletObjectsForTestBroadcast(false);
+    const syncOk = result.attempted === 0 ? true : result.failed === 0 && result.verified === result.attempted;
     googleSync = {
-      ok: result.failed === 0 || result.synced > 0,
-      error: result.failed > 0 ? `${result.failed} objet(s) en échec sur ${result.attempted}` : null,
-      synced: result.synced,
-      failed: result.failed,
+      ok: syncOk,
+      error: !syncOk
+        ? `${result.failed} échec(s) ou hero Google non confirmé (${result.verified}/${result.attempted} GET ok) sur ${result.attempted} cartes globales`
+        : null,
+      synced: result.verified,
+      failed: result.failed + (result.attempted - result.verified),
       total: result.attempted,
     };
     await prisma.sponsoredAdTestBroadcast.update({
       where: { id: SPONSORED_TEST_BROADCAST_ROW_ID },
       data: {
-        lastGoogleSyncOk: result.failed === 0,
-        lastGoogleSyncError: result.failed > 0 ? `${result.failed} échec(s) sur ${result.attempted} cartes globales` : null,
+        lastGoogleSyncOk: syncOk,
+        lastGoogleSyncError: !syncOk ? googleSync.error : null,
         lastGoogleSyncAt: new Date(),
-        googleObjectsSynced: result.synced,
-        googleObjectsFailed: result.failed,
+        googleObjectsSynced: result.verified,
+        googleObjectsFailed: result.failed + Math.max(0, result.attempted - result.verified),
         googleObjectsTotal: result.attempted,
       },
     });
@@ -231,11 +254,14 @@ export async function stopSponsoredTestBroadcast(input: { adRequestId: string })
   let googleSync = { ok: true as boolean, error: null as string | null, synced: 0, failed: 0, total: 0 };
   try {
     const result = await syncAllGlobalWalletObjectsForTestBroadcast(true);
+    const syncOk = result.attempted === 0 ? true : result.failed === 0 && result.verified === result.attempted;
     googleSync = {
-      ok: result.failed === 0 || result.synced > 0,
-      error: result.failed > 0 ? `${result.failed} échec(s) sur ${result.attempted}` : null,
-      synced: result.synced,
-      failed: result.failed,
+      ok: syncOk,
+      error: !syncOk
+        ? `${result.failed} échec(s) ou hero retiré non confirmé (${result.verified}/${result.attempted})`
+        : null,
+      synced: result.verified,
+      failed: result.failed + Math.max(0, result.attempted - result.verified),
       total: result.attempted,
     };
   } catch (error) {

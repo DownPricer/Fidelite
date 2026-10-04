@@ -1,7 +1,12 @@
 import { readFile } from "fs/promises";
 import { NextResponse } from "next/server";
 import { requireMerchantAdmin, requireSuperAdmin } from "@/lib/api-guard";
-import { fileUrlFromMediaPath, isGoogleWalletHeroFilename, isPublicGoogleWalletHeroMedia } from "@/lib/ad-visual-public-access";
+import {
+  fileUrlFromMediaPath,
+  isGoogleWalletHeroFilename,
+  isPublicGoogleWalletHeroMedia,
+  isPublicTestBroadcastWalletHeroMedia,
+} from "@/lib/ad-visual-public-access";
 import { MIME_BY_EXT, adVisualFilePath, adVisualUrl } from "@/lib/ad-visuals";
 import { prisma } from "@/lib/prisma";
 
@@ -58,7 +63,10 @@ export async function GET(req: Request, context: { params: Promise<{ merchantId:
       }
     }
     if (!publicReadable && isGoogleWalletHeroFilename(filename)) {
-      publicReadable = await isPublicGoogleWalletHeroMedia(merchantId, fileUrlFromMediaPath(merchantId, filename));
+      const heroFileUrl = fileUrlFromMediaPath(merchantId, filename);
+      publicReadable =
+        (await isPublicTestBroadcastWalletHeroMedia(merchantId, heroFileUrl)) ||
+        (await isPublicGoogleWalletHeroMedia(merchantId, heroFileUrl));
     }
     if (!publicReadable) return NextResponse.json({ error: "Fichier introuvable." }, { status: 404 });
   }

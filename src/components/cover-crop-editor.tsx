@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type WheelEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { Button } from "@/components/ui";
 import { centeredCropState, clampCropState, computeCoverCrop, type CropState } from "@/lib/cover-crop";
 
@@ -57,6 +57,19 @@ export function CoverCropEditor({
     return () => ro.disconnect();
   }, []);
 
+  useEffect(() => {
+    const el = frameRef.current;
+    if (!el) return;
+    const onWheelNative = (ev: WheelEvent) => {
+      if (busy) return;
+      ev.preventDefault();
+      const delta = ev.deltaY > 0 ? -0.06 : 0.06;
+      setState((current) => clampCropState({ ...current, zoom: current.zoom + delta }));
+    };
+    el.addEventListener("wheel", onWheelNative, { passive: false });
+    return () => el.removeEventListener("wheel", onWheelNative);
+  }, [busy]);
+
   const patchState = useCallback((patch: Partial<CropState>) => {
     setState((current) => clampCropState({ ...current, ...patch }));
   }, []);
@@ -106,13 +119,6 @@ export function CoverCropEditor({
     pinchOrigin.current = null;
   }
 
-  function onWheel(ev: WheelEvent) {
-    if (busy) return;
-    ev.preventDefault();
-    const delta = ev.deltaY > 0 ? -0.06 : 0.06;
-    patchState({ zoom: clampCropState({ ...state, zoom: state.zoom + delta }).zoom });
-  }
-
   function onHandlePointerDown(ev: ReactPointerEvent, corner: "nw" | "ne" | "sw" | "se") {
     if (busy) return;
     ev.preventDefault();
@@ -148,7 +154,6 @@ export function CoverCropEditor({
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
         onPointerLeave={onPointerUp}
-        onWheel={onWheel}
         role="application"
         aria-label="Éditeur de recadrage"
       >

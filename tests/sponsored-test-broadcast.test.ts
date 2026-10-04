@@ -59,10 +59,28 @@ const adRow = {
 beforeEach(() => {
   vi.clearAllMocks();
   walletCount.mockResolvedValue(2);
-  syncAll.mockResolvedValue({ attempted: 2, synced: 2, failed: 0 });
+  syncAll.mockResolvedValue({ attempted: 2, synced: 2, failed: 0, verified: 2 });
 });
 
 describe("sponsored-test-broadcast", () => {
+  it("campagne Stripe TEST + diffusion test → hero Wallet dédié, jamais le bandeau", async () => {
+    broadcastFindUnique.mockResolvedValueOnce({
+      adRequestId: "ad_test",
+      adRequest: {
+        ...adRow,
+        status: "DRAFT",
+        fundingMode: "TEST",
+        finalImageUrl: "https://cdn.example.com/banniere-bordeaux.png",
+        googleWalletVisualStatus: "APPROVED",
+        googleWalletHeroUrl: "/api/media/visuels/m1/google-wallet-hero-test.png",
+      },
+    });
+    const { resolveGlobalWalletCampaignModule } = await import("../src/lib/sponsored-test-broadcast");
+    const mod = await resolveGlobalWalletCampaignModule("any-user");
+    expect(mod?.imagePathOrUrl).toBe("https://fideto.fr/api/media/visuels/m1/google-wallet-hero-test.png");
+    expect(mod?.imagePathOrUrl).not.toContain("banniere");
+  });
+
   it("priorise la diffusion test Wallet avec le hero dédié validé", async () => {
     broadcastFindUnique.mockResolvedValueOnce({
       adRequestId: "ad_test",
@@ -86,17 +104,39 @@ describe("sponsored-test-broadcast", () => {
       adRequestId: "ad_test",
       adRequest: adRow,
     });
-    expect(await getSponsoredTestBroadcastWalletModule()).toBeNull();
+    const mod = await getSponsoredTestBroadcastWalletModule();
+    expect(mod?.imagePathOrUrl).toBe("");
+    expect(mod?.imagePathOrUrl).not.toBe(adRow.finalImageUrl);
+  });
+
+  it("ne bascule pas sur une campagne LIVE quand la diffusion test est active sans hero", async () => {
+    broadcastFindUnique.mockResolvedValueOnce({
+      adRequestId: "ad_test",
+      adRequest: adRow,
+    });
+    const { resolveGlobalWalletCampaignModule } = await import("../src/lib/sponsored-test-broadcast");
+    const mod = await resolveGlobalWalletCampaignModule("any-user");
+    expect(mod?.imagePathOrUrl).toBe("");
+    const { selectSponsoredForGoogleWalletGlobal } = await import("@/lib/sponsored-selection");
+    expect(selectSponsoredForGoogleWalletGlobal).not.toHaveBeenCalled();
   });
 
   it("active la diffusion et synchronise toutes les cartes globales", async () => {
-    adFindUnique.mockResolvedValueOnce(adRow);
+    adFindUnique.mockResolvedValueOnce({
+      ...adRow,
+      googleWalletVisualStatus: "APPROVED",
+      googleWalletHeroUrl: "https://fideto.fr/api/media/visuels/m1/google-wallet-hero-blue.png",
+      finalImageUrl: "https://cdn.example.com/banner.png",
+    });
     broadcastUpsert.mockResolvedValueOnce({});
     broadcastUpdate.mockResolvedValueOnce({});
     const { startSponsoredTestBroadcast } = await import("../src/lib/sponsored-test-broadcast");
     const result = await startSponsoredTestBroadcast({ adRequestId: "ad_test", startedById: "admin" });
     expect(broadcastUpsert).toHaveBeenCalled();
-    expect(syncAll).toHaveBeenCalledWith({ clearCampaignModule: false });
+    expect(syncAll).toHaveBeenCalledWith({
+      clearCampaignModule: false,
+      verifyRemoteHero: "dedicated-wallet-hero",
+    });
     expect(result.googleSync.synced).toBe(2);
   });
 
@@ -106,7 +146,10 @@ describe("sponsored-test-broadcast", () => {
     const { stopSponsoredTestBroadcast } = await import("../src/lib/sponsored-test-broadcast");
     const result = await stopSponsoredTestBroadcast({ adRequestId: "ad_test" });
     expect(result.stopped).toBe(true);
-    expect(syncAll).toHaveBeenCalledWith({ clearCampaignModule: true });
+    expect(syncAll).toHaveBeenCalledWith({
+      clearCampaignModule: true,
+      verifyRemoteHero: "no-dedicated-wallet-hero",
+    });
     broadcastFindUnique.mockResolvedValueOnce({ adRequestId: "other" });
     const noop = await stopSponsoredTestBroadcast({ adRequestId: "ad_test" });
     expect(noop.stopped).toBe(false);

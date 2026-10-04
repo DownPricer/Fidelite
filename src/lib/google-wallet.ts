@@ -17,7 +17,7 @@ import { loyaltyBalanceForMode } from "./loyalty-balance";
 import { signQrToken } from "./qr";
 import { prisma } from "./prisma";
 import { getCustomerLoyaltyOverview } from "./customer-loyalty-overview";
-import { resolveCampaignModuleHeroPathOrUrl } from "./google-wallet-campaign-hero";
+import { explainWalletHeroResolution, resolveCampaignModuleHeroPathOrUrl } from "./google-wallet-campaign-hero";
 import {
   resolveGlobalWalletCampaignHeroUrl,
   type GlobalWalletCampaignModule,
@@ -55,6 +55,44 @@ export class GoogleWalletApiError extends Error {
   ) {
     super(message);
   }
+}
+
+export class GoogleWalletGlobalHeroVerifyError extends Error {
+  status = 502;
+}
+
+export type SyncAllGlobalWalletObjectsOptions = {
+  clearCampaignModule?: boolean;
+  verifyRemoteHero?: "dedicated-wallet-hero" | "no-dedicated-wallet-hero";
+};
+
+function redactWalletSyncUri(uri: string | null | undefined) {
+  if (!uri) return null;
+  try {
+    const u = new URL(uri);
+    return `${u.origin}${u.pathname}`;
+  } catch {
+    return uri.split("?")[0];
+  }
+}
+
+function remoteLoyaltyObjectHeroUri(body: Record<string, unknown> | null | undefined) {
+  const hero = body?.heroImage as { sourceUri?: { uri?: string } } | undefined;
+  return hero?.sourceUri?.uri ?? null;
+}
+
+function dedicatedWalletHeroInUri(uri: string | null | undefined) {
+  return Boolean(uri && uri.includes("google-wallet-hero"));
+}
+
+function verifyRemoteHeroUri(uri: string | null, mode: "dedicated-wallet-hero" | "no-dedicated-wallet-hero") {
+  if (mode === "dedicated-wallet-hero") return dedicatedWalletHeroInUri(uri);
+  return !dedicatedWalletHeroInUri(uri);
+}
+
+function logGlobalWalletObjectSync(entry: Record<string, unknown>) {
+  if (process.env.NODE_ENV === "test") return;
+  console.info("[google-wallet global-sync]", JSON.stringify(entry));
 }
 
 function assertConfigured() {
@@ -816,10 +854,32 @@ async function syncGlobalObjectToGoogle(input: {
   userId: string;
   googleObjectId: string;
   clearCampaignModule?: boolean;
+  verifyRemoteHero?: "dedicated-wallet-hero" | "no-dedicated-wallet-hero";
 }) {
+  const walletRow = await prisma.googleWalletObject.findUnique({
+    where: { googleObjectId: input.googleObjectId },
+    select: { merchantId: true, customerMembershipId: true, googleClassId: true },
+  });
+  if (walletRow?.merchantId != null || walletRow?.customerMembershipId != null) {
+    throw new GoogleWalletConfigError("Synchronisation refusée : objet Google Wallet non global.");
+  }
+  const expectedGlobalClassId = buildGoogleWalletIds({}).globalClassId;
+  if (walletRow && walletRow.googleClassId !== expectedGlobalClassId) {
+    throw new GoogleWalletConfigError("Synchronisation refusée : classId non globale Fideto.");
+  }
+
   const { user, nextReward, availableRewardsCount } = await globalObjectSyncContext(input.userId);
   const qrValue = await customerQrValue(input.userId);
-  const campaignModule = await resolveGlobalWalletCampaignModule(input.userId);
+  const campaignModule = input.clearCampaignModule ? null : await resolveGlobalWalletCampaignModule(input.userId);
+
+  const testBroadcastRow = input.clearCampaignModule ? null : await loadSponsoredTestBroadcast();
+  const testBroadcastActive = Boolean(testBroadcastRow);
+  const campaignId = campaignModule?.id ?? testBroadcastRow?.adRequestId ?? null;
+  const heroExplain = testBroadcastRow
+    ? explainWalletHeroResolution(testBroadcastRow.adRequest)
+    : campaignModule
+      ? { reason: campaignModule.imagePathOrUrl ? ("ok" as const) : ("missing_url" as const), storedUrl: null, httpsUrl: null }
+      : { reason: "missing_url" as const, storedUrl: null, httpsUrl: null };
 
   const baseBodyInput = {
     user,
@@ -831,11 +891,47 @@ async function syncGlobalObjectToGoogle(input: {
     clearCampaignModule: input.clearCampaignModule,
   };
 
+  const body = await globalObjectBody({ ...baseBodyInput, campaignModule });
+  const patchHeroUri = body.heroImage?.sourceUri?.uri ?? null;
+
+  logGlobalWalletObjectSync({
+    campaignId,
+    testBroadcastActive,
+    googleWalletHeroStored: redactWalletSyncUri(heroExplain.storedUrl),
+    walletHeroReason: heroExplain.reason,
+    patchHeroUri: redactWalletSyncUri(patchHeroUri),
+    googleObjectId: input.googleObjectId,
+    globalClassId: expectedGlobalClassId,
+    merchantId: walletRow?.merchantId ?? null,
+    customerMembershipId: walletRow?.customerMembershipId ?? null,
+  });
+
   await upsertGoogleResource({
     kind: "loyaltyObject",
     id: input.googleObjectId,
-    body: await globalObjectBody({ ...baseBodyInput, campaignModule }),
+    body,
   });
+
+  if (input.verifyRemoteHero) {
+    const remote = await getGoogleWalletLoyaltyObject(input.googleObjectId);
+    const remoteUri = remoteLoyaltyObjectHeroUri(remote.body ?? undefined);
+    logGlobalWalletObjectSync({
+      googleObjectId: input.googleObjectId,
+      getHeroUri: redactWalletSyncUri(remoteUri),
+      verifyRemoteHero: input.verifyRemoteHero,
+      verifyOk: verifyRemoteHeroUri(remoteUri, input.verifyRemoteHero),
+    });
+    if (!verifyRemoteHeroUri(remoteUri, input.verifyRemoteHero)) {
+      throw new GoogleWalletGlobalHeroVerifyError(
+        `GET Google hero invalide pour ${input.verifyRemoteHero} (uri=${redactWalletSyncUri(remoteUri) ?? "null"})`,
+      );
+    }
+  }
+}
+
+async function loadSponsoredTestBroadcast() {
+  const { loadSponsoredTestBroadcast: load } = await import("./sponsored-test-broadcast");
+  return load();
 }
 
 /** Lecture API Google (diagnostic / tests) — objet loyaltyObject existant. */
@@ -852,12 +948,13 @@ export async function syncGoogleWalletGlobalObjectsForCampaignVisibility(input?:
 }
 
 /** Synchronise toutes les cartes Google Wallet globales, par lots, jusqu'au dernier objet. */
-export async function syncAllGoogleWalletGlobalObjects(input?: { clearCampaignModule?: boolean }) {
-  if (!isGoogleWalletConfigured()) return { attempted: 0, synced: 0, failed: 0 };
+export async function syncAllGoogleWalletGlobalObjects(input?: SyncAllGlobalWalletObjectsOptions) {
+  if (!isGoogleWalletConfigured()) return { attempted: 0, synced: 0, failed: 0, verified: 0 };
   const batchSize = GLOBAL_WALLET_CAMPAIGN_SYNC_BATCH;
   let lastId: string | undefined;
   let synced = 0;
   let failed = 0;
+  let verified = 0;
   let attempted = 0;
   for (;;) {
     const rows = await prisma.googleWalletObject.findMany({
@@ -866,7 +963,7 @@ export async function syncAllGoogleWalletGlobalObjects(input?: { clearCampaignMo
         customerMembershipId: null,
         ...(lastId ? { id: { gt: lastId } } : {}),
       },
-      select: { id: true, userId: true },
+      select: { id: true, userId: true, googleObjectId: true },
       orderBy: { id: "asc" },
       take: batchSize,
     });
@@ -874,8 +971,12 @@ export async function syncAllGoogleWalletGlobalObjects(input?: { clearCampaignMo
     for (const row of rows) {
       attempted += 1;
       try {
-        await syncGoogleWalletGlobalObject(row.userId, { clearCampaignModule: input?.clearCampaignModule });
+        await syncGoogleWalletGlobalObject(row.userId, {
+          clearCampaignModule: input?.clearCampaignModule,
+          verifyRemoteHero: input?.verifyRemoteHero,
+        });
         synced += 1;
+        verified += 1;
       } catch (error) {
         failed += 1;
         // syncGoogleWalletGlobalObject enregistre lastError sur l'objet ; ne pas masquer l'échec ici.
@@ -887,7 +988,7 @@ export async function syncAllGoogleWalletGlobalObjects(input?: { clearCampaignMo
     lastId = rows[rows.length - 1]?.id;
     if (rows.length < batchSize) break;
   }
-  return { attempted, synced, failed };
+  return { attempted, synced, failed, verified };
 }
 
 /** Déclenchement asynchrone (API / worker) sans bloquer la requête appelante. */
@@ -941,7 +1042,7 @@ export async function createGlobalGoogleWalletSaveUrl(userId: string) {
   }
 }
 
-export async function syncGoogleWalletGlobalObject(userId: string, options?: { clearCampaignModule?: boolean }) {
+export async function syncGoogleWalletGlobalObject(userId: string, options?: SyncAllGlobalWalletObjectsOptions) {
   if (!isGoogleWalletConfigured()) return;
   const row = await prisma.googleWalletObject.findFirst({
     where: { userId, customerMembershipId: null, merchantId: null },
@@ -954,7 +1055,12 @@ export async function syncGoogleWalletGlobalObject(userId: string, options?: { c
     data: { syncStatus: "PENDING", needsSync: true, lastError: null },
   });
   try {
-    await syncGlobalObjectToGoogle({ userId, googleObjectId: row.googleObjectId, clearCampaignModule: options?.clearCampaignModule });
+    await syncGlobalObjectToGoogle({
+      userId,
+      googleObjectId: row.googleObjectId,
+      clearCampaignModule: options?.clearCampaignModule,
+      verifyRemoteHero: options?.verifyRemoteHero,
+    });
     await prisma.googleWalletObject.update({
       where: { googleObjectId: row.googleObjectId },
       data: { syncStatus: "SYNCED", needsSync: false, lastSyncedAt: new Date(), lastError: null },
