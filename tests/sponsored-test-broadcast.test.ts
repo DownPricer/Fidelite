@@ -63,16 +63,30 @@ beforeEach(() => {
 });
 
 describe("sponsored-test-broadcast", () => {
-  it("priorise la diffusion test sur la sélection live Wallet", async () => {
+  it("priorise la diffusion test Wallet avec le hero dédié validé", async () => {
     broadcastFindUnique.mockResolvedValueOnce({
       adRequestId: "ad_test",
-      adRequest: adRow,
+      adRequest: {
+        ...adRow,
+        googleWalletVisualStatus: "APPROVED",
+        googleWalletHeroUrl: "https://cdn.example.com/wallet-blue.png",
+      },
     });
     const { resolveGlobalWalletCampaignModule } = await import("../src/lib/sponsored-test-broadcast");
     const mod = await resolveGlobalWalletCampaignModule("any-user");
     expect(mod?.title).toBe("Voir");
+    expect(mod?.imagePathOrUrl).toBe("https://cdn.example.com/wallet-blue.png");
     const { selectSponsoredForGoogleWalletGlobal } = await import("@/lib/sponsored-selection");
     expect(selectSponsoredForGoogleWalletGlobal).not.toHaveBeenCalled();
+  });
+
+  it("n'utilise pas le bandeau finalImageUrl pour le hero Wallet en diffusion test", async () => {
+    const { getSponsoredTestBroadcastWalletModule } = await import("../src/lib/sponsored-test-broadcast");
+    broadcastFindUnique.mockResolvedValueOnce({
+      adRequestId: "ad_test",
+      adRequest: adRow,
+    });
+    expect(await getSponsoredTestBroadcastWalletModule()).toBeNull();
   });
 
   it("active la diffusion et synchronise toutes les cartes globales", async () => {

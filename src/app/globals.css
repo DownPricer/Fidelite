@@ -3869,6 +3869,28 @@ a.campaign-activity-row:hover {
   background: rgba(241, 93, 116, 0.12);
 }
 
+.campaign-status-pill-live {
+  color: light-dark(#157a55, #72d6af);
+  background: light-dark(rgba(21, 122, 85, 0.14), rgba(114, 214, 175, 0.16));
+}
+
+.campaign-status-pill-dot-live {
+  animation: campaign-live-pulse 1.2s ease-in-out infinite;
+  background: light-dark(#1db954, #72d6af);
+}
+
+@keyframes campaign-live-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.55;
+    transform: scale(0.85);
+  }
+}
+
 .campaign-more-btn {
   display: grid;
   place-items: center;

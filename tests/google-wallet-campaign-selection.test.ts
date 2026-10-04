@@ -61,6 +61,19 @@ describe("selectSponsoredForGoogleWalletGlobal", () => {
     expect(tables.adCustomerView).toHaveLength(0);
   });
 
+  it("expose le hero Wallet bleu validé, pas le bandeau rouge", async () => {
+    seedLiveAd({
+      finalImageUrl: "/api/media/visuels/m1/banniere-red.png",
+      googleWalletVisualStatus: "APPROVED",
+      googleWalletHeroUrl: "/api/media/visuels/m1/google-wallet-hero-blue.png",
+    });
+    const { selectSponsoredForGoogleWalletGlobal } = await import("../src/lib/sponsored-selection");
+    const during = new Date(START.getTime() + 600_000);
+    const mod = await selectSponsoredForGoogleWalletGlobal("c1", during);
+    expect(mod?.imagePathOrUrl).toBe("/api/media/visuels/m1/google-wallet-hero-blue.png");
+    expect(mod?.imagePathOrUrl).not.toBe("/api/media/visuels/m1/banniere-red.png");
+  });
+
   it("retourne null hors créneau ou sans audience", async () => {
     seedLiveAd();
     const { selectSponsoredForGoogleWalletGlobal } = await import("../src/lib/sponsored-selection");

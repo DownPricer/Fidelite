@@ -6,6 +6,11 @@ import { FramingTool } from "@/components/ad-visual-parts";
 import { Button } from "@/components/ui";
 import { CAMPAIGN_PRICE_CENTS } from "@/lib/campaign-prices";
 import {
+  isCampaignEnCours,
+  isSponsoredAdLiveNow,
+  isSponsoredAdScheduledBeforeLive,
+} from "@/lib/campaign-en-cours";
+import {
   MIN_HOURS_PER_DAY,
   SPONSORED_HOUR_RATE_CENTS,
   isDaySelectable,
@@ -283,16 +288,6 @@ const DEMO_DASHBOARD: Dashboard = {
   ],
 };
 
-const EN_COURS_AD: AdStatus[] = ["LIVE", "SCHEDULED", "AWAITING_MERCHANT", "NEEDS_CHANGES", "PENDING_REVIEW", "APPROVED"];
-
-function isCampaignEnCours(c: CampaignSummary, ad?: AdRequest) {
-  if (c.channel === "SPONSORED_AD" && ad) {
-    if (ad.status === "APPROVED") return c.status === "PENDING_REVIEW";
-    return EN_COURS_AD.includes(ad.status);
-  }
-  return ["SCHEDULED", "PENDING_REVIEW", "PAYMENT_REQUIRED", "PAID", "SENDING"].includes(c.status);
-}
-
 export function CampagnesPanel({ demo = false, filtreEnCours = false }: { demo?: boolean; filtreEnCours?: boolean }) {
   const [dashboard, setDashboard] = useState<Dashboard | null>(demo ? DEMO_DASHBOARD : null);
   const [ads, setAds] = useState<AdRequest[]>([]);
@@ -394,7 +389,10 @@ export function CampagnesPanel({ demo = false, filtreEnCours = false }: { demo?:
 
   const adsByCampaignId = new Map(ads.filter((a) => a.campaignId).map((a) => [a.campaignId as string, a]));
   const visibleCampaigns = filtreEnCours
-    ? dashboard.campaigns.filter((c) => isCampaignEnCours(c, adsByCampaignId.get(c.id)))
+    ? dashboard.campaigns.filter((c) => {
+        const ad = c.channel === "SPONSORED_AD" ? adsByCampaignId.get(c.id) : undefined;
+        return isCampaignEnCours(c, ad);
+      })
     : dashboard.campaigns;
   const planLabel = dashboard.plan === "insight" ? "Fideto Insight" : "Fideto";
 
@@ -583,9 +581,21 @@ export function CampagnesPanel({ demo = false, filtreEnCours = false }: { demo?:
                   ) : null}
                 </div>
                 <span className="campaign-activity-meta">{recipientsLabel}{c.fundingMode === "TEST" ? " · test (simulation)" : ""}</span>
-                <span className={`campaign-status-pill campaign-status-pill-${tone}`}>
-                  <span className="campaign-status-pill-dot" />
-                  {ad ? AD_STATUS_LABELS[ad.status] : c.statusLabel}
+                <span
+                  className={`campaign-status-pill campaign-status-pill-${tone} ${
+                    isSponsoredAdLiveNow(ad) ? "campaign-status-pill-live" : ""
+                  }`}
+                >
+                  <span
+                    className={`campaign-status-pill-dot ${isSponsoredAdLiveNow(ad) ? "campaign-status-pill-dot-live" : ""}`}
+                  />
+                  {isSponsoredAdLiveNow(ad)
+                    ? "EN DIRECT"
+                    : isSponsoredAdScheduledBeforeLive(ad)
+                      ? "Programmée"
+                      : ad
+                        ? AD_STATUS_LABELS[ad.status]
+                        : c.statusLabel}
                 </span>
                 <div className="relative">
                   {canConfirmSponsor || canCancel || canDuplicate ? (

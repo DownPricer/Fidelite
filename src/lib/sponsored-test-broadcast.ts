@@ -4,6 +4,7 @@ import {
   globalWalletCampaignDetailUri,
   type GlobalWalletCampaignModule,
 } from "./google-wallet-campaign-module";
+import { approvedGoogleWalletHeroUrl } from "./google-wallet-campaign-hero";
 import { GoogleWalletConfigError, publicGoogleWalletError } from "./google-wallet";
 import { prisma } from "./prisma";
 import { selectSponsoredForGoogleWalletGlobal, type SponsoredCard } from "./sponsored-selection";
@@ -81,7 +82,7 @@ export async function selectSponsoredTestBroadcastCard(placement: AdPlacement): 
 export async function getSponsoredTestBroadcastWalletModule() {
   const row = await loadSponsoredTestBroadcast();
   if (!row) return null;
-  const imageUrl = resolveAdTestBroadcastImageUrl(row.adRequest);
+  const imageUrl = approvedGoogleWalletHeroUrl(row.adRequest);
   if (!imageUrl) return null;
   return adToGlobalWalletTestModule(row.adRequest, imageUrl);
 }

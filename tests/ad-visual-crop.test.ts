@@ -42,6 +42,13 @@ describe("coverCropExtractRegion et renderAdVisualCrop", () => {
     expect(diff).toBeLessThan(manualMeta.data.length * 0.02);
   });
 
+  it("un zoom plus élevé réduit la zone extraite (curseur fonctionnel)", () => {
+    const input = { sourceWidth: 1000, sourceHeight: 500, outputWidth: 800, outputHeight: 800, state: centeredCropState() };
+    const base = coverCropExtractRegion(input);
+    const zoomed = coverCropExtractRegion({ ...input, state: { ...input.state, zoom: 2 } });
+    expect(zoomed.width).toBeLessThan(base.width);
+  });
+
   it("utilise l'état centré par défaut sans décalage", () => {
     const sourceWidth = 1600;
     const sourceHeight = 900;
