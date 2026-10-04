@@ -1685,6 +1685,33 @@ body:has(.wallet-shell) {
     inset 0 1px 0 light-dark(rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.06));
 }
 
+.wallet-page-header {
+  min-height: 3rem;
+  margin-bottom: clamp(0.5rem, 1.5vw, 1rem);
+}
+
+.wallet-brand-mark {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-inline: 0.25rem;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.wallet-brand-logo {
+  display: block;
+  width: auto;
+  max-width: 100%;
+  height: clamp(3.75rem, 14vw, 5.25rem);
+  object-fit: contain;
+  object-position: center;
+}
+
 .settings-btn-glassy {
   background: light-dark(rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.05));
   backdrop-filter: blur(14px);
@@ -4852,8 +4879,12 @@ body:has(.wallet-shell) {
     padding-inline: 0.25rem;
   }
 
-  .wallet-page-header .brand-pill-glassy {
-    padding: 0.65rem 1.25rem;
+  .wallet-page-header .wallet-brand-mark {
+    max-width: min(32rem, 68%);
+  }
+
+  .wallet-page-header .wallet-brand-logo {
+    height: clamp(4rem, 5.5vw, 5.85rem);
   }
 
   .wallet-hero-column {
