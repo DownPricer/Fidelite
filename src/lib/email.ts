@@ -88,7 +88,7 @@ function formatExpiry(expiresAt: Date) {
   });
 }
 
-function buildInvitationContent(input: EmployeeInvitationEmailInput) {
+export function buildEmployeeInvitationEmail(input: EmployeeInvitationEmailInput) {
   const subject = `${input.merchantName} — Activez votre accès employé`;
   const expiry = formatExpiry(input.expiresAt);
   const intro = input.message?.trim()
@@ -158,7 +158,7 @@ export async function sendEmployeeInvitationEmail(input: EmployeeInvitationEmail
     return { ok: false, error: emailConfigHint() ?? "Service e-mail non configuré." };
   }
 
-  const content = buildInvitationContent(input);
+  const content = buildEmployeeInvitationEmail(input);
 
   if (env.resendApiKey) {
     return sendViaResend({ to: input.to, ...content });
@@ -179,7 +179,7 @@ export type CustomerFinalizationEmailInput = {
   expiresAt: Date;
 };
 
-function buildCustomerFinalizationContent(input: CustomerFinalizationEmailInput) {
+export function buildCustomerFinalizationEmail(input: CustomerFinalizationEmailInput) {
   const expiry = formatExpiry(input.expiresAt);
   const subject = "Finalisez votre compte Fideto";
   const html = `<!DOCTYPE html>
@@ -228,7 +228,7 @@ export async function sendCustomerFinalizationEmail(input: CustomerFinalizationE
   if (!isEmailConfigured()) {
     return { ok: false, error: emailConfigHint() ?? "Service e-mail non configuré." };
   }
-  const content = buildCustomerFinalizationContent(input);
+  const content = buildCustomerFinalizationEmail(input);
   if (env.resendApiKey) return sendViaResend({ to: input.to, ...content });
   return sendViaSmtp({ to: input.to, ...content });
 }
@@ -290,7 +290,7 @@ export type CampaignEmailInput = {
   preferencesUrl: string;
 };
 
-function buildCampaignEmailContent(input: CampaignEmailInput) {
+export function buildCampaignEmail(input: CampaignEmailInput) {
   const logo = input.merchantLogoUrl
     ? `<img src="${escapeHtml(input.merchantLogoUrl)}" alt="${escapeHtml(input.merchantName)}" width="40" height="40" style="border-radius:10px;object-fit:cover;vertical-align:middle;" />`
     : "";
@@ -360,7 +360,7 @@ export async function sendCampaignEmail(input: CampaignEmailInput): Promise<Emai
     return { ok: false, error: emailConfigHint() ?? "Service e-mail non configuré." };
   }
 
-  const content = buildCampaignEmailContent(input);
+  const content = buildCampaignEmail(input);
 
   if (env.resendApiKey) {
     return sendViaResend({ to: input.to, ...content });

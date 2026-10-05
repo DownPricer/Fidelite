@@ -21,6 +21,7 @@ secrets/google-wallet-service-account.json
 .idea
 .vscode
 data/uploads/
+emails-preview-out/
 
 # Graphify caches/backups — jamais commités (voir .claude/CLAUDE.md)
 graphify-out/.graphify_python

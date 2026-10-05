@@ -17,7 +17,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "icons": "node scripts/generate-pwa-icons.mjs",
-    "diagnose:wallet-hero": "tsx scripts/diagnose-google-wallet-campaign-hero.ts"
+    "diagnose:wallet-hero": "tsx scripts/diagnose-google-wallet-campaign-hero.ts",
+    "emails:preview": "tsx scripts/emails-preview.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

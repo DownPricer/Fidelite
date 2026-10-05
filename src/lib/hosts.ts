@@ -2,6 +2,9 @@ import { env, isProduction } from "./env";
 
 const FORBIDDEN_PUBLIC_HOSTS = new Set(["localhost", "127.0.0.1", "0.0.0.0"]);
 
+/** Suffixes d'hôtes autorisés dans les liens e-mail en production. */
+const ALLOWED_EMAIL_HOST_SUFFIXES = ["fideto.fr", "sitereadyshd.fr"];
+
 function hostnameForbidden(hostname: string) {
   const name = hostname.toLowerCase();
   return FORBIDDEN_PUBLIC_HOSTS.has(name);
@@ -35,12 +38,34 @@ export function employeeOriginForPublicLinks() {
   return canonicalOrigin(env.employeeAppUrl, "https://employe.fideto.fr");
 }
 
-/** Vérifie qu'une URL d'e-mail production n'expose pas d'hôte interne. */
+export function adminOriginForPublicLinks() {
+  return canonicalOrigin(env.adminOrigin, "https://admin.fideto.fr");
+}
+
+function isAllowedEmailHostname(hostname: string) {
+  const name = hostname.toLowerCase();
+  if (hostnameForbidden(name)) return false;
+  if (name.includes("fiduto")) return false;
+  return ALLOWED_EMAIL_HOST_SUFFIXES.some((suffix) => name === suffix || name.endsWith(`.${suffix}`));
+}
+
+/** Construit une URL absolue publique à partir d'une origine canonique et d'un chemin. */
+export function buildPublicUrl(origin: string, path: string) {
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+  const url = new URL(normalizedPath, origin.endsWith("/") ? origin : `${origin}/`);
+  assertSafeEmailLink(url.toString());
+  return url.toString();
+}
+
+/** Vérifie qu'une URL d'e-mail production n'expose pas d'hôte interne ou inconnu. */
 export function assertSafeEmailLink(url: string) {
   if (!isProduction()) return;
   const parsed = new URL(url);
-  if (hostnameForbidden(parsed.hostname)) {
+  if (!isAllowedEmailHostname(parsed.hostname)) {
     throw new Error(`Lien e-mail interdit en production : ${parsed.hostname}`);
+  }
+  if (parsed.protocol !== "https:") {
+    throw new Error(`Lien e-mail non HTTPS en production : ${url}`);
   }
 }
 
@@ -110,19 +135,29 @@ export function isEmployeeHost(host: string) {
 }
 
 export function employeeInvitationUrl(token: string) {
-  const base = employeeOriginForPublicLinks();
-  const url = `${base}/invitation?token=${encodeURIComponent(token)}`;
-  assertSafeEmailLink(url);
-  return url;
+  return buildPublicUrl(employeeOriginForPublicLinks(), `/invitation?token=${encodeURIComponent(token)}`);
 }
 
 export function publicCustomerUrl(path = "/") {
-  return `${customerOriginForPublicLinks()}${path.startsWith("/") ? path : `/${path}`}`;
+  return buildPublicUrl(customerOriginForPublicLinks(), path);
 }
 
 export function publicAppUrl(path = "/") {
-  const normalized = path.startsWith("/") ? path : `/${path}`;
-  const url = `${appOriginForPublicLinks()}${normalized}`;
-  assertSafeEmailLink(url);
-  return url;
+  return buildPublicUrl(appOriginForPublicLinks(), path);
+}
+
+export function publicAdminUrl(path = "/") {
+  return buildPublicUrl(adminOriginForPublicLinks(), path);
+}
+
+export function superAdminSignupRequestUrl(requestId: string) {
+  return publicAdminUrl(`/super-admin/demandes-inscription/${requestId}`);
+}
+
+export function superAdminLoginUrl(returnPath?: string) {
+  if (!returnPath || returnPath === "/super-admin") {
+    return publicAdminUrl("/super-admin/connexion");
+  }
+  const path = returnPath.startsWith("/") ? returnPath : `/${returnPath}`;
+  return buildPublicUrl(adminOriginForPublicLinks(), `/super-admin/connexion?next=${encodeURIComponent(path)}`);
 }

@@ -64,6 +64,8 @@ services:
       # Liens e-mail : ne jamais dériver des en-têtes Host ni de HOSTNAME (0.0.0.0).
       CUSTOMER_ORIGIN: ${CUSTOMER_ORIGIN:-https://fideto.fr}
       APP_ORIGIN: ${APP_ORIGIN:-https://app.fideto.fr}
+      ADMIN_ORIGIN: ${ADMIN_ORIGIN:-https://admin.fideto.fr}
+      EMPLOYEE_ORIGIN: ${EMPLOYEE_ORIGIN:-https://employe.fideto.fr}
     volumes:
       - /opt/fifelite/data/uploads:/var/lib/fifelite/uploads
       - /opt/fifelite/secrets/google-wallet-service-account.json:/run/secrets/google-wallet-service-account.json:ro
@@ -88,6 +90,8 @@ services:
       UPLOADS_DIR: /var/lib/fifelite/uploads
       CUSTOMER_ORIGIN: ${CUSTOMER_ORIGIN:-https://fideto.fr}
       APP_ORIGIN: ${APP_ORIGIN:-https://app.fideto.fr}
+      ADMIN_ORIGIN: ${ADMIN_ORIGIN:-https://admin.fideto.fr}
+      EMPLOYEE_ORIGIN: ${EMPLOYEE_ORIGIN:-https://employe.fideto.fr}
     volumes:
       - /opt/fifelite/data/uploads:/var/lib/fifelite/uploads
     depends_on:
