@@ -1,8 +1,24 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
-import { Alert, Button, Field, Input } from "@/components/ui";
+import { useCallback, useId, useState } from "react";
+import {
+  ArrowLeftIcon,
+  ArrowRightIcon,
+  KeyRoundIcon,
+  LockKeyholeIcon,
+  ShieldCheckIcon,
+} from "@/components/landing/icons";
+import { SignupCodeInputs } from "./signup-code-inputs";
+
+const BUSINESS_ACTIVITIES = [
+  "Commerce de proximité",
+  "Restaurant ou café",
+  "Beauté et bien-être",
+  "Mode et accessoires",
+  "Services à la personne",
+  "Autre",
+] as const;
 
 type PlanSummary = {
   id: string;
@@ -12,253 +28,358 @@ type PlanSummary = {
   firstMonthIncluded: boolean;
 };
 
-type View = "form" | "code" | "success";
+type Panel = "form" | "code" | "success";
 
 export function MerchantSignupForm({ plan }: { plan: PlanSummary }) {
-  const [view, setView] = useState<View>("form");
+  const [panel, setPanel] = useState<Panel>("form");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [codeDigits, setCodeDigits] = useState(["", "", "", "", "", ""]);
   const [codeEmail, setCodeEmail] = useState("");
+  const formErrorId = useId();
+  const codeErrorId = useId();
 
-  const priceLine = useMemo(() => {
-    if (plan.setupLabel) {
-      return `${plan.setupLabel} TTC à la commande, puis ${plan.monthlyLabel} TTC / mois${plan.firstMonthIncluded ? " (1er mois inclus)" : ""}.`;
-    }
-    return `${plan.monthlyLabel} TTC / mois.`;
-  }, [plan]);
+  const showForm = () => {
+    setPanel("form");
+    setError(null);
+  };
 
-  async function submitForm(event: React.FormEvent<HTMLFormElement>) {
+  const showCode = () => {
+    setPanel("code");
+    setError(null);
+  };
+
+  const submitForm = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setPending(true);
     setError(null);
-    const form = new FormData(event.currentTarget);
+    const form = event.currentTarget;
+    const data = new FormData(form);
     try {
       const response = await fetch("/api/public/merchant-signup/apply", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           planId: plan.id,
-          firstName: form.get("firstName"),
-          lastName: form.get("lastName"),
-          businessName: form.get("businessName"),
-          businessActivity: form.get("businessActivity"),
-          email: form.get("email"),
-          mobilePhone: form.get("mobilePhone"),
-          landlinePhone: form.get("landlinePhone") || "",
-          website: form.get("website") || "",
-          siret: form.get("siret") || "",
-          message: form.get("message") || "",
-          addressLine1: form.get("addressLine1"),
-          postalCode: form.get("postalCode"),
-          city: form.get("city"),
-          contactConsent: form.get("contactConsent") === "on",
+          firstName: data.get("firstName"),
+          lastName: data.get("lastName"),
+          businessName: data.get("businessName"),
+          businessActivity: data.get("businessActivity"),
+          email: data.get("email"),
+          mobilePhone: data.get("mobilePhone"),
+          landlinePhone: data.get("landlinePhone") || "",
+          website: data.get("website") || "",
+          siret: data.get("siret") || "",
+          message: data.get("message") || "",
+          addressLine1: data.get("addressLine1"),
+          postalCode: data.get("postalCode"),
+          city: data.get("city"),
+          contactConsent: data.get("contactConsent") === "on",
         }),
       });
-      const data = (await response.json()) as { error?: string };
+      const body = (await response.json()) as { error?: string };
       if (!response.ok) {
-        setError(data.error ?? "Envoi impossible.");
+        setError(body.error ?? "Envoi impossible. Vérifiez les champs et réessayez.");
         return;
       }
-      setView("success");
+      setPanel("success");
     } catch {
-      setError("Envoi impossible. Vérifiez votre connexion.");
+      setError("Erreur réseau. Vérifiez votre connexion et réessayez.");
     } finally {
       setPending(false);
     }
-  }
+  };
 
-  async function submitCode(event: React.FormEvent<HTMLFormElement>) {
+  const submitCode = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setPending(true);
     setError(null);
     const code = codeDigits.join("");
+    if (code.length !== 6) {
+      setError("Saisissez les six chiffres de votre code.");
+      setPending(false);
+      return;
+    }
     try {
       const response = await fetch("/api/public/merchant-signup/verify-code", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: codeEmail, code }),
       });
-      const data = (await response.json()) as { error?: string; nextUrl?: string };
+      const body = (await response.json()) as { error?: string; nextUrl?: string };
       if (!response.ok) {
-        setError(data.error ?? "Code invalide.");
+        setError(body.error ?? "Code invalide ou expiré.");
         return;
       }
-      window.location.href = data.nextUrl ?? "/app/compte-commercant";
+      window.location.href = body.nextUrl ?? "/app/compte-commercant";
     } catch {
-      setError("Validation impossible.");
+      setError("Erreur réseau. Réessayez dans un instant.");
     } finally {
       setPending(false);
     }
-  }
+  };
 
-  function onDigitChange(index: number, value: string) {
-    const digit = value.replace(/\D/g, "").slice(-1);
-    setCodeDigits((prev) => {
-      const next = [...prev];
-      next[index] = digit;
-      return next;
-    });
-  }
+  const onCodeDigitsChange = useCallback((next: string[]) => setCodeDigits(next), []);
 
   return (
-    <div className="mx-auto max-w-5xl">
-      <article className="mb-8 rounded-3xl border border-[rgba(190,164,255,0.28)] bg-[rgba(12,10,24,0.72)] p-6 sm:p-8">
-        <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#c4b5fd]">Formule choisie</p>
-        <h1 className="mt-2 text-2xl font-black text-white sm:text-3xl">{plan.name}</h1>
-        <p className="mt-2 text-sm text-slate-300">{priceLine}</p>
-        <p className="mt-1 text-xs text-slate-500">Le tarif affiché est indicatif : le montant facturé sera celui de votre formule validée par Fideto.</p>
-      </article>
+    <div className="fd-layout">
+      <section className="fd-intro" aria-label="Présentation du parcours bêta">
+        <span className="fd-beta-badge">
+          <span className="fd-beta-dot" aria-hidden />
+          Accès bêta
+        </span>
+        <h1>Construisons votre fidélité.</h1>
+        <p className="fd-lead">
+          Présentez-nous votre commerce. Un conseiller Fideto étudie votre demande et vous accompagne personnellement pour lancer votre programme.
+        </p>
 
-      {view === "success" ? (
-        <div className="rounded-3xl border border-emerald-500/30 bg-emerald-500/10 p-8 text-center">
-          <h2 className="text-2xl font-black text-white">Demande envoyée</h2>
-          <p className="mt-4 text-sm leading-relaxed text-slate-200">
+        <div className="fd-plan" aria-label="Formule sélectionnée">
+          <div className="fd-plan-top">
+            <div>
+              <span className="fd-plan-label">Formule choisie</span>
+              <strong className="fd-plan-name">{plan.name}</strong>
+            </div>
+            <div>
+              <div className="fd-plan-price">
+                {plan.monthlyLabel}
+                <small>TTC / mois</small>
+              </div>
+              {plan.setupLabel ? (
+                <p className="fd-plan-setup">
+                  {plan.setupLabel} TTC à la commande
+                  {plan.firstMonthIncluded ? " · 1er mois inclus" : ""}
+                </p>
+              ) : null}
+            </div>
+          </div>
+          <div className="fd-free">
+            <ShieldCheckIcon aria-hidden />
+            <span>Demande gratuite, sans engagement et sans paiement aujourd&apos;hui.</span>
+          </div>
+        </div>
+
+        <div className="fd-steps" aria-label="Étapes de l'inscription">
+          <div className="fd-step">
+            <span className="fd-step-num">1</span>
+            <div>
+              <strong>Votre demande</strong>
+              <span>Quelques informations sur votre commerce.</span>
+            </div>
+          </div>
+          <div className="fd-step">
+            <span className="fd-step-num">2</span>
+            <div>
+              <strong>Un échange humain</strong>
+              <span>Un conseiller vous répond rapidement.</span>
+            </div>
+          </div>
+          <div className="fd-step">
+            <span className="fd-step-num">3</span>
+            <div>
+              <strong>Votre lancement</strong>
+              <span>Vous recevez votre code et finalisez l&apos;inscription.</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div className="fd-main-column">
+        <section
+          className="fd-form-card fd-success-card"
+          hidden={panel !== "success"}
+          aria-live="polite"
+          aria-label="Confirmation d'envoi"
+        >
+          <h2>Demande envoyée</h2>
+          <p>
             Merci ! Un conseiller Fideto étudiera votre demande et vous contactera rapidement. Vous recevrez un accusé de réception par e-mail.
             Aucun paiement n&apos;a été déclenché.
           </p>
-          <Link href="/tarifs" className="mt-6 inline-flex text-sm font-bold text-[#c4b5fd] hover:underline">
-            Retour aux tarifs
-          </Link>
-        </div>
-      ) : null}
+          <Link href="/tarifs" className="fd-success-link">Retour aux tarifs</Link>
+        </section>
 
-      {view === "form" ? (
-        <>
-          <div className="mb-8 max-w-3xl">
-            <h2 className="text-3xl font-black text-white sm:text-4xl">Fideto est actuellement en phase bêta</h2>
-            <p className="mt-4 text-base leading-relaxed text-slate-300">
-              Pour commencer avec Fideto, remplissez ce formulaire. Un conseiller étudiera votre demande et vous contactera rapidement.
-              La demande d&apos;accès est gratuite et sans engagement. Aucun paiement ne sera demandé à cette étape.
-            </p>
+        <section
+          className="fd-form-card"
+          hidden={panel !== "form"}
+          aria-label="Demande d'accès Fideto"
+        >
+          <div className="fd-form-head">
+            <div>
+              <h2>Parlons de votre commerce</h2>
+              <p>Les champs marqués d&apos;un * sont obligatoires.</p>
+            </div>
+            <span className="fd-secure">
+              <LockKeyholeIcon aria-hidden />
+              Données protégées
+            </span>
           </div>
 
-          <form onSubmit={(e) => void submitForm(e)} className="grid gap-8 lg:grid-cols-2">
-            <div className="space-y-4 rounded-3xl border border-white/10 bg-[rgba(8,6,18,0.65)] p-6">
-              <h3 className="text-sm font-bold uppercase tracking-widest text-slate-400">Vous</h3>
-              <Field label="Prénom *">
-                <Input name="firstName" required className="bg-black/30" />
-              </Field>
-              <Field label="Nom *">
-                <Input name="lastName" required className="bg-black/30" />
-              </Field>
-              <Field label="E-mail professionnel *">
-                <Input name="email" type="email" required autoComplete="email" className="bg-black/30" />
-              </Field>
-              <Field label="Téléphone portable *">
-                <Input name="mobilePhone" type="tel" required className="bg-black/30" />
-              </Field>
-              <Field label="Téléphone fixe">
-                <Input name="landlinePhone" type="tel" className="bg-black/30" />
-              </Field>
-            </div>
-
-            <div className="space-y-4 rounded-3xl border border-white/10 bg-[rgba(8,6,18,0.65)] p-6">
-              <h3 className="text-sm font-bold uppercase tracking-widest text-slate-400">Votre commerce</h3>
-              <Field label="Nom du commerce *">
-                <Input name="businessName" required className="bg-black/30" />
-              </Field>
-              <Field label="Activité du commerce *">
-                <Input name="businessActivity" required className="bg-black/30" />
-              </Field>
-              <Field label="Adresse du commerce *">
-                <Input name="addressLine1" required className="bg-black/30" />
-              </Field>
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="Code postal *">
-                  <Input name="postalCode" required className="bg-black/30" />
-                </Field>
-                <Field label="Ville *">
-                  <Input name="city" required className="bg-black/30" />
-                </Field>
+          <form onSubmit={(e) => void submitForm(e)} noValidate>
+            {error ? (
+              <div className="fd-alert" id={formErrorId} role="alert">
+                {error}
               </div>
-              <Field label="Site internet">
-                <Input name="website" type="url" placeholder="https://" className="bg-black/30" />
-              </Field>
-              <Field label="SIRET">
-                <Input name="siret" className="bg-black/30" />
-              </Field>
-              <Field label="Message ou besoins particuliers">
-                <textarea
-                  name="message"
-                  rows={4}
-                  className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-white"
-                />
-              </Field>
+            ) : null}
+
+            <div className="fd-section">
+              <div className="fd-section-title">Vos coordonnées</div>
+              <div className="fd-grid">
+                <label>
+                  <span className="fd-label">Prénom <span className="fd-required">*</span></span>
+                  <input className="fd-input" name="firstName" type="text" required autoComplete="given-name" />
+                </label>
+                <label>
+                  <span className="fd-label">Nom <span className="fd-required">*</span></span>
+                  <input className="fd-input" name="lastName" type="text" required autoComplete="family-name" />
+                </label>
+                <label className="fd-field-wide">
+                  <span className="fd-label">E-mail professionnel <span className="fd-required">*</span></span>
+                  <input
+                    className="fd-input"
+                    name="email"
+                    type="email"
+                    required
+                    autoComplete="email"
+                    placeholder="vous@votrecommerce.fr"
+                  />
+                </label>
+                <label>
+                  <span className="fd-label">Téléphone portable <span className="fd-required">*</span></span>
+                  <input className="fd-input" name="mobilePhone" type="tel" required autoComplete="tel" />
+                </label>
+                <label>
+                  <span className="fd-label">Téléphone fixe</span>
+                  <input className="fd-input" name="landlinePhone" type="tel" autoComplete="tel" />
+                </label>
+              </div>
             </div>
 
-            <div className="lg:col-span-2 space-y-4 rounded-3xl border border-white/10 bg-[rgba(8,6,18,0.65)] p-6">
-              {error ? <Alert>{error}</Alert> : null}
-              <label className="flex items-start gap-3 text-sm text-slate-300">
-                <input name="contactConsent" type="checkbox" required className="mt-1" />
-                <span>
-                  J&apos;accepte d&apos;être contacté par Fideto au sujet de cette demande d&apos;accès (pas de prospection marketing sans
-                  consentement distinct).
+            <div className="fd-section">
+              <div className="fd-section-title">Votre commerce</div>
+              <div className="fd-grid">
+                <label>
+                  <span className="fd-label">Nom du commerce <span className="fd-required">*</span></span>
+                  <input className="fd-input" name="businessName" type="text" required autoComplete="organization" />
+                </label>
+                <label>
+                  <span className="fd-label">Activité <span className="fd-required">*</span></span>
+                  <select className="fd-select" name="businessActivity" required defaultValue="">
+                    <option value="" disabled>Sélectionner une activité</option>
+                    {BUSINESS_ACTIVITIES.map((activity) => (
+                      <option key={activity} value={activity}>{activity}</option>
+                    ))}
+                  </select>
+                </label>
+                <label className="fd-field-wide">
+                  <span className="fd-label">Adresse <span className="fd-required">*</span></span>
+                  <input className="fd-input" name="addressLine1" type="text" required autoComplete="street-address" />
+                </label>
+                <label>
+                  <span className="fd-label">Code postal <span className="fd-required">*</span></span>
+                  <input className="fd-input" name="postalCode" type="text" inputMode="numeric" required autoComplete="postal-code" />
+                </label>
+                <label>
+                  <span className="fd-label">Ville <span className="fd-required">*</span></span>
+                  <input className="fd-input" name="city" type="text" required autoComplete="address-level2" />
+                </label>
+                <label>
+                  <span className="fd-label">Site internet</span>
+                  <input className="fd-input" name="website" type="url" placeholder="https://" />
+                </label>
+                <label>
+                  <span className="fd-label">SIRET</span>
+                  <input className="fd-input" name="siret" type="text" inputMode="numeric" />
+                </label>
+                <label className="fd-field-wide">
+                  <span className="fd-label">Un besoin particulier ?</span>
+                  <textarea
+                    className="fd-textarea"
+                    name="message"
+                    placeholder="Parlez-nous de votre commerce ou de votre projet…"
+                  />
+                </label>
+              </div>
+            </div>
+
+            <label className="fd-consent">
+              <input name="contactConsent" type="checkbox" required />
+              <span>
+                J&apos;accepte d&apos;être contacté par Fideto au sujet de cette demande. Aucun message marketing sans accord distinct.{" "}
+                <Link href="/confidentialite">Politique de confidentialité</Link>
+              </span>
+            </label>
+
+            <div className="fd-actions">
+              <button className="fd-primary" type="submit" disabled={pending} aria-busy={pending}>
+                <span className="fd-btn-content">
+                  {pending ? "Envoi en cours…" : "Envoyer ma demande"}
+                  {!pending ? <ArrowRightIcon aria-hidden /> : null}
                 </span>
-              </label>
-              <p className="text-xs text-slate-500">
-                <Link href="/confidentialite" className="text-[#c4b5fd] hover:underline">
-                  Politique de confidentialité
-                </Link>
-              </p>
-              <Button type="submit" className="w-full sm:w-auto" disabled={pending}>
-                {pending ? "Envoi en cours…" : "Envoyer ma demande"}
-              </Button>
+              </button>
+              <button className="fd-secondary" type="button" onClick={showCode} disabled={pending}>
+                J&apos;ai déjà un code
+              </button>
             </div>
+            <p className="fd-fineprint">Réponse personnalisée · Aucun paiement à cette étape</p>
           </form>
+        </section>
 
-          <div className="mt-12 border-t border-white/10 pt-8">
-            <Button type="button" variant="secondary" onClick={() => { setView("code"); setError(null); }}>
-              J&apos;ai déjà rempli ce formulaire
-            </Button>
+        <section
+          className="fd-form-card fd-code-card"
+          hidden={panel !== "code"}
+          aria-label="Validation du code d'inscription"
+        >
+          <button className="fd-back" type="button" onClick={showForm}>
+            <span className="fd-btn-content">
+              <ArrowLeftIcon aria-hidden />
+              Retour à la demande
+            </span>
+          </button>
+          <div className="fd-code-icon" aria-hidden>
+            <KeyRoundIcon />
           </div>
-        </>
-      ) : null}
-
-      {view === "code" ? (
-        <div className="mx-auto max-w-lg rounded-3xl border border-white/10 bg-[rgba(8,6,18,0.65)] p-6 sm:p-8">
-          <Button type="button" variant="ghost" className="mb-4 text-sm" onClick={() => { setView("form"); setError(null); }}>
-            ← Retour au formulaire
-          </Button>
-          <h2 className="text-xl font-black text-white">Code d&apos;inscription</h2>
-          <p className="mt-2 text-sm text-slate-400">
-            Ce code vous est envoyé par un conseiller Fideto après acceptation de votre demande. Si vous n&apos;avez pas encore reçu de code,
-            remplissez le formulaire ou contactez{" "}
-            <a href="mailto:contact@fideto.fr" className="text-[#c4b5fd]">contact@fideto.fr</a>.
+          <h2>Votre accès est prêt ?</h2>
+          <p className="fd-code-copy">
+            Saisissez le code reçu après l&apos;acceptation de votre demande. Vous ne l&apos;avez pas encore ? Remplissez le formulaire ou écrivez à{" "}
+            <a href="mailto:contact@fideto.fr">contact@fideto.fr</a>.
           </p>
-          <form className="mt-6 space-y-5" onSubmit={(e) => void submitCode(e)}>
-            {error ? <Alert>{error}</Alert> : null}
-            <Field label="E-mail utilisé dans la demande">
-              <Input
+
+          <form onSubmit={(e) => void submitCode(e)}>
+            {error ? (
+              <div className="fd-alert" id={codeErrorId} role="alert">
+                {error}
+              </div>
+            ) : null}
+            <label>
+              <span className="fd-label">E-mail utilisé dans la demande</span>
+              <input
+                className="fd-input"
                 type="email"
                 required
+                autoComplete="email"
+                placeholder="vous@votrecommerce.fr"
                 value={codeEmail}
                 onChange={(e) => setCodeEmail(e.target.value)}
-                className="bg-black/30"
+                aria-invalid={Boolean(error)}
+                aria-describedby={error ? codeErrorId : undefined}
               />
-            </Field>
-            <div>
-              <p className="mb-2 text-xs font-bold uppercase tracking-widest text-slate-500">Code à 6 chiffres</p>
-              <div className="flex justify-between gap-2">
-                {codeDigits.map((digit, index) => (
-                  <input
-                    key={index}
-                    inputMode="numeric"
-                    maxLength={1}
-                    value={digit}
-                    onChange={(e) => onDigitChange(index, e.target.value)}
-                    className="h-12 w-10 rounded-xl border border-white/15 bg-black/40 text-center text-lg font-bold text-white sm:h-14 sm:w-12"
-                    aria-label={`Chiffre ${index + 1}`}
-                  />
-                ))}
-              </div>
+            </label>
+            <div className="fd-section">
+              <span className="fd-label">Code à 6 chiffres</span>
+              <SignupCodeInputs digits={codeDigits} onChange={onCodeDigitsChange} disabled={pending} />
             </div>
-            <Button type="submit" className="w-full" disabled={pending}>
-              {pending ? "Validation…" : "Valider mon code"}
-            </Button>
+            <div className="fd-actions">
+              <button className="fd-primary" type="submit" disabled={pending} aria-busy={pending}>
+                <span className="fd-btn-content">
+                  {pending ? "Validation…" : "Continuer mon inscription"}
+                  {!pending ? <ArrowRightIcon aria-hidden /> : null}
+                </span>
+              </button>
+            </div>
+            <p className="fd-fineprint">Le paiement intervient seulement après la création de votre compte.</p>
           </form>
-        </div>
-      ) : null}
+        </section>
+      </div>
     </div>
   );
 }

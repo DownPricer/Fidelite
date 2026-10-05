@@ -4098,9 +4098,9 @@
     "semantic_hash": ""
   },
   "src/components/landing/icons.tsx": {
-    "mtime": 1791198123.8744137,
-    "seen": 1791198298.0718193,
-    "ast_hash": "c63956dcbe88a76ea67354362702d02b",
+    "mtime": 1791204996.2837524,
+    "seen": 1791205336.9200315,
+    "ast_hash": "a90b3c5579d98c27cab65f55ef9e6b1f",
     "semantic_hash": ""
   },
   "src/components/merchant/insight-charts.tsx": {
@@ -5556,15 +5556,15 @@
     "semantic_hash": ""
   },
   "src/app/demarrer/page.tsx": {
-    "mtime": 1791198776.8097708,
-    "seen": 1791199050.3956854,
-    "ast_hash": "62d175d006cbe982d90bde27c587a6b4",
+    "mtime": 1791205032.8944855,
+    "seen": 1791205336.854607,
+    "ast_hash": "45e600c858ed81fc3e00a2bfec1e597e",
     "semantic_hash": ""
   },
   "src/app/demarrer/ui.tsx": {
-    "mtime": 1791198800.5271628,
-    "seen": 1791199050.3956854,
-    "ast_hash": "a0fbc94ef3669d97e63daebb8e741313",
+    "mtime": 1791205056.0080082,
+    "seen": 1791205336.854607,
+    "ast_hash": "b42c26f94638d25e985d45d20edcda78",
     "semantic_hash": ""
   },
   "src/app/super-admin/demandes-inscription/[id]/page.tsx": {
@@ -5643,6 +5643,18 @@
     "mtime": 1791198835.8952415,
     "seen": 1791199050.4621077,
     "ast_hash": "2ef15cc93378dba3ec71fdb385ecaba6",
+    "semantic_hash": ""
+  },
+  "src/app/demarrer/signup-code-inputs.tsx": {
+    "mtime": 1791205037.694674,
+    "seen": 1791205336.854607,
+    "ast_hash": "5843ac973f5f6bde60e1c29d16f258fd",
+    "semantic_hash": ""
+  },
+  "tests/demarrer-beta-ui.test.ts": {
+    "mtime": 1791205085.8720906,
+    "seen": 1791205337.0261145,
+    "ast_hash": "5a162158f8a5feb477521fada237d881",
     "semantic_hash": ""
   }
 }

@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { formatEurosFromCents, isMerchantPlanId, MERCHANT_PLANS } from "@/lib/merchant-plans";
 import { isMerchantSignupBetaForm } from "@/lib/merchant-signup-mode";
 import { MerchantSignupForm } from "./ui";
+import "./beta-signup.css";
 
 export const metadata: Metadata = {
   alternates: { canonical: "/demarrer" },
@@ -35,20 +36,20 @@ export default async function DemarrerPage({
   };
 
   return (
-    <div className="pr-scene min-h-dvh">
-      <header className="pr-head">
-        <div className="pr-wrap pr-head-inner">
-          <Link href="/" className="pr-brand">
-            <span className="pr-brand-mark">FL</span>Fideto
-          </Link>
-          <nav className="pr-nav" aria-label="Navigation">
-            <Link href="/tarifs">Tarifs</Link>
-            <Link href="/app/connexion">Se connecter</Link>
-          </nav>
-        </div>
+    <div className="fd-beta-scene">
+      <header className="fd-header">
+        <Link href="/" className="fd-brand">
+          <span className="fd-brand-mark" aria-hidden>FL</span>
+          <span>Fideto</span>
+        </Link>
+        <nav className="fd-nav" aria-label="Navigation principale">
+          <Link href="/tarifs" className="fd-link">Tarifs</Link>
+          <Link href="/contact" className="fd-link">Besoin d&apos;aide ?</Link>
+          <Link href="/app/connexion" className="fd-nav-cta">Se connecter</Link>
+        </nav>
       </header>
 
-      <main className="pr-wrap pb-16 pt-8">
+      <main className="fd-shell">
         <MerchantSignupForm plan={planSummary} />
       </main>
     </div>
