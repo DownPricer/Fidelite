@@ -9,7 +9,9 @@ const page = readSrc("src/app/page.tsx");
 const header = readSrc("src/components/landing/landing-header.tsx");
 const mobileNav = readSrc("src/components/landing/landing-mobile-nav.tsx");
 const footer = readSrc("src/components/landing/landing-footer.tsx");
-const faq = readSrc("src/components/landing/landing-faq.tsx");
+const explainerVideo = readSrc("src/components/landing/landing-explainer-video.tsx");
+const explainerConfig = readSrc("src/lib/landing-explainer-video.ts");
+const siteMedia = readSrc("src/lib/site-media.ts");
 const heroVisual = readSrc("src/components/landing/landing-hero-visual.tsx");
 const authTargets = readSrc("src/lib/landing-auth-targets.ts");
 const proPage = readSrc("src/app/pro/page.tsx");
@@ -67,16 +69,24 @@ describe("landing page structure and balance", () => {
     expect(page).toContain("Créez une fidélité qui donne envie de revenir.");
     expect(page).toContain("Tout ce qu&apos;il faut. Rien de compliqué.");
     expect(page).toContain("Vos données restent les vôtres.");
-    expect(page).toContain("Vous vous demandez peut-être");
+    expect(page).toContain("Tout ce qu&apos;il faut savoir");
+    expect(page).toContain(
+      "Découvrez en quelques minutes comment Fideto fonctionne pour les clients et les commerçants.",
+    );
     expect(page).toContain("Prêt à créer une fidélité qui compte vraiment ?");
   });
 
-  it("exposes the FAQ as an accessible accordion", () => {
-    expect(faq).toContain("aria-expanded");
-    expect(faq).toContain("aria-controls");
-    expect(faq).toContain("Fideto est-il une carte de fidélité unique ?");
-    expect(faq).toContain("Comment fonctionne le QR code ?");
-    expect(faq).toContain("Puis-je ajouter ma carte à Google Wallet ?");
+  it("exposes the explainer section as an accessible HTML5 video player", () => {
+    expect(page).toContain("LandingExplainerVideo");
+    expect(explainerVideo).toContain('preload="metadata"');
+    expect(explainerVideo).toContain("playsInline");
+    expect(explainerVideo).toContain("Votre navigateur ne permet pas de lire cette vidéo.");
+    expect(explainerVideo).toContain("prefers-reduced-motion");
+    expect(page).toContain("LANDING_EXPLAINER_VIDEO_SRC");
+    expect(siteMedia).toContain("fideto-presentation.mp4");
+    expect(siteMedia).toContain("/api/media/site/");
+    expect(explainerConfig).toContain("/branding/fideto-presentation-poster.webp");
+    expect(page).not.toContain("LandingFaq");
   });
 
   it("links legal pages that actually exist in the repo", () => {

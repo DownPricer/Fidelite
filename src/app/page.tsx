@@ -2,7 +2,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { LandingHeader } from "@/components/landing/landing-header";
 import { LandingFooter } from "@/components/landing/landing-footer";
-import { LandingFaq } from "@/components/landing/landing-faq";
+import { LandingExplainerVideo } from "@/components/landing/landing-explainer-video";
+import {
+  LANDING_EXPLAINER_CAPTIONS_SRC,
+  LANDING_EXPLAINER_POSTER_SRC,
+  LANDING_EXPLAINER_VIDEO_SRC,
+} from "@/lib/landing-explainer-video";
+import { access } from "node:fs/promises";
+import { join } from "node:path";
 import { LandingHeroVisual } from "@/components/landing/landing-hero-visual";
 import { LandingMerchantPreview } from "@/components/landing/landing-merchant-preview";
 import { resolveLandingAuthTargets } from "@/lib/landing-auth-targets";
@@ -97,8 +104,18 @@ const BENTO_ITEMS = [
 
 const MERCHANT_SECTION_HREF = "#commercants";
 
+async function landingExplainerCaptionsSrc() {
+  try {
+    await access(join(process.cwd(), "public", "branding", "fideto-presentation.vtt"));
+    return LANDING_EXPLAINER_CAPTIONS_SRC;
+  } catch {
+    return null;
+  }
+}
+
 export default async function HomePage() {
   const { clientHref } = await resolveLandingAuthTargets();
+  const explainerCaptionsSrc = await landingExplainerCaptionsSrc();
 
   return (
     <div className="fidelo-landing relative w-full overflow-hidden font-sans">
@@ -322,17 +339,24 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {/* FAQ */}
+        {/* Vidéo explicative */}
         <section id="faq" className="mx-auto w-full max-w-[1180px] scroll-mt-20 px-5 py-[90px]">
-          <div className="mb-9 max-w-[690px]">
+          <div className="mb-9 max-w-[760px]">
             <p className="text-[13px] font-extrabold uppercase tracking-[0.08em] text-[var(--fh-purple)]">
               Questions fréquentes
             </p>
             <h2 className="mt-3 text-[32px] font-extrabold leading-[1.06] tracking-[-0.03em] text-[var(--fh-text)] sm:text-[42px]">
-              Vous vous demandez peut-être…
+              Tout ce qu&apos;il faut savoir
             </h2>
+            <p className="mt-4 text-[17px] leading-[1.65] text-[var(--fh-muted)]">
+              Découvrez en quelques minutes comment Fideto fonctionne pour les clients et les commerçants.
+            </p>
           </div>
-          <LandingFaq />
+          <LandingExplainerVideo
+            videoSrc={LANDING_EXPLAINER_VIDEO_SRC}
+            posterSrc={LANDING_EXPLAINER_POSTER_SRC}
+            captionsSrc={explainerCaptionsSrc}
+          />
         </section>
 
         {/* CTA final */}

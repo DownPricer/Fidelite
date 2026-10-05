@@ -1002,9 +1002,9 @@
     "semantic_hash": "3e868ef84bfabb85f8227de5093dbe4f"
   },
   "src/app/page.tsx": {
-    "mtime": 1791198139.596316,
-    "seen": 1791198298.0553398,
-    "ast_hash": "3a5b84d0d46a20b1dc5c14e8a435b4d8",
+    "mtime": 1791211061.9330597,
+    "seen": 1791211262.3045137,
+    "ast_hash": "77c900eb677b20b2269f29b1623d7e41",
     "semantic_hash": ""
   },
   "src/app/rejoindre/[slug]/page.tsx": {
@@ -2712,9 +2712,9 @@
     "semantic_hash": ""
   },
   "tests/landing-page.test.ts": {
-    "mtime": 1791198165.145409,
-    "seen": 1791198298.1202757,
-    "ast_hash": "35c5e7752ec173691cde9c66011bd855",
+    "mtime": 1791211086.8298998,
+    "seen": 1791211262.361664,
+    "ast_hash": "a11ba1f6517c8d1210dff714903ce6b3",
     "semantic_hash": ""
   },
   "tests/loyalty-balance.test.ts": {
@@ -4098,9 +4098,9 @@
     "semantic_hash": ""
   },
   "src/components/landing/icons.tsx": {
-    "mtime": 1791204996.2837524,
-    "seen": 1791205336.9200315,
-    "ast_hash": "a90b3c5579d98c27cab65f55ef9e6b1f",
+    "mtime": 1791211052.1783013,
+    "seen": 1791211262.3215137,
+    "ast_hash": "5421fe5665e5c23e9151729251b9cdf6",
     "semantic_hash": ""
   },
   "src/components/merchant/insight-charts.tsx": {
@@ -5655,6 +5655,84 @@
     "mtime": 1791205085.8720906,
     "seen": 1791205337.0261145,
     "ast_hash": "5a162158f8a5feb477521fada237d881",
+    "semantic_hash": ""
+  },
+  "src/app/api/media/site/[filename]/route.ts": {
+    "mtime": 1791211046.4018438,
+    "seen": 1791211262.2774062,
+    "ast_hash": "dfb0a4da16304e8d88a9dc1bd424c7ad",
+    "semantic_hash": ""
+  },
+  "src/components/landing/landing-explainer-video.tsx": {
+    "mtime": 1791211050.5045378,
+    "seen": 1791211262.3215137,
+    "ast_hash": "de1ddd3481b8cc22cb5958743eb8cec8",
+    "semantic_hash": ""
+  },
+  "src/lib/landing-explainer-video.ts": {
+    "mtime": 1791211137.460014,
+    "seen": 1791211262.3385148,
+    "ast_hash": "8d83173365b1b6280ded4fa697c7ec8f",
+    "semantic_hash": ""
+  },
+  "src/lib/site-media.ts": {
+    "mtime": 1791211045.9980428,
+    "seen": 1791211262.3476608,
+    "ast_hash": "686a7c0472181cb8445a1c4668d00b85",
+    "semantic_hash": ""
+  },
+  "tests/site-media-route.test.ts": {
+    "mtime": 1791211069.555508,
+    "seen": 1791211262.3671844,
+    "ast_hash": "4a03ec6f2c51c295acd4b78cf9da506b",
+    "semantic_hash": ""
+  },
+  "public/branding/fideto-presentation-poster.webp": {
+    "mtime": 1791211020.3961966,
+    "seen": 1791211262.4021845,
+    "ast_hash": "5c3b516e55e6be4fc862df325d70ea7b",
+    "semantic_hash": ""
+  },
+  "reports/demarrer-beta-ui/desktop-1440-code.png": {
+    "mtime": 1791205453.2452574,
+    "seen": 1791211262.4041843,
+    "ast_hash": "0a78a9f5fd0f3574d8d3fa9cb42ed820",
+    "semantic_hash": ""
+  },
+  "reports/demarrer-beta-ui/desktop-1440-form.png": {
+    "mtime": 1791205416.6239312,
+    "seen": 1791211262.4041843,
+    "ast_hash": "e43b2186f1fa0fadfb2af405d6ebf5c9",
+    "semantic_hash": ""
+  },
+  "reports/demarrer-beta-ui/desktop-1920-form.png": {
+    "mtime": 1791205436.6465218,
+    "seen": 1791211262.4041843,
+    "ast_hash": "bcf94dd1647bad8eac6a1965bc4f9a5c",
+    "semantic_hash": ""
+  },
+  "reports/demarrer-beta-ui/mobile-360-code.png": {
+    "mtime": 1791205507.244638,
+    "seen": 1791211262.4041843,
+    "ast_hash": "50c6c43955636e6421422e51f3f0de6c",
+    "semantic_hash": ""
+  },
+  "reports/demarrer-beta-ui/mobile-390-code.png": {
+    "mtime": 1791205490.977559,
+    "seen": 1791211262.4041843,
+    "ast_hash": "25b5f227e00d6980b884785465f1ee9c",
+    "semantic_hash": ""
+  },
+  "reports/demarrer-beta-ui/mobile-390-form.png": {
+    "mtime": 1791205474.1479292,
+    "seen": 1791211262.4041843,
+    "ast_hash": "cc86b63d7cd4e1a0997151f571b08c96",
+    "semantic_hash": ""
+  },
+  "Carte/Fideto presentation.mp4": {
+    "mtime": 1791210403.0110369,
+    "seen": 1791211262.4051864,
+    "ast_hash": "8163124466c62d3d1bd8fd2c4c13dde4",
     "semantic_hash": ""
   }
 }
