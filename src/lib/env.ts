@@ -83,6 +83,12 @@ export const env = {
   twilioAccountSid: read("TWILIO_ACCOUNT_SID"),
   twilioAuthToken: read("TWILIO_AUTH_TOKEN"),
   twilioFromNumber: read("TWILIO_FROM_NUMBER"),
+  /** Parcours d'inscription commerçant : beta_form (formulaire + code) ou open (connexion directe). */
+  merchantSignupMode: read("MERCHANT_SIGNUP_MODE", "beta_form"),
+  merchantSignupCodePepper: read("MERCHANT_SIGNUP_CODE_PEPPER", "dev-only-change-me-merchant-signup-code"),
+  merchantSignupGrantSecret: read("MERCHANT_SIGNUP_GRANT_SECRET", "dev-only-change-me-merchant-signup-grant"),
+  merchantSignupCodeDays: Number(read("MERCHANT_SIGNUP_CODE_DAYS", "14")),
+  merchantSignupGrantHours: Number(read("MERCHANT_SIGNUP_GRANT_HOURS", "72")),
 };
 
 export function isProduction() {

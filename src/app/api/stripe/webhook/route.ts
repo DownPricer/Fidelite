@@ -8,8 +8,11 @@ import { jsonError, jsonOk } from "@/lib/http";
 import { prisma } from "@/lib/prisma";
 import { notifyMerchant } from "@/lib/ad-visual-workflow";
 import { scheduleGoogleWalletGlobalCampaignResync } from "@/lib/google-wallet";
-import { syncSubscriptionFromStripeView } from "@/lib/merchant-billing";
+import { mapStripeSubscriptionStatus, syncSubscriptionFromStripeView } from "@/lib/merchant-billing";
+import { isMerchantPlanId } from "@/lib/merchant-plans";
+import { sendMerchantSubscriptionActivatedEmail } from "@/lib/merchant-signup-emails";
 import { StripeNotConfiguredError, constructStripeWebhookEvent, normalizeStripeSubscription } from "@/lib/stripe";
+import { syncIsActiveFromStatus } from "@/lib/merchant-status";
 
 /**
  * Webhook Stripe — signé et idempotent (Partie 9 / 17).
@@ -86,6 +89,11 @@ function paymentIntentIdOf(session: Stripe.Checkout.Session) {
 async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session, mode: StripeModeValue) {
   // Rien n'est crédité ni activé tant que Stripe ne confirme pas un paiement encaissé.
   if (session.payment_status !== "paid") return;
+
+  if (session.metadata?.kind === "MERCHANT_PLAN") {
+    await handleMerchantPlanCheckoutCompleted(session, mode);
+    return;
+  }
 
   if (session.metadata?.kind === "MARKETING_TOPUP") {
     await prisma.$transaction(async (tx) => {
@@ -179,6 +187,76 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session, 
     });
   });
   if (sponsoredAdScheduled) scheduleGoogleWalletGlobalCampaignResync();
+}
+
+async function handleMerchantPlanCheckoutCompleted(session: Stripe.Checkout.Session, mode: StripeModeValue) {
+  const merchantId = session.metadata?.merchantId;
+  const planId = session.metadata?.planId;
+  const subscriptionId =
+    typeof session.subscription === "string" ? session.subscription : session.subscription?.id ?? null;
+  if (!merchantId || !subscriptionId || !isMerchantPlanId(planId)) return;
+
+  const signup = session.metadata?.signupRequestId
+    ? await prisma.merchantSignupRequest.findUnique({ where: { id: session.metadata.signupRequestId } })
+    : null;
+
+  const { retrieveStripeSubscription } = await import("@/lib/stripe");
+  const subView = await retrieveStripeSubscription(subscriptionId, mode);
+
+  await prisma.$transaction(async (tx) => {
+    const merchant = await tx.merchant.findUnique({ where: { id: merchantId } });
+    if (!merchant) return;
+
+    const status = mapStripeSubscriptionStatus(subView.status);
+    const active = status === "ACTIVE" || status === "TRIAL";
+    await tx.merchant.update({
+      where: { id: merchantId },
+      data: {
+        status: active ? "ACTIVE" : "DRAFT",
+        isActive: syncIsActiveFromStatus(active ? "ACTIVE" : "DRAFT"),
+      },
+    });
+
+    await tx.merchantSubscription.update({
+      where: { merchantId },
+      data: {
+        status,
+        stripeSubscriptionId: subscriptionId,
+        stripeMode: mode,
+        nextBillingAt: subView.currentPeriodEnd,
+        startsAt: new Date(),
+        trialEndsAt: status === "TRIAL" ? subView.currentPeriodEnd : null,
+      },
+    });
+
+    if (signup) {
+      await tx.merchantSignupRequest.update({
+        where: { id: signup.id },
+        data: { stripeCheckoutSessionId: session.id },
+      });
+    }
+  });
+
+  const admin = await prisma.merchantMembership.findFirst({
+    where: { merchantId, role: "MERCHANT_ADMIN", isActive: true },
+    include: { user: true, merchant: true },
+  });
+  if (admin?.user.email && isMerchantPlanId(planId)) {
+    void sendMerchantSubscriptionActivatedEmail({
+      to: admin.user.email,
+      firstName: admin.user.firstName,
+      merchantName: admin.merchant.name,
+      planId,
+    });
+  }
+
+  await syncSubscriptionFromStripeView(subView);
+  await writeAudit({
+    actorId: null,
+    merchantId,
+    action: "MERCHANT_PLAN_SUBSCRIPTION_ACTIVATED",
+    metadata: { stripeCheckoutSessionId: session.id, planId, subscriptionId },
+  });
 }
 
 async function handleCheckoutSessionExpired(session: Stripe.Checkout.Session, mode: StripeModeValue) {

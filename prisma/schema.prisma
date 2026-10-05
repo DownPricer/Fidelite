@@ -227,6 +227,7 @@ model User {
   pushSubscriptions     PushSubscription[]
   consentEvents         ConsentEvent[]
   customerAccessTokens  CustomerAccessToken[]
+  merchantSignupRequests MerchantSignupRequest[]
 }
 
 model CustomerAccessToken {
@@ -396,6 +397,7 @@ model Merchant {
   campaigns           Campaign[]
   adRequests          AdRequest[]
   stripeCustomers MerchantStripeCustomer[]
+  signupRequest   MerchantSignupRequest?
 }
 
 model MerchantMembership {
@@ -1428,4 +1430,54 @@ model AdCustomerView {
 
   @@unique([userId, adRequestId])
   @@index([userId, lastShownAt])
+}
+
+enum MerchantSignupRequestStatus {
+  PENDING_REVIEW
+  REJECTED
+  CODE_SENT
+  CODE_REVOKED
+  ACCOUNT_LINKED
+}
+
+/// Demande d'inscription commerçant (parcours bêta) : formulaire, code à 6 chiffres, puis compte et paiement Stripe.
+model MerchantSignupRequest {
+  id                 String                      @id @default(cuid())
+  status             MerchantSignupRequestStatus @default(PENDING_REVIEW)
+  /// Identifiant d'offre public (fideto | fideto-phone) — validé côté serveur, jamais le prix.
+  planId             String
+  firstName          String
+  lastName           String
+  businessName       String
+  businessActivity   String
+  email              String
+  mobilePhone        String
+  landlinePhone      String?
+  website            String?
+  siret              String?
+  message            String?
+  addressLine1       String
+  postalCode         String
+  city               String
+  country            String                      @default("FR")
+  contactConsentAt   DateTime
+  internalNote       String?
+  codeHash           String?
+  codeExpiresAt      DateTime?
+  codeSentAt         DateTime?
+  codeUsedAt         DateTime?
+  codeRevokedAt      DateTime?
+  rejectedAt         DateTime?
+  rejectionReason    String?
+  merchantId         String?                     @unique
+  userId             String?
+  stripeCheckoutSessionId String?
+  createdAt          DateTime                    @default(now())
+  updatedAt          DateTime                    @updatedAt
+
+  merchant Merchant? @relation(fields: [merchantId], references: [id], onDelete: SetNull)
+  user     User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([email])
+  @@index([status, createdAt])
 }

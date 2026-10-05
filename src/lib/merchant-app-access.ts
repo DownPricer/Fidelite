@@ -14,7 +14,7 @@ export type MerchantAppAccess =
   | { access: "EMPLOYEE_ONLY" }
   | { access: "UNAUTHENTICATED" };
 
-const MERCHANT_APP_PUBLIC_PATHS = ["/app/connexion", "/app/enter-demo", "/app/exit-demo"];
+const MERCHANT_APP_PUBLIC_PATHS = ["/app/connexion", "/app/compte-commercant", "/app/enter-demo", "/app/exit-demo"];
 
 export function hasMerchantStaffAccess(membership: StaffMembership | null): membership is StaffMembership {
   if (!membership) return false;

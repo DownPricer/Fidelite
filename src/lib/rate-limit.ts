@@ -37,4 +37,6 @@ export const LIMITS = {
   googleWallet: { limit: 10, windowMs: 60 * 1000 },
   qaLoginExchange: { limit: 10, windowMs: 60 * 1000 },
   publicContact: { limit: 5, windowMs: 15 * 60 * 1000 },
+  merchantSignupApply: { limit: 5, windowMs: 15 * 60 * 1000 },
+  merchantSignupCode: { limit: 8, windowMs: 15 * 60 * 1000 },
 };

@@ -19,7 +19,7 @@ export default function DashboardLayout({
   showNotifications?: boolean;
 }) {
   const pathname = usePathname();
-  const isLogin = pathname === "/app/connexion";
+  const isLogin = pathname === "/app/connexion" || pathname === "/app/compte-commercant";
   const showShell = !isLogin;
 
   return (

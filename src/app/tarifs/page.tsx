@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { resolveLandingAuthTargets } from "@/lib/landing-auth-targets";
 import { formatEurosFromCents, MERCHANT_PLANS } from "@/lib/merchant-plans";
+import { merchantSignupEntryHref } from "@/lib/merchant-signup-routing";
 import { PricingFaq } from "./ui";
 
 export const metadata: Metadata = {
@@ -84,7 +85,7 @@ export default async function TarifsPage() {
               <li>Accès aux outils de communication Fideto</li>
             </ul>
             <div className="pr-plan-actions">
-              <Link href="/app/connexion?plan=fideto" className="pr-btn pr-btn-primary pr-btn-full">
+              <Link href={merchantSignupEntryHref("fideto")} className="pr-btn pr-btn-primary pr-btn-full">
                 Démarrer avec Fideto →
               </Link>
               <p className="pr-conditions">
@@ -124,7 +125,7 @@ export default async function TarifsPage() {
               <li>Premier mois d&apos;abonnement inclus</li>
             </ul>
             <div className="pr-plan-actions">
-              <Link href="/app/connexion?plan=fideto-phone" className="pr-btn pr-btn-light pr-btn-full">
+              <Link href={merchantSignupEntryHref("fideto-phone")} className="pr-btn pr-btn-light pr-btn-full">
                 Choisir le pack complet →
               </Link>
               <p className="pr-conditions">
