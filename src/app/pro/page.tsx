@@ -3,31 +3,34 @@ import Link from "next/link";
 import { BrandMark } from "@/components/ui";
 import { getSessionUser } from "@/lib/session";
 import { getEmployeeSession } from "@/lib/employee-session";
+import { publicAppUrl, publicEmployeeUrl } from "@/lib/hosts";
 import { firstActiveStaffMembership } from "@/lib/rbac";
 
 const SPACES = [
   {
     title: "Commerçant",
     description: "Gérez votre programme de fidélité, vos récompenses et votre équipe.",
-    href: "/app/connexion",
+    href: publicAppUrl("/app/connexion"),
     cta: "Continuer en tant que commerçant",
   },
   {
     title: "Employé",
     description: "Accédez à la caisse et aux fonctionnalités autorisées par votre commerce.",
-    href: "/employe/connexion",
+    href: publicEmployeeUrl("/employe/connexion"),
     cta: "Continuer en tant qu'employé",
   },
 ] as const;
 
 export default async function ProEntryPage() {
   const employeeSession = await getEmployeeSession();
-  if (employeeSession) redirect("/employe/scan");
+  if (employeeSession) redirect(publicEmployeeUrl("/employe/scan"));
 
   const user = await getSessionUser();
   if (user) {
     const membership = firstActiveStaffMembership(user.merchantMemberships);
-    if (membership) redirect(membership.role === "EMPLOYEE" ? "/app/caisse" : "/app");
+    if (membership) {
+      redirect(membership.role === "EMPLOYEE" ? publicAppUrl("/app/caisse") : publicAppUrl("/app"));
+    }
   }
 
   return (
@@ -46,7 +49,7 @@ export default async function ProEntryPage() {
 
         <div className="space-y-3">
           {SPACES.map((space) => (
-            <Link
+            <a
               key={space.href}
               href={space.href}
               className="glass-panel group block rounded-2xl p-5 transition hover:border-[rgba(190,164,255,0.45)]"
@@ -66,7 +69,7 @@ export default async function ProEntryPage() {
               <span className="mt-4 inline-flex rounded-full border border-[rgba(190,164,255,0.32)] bg-[rgba(12,10,24,0.88)] px-4 py-2 text-xs font-bold text-[var(--ink)]">
                 {space.cta}
               </span>
-            </Link>
+            </a>
           ))}
         </div>
 

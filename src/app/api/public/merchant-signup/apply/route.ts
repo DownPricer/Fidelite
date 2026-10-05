@@ -1,8 +1,8 @@
 import { requireMutatingRequest } from "@/lib/api-guard";
 import { clientIp, jsonError, jsonOk, readJson, userAgent } from "@/lib/http";
 import { isMerchantSignupBetaForm } from "@/lib/merchant-signup-mode";
+import { parseMerchantSignupApplication } from "@/lib/merchant-signup-application-input";
 import { submitMerchantSignupApplication } from "@/lib/merchant-signup-service";
-import { merchantSignupApplicationSchema, zodMerchantSignupError } from "@/lib/merchant-signup-validation";
 import { LIMITS, rateLimit } from "@/lib/rate-limit";
 
 export async function POST(req: Request) {
@@ -19,9 +19,14 @@ export async function POST(req: Request) {
     return jsonError("Trop de demandes. Réessayez plus tard.", 429);
   }
 
-  const parsed = merchantSignupApplicationSchema.safeParse(await readJson(req));
-  if (!parsed.success) {
-    return jsonError(zodMerchantSignupError(parsed.error));
+  const body = await readJson(req);
+  if (body === null) {
+    return jsonError("Corps de requête invalide.", 400, { fieldErrors: {} });
+  }
+
+  const parsed = parseMerchantSignupApplication(body);
+  if (!parsed.ok) {
+    return jsonError(parsed.message, 400, { fieldErrors: parsed.fieldErrors });
   }
 
   const email = parsed.data.email.toLowerCase();
@@ -34,12 +39,31 @@ export async function POST(req: Request) {
     return jsonError("Trop de demandes. Réessayez plus tard.", 429);
   }
 
-  await submitMerchantSignupApplication(parsed.data);
+  const { record, emailDelivery } = await submitMerchantSignupApplication(parsed.data);
 
   void userAgent(req);
-  return jsonOk({
+
+  const response: {
+    ok: true;
+    message: string;
+    requestId: string;
+    emailWarning?: string;
+  } = {
     ok: true,
+    requestId: record.id,
     message:
       "Votre demande a bien été enregistrée. Un conseiller Fideto vous contactera rapidement. Aucun paiement n'est demandé à cette étape.",
-  });
+  };
+
+  if (!emailDelivery.ackSent || !emailDelivery.adminNotified) {
+    response.emailWarning =
+      "Votre demande est bien enregistrée. L'envoi d'un e-mail de confirmation a échoué : notre équipe a été alertée et pourra vous recontacter.";
+    console.error("[merchant-signup] échec partiel e-mail après enregistrement", {
+      requestId: record.id,
+      ackSent: emailDelivery.ackSent,
+      adminNotified: emailDelivery.adminNotified,
+    });
+  }
+
+  return jsonOk(response);
 }

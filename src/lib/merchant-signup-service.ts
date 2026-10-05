@@ -75,20 +75,51 @@ export async function submitMerchantSignupApplication(
     },
   });
 
-  void sendMerchantSignupAckEmail({
+  const ackResult = await sendMerchantSignupAckEmail({
     to: email,
     firstName: data.firstName,
     businessName: data.businessName,
     planId: data.planId,
   });
-  void sendMerchantSignupAdminNotifyEmail({
+  const adminResult = await sendMerchantSignupAdminNotifyEmail({
     businessName: data.businessName,
     email,
     planId: data.planId,
     requestId: record.id,
   });
 
-  return record;
+  return {
+    record,
+    emailDelivery: {
+      ackSent: ackResult.ok,
+      adminNotified: adminResult.ok,
+    },
+  };
+}
+
+/** Relance les e-mails d'une demande déjà enregistrée (sans créer un doublon). */
+export async function retryMerchantSignupApplicationEmails(requestId: string) {
+  const request = await prisma.merchantSignupRequest.findUnique({ where: { id: requestId } });
+  if (!request || !isMerchantPlanId(request.planId)) {
+    return { ok: false as const, error: "Demande introuvable." };
+  }
+  const planId = request.planId as MerchantPlanId;
+  const ackResult = await sendMerchantSignupAckEmail({
+    to: request.email,
+    firstName: request.firstName,
+    businessName: request.businessName,
+    planId,
+  });
+  const adminResult = await sendMerchantSignupAdminNotifyEmail({
+    businessName: request.businessName,
+    email: request.email,
+    planId,
+    requestId: request.id,
+  });
+  return {
+    ok: ackResult.ok && adminResult.ok,
+    emailDelivery: { ackSent: ackResult.ok, adminNotified: adminResult.ok },
+  };
 }
 
 const GENERIC_CODE_ERROR = "Si un code correspond à cette adresse, il sera accepté. Sinon, vérifiez vos informations ou contactez contact@fideto.fr.";

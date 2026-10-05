@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { BrandMark } from "@/components/ui";
+import { clientEmployeeAppHref, clientMerchantAppHref } from "@/lib/client-cross-origin-links";
 
 export function CustomerAuthShell({
   title,
@@ -32,12 +33,12 @@ export function CustomerAuthShell({
         <nav className="mt-6 text-center text-xs font-bold uppercase tracking-[0.18em] text-[var(--muted)]">
           <p className="mb-3">Autres espaces</p>
           <div className="flex flex-wrap justify-center gap-x-5 gap-y-2">
-            <Link href="/app/connexion" className="text-[var(--violet-bright)] hover:underline normal-case tracking-normal">
+            <a href={clientMerchantAppHref("/app/connexion")} className="text-[var(--violet-bright)] hover:underline normal-case tracking-normal">
               Commerçant
-            </Link>
-            <Link href="/employe/connexion" className="text-[var(--violet-bright)] hover:underline normal-case tracking-normal">
+            </a>
+            <a href={clientEmployeeAppHref("/employe/connexion")} className="text-[var(--violet-bright)] hover:underline normal-case tracking-normal">
               Employé
-            </Link>
+            </a>
           </div>
         </nav>
       </div>

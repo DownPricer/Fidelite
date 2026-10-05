@@ -89,4 +89,9 @@ describe("public/sw.js — ne doit jamais masquer un échec de navigation derri�
   it("ne retombe plus jamais sur caches.match(\"/\") en cas d'échec réseau", () => {
     expect(source).not.toContain('caches.match("/")');
   });
+
+  it("renvoie toujours une Response (Response.error si pas de cache)", () => {
+    expect(source).toContain("Response.error()");
+    expect(source).toContain("fifelite-v2");
+  });
 });

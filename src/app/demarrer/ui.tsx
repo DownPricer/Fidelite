@@ -1,7 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useId, useState } from "react";
+import { useCallback, useId, useRef, useState } from "react";
+import {
+  merchantSignupApplicationFromFormData,
+  type MerchantSignupFieldErrors,
+} from "@/lib/merchant-signup-application-input";
 import {
   ArrowLeftIcon,
   ArrowRightIcon,
@@ -30,10 +34,26 @@ type PlanSummary = {
 
 type Panel = "form" | "code" | "success";
 
+function FieldError({ message }: { message?: string }) {
+  if (!message) return null;
+  return (
+    <span className="fd-field-error" role="alert">
+      {message}
+    </span>
+  );
+}
+
+function inputClass(invalid: boolean) {
+  return invalid ? "fd-input fd-input-invalid" : "fd-input";
+}
+
 export function MerchantSignupForm({ plan }: { plan: PlanSummary }) {
   const [panel, setPanel] = useState<Panel>("form");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<MerchantSignupFieldErrors>({});
+  const [emailWarning, setEmailWarning] = useState<string | null>(null);
+  const submitLock = useRef(false);
   const [codeDigits, setCodeDigits] = useState(["", "", "", "", "", ""]);
   const [codeEmail, setCodeEmail] = useState("");
   const formErrorId = useId();
@@ -42,6 +62,7 @@ export function MerchantSignupForm({ plan }: { plan: PlanSummary }) {
   const showForm = () => {
     setPanel("form");
     setError(null);
+    setFieldErrors({});
   };
 
   const showCode = () => {
@@ -51,42 +72,38 @@ export function MerchantSignupForm({ plan }: { plan: PlanSummary }) {
 
   const submitForm = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (submitLock.current || pending) return;
+    submitLock.current = true;
     setPending(true);
     setError(null);
+    setFieldErrors({});
+    setEmailWarning(null);
     const form = event.currentTarget;
     const data = new FormData(form);
+    const payload = merchantSignupApplicationFromFormData(data, plan.id);
     try {
       const response = await fetch("/api/public/merchant-signup/apply", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          planId: plan.id,
-          firstName: data.get("firstName"),
-          lastName: data.get("lastName"),
-          businessName: data.get("businessName"),
-          businessActivity: data.get("businessActivity"),
-          email: data.get("email"),
-          mobilePhone: data.get("mobilePhone"),
-          landlinePhone: data.get("landlinePhone") || "",
-          website: data.get("website") || "",
-          siret: data.get("siret") || "",
-          message: data.get("message") || "",
-          addressLine1: data.get("addressLine1"),
-          postalCode: data.get("postalCode"),
-          city: data.get("city"),
-          contactConsent: data.get("contactConsent") === "on",
-        }),
+        body: JSON.stringify(payload),
       });
-      const body = (await response.json()) as { error?: string };
+      const body = (await response.json()) as {
+        error?: string;
+        fieldErrors?: MerchantSignupFieldErrors;
+        emailWarning?: string;
+      };
       if (!response.ok) {
         setError(body.error ?? "Envoi impossible. Vérifiez les champs et réessayez.");
+        setFieldErrors(body.fieldErrors ?? {});
         return;
       }
+      if (body.emailWarning) setEmailWarning(body.emailWarning);
       setPanel("success");
     } catch {
       setError("Erreur réseau. Vérifiez votre connexion et réessayez.");
     } finally {
       setPending(false);
+      submitLock.current = false;
     }
   };
 
@@ -111,7 +128,7 @@ export function MerchantSignupForm({ plan }: { plan: PlanSummary }) {
         setError(body.error ?? "Code invalide ou expiré.");
         return;
       }
-      window.location.href = body.nextUrl ?? "/app/compte-commercant";
+      window.location.assign(body.nextUrl ?? "https://app.fideto.fr/app/compte-commercant");
     } catch {
       setError("Erreur réseau. Réessayez dans un instant.");
     } finally {
@@ -195,6 +212,9 @@ export function MerchantSignupForm({ plan }: { plan: PlanSummary }) {
             Merci ! Un conseiller Fideto étudiera votre demande et vous contactera rapidement. Vous recevrez un accusé de réception par e-mail.
             Aucun paiement n&apos;a été déclenché.
           </p>
+          {emailWarning ? (
+            <p className="fd-alert" role="status">{emailWarning}</p>
+          ) : null}
           <Link href="/tarifs" className="fd-success-link">Retour aux tarifs</Link>
         </section>
 
@@ -226,30 +246,36 @@ export function MerchantSignupForm({ plan }: { plan: PlanSummary }) {
               <div className="fd-grid">
                 <label>
                   <span className="fd-label">Prénom <span className="fd-required">*</span></span>
-                  <input className="fd-input" name="firstName" type="text" required autoComplete="given-name" />
+                  <input className={inputClass(Boolean(fieldErrors.firstName))} name="firstName" type="text" required autoComplete="given-name" aria-invalid={Boolean(fieldErrors.firstName)} />
+                  <FieldError message={fieldErrors.firstName} />
                 </label>
                 <label>
                   <span className="fd-label">Nom <span className="fd-required">*</span></span>
-                  <input className="fd-input" name="lastName" type="text" required autoComplete="family-name" />
+                  <input className={inputClass(Boolean(fieldErrors.lastName))} name="lastName" type="text" required autoComplete="family-name" aria-invalid={Boolean(fieldErrors.lastName)} />
+                  <FieldError message={fieldErrors.lastName} />
                 </label>
                 <label className="fd-field-wide">
                   <span className="fd-label">E-mail professionnel <span className="fd-required">*</span></span>
                   <input
-                    className="fd-input"
+                    className={inputClass(Boolean(fieldErrors.email))}
                     name="email"
                     type="email"
                     required
                     autoComplete="email"
                     placeholder="vous@votrecommerce.fr"
+                    aria-invalid={Boolean(fieldErrors.email)}
                   />
+                  <FieldError message={fieldErrors.email} />
                 </label>
                 <label>
                   <span className="fd-label">Téléphone portable <span className="fd-required">*</span></span>
-                  <input className="fd-input" name="mobilePhone" type="tel" required autoComplete="tel" />
+                  <input className={inputClass(Boolean(fieldErrors.mobilePhone))} name="mobilePhone" type="tel" required autoComplete="tel" aria-invalid={Boolean(fieldErrors.mobilePhone)} />
+                  <FieldError message={fieldErrors.mobilePhone} />
                 </label>
                 <label>
                   <span className="fd-label">Téléphone fixe</span>
-                  <input className="fd-input" name="landlinePhone" type="tel" autoComplete="tel" />
+                  <input className={inputClass(Boolean(fieldErrors.landlinePhone))} name="landlinePhone" type="tel" autoComplete="tel" aria-invalid={Boolean(fieldErrors.landlinePhone)} />
+                  <FieldError message={fieldErrors.landlinePhone} />
                 </label>
               </div>
             </div>
@@ -259,36 +285,43 @@ export function MerchantSignupForm({ plan }: { plan: PlanSummary }) {
               <div className="fd-grid">
                 <label>
                   <span className="fd-label">Nom du commerce <span className="fd-required">*</span></span>
-                  <input className="fd-input" name="businessName" type="text" required autoComplete="organization" />
+                  <input className={inputClass(Boolean(fieldErrors.businessName))} name="businessName" type="text" required autoComplete="organization" aria-invalid={Boolean(fieldErrors.businessName)} />
+                  <FieldError message={fieldErrors.businessName} />
                 </label>
                 <label>
                   <span className="fd-label">Activité <span className="fd-required">*</span></span>
-                  <select className="fd-select" name="businessActivity" required defaultValue="">
+                  <select className={fieldErrors.businessActivity ? "fd-select fd-input-invalid" : "fd-select"} name="businessActivity" required defaultValue="" aria-invalid={Boolean(fieldErrors.businessActivity)}>
                     <option value="" disabled>Sélectionner une activité</option>
                     {BUSINESS_ACTIVITIES.map((activity) => (
                       <option key={activity} value={activity}>{activity}</option>
                     ))}
                   </select>
+                  <FieldError message={fieldErrors.businessActivity} />
                 </label>
                 <label className="fd-field-wide">
                   <span className="fd-label">Adresse <span className="fd-required">*</span></span>
-                  <input className="fd-input" name="addressLine1" type="text" required autoComplete="street-address" />
+                  <input className={inputClass(Boolean(fieldErrors.addressLine1))} name="addressLine1" type="text" required autoComplete="street-address" aria-invalid={Boolean(fieldErrors.addressLine1)} />
+                  <FieldError message={fieldErrors.addressLine1} />
                 </label>
                 <label>
                   <span className="fd-label">Code postal <span className="fd-required">*</span></span>
-                  <input className="fd-input" name="postalCode" type="text" inputMode="numeric" required autoComplete="postal-code" />
+                  <input className={inputClass(Boolean(fieldErrors.postalCode))} name="postalCode" type="text" inputMode="numeric" required autoComplete="postal-code" aria-invalid={Boolean(fieldErrors.postalCode)} />
+                  <FieldError message={fieldErrors.postalCode} />
                 </label>
                 <label>
                   <span className="fd-label">Ville <span className="fd-required">*</span></span>
-                  <input className="fd-input" name="city" type="text" required autoComplete="address-level2" />
+                  <input className={inputClass(Boolean(fieldErrors.city))} name="city" type="text" required autoComplete="address-level2" aria-invalid={Boolean(fieldErrors.city)} />
+                  <FieldError message={fieldErrors.city} />
                 </label>
                 <label>
                   <span className="fd-label">Site internet</span>
-                  <input className="fd-input" name="website" type="url" placeholder="https://" />
+                  <input className={inputClass(Boolean(fieldErrors.website))} name="website" type="text" inputMode="url" placeholder="https://votre-site.fr" aria-invalid={Boolean(fieldErrors.website)} />
+                  <FieldError message={fieldErrors.website} />
                 </label>
                 <label>
                   <span className="fd-label">SIRET</span>
-                  <input className="fd-input" name="siret" type="text" inputMode="numeric" />
+                  <input className={inputClass(Boolean(fieldErrors.siret))} name="siret" type="text" inputMode="numeric" aria-invalid={Boolean(fieldErrors.siret)} />
+                  <FieldError message={fieldErrors.siret} />
                 </label>
                 <label className="fd-field-wide">
                   <span className="fd-label">Un besoin particulier ?</span>
@@ -302,12 +335,13 @@ export function MerchantSignupForm({ plan }: { plan: PlanSummary }) {
             </div>
 
             <label className="fd-consent">
-              <input name="contactConsent" type="checkbox" required />
+              <input name="contactConsent" type="checkbox" required aria-invalid={Boolean(fieldErrors.contactConsent)} />
               <span>
                 J&apos;accepte d&apos;être contacté par Fideto au sujet de cette demande. Aucun message marketing sans accord distinct.{" "}
                 <Link href="/confidentialite">Politique de confidentialité</Link>
               </span>
             </label>
+            <FieldError message={fieldErrors.contactConsent} />
 
             <div className="fd-actions">
               <button className="fd-primary" type="submit" disabled={pending} aria-busy={pending}>

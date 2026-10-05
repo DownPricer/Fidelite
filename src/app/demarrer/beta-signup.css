@@ -361,6 +361,21 @@
   padding: 12px 13px;
 }
 
+.fd-beta-scene .fd-field-error {
+  display: block;
+  margin-top: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.35;
+  color: #ff8f9b;
+}
+
+.fd-beta-scene .fd-input-invalid,
+.fd-beta-scene .fd-select.fd-input-invalid {
+  border-color: rgba(255, 120, 140, 0.65);
+  box-shadow: 0 0 0 1px rgba(255, 120, 140, 0.2);
+}
+
 .fd-beta-scene .fd-input:focus,
 .fd-beta-scene .fd-select:focus,
 .fd-beta-scene .fd-textarea:focus {

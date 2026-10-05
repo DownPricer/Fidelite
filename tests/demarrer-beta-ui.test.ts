@@ -27,8 +27,10 @@ describe("page bêta /demarrer — structure UI", () => {
 
   it("conserve les appels API existants", () => {
     expect(ui).toContain("/api/public/merchant-signup/apply");
+    expect(ui).toContain("merchantSignupApplicationFromFormData");
+    expect(ui).toContain("fieldErrors");
     expect(ui).toContain("/api/public/merchant-signup/verify-code");
-    expect(ui).toContain("planId: plan.id");
+    expect(ui).toContain("merchantSignupApplicationFromFormData(data, plan.id)");
   });
 
   it("gère le collage et la navigation du code à six chiffres", () => {

@@ -146,6 +146,10 @@ export function publicAppUrl(path = "/") {
   return buildPublicUrl(appOriginForPublicLinks(), path);
 }
 
+export function publicEmployeeUrl(path = "/") {
+  return buildPublicUrl(employeeOriginForPublicLinks(), path);
+}
+
 export function publicAdminUrl(path = "/") {
   return buildPublicUrl(adminOriginForPublicLinks(), path);
 }

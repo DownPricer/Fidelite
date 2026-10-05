@@ -3,6 +3,7 @@ import { clientIp, jsonError, jsonOk, readJson } from "@/lib/http";
 import { isMerchantSignupBetaForm } from "@/lib/merchant-signup-mode";
 import { verifyMerchantSignupCode } from "@/lib/merchant-signup-service";
 import { merchantSignupVerifyCodeSchema, zodMerchantSignupError } from "@/lib/merchant-signup-validation";
+import { publicAppUrl } from "@/lib/hosts";
 import { LIMITS, rateLimit } from "@/lib/rate-limit";
 
 export async function POST(req: Request) {
@@ -35,5 +36,5 @@ export async function POST(req: Request) {
     return jsonError(result.error, 400);
   }
 
-  return jsonOk({ ok: true, nextUrl: "/app/compte-commercant" });
+  return jsonOk({ ok: true, nextUrl: publicAppUrl("/app/compte-commercant") });
 }

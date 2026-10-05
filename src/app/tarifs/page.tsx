@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { publicAppUrl } from "@/lib/hosts";
 import { resolveLandingAuthTargets } from "@/lib/landing-auth-targets";
 import { formatEurosFromCents, MERCHANT_PLANS } from "@/lib/merchant-plans";
 import { merchantSignupEntryHref } from "@/lib/merchant-signup-routing";
@@ -33,12 +34,18 @@ export default async function TarifsPage() {
             <a href="#questions">Questions</a>
           </nav>
           <div className="pr-head-actions">
-            <Link href="/app/connexion" className="pr-ghost-link">
+            <a href={publicAppUrl("/app/connexion")} className="pr-ghost-link">
               Se connecter
-            </Link>
-            <Link href={proHref} className="pr-btn pr-btn-primary">
-              Je suis commerçant
-            </Link>
+            </a>
+            {proHref.startsWith("http") ? (
+              <a href={proHref} className="pr-btn pr-btn-primary">
+                Je suis commerçant
+              </a>
+            ) : (
+              <Link href={proHref} className="pr-btn pr-btn-primary">
+                Je suis commerçant
+              </Link>
+            )}
           </div>
         </div>
       </header>

@@ -1,4 +1,5 @@
 import { getEmployeeSession } from "./employee-session";
+import { publicAppUrl, publicEmployeeUrl } from "./hosts";
 import { firstActiveStaffMembership } from "./rbac";
 import { getSessionUser } from "./session";
 
@@ -23,12 +24,12 @@ export async function resolveLandingAuthTargets(): Promise<LandingAuthTargets> {
     clientHref = "/carte";
     const membership = firstActiveStaffMembership(user.merchantMemberships);
     if (membership) {
-      proHref = membership.role === "EMPLOYEE" ? "/app/caisse" : "/app";
+      proHref = membership.role === "EMPLOYEE" ? publicAppUrl("/app/caisse") : publicAppUrl("/app");
     }
   }
 
   if (employeeSession) {
-    proHref = "/employe/scan";
+    proHref = publicEmployeeUrl("/employe/scan");
   }
 
   return { clientHref, proHref };

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { formatEurosFromCents, isMerchantPlanId, MERCHANT_PLANS } from "@/lib/merchant-plans";
+import { publicAppUrl } from "@/lib/hosts";
 import { isMerchantSignupBetaForm } from "@/lib/merchant-signup-mode";
 import { MerchantSignupForm } from "./ui";
 import "./beta-signup.css";
@@ -45,7 +46,7 @@ export default async function DemarrerPage({
         <nav className="fd-nav" aria-label="Navigation principale">
           <Link href="/tarifs" className="fd-link">Tarifs</Link>
           <Link href="/contact" className="fd-link">Besoin d&apos;aide ?</Link>
-          <Link href="/app/connexion" className="fd-nav-cta">Se connecter</Link>
+          <a href={publicAppUrl("/app/connexion")} className="fd-nav-cta">Se connecter</a>
         </nav>
       </header>
 

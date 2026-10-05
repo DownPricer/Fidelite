@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { BrandMark } from "@/components/ui";
+import { publicAppUrl, publicEmployeeUrl } from "@/lib/hosts";
 
 const SPACES = [
   {
@@ -69,12 +70,12 @@ export default function DemoHubPage() {
             <Link href="/connexion" className="text-[var(--violet-bright)] hover:underline">
               Client
             </Link>
-            <Link href="/app/connexion" className="text-[var(--violet-bright)] hover:underline">
+            <a href={publicAppUrl("/app/connexion")} className="text-[var(--violet-bright)] hover:underline">
               Commerçant
-            </Link>
-            <Link href="/employe/connexion" className="text-[var(--violet-bright)] hover:underline">
+            </a>
+            <a href={publicEmployeeUrl("/employe/connexion")} className="text-[var(--violet-bright)] hover:underline">
               Employé
-            </Link>
+            </a>
           </div>
         </div>
 
