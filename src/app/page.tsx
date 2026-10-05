@@ -95,12 +95,14 @@ const BENTO_ITEMS = [
   },
 ] as const;
 
+const MERCHANT_SECTION_HREF = "#commercants";
+
 export default async function HomePage() {
-  const { clientHref, proHref } = await resolveLandingAuthTargets();
+  const { clientHref } = await resolveLandingAuthTargets();
 
   return (
     <div className="fidelo-landing relative w-full overflow-hidden font-sans">
-      <LandingHeader clientHref={clientHref} proHref={proHref} />
+      <LandingHeader clientHref={clientHref} />
 
       <main>
         {/* Hero */}
@@ -133,11 +135,11 @@ export default async function HomePage() {
                 className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-[14px] px-[18px] text-sm font-bold text-white shadow-[0_12px_30px_rgba(124,58,237,0.28)] transition hover:opacity-95"
                 style={{ background: "linear-gradient(135deg, #7c3aed, #a855f7)" }}
               >
-                Se connecter
+                Voir mes cartes
                 <ArrowRightIcon className="h-4 w-4" />
               </Link>
               <Link
-                href={proHref}
+                href={MERCHANT_SECTION_HREF}
                 className="inline-flex min-h-[44px] items-center justify-center rounded-[14px] border border-[var(--fh-border)] bg-[var(--fh-surface)] px-[18px] text-sm font-bold text-[var(--fh-text)] shadow-[0_8px_28px_rgba(30,18,45,0.06)] transition hover:opacity-90"
               >
                 Je suis commerçant
@@ -243,7 +245,7 @@ export default async function HomePage() {
               </div>
 
               <Link
-                href={proHref}
+                href="/tarifs"
                 className="mt-7 inline-flex min-h-[44px] items-center justify-center gap-2 rounded-[14px] px-[18px] text-sm font-bold text-white shadow-[0_12px_30px_rgba(124,58,237,0.28)] transition hover:opacity-95"
                 style={{ background: "linear-gradient(135deg, #7c3aed, #a855f7)" }}
               >
@@ -351,7 +353,7 @@ export default async function HomePage() {
             </p>
             <div className="mt-7 flex flex-wrap justify-center gap-3">
               <Link
-                href={proHref}
+                href="/tarifs"
                 className="inline-flex min-h-[44px] items-center justify-center rounded-[14px] bg-white px-[18px] text-sm font-bold text-[#5b21b6] transition hover:opacity-90"
               >
                 Créer mon programme

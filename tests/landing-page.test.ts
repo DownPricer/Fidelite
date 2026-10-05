@@ -7,6 +7,7 @@ const readSrc = (path: string) => readFileSync(join(root, path), "utf8");
 
 const page = readSrc("src/app/page.tsx");
 const header = readSrc("src/components/landing/landing-header.tsx");
+const mobileNav = readSrc("src/components/landing/landing-mobile-nav.tsx");
 const footer = readSrc("src/components/landing/landing-footer.tsx");
 const faq = readSrc("src/components/landing/landing-faq.tsx");
 const heroVisual = readSrc("src/components/landing/landing-hero-visual.tsx");
@@ -23,7 +24,7 @@ describe("landing page structure and balance", () => {
   it("presents both audiences in the hero", () => {
     expect(page).toContain("Une seule carte.");
     expect(page).toContain("Toutes vos fidélités.");
-    expect(page).toContain("Se connecter");
+    expect(page).toContain("Voir mes cartes");
     expect(page).toContain("Je suis commerçant");
   });
 
@@ -41,9 +42,12 @@ describe("landing page structure and balance", () => {
     expect(page).toContain('from "@/lib/landing-auth-targets"');
     expect(page).toContain("resolveLandingAuthTargets");
     expect(page).toMatch(/href=\{clientHref\}/);
-    expect(page).toMatch(/href=\{proHref\}/);
+    expect(page).toContain('MERCHANT_SECTION_HREF = "#commercants"');
+    expect(page).toMatch(/href=\{MERCHANT_SECTION_HREF\}/);
+    expect(page).not.toMatch(/href=\{proHref\}/);
     expect(header).toMatch(/href=\{clientHref\}/);
-    expect(header).not.toMatch(/href=\{proHref\}/);
+    expect(header).toContain('href={MERCHANT_PROGRAM_HREF}');
+    expect(header).not.toMatch(/proHref/);
   });
 
   it("does not create separate marketing pages replacing the single landing page", () => {
@@ -113,10 +117,28 @@ describe("landing page structure and balance", () => {
     );
   });
 
-  it("keeps a single violet client sign-in CTA in the header", () => {
+  it("separates client sign-in from merchant program creation in the header", () => {
     expect(header).toContain("Se connecter");
+    expect(header).toContain("Créer mon programme");
+    expect(header).toContain("border border-[var(--fh-border)]");
     expect(header).toContain("linear-gradient(135deg, #7c3aed, #a855f7)");
-    expect(header).not.toContain("Créer mon programme");
+    expect(header).not.toMatch(/href=\{proHref\}/);
+  });
+
+  it("keeps mobile CTAs compact and routes merchants to /tarifs", () => {
+    expect(mobileNav).toContain("Voir mes cartes");
+    expect(mobileNav).toContain("Créer mon programme");
+    expect(mobileNav).toContain("flex gap-2");
+    expect(mobileNav).toContain("flex-1");
+    expect(mobileNav).toContain("MERCHANT_PROGRAM_HREF");
+    expect(mobileNav).not.toContain("app.fideto.fr");
+  });
+
+  it("routes merchant CTAs on the landing page to /tarifs instead of pro login", () => {
+    const merchantCtas = page.match(/Créer mon programme[\s\S]{0,120}/g) ?? [];
+    expect(merchantCtas.length).toBeGreaterThanOrEqual(2);
+    expect(page).toContain('href="/tarifs"');
+    expect(page).not.toMatch(/Créer mon programme[\s\S]{0,80}href=\{proHref\}/);
   });
 
   it("describes the real client onboarding flow: account first, own QR presented at checkout", () => {
