@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { clientMerchantAppHref } from "@/lib/client-cross-origin-links";
 import { publicAppUrl } from "@/lib/hosts";
-import { resolveLandingAuthTargets } from "@/lib/landing-auth-targets";
 import { formatEurosFromCents, MERCHANT_PLANS } from "@/lib/merchant-plans";
 import { merchantSignupEntryHref } from "@/lib/merchant-signup-routing";
 import { PricingFaq } from "./ui";
@@ -17,7 +17,7 @@ const FIDETO_MONTHLY = formatEurosFromCents(MERCHANT_PLANS.fideto.monthlyPriceCe
 const PACK_SETUP = formatEurosFromCents(MERCHANT_PLANS["fideto-phone"].setupPriceCents ?? 0);
 
 export default async function TarifsPage() {
-  const { proHref } = await resolveLandingAuthTargets();
+  const merchantAppEntryHref = clientMerchantAppHref("/app");
 
   return (
     <div className="pr-scene">
@@ -37,15 +37,9 @@ export default async function TarifsPage() {
             <a href={publicAppUrl("/app/connexion")} className="pr-ghost-link">
               Se connecter
             </a>
-            {proHref.startsWith("http") ? (
-              <a href={proHref} className="pr-btn pr-btn-primary">
-                Je suis commerçant
-              </a>
-            ) : (
-              <Link href={proHref} className="pr-btn pr-btn-primary">
-                Je suis commerçant
-              </Link>
-            )}
+            <a href={merchantAppEntryHref} className="pr-btn pr-btn-primary">
+              Je suis commerçant
+            </a>
           </div>
         </div>
       </header>

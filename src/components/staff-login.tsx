@@ -5,6 +5,10 @@ import { useState } from "react";
 import { AuthSeparator, GoogleAuthButton } from "./google-auth-button";
 import { Alert, BrandMark, Button, Card, Field, Input, PasswordInput } from "./ui";
 
+function isAbsoluteHref(href: string) {
+  return href.startsWith("http://") || href.startsWith("https://");
+}
+
 async function readApiJson(response: Response) {
   const text = await response.text();
   if (!text) return {};
@@ -121,12 +125,21 @@ export function StaffLogin({
           {demoHref ? (
             <div className="mt-6 border-t border-white/10 pt-6 text-center">
               <p className="text-xs text-[var(--muted)]">Sans compte ? Explorez l&apos;application en mode démo.</p>
-              <Link
-                href={demoHref}
-                className="mt-2 inline-flex text-sm font-bold text-[var(--violet-bright)] hover:underline"
-              >
-                Voir les démos →
-              </Link>
+              {isAbsoluteHref(demoHref) ? (
+                <a
+                  href={demoHref}
+                  className="mt-2 inline-flex text-sm font-bold text-[var(--violet-bright)] hover:underline"
+                >
+                  Voir les démos →
+                </a>
+              ) : (
+                <Link
+                  href={demoHref}
+                  className="mt-2 inline-flex text-sm font-bold text-[var(--violet-bright)] hover:underline"
+                >
+                  Voir les démos →
+                </Link>
+              )}
             </div>
           ) : null}
         </Card>
@@ -135,15 +148,25 @@ export function StaffLogin({
           <nav className="mt-6 text-center text-xs font-bold uppercase tracking-[0.18em] text-[var(--muted)]">
             <p className="mb-3">Autres espaces</p>
             <div className="flex flex-wrap justify-center gap-x-5 gap-y-2">
-              {otherSpaces.map((space) => (
-                <Link
-                  key={space.href}
-                  href={space.href}
-                  className="text-[var(--violet-bright)] hover:underline normal-case tracking-normal"
-                >
-                  {space.label}
-                </Link>
-              ))}
+              {otherSpaces.map((space) =>
+                isAbsoluteHref(space.href) ? (
+                  <a
+                    key={space.href}
+                    href={space.href}
+                    className="text-[var(--violet-bright)] hover:underline normal-case tracking-normal"
+                  >
+                    {space.label}
+                  </a>
+                ) : (
+                  <Link
+                    key={space.href}
+                    href={space.href}
+                    className="text-[var(--violet-bright)] hover:underline normal-case tracking-normal"
+                  >
+                    {space.label}
+                  </Link>
+                ),
+              )}
             </div>
           </nav>
         ) : null}

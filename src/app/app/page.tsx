@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { DEMO_MERCHANT } from "@/lib/demo-visual";
+import { merchantLoginRedirectPath } from "@/lib/merchant-auth-path";
 import { resolveMerchantDemo } from "@/lib/merchant-demo-server";
 import { canManageMerchantSettings, canOpenCaisse, firstActiveStaffMembership } from "@/lib/rbac";
 import { MerchantHome } from "./ui";
@@ -18,10 +19,10 @@ export default async function MerchantHomePage() {
       />
     );
   }
-  if (!user) redirect("/app/connexion");
+  if (!user) redirect(merchantLoginRedirectPath("/app"));
 
   const membership = firstActiveStaffMembership(user.merchantMemberships);
-  if (!membership || !canOpenCaisse(membership)) redirect("/app/connexion");
+  if (!membership || !canOpenCaisse(membership)) redirect(merchantLoginRedirectPath("/app"));
   if (membership.role === "EMPLOYEE") redirect("/app/caisse");
 
   return (

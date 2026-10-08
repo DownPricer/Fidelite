@@ -92,6 +92,6 @@ describe("public/sw.js — ne doit jamais masquer un échec de navigation derri�
 
   it("renvoie toujours une Response (Response.error si pas de cache)", () => {
     expect(source).toContain("Response.error()");
-    expect(source).toContain("fifelite-v2");
+    expect(source).toContain("fifelite-v3");
   });
 });

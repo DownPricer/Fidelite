@@ -8,6 +8,7 @@ import { RewardFormDialog, RewardTypeIcon } from "../reward-form-dialog";
 import type { LoyaltyMode } from "@prisma/client";
 import type { ProgramRules, RewardConfig } from "@/lib/loyalty-program";
 import { DEFAULT_RULES } from "@/lib/loyalty-program";
+import { publicCustomerUrl } from "@/lib/hosts";
 
 const DEMO_CONFIG: { mode: LoyaltyMode; rules: ProgramRules; rewards: RewardConfig[] } = {
   mode: "POINTS_BY_AMOUNT",
@@ -520,9 +521,9 @@ export function AdvantagesEditor({ demo = false }: { demo?: boolean }) {
         </div>
         <div className="flex flex-wrap gap-2">
           {merchantSlug ? (
-            <Link href={`/carte/${merchantSlug}`} target="_blank" rel="noreferrer">
+            <a href={publicCustomerUrl(`/carte/${merchantSlug}`)}>
               <Button variant="ghost" className="h-9 px-3 text-xs">Voir côté client</Button>
-            </Link>
+            </a>
           ) : null}
           <Button variant="secondary" className="h-9 px-3 text-xs" disabled={savingDraft} onClick={() => void saveDraft()}>
             {savingDraft ? "Enregistrement…" : "Enregistrer le brouillon"}

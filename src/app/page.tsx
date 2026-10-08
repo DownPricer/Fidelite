@@ -12,6 +12,7 @@ import { access } from "node:fs/promises";
 import { join } from "node:path";
 import { LandingHeroVisual } from "@/components/landing/landing-hero-visual";
 import { LandingMerchantPreview } from "@/components/landing/landing-merchant-preview";
+import { clientMerchantAppHref } from "@/lib/client-cross-origin-links";
 import { resolveLandingAuthTargets } from "@/lib/landing-auth-targets";
 import {
   ArrowRightIcon,
@@ -102,8 +103,6 @@ const BENTO_ITEMS = [
   },
 ] as const;
 
-const MERCHANT_SECTION_HREF = "#commercants";
-
 async function landingExplainerCaptionsSrc() {
   try {
     await access(join(process.cwd(), "public", "branding", "fideto-presentation.vtt"));
@@ -115,6 +114,7 @@ async function landingExplainerCaptionsSrc() {
 
 export default async function HomePage() {
   const { clientHref } = await resolveLandingAuthTargets();
+  const merchantAppEntryHref = clientMerchantAppHref("/app");
   const explainerCaptionsSrc = await landingExplainerCaptionsSrc();
 
   return (
@@ -155,12 +155,12 @@ export default async function HomePage() {
                 Voir mes cartes
                 <ArrowRightIcon className="h-4 w-4" />
               </Link>
-              <Link
-                href={MERCHANT_SECTION_HREF}
+              <a
+                href={merchantAppEntryHref}
                 className="inline-flex min-h-[44px] items-center justify-center rounded-[14px] border border-[var(--fh-border)] bg-[var(--fh-surface)] px-[18px] text-sm font-bold text-[var(--fh-text)] shadow-[0_8px_28px_rgba(30,18,45,0.06)] transition hover:opacity-90"
               >
                 Je suis commerçant
-              </Link>
+              </a>
             </div>
 
             <div className="mt-5 grid grid-cols-3 gap-2 sm:flex sm:flex-wrap sm:gap-4.5">

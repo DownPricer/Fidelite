@@ -1,9 +1,20 @@
-const CACHE = "fifelite-v2";
-const PRECACHE = ["/", "/icon.svg"];
+const CACHE = "fifelite-v3";
+
+function installPrecacheUrls() {
+  const host = self.location.hostname.toLowerCase();
+  const isMerchantHost =
+    host === "app.fideto.fr" ||
+    host === "app-fidelite.sitereadyshd.fr" ||
+    host.startsWith("app.");
+  return isMerchantHost ? ["/app", "/icon.svg"] : ["/carte", "/icon.svg"];
+}
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE).then((cache) => cache.addAll(PRECACHE)).then(() => self.skipWaiting()),
+    caches
+      .open(CACHE)
+      .then((cache) => cache.addAll(installPrecacheUrls()))
+      .then(() => self.skipWaiting()),
   );
 });
 
@@ -61,6 +72,9 @@ function isNextNavigationOrRscRequest(request, url) {
   if (request.headers.get("next-router-prefetch") === "1") return true;
   if (url.searchParams.has("_rsc")) return true;
   if (url.pathname === "/demarrer" || url.pathname.startsWith("/demarrer/")) return true;
+  if (url.pathname === "/connexion" || url.pathname.startsWith("/connexion/")) return true;
+  if (url.pathname === "/app/connexion" || url.pathname.startsWith("/app/connexion/")) return true;
+  if (url.pathname === "/app/compte-commercant" || url.pathname.startsWith("/app/compte-commercant/")) return true;
   return false;
 }
 

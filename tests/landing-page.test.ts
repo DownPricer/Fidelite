@@ -44,8 +44,8 @@ describe("landing page structure and balance", () => {
     expect(page).toContain('from "@/lib/landing-auth-targets"');
     expect(page).toContain("resolveLandingAuthTargets");
     expect(page).toMatch(/href=\{clientHref\}/);
-    expect(page).toContain('MERCHANT_SECTION_HREF = "#commercants"');
-    expect(page).toMatch(/href=\{MERCHANT_SECTION_HREF\}/);
+    expect(page).toContain('clientMerchantAppHref("/app")');
+    expect(page).toMatch(/href=\{merchantAppEntryHref\}/);
     expect(page).not.toMatch(/href=\{proHref\}/);
     expect(header).toMatch(/href=\{clientHref\}/);
     expect(header).toContain('href={MERCHANT_PROGRAM_HREF}');
@@ -58,10 +58,11 @@ describe("landing page structure and balance", () => {
     }
   });
 
-  it("never redirects to an external domain", () => {
-    expect(page).not.toMatch(/href="https?:\/\//);
+  it("n'utilise pas de lien absolu sauf l'entrée commerçant cross-domaine", () => {
     expect(header).not.toMatch(/href="https?:\/\//);
     expect(footer).not.toMatch(/href="https?:\/\//);
+    expect(page).toContain("clientMerchantAppHref");
+    expect(page).toMatch(/<a[\s\S]*merchantAppEntryHref/);
   });
 
   it("contains every required section", () => {
@@ -203,17 +204,17 @@ describe("professional entry point (/pro)", () => {
   });
 
   it("routes each choice to the existing auth forms without duplicating them", () => {
-    expect(proPage).toContain('href: "/app/connexion"');
-    expect(proPage).toContain('href: "/employe/connexion"');
+    expect(proPage).toContain('publicAppUrl("/app/connexion")');
+    expect(proPage).toContain('publicEmployeeUrl("/employe/connexion")');
   });
 
   it("redirects an already-known role straight to its space using the server-verified session", () => {
     expect(proPage).toContain("getSessionUser");
     expect(proPage).toContain("getEmployeeSession");
     expect(proPage).toContain("firstActiveStaffMembership");
-    expect(proPage).toContain('redirect("/employe/scan")');
-    expect(proPage).toContain('"/app/caisse"');
-    expect(proPage).toContain('"/app"');
+    expect(proPage).toContain('publicEmployeeUrl("/employe/scan")');
+    expect(proPage).toContain('publicAppUrl("/app/caisse")');
+    expect(proPage).toContain('publicAppUrl("/app")');
   });
 });
 

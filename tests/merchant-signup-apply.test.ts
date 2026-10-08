@@ -175,7 +175,7 @@ describe("public/sw.js — respondWith toujours une Response", () => {
   const source = readSrc("public/sw.js");
 
   it("versionne le cache et garantit Response.error en repli", () => {
-    expect(source).toContain("fifelite-v2");
+    expect(source).toContain("fifelite-v3");
     expect(source).toContain("Response.error()");
     expect(source).toContain("/demarrer");
   });
