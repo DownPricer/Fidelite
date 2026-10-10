@@ -34,7 +34,7 @@ describe("Google Wallet campagne (carte globale)", () => {
   it("n'ajoute pas valueAddedModuleData sur l'objet commerçant", async () => {
     vi.resetModules();
     process.env.GOOGLE_WALLET_ISSUER_ID = "3388000000023198536";
-    process.env.GOOGLE_WALLET_GLOBAL_CLASS_ID = "3388000000023198536.fifelife_global";
+    process.env.GOOGLE_WALLET_GLOBAL_CLASS_ID = "3388000000023198536.3388000000023198536.fifelife_global";
     process.env.GOOGLE_WALLET_ORIGIN = "https://fideto.fr";
     const { merchantObjectBody } = await import("../src/lib/google-wallet");
     const context = {
@@ -75,7 +75,7 @@ describe("Google Wallet campagne (carte globale)", () => {
   it("remplace le hero Bronze par le visuel campagne et vide les modules recommandations", async () => {
     vi.resetModules();
     process.env.GOOGLE_WALLET_ISSUER_ID = "3388000000023198536";
-    process.env.GOOGLE_WALLET_GLOBAL_CLASS_ID = "3388000000023198536.fifelife_global";
+    process.env.GOOGLE_WALLET_GLOBAL_CLASS_ID = "3388000000023198536.3388000000023198536.fifelife_global";
     process.env.GOOGLE_WALLET_ORIGIN = "https://fideto.fr";
     const { globalObjectBody } = await import("../src/lib/google-wallet");
     const user = {
@@ -123,7 +123,7 @@ describe("Google Wallet campagne (carte globale)", () => {
   it("conserve le hero Bronze si le module tente d'utiliser le bandeau", async () => {
     vi.resetModules();
     process.env.GOOGLE_WALLET_ISSUER_ID = "3388000000023198536";
-    process.env.GOOGLE_WALLET_GLOBAL_CLASS_ID = "3388000000023198536.fifelife_global";
+    process.env.GOOGLE_WALLET_GLOBAL_CLASS_ID = "3388000000023198536.3388000000023198536.fifelife_global";
     process.env.GOOGLE_WALLET_ORIGIN = "https://fideto.fr";
     const { globalObjectBody } = await import("../src/lib/google-wallet");
     const body = await globalObjectBody({
@@ -154,7 +154,7 @@ describe("Google Wallet campagne (carte globale)", () => {
   it("conserve le hero Bronze si le visuel campagne Wallet n'est pas une URL https publique", async () => {
     vi.resetModules();
     process.env.GOOGLE_WALLET_ISSUER_ID = "3388000000023198536";
-    process.env.GOOGLE_WALLET_GLOBAL_CLASS_ID = "3388000000023198536.fifelife_global";
+    process.env.GOOGLE_WALLET_GLOBAL_CLASS_ID = "3388000000023198536.3388000000023198536.fifelife_global";
     process.env.GOOGLE_WALLET_ORIGIN = "https://fideto.fr";
     const { globalObjectBody } = await import("../src/lib/google-wallet");
     const body = await globalObjectBody({

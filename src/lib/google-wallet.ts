@@ -148,8 +148,9 @@ export function buildGoogleWalletIds(input: {
 }) {
   const issuer = env.googleWalletIssuerId || "3388000000023198536";
   return {
+    // Classe globale réelle déjà créée chez Google (ne pas substituer par issuer.fifelife_global).
     globalClassId:
-      env.googleWalletGlobalClassId || `${issuer}.fifelife_global`,
+      env.googleWalletGlobalClassId || `${issuer}.${issuer}.fifelife_global`,
     globalObjectId: input.userId
       ? `${issuer}.fifelife_user_${opaqueIdPart("user", input.userId)}`
       : null,
