@@ -111,8 +111,11 @@ export async function resolveGlobalWalletCampaignModule(userId: string, now: Dat
 export type SponsoredTestBroadcastAdminStatus = {
   active: boolean;
   adRequestId: string | null;
+  campaignLabel: string | null;
   startedAt: string | null;
   googleWalletConfigured: boolean;
+  /** Comptes clients Fideto concernés par la diffusion in-app (tous les comptes actifs). */
+  affectedAccountsCount: number;
   globalWalletObjectsCount: number;
   lastGoogleSyncOk: boolean | null;
   lastGoogleSyncError: string | null;
@@ -123,16 +126,19 @@ export type SponsoredTestBroadcastAdminStatus = {
 };
 
 export async function getSponsoredTestBroadcastAdminStatus(adRequestId: string): Promise<SponsoredTestBroadcastAdminStatus> {
-  const [row, globalWalletObjectsCount] = await Promise.all([
+  const [row, globalWalletObjectsCount, affectedAccountsCount] = await Promise.all([
     loadSponsoredTestBroadcast(),
     prisma.googleWalletObject.count({ where: { merchantId: null, customerMembershipId: null } }),
+    prisma.user.count({ where: { platformRole: "CUSTOMER", isActive: true } }),
   ]);
   const { isGoogleWalletConfigured } = await import("./env");
   const base: SponsoredTestBroadcastAdminStatus = {
     active: false,
     adRequestId: null,
+    campaignLabel: null,
     startedAt: null,
     googleWalletConfigured: isGoogleWalletConfigured(),
+    affectedAccountsCount,
     globalWalletObjectsCount,
     lastGoogleSyncOk: null,
     lastGoogleSyncError: null,
@@ -144,6 +150,10 @@ export async function getSponsoredTestBroadcastAdminStatus(adRequestId: string):
   if (!row) return base;
   base.active = row.adRequestId === adRequestId;
   base.adRequestId = row.adRequestId;
+  base.campaignLabel =
+    row.adRequest.ctaLabel?.trim() ||
+    row.adRequest.merchant.name ||
+    row.adRequestId;
   base.startedAt = row.startedAt.toISOString();
   base.lastGoogleSyncOk = row.lastGoogleSyncOk;
   base.lastGoogleSyncError = row.lastGoogleSyncError;

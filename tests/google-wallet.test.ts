@@ -60,6 +60,36 @@ describe("Google Wallet IDs", () => {
   });
 });
 
+describe("Google Wallet reviewStatus post-approbation", () => {
+  it("préserve APPROVED et ne rétrograde jamais une classe approuvée", async () => {
+    const { resolveLoyaltyClassReviewStatusForWrite, globalClassPatchBody, merchantClassBody } =
+      await walletModule();
+    expect(resolveLoyaltyClassReviewStatusForWrite("APPROVED")).toBe("APPROVED");
+    expect(resolveLoyaltyClassReviewStatusForWrite("UNDER_REVIEW")).toBe("UNDER_REVIEW");
+    expect(resolveLoyaltyClassReviewStatusForWrite("DRAFT")).toBe("UNDER_REVIEW");
+    expect(resolveLoyaltyClassReviewStatusForWrite("REJECTED")).toBe("UNDER_REVIEW");
+    expect(resolveLoyaltyClassReviewStatusForWrite(null)).toBe("UNDER_REVIEW");
+    expect(globalClassPatchBody({ classId: "x", reviewStatus: "APPROVED" }).reviewStatus).toBe("APPROVED");
+    expect(
+      merchantClassBody({
+        classId: "m",
+        merchant: {
+          id: "merchant-a",
+          name: "Café Nova",
+          slug: "cafe-nova",
+          logoUrl: null,
+          primaryColor: "#123456",
+          isActive: true,
+          status: "ACTIVE",
+        },
+        mode: "VISITS",
+        rewardLabel: "Café",
+        reviewStatus: "APPROVED",
+      }).reviewStatus,
+    ).toBe("APPROVED");
+  });
+});
+
 describe("Google Wallet payloads", () => {
   function merchantContext(mode: "VISITS" | "POINTS_BY_AMOUNT" | "FIXED_POINTS" | "AMOUNT_TIERS") {
     const rewards = [

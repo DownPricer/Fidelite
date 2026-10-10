@@ -90,9 +90,41 @@ function verifyRemoteHeroUri(uri: string | null, mode: "dedicated-wallet-hero" |
   return !dedicatedWalletHeroInUri(uri);
 }
 
-function logGlobalWalletObjectSync(entry: Record<string, unknown>) {
+/** Statut à écrire lors d'un PATCH/POST de LoyaltyClass — ne jamais rétrograder APPROVED. */
+export function resolveLoyaltyClassReviewStatusForWrite(
+  remoteStatus: string | null | undefined,
+): "UNDER_REVIEW" | "APPROVED" {
+  if (remoteStatus === "APPROVED") return "APPROVED";
+  return "UNDER_REVIEW";
+}
+
+type GoogleWalletSyncLogEntry = {
+  classId: string;
+  objectId: string;
+  cardType: "global" | "merchant";
+  heroImageUrl?: string | null;
+  patchResult?: "ok" | "error";
+  getResult?: "ok" | "error" | "skipped";
+  [key: string]: unknown;
+};
+
+function logGoogleWalletSync(entry: GoogleWalletSyncLogEntry) {
   if (process.env.NODE_ENV === "test") return;
-  console.info("[google-wallet global-sync]", JSON.stringify(entry));
+  const safe: GoogleWalletSyncLogEntry = {
+    classId: entry.classId,
+    objectId: entry.objectId,
+    cardType: entry.cardType,
+    heroImageUrl: redactWalletSyncUri(entry.heroImageUrl ?? null),
+    patchResult: entry.patchResult,
+    getResult: entry.getResult,
+  };
+  for (const [key, value] of Object.entries(entry)) {
+    if (key in safe) continue;
+    if (/private_key|access_token|refresh_token|client_email|authorization/i.test(key)) continue;
+    if (typeof value === "string" && /BEGIN PRIVATE KEY|ya29\.|eyJ/.test(value)) continue;
+    safe[key] = value;
+  }
+  console.info("[google-wallet sync]", JSON.stringify(safe));
 }
 
 function assertConfigured() {
@@ -256,11 +288,12 @@ async function upsertGoogleResource<T>(input: {
   kind: "loyaltyClass" | "loyaltyObject";
   id: string;
   body: T;
-}) {
+}): Promise<"created" | "patched"> {
   const existing = await walletFetch<T>(`/${input.kind}/${encodeURIComponent(input.id)}`, { method: "GET" });
   if (existing.status === 404) {
     try {
       await walletFetch(`/${input.kind}`, { method: "POST", body: JSON.stringify(input.body) });
+      return "created";
     } catch (error) {
       if (error instanceof GoogleWalletApiError && error.googleStatus === 409) {
         try {
@@ -268,6 +301,7 @@ async function upsertGoogleResource<T>(input: {
             method: "PATCH",
             body: JSON.stringify(input.body),
           });
+          return "patched";
         } catch (patchError) {
           logGoogleWalletPatchFailure(input, patchError);
           throw patchError;
@@ -276,13 +310,13 @@ async function upsertGoogleResource<T>(input: {
         throw error;
       }
     }
-    return;
   }
   try {
     await walletFetch(`/${input.kind}/${encodeURIComponent(input.id)}`, {
       method: "PATCH",
       body: JSON.stringify(input.body),
     });
+    return "patched";
   } catch (error) {
     logGoogleWalletPatchFailure(input, error);
     throw error;
@@ -442,7 +476,10 @@ function classTemplateInfo() {
   };
 }
 
-export function globalClassPatchBody(input: { classId: string }) {
+export function globalClassPatchBody(input: {
+  classId: string;
+  reviewStatus?: "UNDER_REVIEW" | "APPROVED";
+}) {
   const logo = imageData(googleWalletLogoUrl(), "Logo Fideto");
   return {
     id: input.classId,
@@ -462,7 +499,7 @@ export function globalClassPatchBody(input: { classId: string }) {
     rewardsTier: "Fideto",
     localizedRewardsTier: localized("Fideto"),
     countryCode: "FR",
-    reviewStatus: "UNDER_REVIEW",
+    reviewStatus: input.reviewStatus ?? "UNDER_REVIEW",
     multipleDevicesAndHoldersAllowedStatus: "MULTIPLE_HOLDERS",
     classTemplateInfo: classTemplateInfo(),
     appLinkData: appLinkData(cardUrl(), "Ouvrir mon wallet"),
@@ -476,6 +513,7 @@ export function merchantClassBody(input: {
   rewardLabel: string;
   heroImageUrl?: string | null;
   appearance?: GoogleWalletAppearance | null;
+  reviewStatus?: "UNDER_REVIEW" | "APPROVED";
 }) {
   const logoUrl =
     publicGoogleWalletImageUrl(input.appearance?.logoUrl) ??
@@ -494,7 +532,7 @@ export function merchantClassBody(input: {
     wideProgramLogo: imageData(wideLogoUrl, `Logo ${input.merchant.name}`),
     heroImage: imageData(heroUrl, `Carte ${input.merchant.name}`),
     hexBackgroundColor: input.appearance?.backgroundColor ?? input.merchant.primaryColor ?? "#1a1a1a",
-    reviewStatus: "UNDER_REVIEW",
+    reviewStatus: input.reviewStatus ?? "UNDER_REVIEW",
     countryCode: "FR",
     rewardsTierLabel: "Prochain avantage",
     localizedRewardsTierLabel: localized("Avantage"),
@@ -548,6 +586,12 @@ async function ensureMerchantClass(input: {
   const publishedAppearance = walletConfig.publishedAppearance ?? null;
 
   try {
+    const existingRemote = await walletFetch<Record<string, unknown>>(`/loyaltyClass/${encodeURIComponent(classId)}`, {
+      method: "GET",
+    });
+    const reviewStatus = resolveLoyaltyClassReviewStatusForWrite(
+      existingRemote.status === 404 ? null : (existingRemote.body?.reviewStatus as string | null | undefined),
+    );
     const body = merchantClassBody({
       classId,
       merchant: context.merchant,
@@ -555,6 +599,7 @@ async function ensureMerchantClass(input: {
       rewardLabel: primaryRewardLabel(context),
       heroImageUrl: context.cardTemplateMeta?.backgroundUrl ?? null,
       appearance: publishedAppearance,
+      reviewStatus,
     });
     await upsertGoogleResource({
       kind: "loyaltyClass",
@@ -563,6 +608,15 @@ async function ensureMerchantClass(input: {
     });
     const remote = await walletFetch<Record<string, unknown>>(`/loyaltyClass/${encodeURIComponent(classId)}`, {
       method: "GET",
+    });
+    logGoogleWalletSync({
+      classId,
+      objectId: classId,
+      cardType: "merchant",
+      heroImageUrl: body.heroImage?.sourceUri?.uri ?? null,
+      patchResult: "ok",
+      getResult: remote.status === 404 ? "error" : "ok",
+      reviewStatus: remote.body?.reviewStatus ?? reviewStatus,
     });
     await db.googleWalletClass.update({
       where: { id: classRecord.id },
@@ -595,14 +649,30 @@ async function ensureMerchantClass(input: {
 
 async function ensureGlobalClassRecord(db: Prisma.TransactionClient | typeof prisma = prisma) {
   const classId = buildGoogleWalletIds({}).globalClassId;
-  const existing = await walletFetch(`/loyaltyClass/${encodeURIComponent(classId)}`, { method: "GET" });
+  const existing = await walletFetch<Record<string, unknown>>(`/loyaltyClass/${encodeURIComponent(classId)}`, {
+    method: "GET",
+  });
   if (existing.status === 404) {
     throw new GoogleWalletConfigError("Classe générale Google Wallet introuvable.");
   }
-  const remote = (existing.body ?? {}) as Record<string, unknown>;
+  const remoteBefore = (existing.body ?? {}) as Record<string, unknown>;
+  const reviewStatus = resolveLoyaltyClassReviewStatusForWrite(remoteBefore.reviewStatus as string | null | undefined);
   await walletFetch(`/loyaltyClass/${encodeURIComponent(classId)}`, {
     method: "PATCH",
-    body: JSON.stringify(globalClassPatchBody({ classId })),
+    body: JSON.stringify(globalClassPatchBody({ classId, reviewStatus })),
+  });
+  const after = await walletFetch<Record<string, unknown>>(`/loyaltyClass/${encodeURIComponent(classId)}`, {
+    method: "GET",
+  });
+  const remote = (after.body ?? remoteBefore) as Record<string, unknown>;
+  logGoogleWalletSync({
+    classId,
+    objectId: classId,
+    cardType: "global",
+    heroImageUrl: null,
+    patchResult: "ok",
+    getResult: after.status === 404 ? "error" : "ok",
+    reviewStatus: remote.reviewStatus ?? reviewStatus,
   });
   const existingRecord = await db.googleWalletClass.findUnique({ where: { googleClassId: classId } });
   const existingConfig = parseGoogleWalletConfig(existingRecord?.configByMode);
@@ -894,38 +964,67 @@ async function syncGlobalObjectToGoogle(input: {
   const body = await globalObjectBody({ ...baseBodyInput, campaignModule });
   const patchHeroUri = body.heroImage?.sourceUri?.uri ?? null;
 
-  logGlobalWalletObjectSync({
+  logGoogleWalletSync({
+    classId: expectedGlobalClassId,
+    objectId: input.googleObjectId,
+    cardType: "global",
+    heroImageUrl: patchHeroUri,
     campaignId,
     testBroadcastActive,
     googleWalletHeroStored: redactWalletSyncUri(heroExplain.storedUrl),
     walletHeroReason: heroExplain.reason,
-    patchHeroUri: redactWalletSyncUri(patchHeroUri),
-    googleObjectId: input.googleObjectId,
-    globalClassId: expectedGlobalClassId,
     merchantId: walletRow?.merchantId ?? null,
     customerMembershipId: walletRow?.customerMembershipId ?? null,
   });
 
-  await upsertGoogleResource({
-    kind: "loyaltyObject",
-    id: input.googleObjectId,
-    body,
-  });
+  let patchResult: "ok" | "error" = "ok";
+  try {
+    await upsertGoogleResource({
+      kind: "loyaltyObject",
+      id: input.googleObjectId,
+      body,
+    });
+  } catch (error) {
+    patchResult = "error";
+    logGoogleWalletSync({
+      classId: expectedGlobalClassId,
+      objectId: input.googleObjectId,
+      cardType: "global",
+      heroImageUrl: patchHeroUri,
+      patchResult,
+      getResult: "skipped",
+    });
+    throw error;
+  }
 
   if (input.verifyRemoteHero) {
     const remote = await getGoogleWalletLoyaltyObject(input.googleObjectId);
     const remoteUri = remoteLoyaltyObjectHeroUri(remote.body ?? undefined);
-    logGlobalWalletObjectSync({
-      googleObjectId: input.googleObjectId,
-      getHeroUri: redactWalletSyncUri(remoteUri),
+    const verifyOk = verifyRemoteHeroUri(remoteUri, input.verifyRemoteHero);
+    logGoogleWalletSync({
+      classId: expectedGlobalClassId,
+      objectId: input.googleObjectId,
+      cardType: "global",
+      heroImageUrl: remoteUri,
+      patchResult,
+      getResult: remote.status === 404 ? "error" : "ok",
       verifyRemoteHero: input.verifyRemoteHero,
-      verifyOk: verifyRemoteHeroUri(remoteUri, input.verifyRemoteHero),
+      verifyOk,
     });
-    if (!verifyRemoteHeroUri(remoteUri, input.verifyRemoteHero)) {
+    if (!verifyOk) {
       throw new GoogleWalletGlobalHeroVerifyError(
         `GET Google hero invalide pour ${input.verifyRemoteHero} (uri=${redactWalletSyncUri(remoteUri) ?? "null"})`,
       );
     }
+  } else {
+    logGoogleWalletSync({
+      classId: expectedGlobalClassId,
+      objectId: input.googleObjectId,
+      cardType: "global",
+      heroImageUrl: patchHeroUri,
+      patchResult,
+      getResult: "skipped",
+    });
   }
 }
 
@@ -1107,16 +1206,26 @@ export async function createMerchantGoogleWalletSaveUrl(input: { userId: string;
 
   try {
     const qrValue = await customerQrValue(membership.userId);
+    const body = merchantObjectBody({
+      membership,
+      classId,
+      objectId: googleObjectId,
+      qrValue,
+      context,
+    });
     await upsertGoogleResource({
       kind: "loyaltyObject",
       id: googleObjectId,
-      body: merchantObjectBody({
-        membership,
-        classId,
-        objectId: googleObjectId,
-        qrValue,
-        context,
-      }),
+      body,
+    });
+    const remote = await getGoogleWalletLoyaltyObject(googleObjectId);
+    logGoogleWalletSync({
+      classId,
+      objectId: googleObjectId,
+      cardType: "merchant",
+      heroImageUrl: remoteLoyaltyObjectHeroUri(remote.body ?? undefined),
+      patchResult: "ok",
+      getResult: remote.status === 404 ? "error" : "ok",
     });
     await prisma.$transaction([
       prisma.googleWalletObject.update({
@@ -1130,6 +1239,14 @@ export async function createMerchantGoogleWalletSaveUrl(input: { userId: string;
     ]);
     return { saveUrl: await saveUrlForObject(googleObjectId), objectId: googleObjectId };
   } catch (error) {
+    logGoogleWalletSync({
+      classId,
+      objectId: googleObjectId,
+      cardType: "merchant",
+      heroImageUrl: null,
+      patchResult: "error",
+      getResult: "skipped",
+    });
     await markObjectError(googleObjectId, error);
     throw error;
   }
@@ -1169,6 +1286,15 @@ export async function syncGoogleWalletMembershipObject(membershipId: string) {
         context,
       }),
     });
+    const remote = await getGoogleWalletLoyaltyObject(googleObjectId);
+    logGoogleWalletSync({
+      classId,
+      objectId: googleObjectId,
+      cardType: "merchant",
+      heroImageUrl: remoteLoyaltyObjectHeroUri(remote.body ?? undefined),
+      patchResult: "ok",
+      getResult: remote.status === 404 ? "error" : "ok",
+    });
     await prisma.googleWalletObject.update({
       where: { googleObjectId },
       data: {
@@ -1181,6 +1307,14 @@ export async function syncGoogleWalletMembershipObject(membershipId: string) {
       },
     });
   } catch (error) {
+    logGoogleWalletSync({
+      classId: buildGoogleWalletIds({ merchantId: membership.merchantId }).merchantClassId!,
+      objectId: googleObjectId,
+      cardType: "merchant",
+      heroImageUrl: null,
+      patchResult: "error",
+      getResult: "skipped",
+    });
     await markObjectError(googleObjectId, error);
     throw error;
   }

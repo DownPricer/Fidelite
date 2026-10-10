@@ -82,8 +82,10 @@ type Stats = {
 type TestBroadcastStatus = {
   active: boolean;
   adRequestId: string | null;
+  campaignLabel: string | null;
   startedAt: string | null;
   googleWalletConfigured: boolean;
+  affectedAccountsCount: number;
   globalWalletObjectsCount: number;
   lastGoogleSyncOk: boolean | null;
   lastGoogleSyncError: string | null;
@@ -1020,17 +1022,44 @@ export function AdDetailPage({ id, firstName }: { id: string; firstName: string 
                 </div>
               ) : null}
               {testBroadcast?.active ? (
-                <div className={s.reasonBox} data-testid="test-broadcast-active" style={{ borderColor: "#6b9f7a" }}>
-                  Diffusion test active depuis{" "}
-                  <b>{testBroadcast.startedAt ? formatDateTime(testBroadcast.startedAt) : "—"}</b>
-                  {testBroadcast.lastGoogleSyncOk === true ? (
-                    <span>
-                      {" "}
-                      · Google Wallet : {testBroadcast.googleObjectsSynced}/{testBroadcast.googleObjectsTotal} cartes synchronisées
-                      {testBroadcast.googleObjectsFailed > 0 ? ` (${testBroadcast.googleObjectsFailed} échec(s))` : ""}
-                    </span>
-                  ) : testBroadcast.lastGoogleSyncError ? (
-                    <span style={{ color: "#f0a8b8" }}> · Google Wallet : {testBroadcast.lastGoogleSyncError}</span>
+                <div className={s.reasonBox} data-testid="test-broadcast-active" style={{ borderColor: "#c9a227", background: "rgba(201,162,39,0.12)" }}>
+                  <p style={{ margin: 0, fontWeight: 600 }} data-testid="test-broadcast-warning">
+                    Diffusion test globale active — cette campagne est visible sur tous les comptes Fideto et toutes les
+                    cartes Google Wallet globales, y compris celles ajoutées après son activation. À désactiver avant
+                    l&apos;ouverture aux vrais clients.
+                  </p>
+                  <div style={{ marginTop: 12, display: "grid", gap: 6 }}>
+                    <div className={s.row}>
+                      <span>Campagne</span>
+                      <b>{testBroadcast.campaignLabel ?? testBroadcast.adRequestId ?? "—"}</b>
+                    </div>
+                    <div className={s.row}>
+                      <span>Activation</span>
+                      <b>{testBroadcast.startedAt ? formatDateTime(testBroadcast.startedAt) : "—"}</b>
+                    </div>
+                    <div className={s.row}>
+                      <span>Comptes concernés</span>
+                      <b>{testBroadcast.affectedAccountsCount}</b>
+                    </div>
+                    <div className={s.row}>
+                      <span>Cartes globales</span>
+                      <b>{testBroadcast.globalWalletObjectsCount}</b>
+                    </div>
+                    <div className={s.row}>
+                      <span>Cartes synchronisées</span>
+                      <b>
+                        {testBroadcast.googleObjectsSynced}/{testBroadcast.googleObjectsTotal}
+                      </b>
+                    </div>
+                    <div className={s.row}>
+                      <span>Échecs</span>
+                      <b style={{ color: testBroadcast.googleObjectsFailed > 0 ? "#f0a8b8" : undefined }}>
+                        {testBroadcast.googleObjectsFailed}
+                      </b>
+                    </div>
+                  </div>
+                  {testBroadcast.lastGoogleSyncOk === false && testBroadcast.lastGoogleSyncError ? (
+                    <p style={{ margin: "10px 0 0", color: "#f0a8b8" }}>Google Wallet : {testBroadcast.lastGoogleSyncError}</p>
                   ) : null}
                 </div>
               ) : testBroadcast?.lastGoogleSyncOk === false && testBroadcast.lastGoogleSyncError ? (

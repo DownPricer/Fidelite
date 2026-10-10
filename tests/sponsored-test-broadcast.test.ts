@@ -8,6 +8,8 @@ const adFindUnique = vi.fn();
 const walletCount = vi.fn();
 const syncAll = vi.fn();
 
+const userCount = vi.fn();
+
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     sponsoredAdTestBroadcast: {
@@ -18,6 +20,7 @@ vi.mock("@/lib/prisma", () => ({
     },
     adRequest: { findUnique: (...args: unknown[]) => adFindUnique(...args) },
     googleWalletObject: { count: (...args: unknown[]) => walletCount(...args) },
+    user: { count: (...args: unknown[]) => userCount(...args) },
   },
 }));
 
@@ -59,6 +62,7 @@ const adRow = {
 beforeEach(() => {
   vi.clearAllMocks();
   walletCount.mockResolvedValue(2);
+  userCount.mockResolvedValue(5);
   syncAll.mockResolvedValue({ attempted: 2, synced: 2, failed: 0, verified: 2 });
 });
 
@@ -153,6 +157,34 @@ describe("sponsored-test-broadcast", () => {
     broadcastFindUnique.mockResolvedValueOnce({ adRequestId: "other" });
     const noop = await stopSponsoredTestBroadcast({ adRequestId: "ad_test" });
     expect(noop.stopped).toBe(false);
+  });
+
+  it("expose le statut admin complet pour l'avertissement diffusion test", async () => {
+    broadcastFindUnique.mockResolvedValueOnce({
+      adRequestId: "ad_test",
+      startedAt: new Date("2026-10-10T12:00:00.000Z"),
+      lastGoogleSyncOk: true,
+      lastGoogleSyncError: null,
+      lastGoogleSyncAt: new Date("2026-10-10T12:01:00.000Z"),
+      googleObjectsSynced: 2,
+      googleObjectsFailed: 0,
+      googleObjectsTotal: 2,
+      adRequest: adRow,
+    });
+    const { getSponsoredTestBroadcastAdminStatus } = await import("../src/lib/sponsored-test-broadcast");
+    const status = await getSponsoredTestBroadcastAdminStatus("ad_test");
+    expect(status).toMatchObject({
+      active: true,
+      adRequestId: "ad_test",
+      campaignLabel: "Voir",
+      affectedAccountsCount: 5,
+      globalWalletObjectsCount: 2,
+      googleObjectsSynced: 2,
+      googleObjectsFailed: 0,
+      googleObjectsTotal: 2,
+    });
+    expect(userCount).toHaveBeenCalledWith({ where: { platformRole: "CUSTOMER", isActive: true } });
+    expect(walletCount).toHaveBeenCalledWith({ where: { merchantId: null, customerMembershipId: null } });
   });
 
 });

@@ -18,6 +18,8 @@
     "test:watch": "vitest",
     "icons": "node scripts/generate-pwa-icons.mjs",
     "diagnose:wallet-hero": "tsx scripts/diagnose-google-wallet-campaign-hero.ts",
+    "diagnose:wallet-publication": "tsx scripts/diagnose-google-wallet-publication.ts",
+    "doctor:wallet": "tsx scripts/google-wallet-doctor.ts",
     "emails:preview": "tsx scripts/emails-preview.ts"
   },
   "prisma": {
